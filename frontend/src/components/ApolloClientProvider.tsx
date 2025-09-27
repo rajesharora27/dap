@@ -4,10 +4,10 @@ import { setContext } from '@apollo/client/link/context';
 
 interface WrapperProps { children: React.ReactNode }
 export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
-  // Connect directly to backend since proxy might be having issues
-  const httpUrl = 'http://localhost:4000/graphql'; // Direct connection to backend
+  // Use Vite proxy to avoid CORS issues
+  const httpUrl = '/graphql'; // Use proxy instead of direct connection
 
-  console.log('🚀 Enhanced Apollo Client with debugging (direct backend connection) v2:', {
+  console.log('🚀 Enhanced Apollo Client with debugging (proxy connection) v3:', {
     httpUrl,
     timestamp: new Date().toISOString()
   });

@@ -322,23 +322,30 @@ clean_database() {
     fi
     log_success "Database cleaned"
 
-    log_info "Creating 3 sample products..."
-    if ! docker exec $DB_CONTAINER psql -U postgres -d dap -c "INSERT INTO \"Product\" (id, name, description, \"customAttrs\", \"updatedAt\") VALUES ('prod-ecommerce-1', 'E-Commerce Platform', 'Complete online shopping solution with payment gateway', '{\"version\": \"1.0\", \"priority\": \"high\"}', CURRENT_TIMESTAMP), ('prod-banking-1', 'Mobile Banking App', 'Secure mobile banking with biometric authentication', '{\"security_level\": \"maximum\", \"platform\": \"mobile\"}', CURRENT_TIMESTAMP), ('prod-healthcare-1', 'Healthcare CRM', 'Patient management system with appointment scheduling', '{\"industry\": \"healthcare\", \"compliance\": [\"HIPAA\"]}', CURRENT_TIMESTAMP);" >/dev/null 2>&1; then
-        log_error "Failed to create sample products."
+    log_info "Creating 5 comprehensive products with full attributes..."
+    log_info "Loading enhanced sample data from SQL file..."
+    
+    # Execute the comprehensive sample data SQL file
+    if ! docker exec -i $DB_CONTAINER psql -U postgres -d dap < "$PROJECT_DIR/create-enhanced-sample-data.sql" >/dev/null 2>&1; then
+        log_error "Failed to create enhanced sample data."
         return 1
     fi
-
-    log_info "Adding sample tasks..."
-    if ! docker exec $DB_CONTAINER psql -U postgres -d dap -c "INSERT INTO \"Task\" (id, \"productId\", name, description, \"estMinutes\", weight, \"sequenceNumber\", \"licenseLevel\", priority, \"updatedAt\") VALUES ('task-ecom-1', 'prod-ecommerce-1', 'User Authentication System', 'Implement secure user registration, login, and password reset', 480, 20.0, 1, 'ESSENTIAL', 'High', CURRENT_TIMESTAMP), ('task-ecom-2', 'prod-ecommerce-1', 'Product Catalog Management', 'Build product listing, search, filtering, and categorization', 720, 25.0, 2, 'ESSENTIAL', 'High', CURRENT_TIMESTAMP), ('task-ecom-3', 'prod-ecommerce-1', 'Shopping Cart & Checkout', 'Develop shopping cart functionality and secure checkout process', 600, 20.0, 3, 'ADVANTAGE', 'High', CURRENT_TIMESTAMP), ('task-ecom-4', 'prod-ecommerce-1', 'Payment Gateway Integration', 'Integrate multiple payment methods (credit cards, PayPal, etc.)', 480, 15.0, 4, 'ADVANTAGE', 'Medium', CURRENT_TIMESTAMP), ('task-ecom-5', 'prod-ecommerce-1', 'Order Management System', 'Create order tracking, fulfillment, and customer communication', 540, 20.0, 5, 'SIGNATURE', 'Medium', CURRENT_TIMESTAMP), ('task-bank-1', 'prod-banking-1', 'Biometric Authentication', 'Implement fingerprint and facial recognition login systems', 600, 25.0, 1, 'SIGNATURE', 'Critical', CURRENT_TIMESTAMP), ('task-bank-2', 'prod-banking-1', 'Account Balance & Transactions', 'Display real-time account balances and transaction history', 480, 20.0, 2, 'ESSENTIAL', 'High', CURRENT_TIMESTAMP), ('task-bank-3', 'prod-banking-1', 'Money Transfer System', 'Enable secure peer-to-peer and bank transfers', 720, 25.0, 3, 'ADVANTAGE', 'Critical', CURRENT_TIMESTAMP), ('task-bank-4', 'prod-banking-1', 'Bill Payment Integration', 'Allow users to pay bills and set up recurring payments', 540, 15.0, 4, 'ADVANTAGE', 'Medium', CURRENT_TIMESTAMP), ('task-bank-5', 'prod-banking-1', 'Fraud Detection System', 'Implement real-time fraud monitoring and alerts', 600, 15.0, 5, 'SIGNATURE', 'Critical', CURRENT_TIMESTAMP), ('task-health-1', 'prod-healthcare-1', 'Patient Records Management', 'Create secure patient profile system with medical history', 600, 25.0, 1, 'ESSENTIAL', 'Critical', CURRENT_TIMESTAMP), ('task-health-2', 'prod-healthcare-1', 'Appointment Scheduling', 'Build calendar system for booking and managing appointments', 480, 20.0, 2, 'ESSENTIAL', 'High', CURRENT_TIMESTAMP), ('task-health-3', 'prod-healthcare-1', 'HIPAA Compliance Module', 'Implement data encryption, audit trails, and privacy controls', 720, 20.0, 3, 'SIGNATURE', 'Critical', CURRENT_TIMESTAMP), ('task-health-4', 'prod-healthcare-1', 'Billing & Insurance Integration', 'Connect with insurance providers and automate claims', 660, 15.0, 4, 'ADVANTAGE', 'Medium', CURRENT_TIMESTAMP), ('task-health-5', 'prod-healthcare-1', 'Telemedicine Platform', 'Enable video consultations and remote patient monitoring', 540, 20.0, 5, 'SIGNATURE', 'Low', CURRENT_TIMESTAMP);" >/dev/null 2>&1; then
-        log_error "Failed to create sample tasks."
-        return 1
-    fi
-    log_success "Sample data created successfully!"
+    
+    log_success "Enhanced sample data created successfully!"
 
     # Verify
     local products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Product\";" 2>/dev/null | tr -d ' ')
     local tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\";" 2>/dev/null | tr -d ' ')
-    log_info "Created: $products products with $tasks tasks total"
+    local licenses=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"License\";" 2>/dev/null | tr -d ' ')
+    local outcomes=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Outcome\";" 2>/dev/null | tr -d ' ')
+    local customers=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Customer\";" 2>/dev/null | tr -d ' ')
+    
+    log_info "Created comprehensive sample data:"
+    log_info "  📦 $products Products (E-Commerce, FinTech, Healthcare, Logistics, EdTech)"
+    log_info "  📋 $tasks Tasks (5-10 tasks per product with full attributes)"
+    log_info "  🏷️ $licenses Licenses (Essential, Advantage, Signature tiers)"
+    log_info "  🎯 $outcomes Outcomes (Success metrics and KPIs)"
+    log_info "  🏢 $customers Customers (Enterprise clients)"
 }
 
 # Start all services
@@ -410,11 +417,11 @@ clean_restart() {
     
     echo ""
     log_success "Clean restart completed!"
-    log_info "✅ Database: Clean with 3 products and 15 tasks"
+    log_info "✅ Database: Clean with 5 products and 40 tasks (comprehensive attributes)"
     log_info "✅ Backend API: http://localhost:$BACKEND_PORT/graphql"
     log_info "✅ Frontend App: http://localhost:$FRONTEND_PORT"
     echo ""
-    log_info "🔄 Press Ctrl+Shift+R in your browser to see the clean data!"
+    log_info "🔄 Press Ctrl+Shift+R in your browser to see the enhanced sample data!"
 }
 
 # Show help
