@@ -721,8 +721,8 @@ export class ValidationUtils {
             errors.push('License name is required');
         }
 
-        if (license.level !== undefined && (license.level < 1 || license.level > 5)) {
-            errors.push('License level must be between 1 and 5');
+        if (license.level !== undefined && (license.level < 1 || license.level > 3)) {
+            errors.push('License level must be between 1 and 3 (Essential, Advantage, or Signature)');
         }
 
         return errors;

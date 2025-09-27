@@ -64,7 +64,7 @@ npm config set cache /data/npm-cache
 Updated to comprehensive dataset:
 - **5 Enterprise Products**: E-Commerce, FinTech, Healthcare, Logistics, EdTech
 - **40 Tasks**: 5-10 tasks per product with full attributes
-- **License Levels**: Basic, Standard, Premium, Enterprise
+- **License Levels**: Essential, Advantage, Signature
 - **Complete Outcomes**: Delivered, In Progress, Cancelled, Pending
 
 ## Benefits Achieved

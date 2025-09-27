@@ -69,8 +69,8 @@ async function createTestLicenses() {
     const productId = productResult.createProduct.id;
 
     const licenseData = [
-        { name: 'Basic Test License', level: 1 },
-        { name: 'Premium Test License', level: 2 },
+        { name: 'Essential License', level: 1 },
+        { name: 'Advantage License', level: 2 },
         { name: 'Enterprise Test License', level: 3 }
     ];
 
