@@ -386,7 +386,7 @@ export function App() {
   const [selectedTask, setSelectedTask] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [detailProduct, setDetailProduct] = useState<any>(null);
-  const [selectedProductSubSection, setSelectedProductSubSection] = useState<'main' | 'licenses' | 'outcomes' | 'customAttributes' | 'tasks'>('main');
+  const [selectedProductSubSection, setSelectedProductSubSection] = useState<'tasks' | 'main' | 'licenses' | 'outcomes' | 'customAttributes'>('tasks');
   const [productsExpanded, setProductsExpanded] = useState(true);
 
   // Dialog states
@@ -502,7 +502,7 @@ export function App() {
   React.useEffect(() => {
     if (products.length > 0 && !selectedProduct) {
       setSelectedProduct(products[0].id);
-      setSelectedProductSubSection('main');
+      setSelectedProductSubSection('tasks');
     }
   }, [products, selectedProduct]);
 
@@ -543,7 +543,7 @@ export function App() {
       // Reset to first product when clicking Products menu
       if (products.length > 0) {
         setSelectedProduct(products[0].id);
-        setSelectedProductSubSection('main');
+        setSelectedProductSubSection('tasks');
       } else {
         setSelectedProduct('');
       }
@@ -569,7 +569,7 @@ export function App() {
 
   const handleProductChange = (productId: string) => {
     setSelectedProduct(productId);
-    setSelectedProductSubSection('main');
+    setSelectedProductSubSection('tasks');
     setSelectedTask('');
   };
 
@@ -2505,6 +2505,17 @@ export function App() {
               <List component="div" disablePadding>
                 <ListItemButton
                   sx={{ pl: 4 }}
+                  selected={selectedProductSubSection === 'tasks'}
+                  onClick={() => handleProductSubSectionChange('tasks')}
+                >
+                  <ListItemIcon>
+                    <TaskIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Tasks" />
+                </ListItemButton>
+
+                <ListItemButton
+                  sx={{ pl: 4 }}
                   selected={selectedProductSubSection === 'main'}
                   onClick={() => handleProductSubSectionChange('main')}
                 >
@@ -2545,17 +2556,6 @@ export function App() {
                     <CustomAttributeIcon />
                   </ListItemIcon>
                   <ListItemText primary="Other Product Attributes" />
-                </ListItemButton>
-
-                <ListItemButton
-                  sx={{ pl: 4 }}
-                  selected={selectedProductSubSection === 'tasks'}
-                  onClick={() => handleProductSubSectionChange('tasks')}
-                >
-                  <ListItemIcon>
-                    <TaskIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Tasks" />
                 </ListItemButton>
               </List>
             </Collapse>
@@ -2672,7 +2672,7 @@ export function App() {
                       value={selectedProduct}
                       onChange={(e) => {
                         setSelectedProduct(e.target.value);
-                        setSelectedProductSubSection('main');
+                        setSelectedProductSubSection('tasks');
                       }}
                       label="Select Product"
                     >
@@ -3200,11 +3200,11 @@ export function App() {
                   <Paper sx={{ p: 4, textAlign: 'center' }}>
                     <Typography variant="h6" color="text.secondary">
                       Select a product to view {
-                        selectedProductSubSection === 'main' ? 'overview' :
-                          selectedProductSubSection === 'licenses' ? 'licenses' :
-                            selectedProductSubSection === 'outcomes' ? 'outcomes' :
-                              selectedProductSubSection === 'customAttributes' ? 'custom attributes' :
-                                selectedProductSubSection === 'tasks' ? 'tasks' : 'details'
+                        selectedProductSubSection === 'tasks' ? 'tasks' :
+                          selectedProductSubSection === 'main' ? 'overview' :
+                            selectedProductSubSection === 'licenses' ? 'licenses' :
+                              selectedProductSubSection === 'outcomes' ? 'outcomes' :
+                                selectedProductSubSection === 'customAttributes' ? 'custom attributes' : 'details'
                       }
                     </Typography>
                   </Paper>
