@@ -1,4 +1,0 @@
-id,name,description,customAttrs,licenseIds
-prod-ecommerce-1,E-Commerce Platform,UPDATED: Complete online shopping solution with new advanced features and modern UI,"{""version"":""1.0"",""priority"":""high""}",[]
-prod-healthcare-1,Healthcare CRM,Patient management system with appointment scheduling,"{""industry"":""healthcare"",""compliance"":[""HIPAA""]}",[]
-prod-banking-1,Mobile Banking App,Secure mobile banking with biometric authentication,"{""owner"":""rajarora"",""platform"":""mobile"",""security_level"":""maximum""}",[]
