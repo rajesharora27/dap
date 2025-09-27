@@ -86,7 +86,7 @@ describe('Product Management App Validation', () => {
 
         expect(mockLicense.id).toBeDefined();
         expect(mockLicense.name).toBeTruthy();
-        expect(['ESSENTIAL', 'PREMIUM', 'ENTERPRISE']).toContain(mockLicense.level);
+        expect(['ESSENTIAL', 'ADVANTAGE', 'SIGNATURE']).toContain(mockLicense.level);
         expect(typeof mockLicense.isActive).toBe('boolean');
     });
 
@@ -129,7 +129,7 @@ describe('Product Management App Validation', () => {
                 name: 'Task 2',
                 weight: 70,
                 sequenceNumber: 2,
-                licenseLevel: 'PREMIUM'
+                licenseLevel: 'ADVANTAGE'
             }
         ];
 
@@ -141,7 +141,7 @@ describe('Product Management App Validation', () => {
             expect(task.name).toBeTruthy();
             expect(task.weight).toBeGreaterThan(0);
             expect(task.sequenceNumber).toBeGreaterThan(0);
-            expect(['ESSENTIAL', 'PREMIUM', 'ENTERPRISE']).toContain(task.licenseLevel);
+            expect(['ESSENTIAL', 'ADVANTAGE', 'SIGNATURE']).toContain(task.licenseLevel);
         });
     });
 

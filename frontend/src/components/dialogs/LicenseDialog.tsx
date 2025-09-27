@@ -112,11 +112,9 @@ export const LicenseDialog: React.FC<LicenseDialogProps> = ({
               onChange={(e) => setFormData(prev => ({ ...prev, level: Number(e.target.value) }))}
               label="License Level"
             >
-              <MenuItem value={1}>Level 1 - Basic</MenuItem>
-              <MenuItem value={2}>Level 2 - Standard</MenuItem>
-              <MenuItem value={3}>Level 3 - Premium</MenuItem>
-              <MenuItem value={4}>Level 4 - Enterprise</MenuItem>
-              <MenuItem value={5}>Level 5 - Ultimate</MenuItem>
+              <MenuItem value={1}>1 - Essential</MenuItem>
+              <MenuItem value={2}>2 - Advantage</MenuItem>
+              <MenuItem value={3}>3 - Signature</MenuItem>
             </Select>
           </FormControl>
 
