@@ -26,6 +26,8 @@ import { ExpandMore } from '@mui/icons-material';
 import { License, Outcome, Product, CustomAttribute } from '../../types/shared';
 import { ValidationUtils } from '../../utils/sharedHandlers';
 import { CustomAttributeDialog } from './CustomAttributeDialog';
+import { LicenseDialog } from './LicenseDialog';
+import { OutcomeDialog } from './OutcomeDialog';
 
 interface Props {
   open: boolean;
@@ -36,7 +38,6 @@ interface Props {
     customAttrs?: any;
     outcomes?: Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>;
     licenses?: Array<{ id?: string; name: string; description?: string; level: string; isActive: boolean; isNew?: boolean; delete?: boolean }>;
-    requiredLicenseLevel?: number;
   }) => Promise<void>;
   product?: Product | null;
   title: string;
@@ -50,20 +51,19 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
   const [customAttrs, setCustomAttrs] = useState<{ [key: string]: any }>({});
   const [outcomes, setOutcomes] = useState<Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>>([]);
   const [licenses, setLicenses] = useState<Array<{ id?: string; name: string; description?: string; level: number; isActive: boolean; isNew?: boolean; delete?: boolean }>>([]);
-  const [requiredLicenseLevel, setRequiredLicenseLevel] = useState(1);
-  const [newOutcomeName, setNewOutcomeName] = useState('');
-  const [newOutcomeDescription, setNewOutcomeDescription] = useState('');
-  const [newLicenseName, setNewLicenseName] = useState('');
-  const [newLicenseDescription, setNewLicenseDescription] = useState('');
-  const [newLicenseLevel, setNewLicenseLevel] = useState(1);
-  const [newLicenseActive, setNewLicenseActive] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Custom attribute dialog states
+  // Dialog states
   const [addCustomAttributeDialog, setAddCustomAttributeDialog] = useState(false);
   const [editCustomAttributeDialog, setEditCustomAttributeDialog] = useState(false);
   const [editingCustomAttribute, setEditingCustomAttribute] = useState<CustomAttribute | null>(null);
+  const [addLicenseDialog, setAddLicenseDialog] = useState(false);
+  const [editLicenseDialog, setEditLicenseDialog] = useState(false);
+  const [editingLicense, setEditingLicense] = useState<License | null>(null);
+  const [addOutcomeDialog, setAddOutcomeDialog] = useState(false);
+  const [editOutcomeDialog, setEditOutcomeDialog] = useState(false);
+  const [editingOutcome, setEditingOutcome] = useState<Outcome | null>(null);
 
   useEffect(() => {
     if (product) {
@@ -77,77 +77,80 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         level: license.level,
         isActive: license.isActive
       })));
-      setRequiredLicenseLevel(product.requiredLicenseLevel || 1);
       setCustomAttrs(product.customAttrs || {});
     } else {
       setName('');
       setDescription('');
       setOutcomes([]);
       setLicenses([]);
-      setRequiredLicenseLevel(1);
       setCustomAttrs({
         priority: "medium",
         owner: "",
         department: ""
       });
     }
-    setNewOutcomeName('');
-    setNewOutcomeDescription('');
-    setNewLicenseName('');
-    setNewLicenseDescription('');
-    setNewLicenseLevel(1);
-    setNewLicenseActive(true);
     setError('');
   }, [product, open]);
 
-  const handleAddOutcome = () => {
-    // Use shared validation logic
-    const outcomeData = {
-      name: newOutcomeName.trim(),
-      description: newOutcomeDescription.trim() || undefined
-    };
-
-    const validationErrors = ValidationUtils.validateOutcome(outcomeData);
-    if (validationErrors.length > 0) {
-      setError(validationErrors[0]); // Show first error
-      return;
-    }
-
-    setOutcomes([...outcomes, {
-      ...outcomeData,
-      isNew: true
-    }]);
-
-    setNewOutcomeName('');
-    setNewOutcomeDescription('');
-    setError('');
-  };
-
-  const handleAddLicense = () => {
-    // Use shared validation logic
-    const licenseData = {
-      name: newLicenseName.trim(),
-      description: newLicenseDescription.trim() || undefined,
-      level: newLicenseLevel,
-      isActive: newLicenseActive
-    };
-
-    const validationErrors = ValidationUtils.validateLicense(licenseData);
-    if (validationErrors.length > 0) {
-      setError(validationErrors[0]); // Show first error
-      return;
-    }
-
+  // License dialog handlers
+  const handleAddLicense = (licenseData: Omit<License, 'id'>) => {
     setLicenses([...licenses, {
       ...licenseData,
       isNew: true
     }]);
+    setAddLicenseDialog(false);
+  };
 
-    setNewLicenseName('');
-    setNewLicenseDescription('');
-    setNewLicenseLevel(licenses.length + 1); // Auto-increment level for next license
-    setNewLicenseActive(true);
-    setError('');
+  const handleEditLicense = (licenseData: Omit<License, 'id'>) => {
+    if (editingLicense) {
+      const updatedLicenses = licenses.map(license => 
+        license.id === editingLicense.id || license === editingLicense
+          ? { ...license, ...licenseData }
+          : license
+      );
+      setLicenses(updatedLicenses);
+    }
+    setEditLicenseDialog(false);
+    setEditingLicense(null);
+  };
+
+  const handleDeleteLicense = (index: number) => {
+    const updatedLicenses = [...licenses];
+    if (updatedLicenses[index].id) {
+      // Mark existing license for deletion
+      updatedLicenses[index] = { ...updatedLicenses[index], delete: true };
+    } else {
+      // Remove new license that wasn't saved yet
+      updatedLicenses.splice(index, 1);
+    }
+    setLicenses(updatedLicenses);
+  };
+
+  const handleEditLicenseClick = (license: any, index: number) => {
+    setEditingLicense(license);
+    setEditLicenseDialog(true);
+  };
+
+  // Outcome dialog handlers
+  const handleAddOutcome = (outcomeData: Omit<Outcome, 'id'>) => {
+    setOutcomes([...outcomes, {
+      ...outcomeData,
+      isNew: true
+    }]);
+    setAddOutcomeDialog(false);
+  };
+
+  const handleEditOutcome = (outcomeData: Omit<Outcome, 'id'>) => {
+    if (editingOutcome) {
+      const updatedOutcomes = outcomes.map(outcome => 
+        outcome.id === editingOutcome.id || outcome === editingOutcome
+          ? { ...outcome, ...outcomeData }
+          : outcome
+      );
+      setOutcomes(updatedOutcomes);
+    }
+    setEditOutcomeDialog(false);
+    setEditingOutcome(null);
   };
 
   const handleDeleteOutcome = (index: number) => {
@@ -162,16 +165,9 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
     setOutcomes(updatedOutcomes);
   };
 
-  const handleDeleteLicense = (index: number) => {
-    const updatedLicenses = [...licenses];
-    if (updatedLicenses[index].id) {
-      // Mark existing license for deletion
-      updatedLicenses[index] = { ...updatedLicenses[index], delete: true };
-    } else {
-      // Remove new license that wasn't saved yet
-      updatedLicenses.splice(index, 1);
-    }
-    setLicenses(updatedLicenses);
+  const handleEditOutcomeClick = (outcome: any, index: number) => {
+    setEditingOutcome(outcome);
+    setEditOutcomeDialog(true);
   };
 
   // Custom Attribute handlers
@@ -239,8 +235,7 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         licenses: licenses.length > 0 ? licenses.map(license => ({
           ...license,
           level: license.level.toString() // Convert level to string
-        })) : undefined,
-        requiredLicenseLevel: requiredLicenseLevel > 1 ? requiredLicenseLevel : undefined
+        })) : undefined
       });
       onClose();
     } catch (err: any) {
@@ -285,187 +280,162 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
               <Typography>Outcomes ({outcomes.filter(o => !o.delete).length})</Typography>
             </AccordionSummary>
             <AccordionDetails>
-              {outcomes.filter(o => !o.delete).length > 0 && (
-                <>
-                  <Typography variant="h6" gutterBottom>
-                    Current Outcomes
-                  </Typography>
-                  <List dense>
-                    {outcomes.map((outcome, index) =>
-                      !outcome.delete && (
-                        <ListItem
-                          key={index}
-                          secondaryAction={
-                            <IconButton
-                              edge="end"
-                              onClick={() => handleDeleteOutcome(index)}
-                              color="error"
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          }
-                        >
-                          <ListItemText
-                            primary={outcome.name}
-                            secondary={outcome.description}
-                            sx={{
-                              '& .MuiListItemText-primary': {
-                                fontWeight: outcome.isNew ? 'bold' : 'normal'
-                              }
-                            }}
-                          />
-                        </ListItem>
-                      )
-                    )}
-                  </List>
-                  <Divider sx={{ my: 2 }} />
-                </>
-              )}
-
-              <Box>
-                <Typography variant="h6" gutterBottom>
-                  Add New Outcome
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Manage outcomes for this product
                 </Typography>
-                <TextField
-                  fullWidth
-                  label="Outcome Name"
-                  value={newOutcomeName}
-                  onChange={(e) => setNewOutcomeName(e.target.value)}
-                  margin="dense"
-                  placeholder="e.g., User Authentication, Data Analytics"
-                />
-                <TextField
-                  fullWidth
-                  label="Outcome Description"
-                  value={newOutcomeDescription}
-                  onChange={(e) => setNewOutcomeDescription(e.target.value)}
-                  margin="dense"
-                  multiline
-                  rows={2}
-                  placeholder="Describe what this outcome achieves..."
-                />
                 <Button
                   variant="outlined"
                   startIcon={<AddIcon />}
-                  onClick={handleAddOutcome}
-                  sx={{ mt: 1 }}
+                  onClick={() => setAddOutcomeDialog(true)}
+                  size="small"
                 >
                   Add Outcome
                 </Button>
               </Box>
+
+              {outcomes.filter(o => !o.delete).length > 0 ? (
+                <List dense>
+                  {outcomes.map((outcome, index) =>
+                    !outcome.delete && (
+                      <ListItemButton
+                        key={index}
+                        sx={{
+                          border: '1px solid #e0e0e0',
+                          borderRadius: 1,
+                          mb: 1,
+                          '&:hover': {
+                            backgroundColor: '#f5f5f5',
+                          },
+                        }}
+                        onClick={() => handleEditOutcomeClick(outcome, index)}
+                      >
+                        <ListItemText
+                          primary={outcome.name}
+                          secondary={outcome.description}
+                          sx={{
+                            '& .MuiListItemText-primary': {
+                              fontWeight: outcome.isNew ? 'bold' : 'normal'
+                            }
+                          }}
+                        />
+                        <IconButton
+                          edge="end"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditOutcomeClick(outcome, index);
+                          }}
+                          size="small"
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          edge="end"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteOutcome(index);
+                          }}
+                          color="error"
+                          size="small"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </ListItemButton>
+                    )
+                  )}
+                </List>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                  No outcomes added yet. Click "Add Outcome" to get started.
+                </Typography>
+              )}
             </AccordionDetails>
           </Accordion>
 
           {/* Licenses Management */}
           <Accordion sx={{ mt: 2 }}>
             <AccordionSummary expandIcon={<ExpandMore />}>
-              <Typography>Licenses ({licenses.length})</Typography>
+              <Typography>Licenses ({licenses.filter(l => !l.delete).length})</Typography>
             </AccordionSummary>
             <AccordionDetails>
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  label="Required License Level"
-                  type="number"
-                  value={requiredLicenseLevel}
-                  onChange={(e) => setRequiredLicenseLevel(parseInt(e.target.value) || 1)}
-                  inputProps={{ min: 1, max: 10 }}
-                  helperText="Minimum license level required to access this product"
-                  sx={{ mb: 2 }}
-                />
-              </Box>
-
-              {licenses.filter(l => !l.delete).length > 0 && (
-                <>
-                  <Typography variant="h6" gutterBottom>
-                    Current Licenses
-                  </Typography>
-                  <List dense>
-                    {licenses.map((license, index) =>
-                      !license.delete && (
-                        <ListItem
-                          key={index}
-                          secondaryAction={
-                            <IconButton
-                              edge="end"
-                              onClick={() => handleDeleteLicense(index)}
-                              color="error"
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          }
-                        >
-                          <ListItemText
-                            primary={`${license.name} (Level ${license.level})`}
-                            secondary={
-                              <Box>
-                                <Typography variant="body2">
-                                  {license.description}
-                                </Typography>
-                                <Typography variant="caption" color={license.isActive ? 'success.main' : 'error.main'}>
-                                  {license.isActive ? 'Active' : 'Inactive'}
-                                </Typography>
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                      )
-                    )}
-                  </List>
-                  <Divider sx={{ my: 2 }} />
-                </>
-              )}
-
-              <Box>
-                <Typography variant="h6" gutterBottom>
-                  Add New License
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Manage licenses for this product
                 </Typography>
-                <TextField
-                  fullWidth
-                  label="License Name"
-                  value={newLicenseName}
-                  onChange={(e) => setNewLicenseName(e.target.value)}
-                  margin="dense"
-                  placeholder="e.g., Basic Access, Premium Features, Enterprise"
-                />
-                <TextField
-                  fullWidth
-                  label="License Description"
-                  value={newLicenseDescription}
-                  onChange={(e) => setNewLicenseDescription(e.target.value)}
-                  margin="dense"
-                  multiline
-                  rows={2}
-                  placeholder="Describe what this license provides access to..."
-                />
-                <TextField
-                  label="License Level"
-                  type="number"
-                  value={newLicenseLevel}
-                  onChange={(e) => setNewLicenseLevel(parseInt(e.target.value) || 1)}
-                  margin="dense"
-                  inputProps={{ min: 1, max: 10 }}
-                  helperText="Higher levels include access to lower levels"
-                  sx={{ mr: 2, width: '200px' }}
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={newLicenseActive}
-                      onChange={(e) => setNewLicenseActive(e.target.checked)}
-                    />
-                  }
-                  label="Active"
-                  sx={{ mt: 1 }}
-                />
                 <Button
                   variant="outlined"
                   startIcon={<AddIcon />}
-                  onClick={handleAddLicense}
-                  sx={{ mt: 1 }}
+                  onClick={() => setAddLicenseDialog(true)}
+                  size="small"
                 >
                   Add License
                 </Button>
               </Box>
+
+              {licenses.filter(l => !l.delete).length > 0 ? (
+                <List dense>
+                  {licenses.map((license, index) =>
+                    !license.delete && (
+                      <ListItemButton
+                        key={index}
+                        sx={{
+                          border: '1px solid #e0e0e0',
+                          borderRadius: 1,
+                          mb: 1,
+                          '&:hover': {
+                            backgroundColor: '#f5f5f5',
+                          },
+                        }}
+                        onClick={() => handleEditLicenseClick(license, index)}
+                      >
+                        <ListItemText
+                          primary={`${license.name} (Level ${license.level})`}
+                          secondary={
+                            <Box>
+                              <Typography variant="body2">
+                                {license.description}
+                              </Typography>
+                              <Typography variant="caption" color={license.isActive ? 'success.main' : 'error.main'}>
+                                {license.isActive ? 'Active' : 'Inactive'}
+                              </Typography>
+                            </Box>
+                          }
+                          sx={{
+                            '& .MuiListItemText-primary': {
+                              fontWeight: license.isNew ? 'bold' : 'normal'
+                            }
+                          }}
+                        />
+                        <IconButton
+                          edge="end"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditLicenseClick(license, index);
+                          }}
+                          size="small"
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          edge="end"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteLicense(index);
+                          }}
+                          color="error"
+                          size="small"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </ListItemButton>
+                    )
+                  )}
+                </List>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                  No licenses added yet. Click "Add License" to get started.
+                </Typography>
+              )}
             </AccordionDetails>
           </Accordion>
 
@@ -596,6 +566,44 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         onSave={handleEditCustomAttribute}
         attribute={editingCustomAttribute}
         existingKeys={Object.keys(customAttrs)}
+      />
+
+      {/* Add License Dialog */}
+      <LicenseDialog
+        open={addLicenseDialog}
+        onClose={() => setAddLicenseDialog(false)}
+        onSave={handleAddLicense}
+        license={null}
+      />
+
+      {/* Edit License Dialog */}
+      <LicenseDialog
+        open={editLicenseDialog}
+        onClose={() => {
+          setEditLicenseDialog(false);
+          setEditingLicense(null);
+        }}
+        onSave={handleEditLicense}
+        license={editingLicense}
+      />
+
+      {/* Add Outcome Dialog */}
+      <OutcomeDialog
+        open={addOutcomeDialog}
+        onClose={() => setAddOutcomeDialog(false)}
+        onSave={handleAddOutcome}
+        outcome={null}
+      />
+
+      {/* Edit Outcome Dialog */}
+      <OutcomeDialog
+        open={editOutcomeDialog}
+        onClose={() => {
+          setEditOutcomeDialog(false);
+          setEditingOutcome(null);
+        }}
+        onSave={handleEditOutcome}
+        outcome={editingOutcome}
       />
     </Dialog>
   );
