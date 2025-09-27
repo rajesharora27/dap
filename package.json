@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "prisma": "^6.15.0"
+  },
+  "dependencies": {
+    "@apollo/client": "^4.0.4",
+    "@prisma/client": "^6.15.0",
+    "cross-fetch": "^4.1.0"
+  }
+}

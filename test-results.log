@@ -1,0 +1,7 @@
+Testing backend GraphQL directly...
+Backend Status: 200
+✅ Backend GraphQL working correctly
+Found 3 products
+
+Testing frontend proxy...
+❌ Frontend proxy connection failed: 

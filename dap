@@ -1,0 +1,494 @@
+#!/bin/bash
+
+#######################################################################################
+# DAP Application Manager - All-in-One Script
+# 
+# Manages the complete DAP (Database Application Platform) lifecycle:
+# - Application start/stop/restart/status
+# - Database cleanup and sample data setup  
+# - Browser cache clearing guidance
+# - Development environment management
+#
+# Usage: ./dap [command]
+# Commands: start, stop, restart, status, reset, clean-restart, help
+#######################################################################################
+
+set -e
+
+# Configuration
+APP_NAME="DAP Application"
+DB_CONTAINER="$(docker ps -a --format '{{.Names}}' | grep -E '^dap[-_]db[-_]1$|^dap_db_1$|^dap-db-1$|^db$' | head -n 1)"
+BACKEND_PORT=4000
+FRONTEND_PORT=5173
+# Use the directory of this script as the project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$SCRIPT_DIR"
+BACKEND_DIR="$PROJECT_DIR/backend"
+FRONTEND_DIR="$PROJECT_DIR/frontend"
+
+# Dependency checks (Docker, Node.js, npm, lsof, pkill)
+for dep in docker node npm lsof pkill; do
+    if ! command -v $dep >/dev/null 2>&1; then
+        echo "[ERROR] Required dependency '$dep' is not installed or not in PATH. Please install it before running this script."
+        exit 1
+    fi
+done
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Logging functions
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+log_header() { echo -e "${PURPLE}=== $1 ===${NC}"; }
+
+# Check if a port is in use
+check_port() {
+    local port=$1
+    lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1
+}
+
+# Kill processes on a specific port
+kill_port() {
+    local port=$1
+    local service_name=$2
+    
+    if check_port $port; then
+        log_info "Stopping $service_name on port $port..."
+        local pids=$(lsof -Pi :$port -sTCP:LISTEN -t 2>/dev/null || true)
+        if [ ! -z "$pids" ]; then
+            echo "$pids" | xargs kill -TERM 2>/dev/null || true
+            sleep 2
+            local remaining_pids=$(lsof -Pi :$port -sTCP:LISTEN -t 2>/dev/null || true)
+            if [ ! -z "$remaining_pids" ]; then
+                echo "$remaining_pids" | xargs kill -KILL 2>/dev/null || true
+            fi
+            log_success "$service_name stopped"
+        fi
+    else
+        log_info "$service_name not running on port $port"
+    fi
+}
+
+# Kill Node.js processes related to the project
+kill_node_processes() {
+    log_info "Stopping all Node.js processes related to the project..."
+    pkill -f "ts-node-dev.*src/server.ts" 2>/dev/null || true
+    pkill -f "vite.*--port.*5173" 2>/dev/null || true
+    pkill -f "npm.*exec.*ts-node-dev" 2>/dev/null || true
+    pkill -f "npm.*exec.*vite" 2>/dev/null || true
+    sleep 2
+    kill_port $BACKEND_PORT "Backend API"
+    kill_port $FRONTEND_PORT "Frontend Dev Server"
+    log_success "Node.js processes stopped"
+}
+
+# Manage Docker containers
+manage_docker() {
+    local action=$1
+    
+    case $action in
+        start)
+            log_info "Starting PostgreSQL database container..."
+            if docker ps -a --format "table {{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
+                if docker ps --format "table {{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
+                    log_info "Database container already running"
+                else
+                    docker start $DB_CONTAINER
+                    log_success "Database container started"
+                fi
+            else
+                log_warning "Database container $DB_CONTAINER not found. Attempting to create it with 'docker compose up -d db'..."
+                (cd "$PROJECT_DIR" && docker compose up -d db)
+                # Wait for container to appear
+                local max_attempts=10
+                local attempt=1
+                while [ $attempt -le $max_attempts ]; do
+                    if docker ps -a --format "table {{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
+                        log_success "Database container $DB_CONTAINER created"
+                        break
+                    fi
+                    sleep 1
+                    ((attempt++))
+                done
+                if ! docker ps -a --format "table {{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
+                    log_error "Failed to create database container $DB_CONTAINER. Please check your docker-compose.yml."
+                    return 1
+                fi
+            fi
+            
+            log_info "Waiting for database to be ready..."
+            local max_attempts=30
+            local attempt=1
+            
+            while [ $attempt -le $max_attempts ]; do
+                if docker exec $DB_CONTAINER pg_isready -U postgres >/dev/null 2>&1; then
+                    log_success "Database is ready"
+                    break
+                fi
+                
+                if [ $attempt -eq $max_attempts ]; then
+                    log_error "Database failed to become ready within 30 seconds"
+                    return 1
+                fi
+                
+                echo -n "."
+                sleep 1
+                ((attempt++))
+            done
+            ;;
+            
+        stop)
+            log_info "Stopping PostgreSQL database container..."
+            if docker ps --format "table {{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
+                docker stop $DB_CONTAINER
+                log_success "Database container stopped"
+            else
+                log_info "Database container not running"
+            fi
+            ;;
+            
+        status)
+            if docker ps --format "table {{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
+                log_success "Database container is running"
+                docker exec $DB_CONTAINER pg_isready -U postgres >/dev/null 2>&1 && log_success "Database is accepting connections"
+            elif docker ps -a --format "table {{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
+                log_warning "Database container exists but is not running"
+            else
+                log_error "Database container not found"
+            fi
+            ;;
+    esac
+}
+
+# Start backend
+start_backend() {
+    log_info "Starting Backend GraphQL API..."
+    
+    if check_port $BACKEND_PORT; then
+        log_warning "Backend already running on port $BACKEND_PORT"
+        return 0
+    fi
+    
+    cd "$BACKEND_DIR"
+    
+    if [ ! -d "node_modules" ]; then
+        log_info "Installing backend dependencies..."
+        npm install
+    fi
+    
+    log_info "Starting backend server on port $BACKEND_PORT..."
+    nohup npm run dev > ../backend.log 2>&1 &
+    local backend_pid=$!
+    
+    local max_attempts=20
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        if check_port $BACKEND_PORT; then
+            log_success "Backend API started successfully (PID: $backend_pid)"
+            return 0
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            log_error "Backend failed to start within 20 seconds"
+            return 1
+        fi
+        
+        echo -n "."
+        sleep 1
+        ((attempt++))
+    done
+}
+
+# Start frontend
+start_frontend() {
+    log_info "Starting Frontend React App..."
+    
+    if check_port $FRONTEND_PORT; then
+        log_warning "Frontend already running on port $FRONTEND_PORT"
+        return 0
+    fi
+    
+    cd "$FRONTEND_DIR"
+    
+    if [ ! -d "node_modules" ]; then
+        log_info "Installing frontend dependencies..."
+        npm install
+    fi
+    
+    log_info "Starting frontend dev server on port $FRONTEND_PORT..."
+    nohup npm run dev > ../frontend.log 2>&1 &
+    local frontend_pid=$!
+    
+    local max_attempts=30
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        if check_port $FRONTEND_PORT; then
+            log_success "Frontend dev server started successfully (PID: $frontend_pid)"
+            log_success "Frontend available at: http://localhost:$FRONTEND_PORT"
+            return 0
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            log_error "Frontend failed to start within 30 seconds"
+            return 1
+        fi
+        
+        echo -n "."
+        sleep 1
+        ((attempt++))
+    done
+}
+
+# Show application status
+show_status() {
+    log_header "APPLICATION STATUS"
+    
+    echo -e "${CYAN}Database (PostgreSQL):${NC}"
+    manage_docker status
+    
+    echo -e "\n${CYAN}Backend API (GraphQL):${NC}"
+    if check_port $BACKEND_PORT; then
+        log_success "Backend running on port $BACKEND_PORT"
+        log_info "API endpoint: http://localhost:$BACKEND_PORT/graphql"
+    else
+        log_error "Backend not running on port $BACKEND_PORT"
+    fi
+    
+    echo -e "\n${CYAN}Frontend (React/Vite):${NC}"
+    if check_port $FRONTEND_PORT; then
+        log_success "Frontend running on port $FRONTEND_PORT"
+        log_info "Web interface: http://localhost:$FRONTEND_PORT"
+    else
+        log_error "Frontend not running on port $FRONTEND_PORT"
+    fi
+    
+    echo -e "\n${CYAN}Quick Database Check:${NC}"
+    if check_port $BACKEND_PORT && docker exec $DB_CONTAINER pg_isready -U postgres >/dev/null 2>&1; then
+        local product_count=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Product\";" 2>/dev/null | tr -d ' ')
+        local task_count=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\";" 2>/dev/null | tr -d ' ')
+        log_info "Database contains: $product_count products, $task_count tasks"
+    else
+        log_warning "Cannot check database content (database not accessible)"
+    fi
+}
+
+# Clean database and add sample data
+clean_database() {
+    log_header "CLEAN DATABASE SETUP"
+    log_warning "This will DELETE all existing data and create clean sample data!"
+    echo "(Confirmation prompt removed for automation)"
+    
+    log_info "Cleaning database..."
+    
+    # Clean all tables
+    # Ensure the database container is running
+    if ! docker ps --format '{{.Names}}' | grep -q "^$DB_CONTAINER$"; then
+        log_error "Database container $DB_CONTAINER is not running. Please start it with 'docker compose up -d db'."
+        return 1
+    fi
+
+    # Wait for database to be healthy
+    local max_attempts=30
+    local attempt=1
+    while [ $attempt -le $max_attempts ]; do
+        if docker exec $DB_CONTAINER pg_isready -U postgres >/dev/null 2>&1; then
+            break
+        fi
+        sleep 1
+        ((attempt++))
+    done
+    if ! docker exec $DB_CONTAINER pg_isready -U postgres >/dev/null 2>&1; then
+        log_error "Database is not ready after waiting. Please check the container logs."
+        return 1
+    fi
+
+    # Clean tables
+    docker exec $DB_CONTAINER psql -U postgres -d dap -c "DELETE FROM \"TaskOutcome\"; DELETE FROM \"Task\"; DELETE FROM \"Outcome\"; DELETE FROM \"License\"; DELETE FROM \"CustomerProduct\"; DELETE FROM \"CustomerSolution\"; DELETE FROM \"Product\"; DELETE FROM \"AuditLog\"; DELETE FROM \"ChangeItem\"; DELETE FROM \"ChangeSet\"; DELETE FROM \"Telemetry\";" 2>&1 | tee /tmp/dap_db_cleanup.log
+    if grep -qE 'ERROR|FATAL' /tmp/dap_db_cleanup.log; then
+        log_error "Failed to clean database tables. See /tmp/dap_db_cleanup.log for details."
+        cat /tmp/dap_db_cleanup.log
+        return 1
+    fi
+    log_success "Database cleaned"
+
+    log_info "Creating 3 sample products..."
+    if ! docker exec $DB_CONTAINER psql -U postgres -d dap -c "INSERT INTO \"Product\" (id, name, description, \"customAttrs\", \"updatedAt\") VALUES ('prod-ecommerce-1', 'E-Commerce Platform', 'Complete online shopping solution with payment gateway', '{\"version\": \"1.0\", \"priority\": \"high\"}', CURRENT_TIMESTAMP), ('prod-banking-1', 'Mobile Banking App', 'Secure mobile banking with biometric authentication', '{\"security_level\": \"maximum\", \"platform\": \"mobile\"}', CURRENT_TIMESTAMP), ('prod-healthcare-1', 'Healthcare CRM', 'Patient management system with appointment scheduling', '{\"industry\": \"healthcare\", \"compliance\": [\"HIPAA\"]}', CURRENT_TIMESTAMP);" >/dev/null 2>&1; then
+        log_error "Failed to create sample products."
+        return 1
+    fi
+
+    log_info "Adding sample tasks..."
+    if ! docker exec $DB_CONTAINER psql -U postgres -d dap -c "INSERT INTO \"Task\" (id, \"productId\", name, description, \"estMinutes\", weight, \"sequenceNumber\", \"licenseLevel\", priority, \"updatedAt\") VALUES ('task-ecom-1', 'prod-ecommerce-1', 'User Authentication System', 'Implement secure user registration, login, and password reset', 480, 20.0, 1, 'ESSENTIAL', 'High', CURRENT_TIMESTAMP), ('task-ecom-2', 'prod-ecommerce-1', 'Product Catalog Management', 'Build product listing, search, filtering, and categorization', 720, 25.0, 2, 'ESSENTIAL', 'High', CURRENT_TIMESTAMP), ('task-ecom-3', 'prod-ecommerce-1', 'Shopping Cart & Checkout', 'Develop shopping cart functionality and secure checkout process', 600, 20.0, 3, 'ADVANTAGE', 'High', CURRENT_TIMESTAMP), ('task-ecom-4', 'prod-ecommerce-1', 'Payment Gateway Integration', 'Integrate multiple payment methods (credit cards, PayPal, etc.)', 480, 15.0, 4, 'ADVANTAGE', 'Medium', CURRENT_TIMESTAMP), ('task-ecom-5', 'prod-ecommerce-1', 'Order Management System', 'Create order tracking, fulfillment, and customer communication', 540, 20.0, 5, 'SIGNATURE', 'Medium', CURRENT_TIMESTAMP), ('task-bank-1', 'prod-banking-1', 'Biometric Authentication', 'Implement fingerprint and facial recognition login systems', 600, 25.0, 1, 'SIGNATURE', 'Critical', CURRENT_TIMESTAMP), ('task-bank-2', 'prod-banking-1', 'Account Balance & Transactions', 'Display real-time account balances and transaction history', 480, 20.0, 2, 'ESSENTIAL', 'High', CURRENT_TIMESTAMP), ('task-bank-3', 'prod-banking-1', 'Money Transfer System', 'Enable secure peer-to-peer and bank transfers', 720, 25.0, 3, 'ADVANTAGE', 'Critical', CURRENT_TIMESTAMP), ('task-bank-4', 'prod-banking-1', 'Bill Payment Integration', 'Allow users to pay bills and set up recurring payments', 540, 15.0, 4, 'ADVANTAGE', 'Medium', CURRENT_TIMESTAMP), ('task-bank-5', 'prod-banking-1', 'Fraud Detection System', 'Implement real-time fraud monitoring and alerts', 600, 15.0, 5, 'SIGNATURE', 'Critical', CURRENT_TIMESTAMP), ('task-health-1', 'prod-healthcare-1', 'Patient Records Management', 'Create secure patient profile system with medical history', 600, 25.0, 1, 'ESSENTIAL', 'Critical', CURRENT_TIMESTAMP), ('task-health-2', 'prod-healthcare-1', 'Appointment Scheduling', 'Build calendar system for booking and managing appointments', 480, 20.0, 2, 'ESSENTIAL', 'High', CURRENT_TIMESTAMP), ('task-health-3', 'prod-healthcare-1', 'HIPAA Compliance Module', 'Implement data encryption, audit trails, and privacy controls', 720, 20.0, 3, 'SIGNATURE', 'Critical', CURRENT_TIMESTAMP), ('task-health-4', 'prod-healthcare-1', 'Billing & Insurance Integration', 'Connect with insurance providers and automate claims', 660, 15.0, 4, 'ADVANTAGE', 'Medium', CURRENT_TIMESTAMP), ('task-health-5', 'prod-healthcare-1', 'Telemedicine Platform', 'Enable video consultations and remote patient monitoring', 540, 20.0, 5, 'SIGNATURE', 'Low', CURRENT_TIMESTAMP);" >/dev/null 2>&1; then
+        log_error "Failed to create sample tasks."
+        return 1
+    fi
+    log_success "Sample data created successfully!"
+
+    # Verify
+    local products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Product\";" 2>/dev/null | tr -d ' ')
+    local tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\";" 2>/dev/null | tr -d ' ')
+    log_info "Created: $products products with $tasks tasks total"
+}
+
+# Start all services
+start_all() {
+    log_header "STARTING $APP_NAME"
+    
+    manage_docker start || exit 1
+    start_backend || exit 1
+    start_frontend || exit 1
+    
+    echo ""
+    log_success "All services started successfully!"
+    log_info "Database: PostgreSQL running in container"
+    log_info "Backend API: http://localhost:$BACKEND_PORT/graphql"
+    log_info "Frontend App: http://localhost:$FRONTEND_PORT"
+}
+
+# Stop all services
+stop_all() {
+    log_header "STOPPING $APP_NAME"
+    
+    kill_node_processes
+    manage_docker stop
+    docker stop $(docker ps -q --filter "name=dap_") 2>/dev/null || true
+    
+    log_success "All services stopped"
+}
+
+# Restart all services
+restart_all() {
+    log_header "RESTARTING $APP_NAME"
+    
+    stop_all
+    echo ""
+    sleep 2
+    start_all
+    
+    echo ""
+    log_header "BROWSER CACHE CLEARING"
+    log_warning "If GUI still shows old data, clear your browser cache:"
+    log_info "1. Press Ctrl+Shift+R (hard refresh)"
+    log_info "2. Or open Private/Incognito window: Ctrl+Shift+N"
+    log_info "3. Visit: http://localhost:$FRONTEND_PORT"
+}
+
+# Clean restart with database reset
+clean_restart() {
+    log_header "CLEAN RESTART WITH SAMPLE DATA"
+    
+    stop_all
+    echo ""
+    sleep 2
+    
+    # Clean database first
+    log_info "Setting up clean database..."
+    if ! manage_docker start; then
+        log_error "Failed to start database"
+        exit 1
+    fi
+    
+    # Wait a moment for DB to be ready
+    sleep 3
+    clean_database
+    
+    # Start services
+    echo ""
+    start_backend || exit 1
+    start_frontend || exit 1
+    
+    echo ""
+    log_success "Clean restart completed!"
+    log_info "✅ Database: Clean with 3 products and 15 tasks"
+    log_info "✅ Backend API: http://localhost:$BACKEND_PORT/graphql"
+    log_info "✅ Frontend App: http://localhost:$FRONTEND_PORT"
+    echo ""
+    log_info "🔄 Press Ctrl+Shift+R in your browser to see the clean data!"
+}
+
+# Show help
+show_help() {
+    echo -e "${PURPLE}DAP Application Manager${NC}"
+    echo ""
+    echo "All-in-one script to manage the DAP application lifecycle."
+    echo ""
+    echo "Usage: $0 [command]"
+    echo ""
+    echo "Commands:"
+    echo -e "  ${GREEN}start${NC}         - Start all application services"
+    echo -e "  ${RED}stop${NC}          - Stop all application services" 
+    echo -e "  ${YELLOW}restart${NC}       - Restart all services (keeps existing data)"
+    echo -e "  ${CYAN}clean-restart${NC} - Stop, clean database, add sample data, restart"
+    echo -e "  ${BLUE}status${NC}        - Show status of all services and data"
+    echo -e "  ${PURPLE}help${NC}          - Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0 start           # Start for daily development"
+    echo "  $0 clean-restart   # Fresh start with clean sample data"
+    echo "  $0 status          # Check what's running"
+    echo "  $0 stop            # End development session"
+    echo ""
+    echo "Components managed:"
+    echo "  • PostgreSQL Database (Docker container)"
+    echo "  • Backend GraphQL API (Node.js on port $BACKEND_PORT)"
+    echo "  • Frontend React App (Vite on port $FRONTEND_PORT)"
+    echo ""
+    echo "The clean-restart command provides:"
+    echo "  • 3 realistic products (E-Commerce, Banking, Healthcare)"
+    echo "  • 15 meaningful tasks (5 per product)"
+    echo "  • Proper license levels and priorities"
+    echo "  • Clean development environment"
+}
+
+# Main script logic
+main() {
+    # Change to project directory
+    cd "$PROJECT_DIR"
+    
+    case "${1:-}" in
+        start)
+            start_all
+            ;;
+        stop)
+            stop_all
+            ;;
+        restart)
+            restart_all
+            ;;
+        clean-restart)
+            clean_restart
+            ;;
+        status)
+            show_status
+            ;;
+        help|--help|-h)
+            show_help
+            ;;
+        *)
+            if [ -n "${1:-}" ]; then
+                log_error "Unknown command: $1"
+                echo ""
+            fi
+            show_help
+            ;;
+    esac
+}
+
+# Check if script is run with sudo (not recommended)
+if [ "$EUID" -eq 0 ]; then
+    log_warning "Running as root is not recommended. Consider running as a regular user."
+fi
+
+# Run main function with all arguments
+main "$@"

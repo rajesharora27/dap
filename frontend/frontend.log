@@ -1,0 +1,354 @@
+nohup: ignoring input
+
+> dap-frontend@0.1.0 dev
+> vite
+
+
+  VITE v7.1.2  ready in 257 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://10.207.195.7:5173/
+8:24:38 PM [vite] (client) hmr update /src/pages/App.tsx
+8:24:56 PM [vite] (client) hmr update /src/pages/App.tsx
+8:25:04 PM [vite] (client) hmr update /src/pages/App.tsx
+8:25:16 PM [vite] (client) hmr update /src/pages/App.tsx
+8:27:08 PM [vite] http proxy error: /graphql
+Error: connect ECONNREFUSED 127.0.0.1:4000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)
+8:27:08 PM [vite] http proxy error: /graphql
+Error: connect ECONNREFUSED 127.0.0.1:4000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)
+8:27:13 PM [vite] http proxy error: /graphql
+Error: read ECONNRESET
+    at TCP.onStreamRead (node:internal/stream_base_commons:217:20)
+8:27:13 PM [vite] http proxy error: /graphql
+Error: read ECONNRESET
+    at TCP.onStreamRead (node:internal/stream_base_commons:217:20)
+8:27:14 PM [vite] http proxy error: /graphql
+Error: connect ECONNREFUSED 127.0.0.1:4000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)
+8:27:15 PM [vite] http proxy error: /graphql
+Error: connect ECONNREFUSED 127.0.0.1:4000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)
+8:27:18 PM [vite] http proxy error: /graphql
+Error: connect ECONNREFUSED 127.0.0.1:4000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)
+8:27:18 PM [vite] http proxy error: /graphql
+Error: connect ECONNREFUSED 127.0.0.1:4000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)
+8:27:19 PM [vite] http proxy error: /graphql
+Error: connect ECONNREFUSED 127.0.0.1:4000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)
+8:27:20 PM [vite] http proxy error: /graphql
+Error: connect ECONNREFUSED 127.0.0.1:4000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1605:16)
+8:31:21 PM [vite] (client) hmr update /src/pages/App.tsx
+8:31:21 PM [vite] Internal server error: /home/rajarora/dap/frontend/src/pages/App.tsx: Expected corresponding JSX closing tag for <Box>. (563:14)
+
+  561 |                   </Paper>
+  562 |                 </Grid>
+> 563 |               </Grid>
+      |               ^
+  564 |             </Grid>
+  565 |           )}
+  566 |
+  Plugin: vite:react-babel
+  File: /home/rajarora/dap/frontend/src/pages/App.tsx:563:14
+  561 |                    </Paper>
+  562 |                  </Grid>
+  563 |                </Grid>
+      |                ^
+  564 |              </Grid>
+  565 |            )}
+      at constructor (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptParserMixin.jsxParseElementAt (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:4757:16)
+      at TypeScriptParserMixin.jsxParseElement (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:4779:17)
+      at TypeScriptParserMixin.parseExprAtom (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:4789:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11076:23)
+      at TypeScriptParserMixin.parseUpdate (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11061:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11041:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9852:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10894:61)
+      at TypeScriptParserMixin.parseExprOps (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10899:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10876:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10826:21)
+      at /home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9790:39
+      at TypeScriptParserMixin.tryParse (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:6935:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9790:18)
+      at /home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10795:39
+      at TypeScriptParserMixin.allowInAnd (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12427:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10795:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12494:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11674:28)
+      at TypeScriptParserMixin.parseExprAtom (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11326:23)
+      at TypeScriptParserMixin.parseExprAtom (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:4794:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11076:23)
+      at TypeScriptParserMixin.parseUpdate (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11061:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11041:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9852:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10894:61)
+      at TypeScriptParserMixin.parseExprOps (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10899:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10876:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10826:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9801:20)
+      at TypeScriptParserMixin.parseExpressionBase (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10779:23)
+      at /home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10775:39
+      at TypeScriptParserMixin.allowInAnd (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12422:16)
+      at TypeScriptParserMixin.parseExpression (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10775:17)
+      at TypeScriptParserMixin.parseReturnStatement (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13142:28)
+      at TypeScriptParserMixin.parseStatementContent (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12798:21)
+      at TypeScriptParserMixin.parseStatementContent (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseStatementListItem (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at TypeScriptParserMixin.parseBlockBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseBlock (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at TypeScriptParserMixin.parseFunctionBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12101:24)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12087:10)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9248:18)
+      at /home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13445:12
+      at TypeScriptParserMixin.withSmartMixTopicForbiddingContext (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12404:14)
+      at TypeScriptParserMixin.parseFunction (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13444:10)
+8:31:22 PM [vite] Internal server error: /home/rajarora/dap/frontend/src/pages/App.tsx: Expected corresponding JSX closing tag for <Box>. (563:14)
+
+  561 |                   </Paper>
+  562 |                 </Grid>
+> 563 |               </Grid>
+      |               ^
+  564 |             </Grid>
+  565 |           )}
+  566 |
+  Plugin: vite:react-babel
+  File: /home/rajarora/dap/frontend/src/pages/App.tsx:563:14
+  561 |                    </Paper>
+  562 |                  </Grid>
+  563 |                </Grid>
+      |                ^
+  564 |              </Grid>
+  565 |            )}
+      at constructor (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptParserMixin.jsxParseElementAt (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:4757:16)
+      at TypeScriptParserMixin.jsxParseElement (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:4779:17)
+      at TypeScriptParserMixin.parseExprAtom (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:4789:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11076:23)
+      at TypeScriptParserMixin.parseUpdate (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11061:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11041:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9852:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10894:61)
+      at TypeScriptParserMixin.parseExprOps (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10899:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10876:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10826:21)
+      at /home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9790:39
+      at TypeScriptParserMixin.tryParse (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:6935:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9790:18)
+      at /home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10795:39
+      at TypeScriptParserMixin.allowInAnd (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12427:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10795:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12494:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11674:28)
+      at TypeScriptParserMixin.parseExprAtom (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11326:23)
+      at TypeScriptParserMixin.parseExprAtom (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:4794:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11076:23)
+      at TypeScriptParserMixin.parseUpdate (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11061:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:11041:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9852:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10894:61)
+      at TypeScriptParserMixin.parseExprOps (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10899:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10876:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10826:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9801:20)
+      at TypeScriptParserMixin.parseExpressionBase (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10779:23)
+      at /home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10775:39
+      at TypeScriptParserMixin.allowInAnd (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12422:16)
+      at TypeScriptParserMixin.parseExpression (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10775:17)
+      at TypeScriptParserMixin.parseReturnStatement (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13142:28)
+      at TypeScriptParserMixin.parseStatementContent (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12798:21)
+      at TypeScriptParserMixin.parseStatementContent (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseStatementListItem (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at TypeScriptParserMixin.parseBlockBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseBlock (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at TypeScriptParserMixin.parseFunctionBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12101:24)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12087:10)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9248:18)
+      at /home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13445:12
+      at TypeScriptParserMixin.withSmartMixTopicForbiddingContext (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12404:14)
+      at TypeScriptParserMixin.parseFunction (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13444:10)
+8:31:49 PM [vite] (client) hmr update /src/pages/App.tsx
+8:38:19 PM [vite] (client) hmr update /src/pages/App.tsx
+8:38:29 PM [vite] (client) hmr update /src/pages/App.tsx
+8:38:44 PM [vite] (client) hmr update /src/pages/App.tsx
+8:38:54 PM [vite] (client) hmr update /src/pages/App.tsx
+8:39:26 PM [vite] (client) hmr update /src/pages/App.tsx
+8:39:34 PM [vite] (client) hmr update /src/pages/App.tsx
+8:39:42 PM [vite] (client) hmr update /src/pages/App.tsx
+8:41:24 PM [vite] (client) hmr update /src/pages/App.tsx
+8:42:27 PM [vite] (client) hmr update /src/pages/App.tsx
+8:42:59 PM [vite] (client) hmr update /src/pages/App.tsx
+8:42:59 PM [vite] Internal server error: /home/rajarora/dap/frontend/src/pages/App.tsx: Identifier 'handleAddTask' has already been declared. (502:8)
+
+  500 |   };
+  501 |
+> 502 |   const handleAddTask = async () => {
+      |         ^
+  503 |     if (!newTask.name.trim() || !selectedProduct) return;
+  504 |     
+  505 |     try {
+  Plugin: vite:react-babel
+  File: /home/rajarora/dap/frontend/src/pages/App.tsx:502:8
+  500 |    };
+  501 |  
+  502 |    const handleAddTask = async () => {
+      |          ^
+  503 |      if (!newTask.name.trim() || !selectedProduct) return;
+  504 |      
+      at constructor (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptScopeHandler.checkRedeclarationInScope (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:1644:19)
+      at TypeScriptScopeHandler.declareName (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:1610:12)
+      at TypeScriptScopeHandler.declareName (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:4910:11)
+      at TypeScriptParserMixin.declareNameFromIdentifier (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:7591:16)
+      at TypeScriptParserMixin.checkIdentifier (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:7587:12)
+      at TypeScriptParserMixin.checkLVal (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:7526:12)
+      at TypeScriptParserMixin.parseVarId (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13412:10)
+      at TypeScriptParserMixin.parseVarId (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9767:11)
+      at TypeScriptParserMixin.parseVar (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13383:12)
+      at TypeScriptParserMixin.parseVarStatement (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13230:10)
+      at TypeScriptParserMixin.parseVarStatement (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9493:31)
+      at TypeScriptParserMixin.parseStatementContent (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12851:23)
+      at TypeScriptParserMixin.parseStatementContent (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseStatementListItem (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at TypeScriptParserMixin.parseBlockBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseBlock (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at TypeScriptParserMixin.parseFunctionBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12101:24)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12087:10)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9248:18)
+      at /home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13445:12
+      at TypeScriptParserMixin.withSmartMixTopicForbiddingContext (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12404:14)
+      at TypeScriptParserMixin.parseFunction (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13444:10)
+      at TypeScriptParserMixin.parseExportDefaultExpression (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13907:19)
+      at TypeScriptParserMixin.parseExportDefaultExpression (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9487:18)
+      at TypeScriptParserMixin.parseExport (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13828:25)
+      at TypeScriptParserMixin.parseExport (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9470:20)
+      at TypeScriptParserMixin.parseStatementContent (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12878:27)
+      at TypeScriptParserMixin.parseStatementContent (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/home/rajarora/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/home/rajarora/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/home/rajarora/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/home/rajarora/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/home/rajarora/dap/frontend/node_modules/gensync/index.js:261:32)
+8:42:59 PM [vite] Internal server error: /home/rajarora/dap/frontend/src/pages/App.tsx: Identifier 'handleAddTask' has already been declared. (502:8)
+
+  500 |   };
+  501 |
+> 502 |   const handleAddTask = async () => {
+      |         ^
+  503 |     if (!newTask.name.trim() || !selectedProduct) return;
+  504 |     
+  505 |     try {
+  Plugin: vite:react-babel
+  File: /home/rajarora/dap/frontend/src/pages/App.tsx:502:8
+  500 |    };
+  501 |  
+  502 |    const handleAddTask = async () => {
+      |          ^
+  503 |      if (!newTask.name.trim() || !selectedProduct) return;
+  504 |      
+      at constructor (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptScopeHandler.checkRedeclarationInScope (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:1644:19)
+      at TypeScriptScopeHandler.declareName (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:1610:12)
+      at TypeScriptScopeHandler.declareName (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:4910:11)
+      at TypeScriptParserMixin.declareNameFromIdentifier (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:7591:16)
+      at TypeScriptParserMixin.checkIdentifier (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:7587:12)
+      at TypeScriptParserMixin.checkLVal (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:7526:12)
+      at TypeScriptParserMixin.parseVarId (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13412:10)
+      at TypeScriptParserMixin.parseVarId (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9767:11)
+      at TypeScriptParserMixin.parseVar (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13383:12)
+      at TypeScriptParserMixin.parseVarStatement (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13230:10)
+      at TypeScriptParserMixin.parseVarStatement (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9493:31)
+      at TypeScriptParserMixin.parseStatementContent (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12851:23)
+      at TypeScriptParserMixin.parseStatementContent (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseStatementListItem (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at TypeScriptParserMixin.parseBlockBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseBlock (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at TypeScriptParserMixin.parseFunctionBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12101:24)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12087:10)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9248:18)
+      at /home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13445:12
+      at TypeScriptParserMixin.withSmartMixTopicForbiddingContext (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12404:14)
+      at TypeScriptParserMixin.parseFunction (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13444:10)
+      at TypeScriptParserMixin.parseExportDefaultExpression (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13907:19)
+      at TypeScriptParserMixin.parseExportDefaultExpression (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9487:18)
+      at TypeScriptParserMixin.parseExport (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13828:25)
+      at TypeScriptParserMixin.parseExport (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9470:20)
+      at TypeScriptParserMixin.parseStatementContent (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12878:27)
+      at TypeScriptParserMixin.parseStatementContent (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/home/rajarora/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/home/rajarora/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/home/rajarora/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/home/rajarora/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/home/rajarora/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/home/rajarora/dap/frontend/node_modules/gensync/index.js:261:32)
+8:43:23 PM [vite] (client) hmr update /src/pages/App.tsx
+8:44:24 PM [vite] (client) hmr update /src/pages/App.tsx
+8:44:39 PM [vite] (client) hmr update /src/pages/App.tsx
+8:44:46 PM [vite] (client) hmr update /src/pages/App.tsx
+8:44:55 PM [vite] (client) hmr update /src/pages/App.tsx
+8:45:06 PM [vite] (client) hmr update /src/pages/App.tsx
+8:45:17 PM [vite] (client) hmr update /src/pages/App.tsx
+8:45:27 PM [vite] (client) hmr update /src/pages/App.tsx
+8:45:33 PM [vite] (client) hmr update /src/pages/App.tsx
+8:45:57 PM [vite] (client) hmr update /src/pages/App.tsx
+8:46:12 PM [vite] (client) hmr update /src/pages/App.tsx
+8:46:21 PM [vite] (client) hmr update /src/pages/App.tsx
+8:46:21 PM [vite] (client) hmr invalidate /src/pages/App.tsx Could not Fast Refresh (export removed)
+8:46:21 PM [vite] (client) page reload src/pages/App.tsx
+8:46:32 PM [vite] (client) hmr update /src/pages/App.tsx
+8:46:39 PM [vite] (client) hmr update /src/pages/App.tsx
+8:46:49 PM [vite] (client) hmr update /src/pages/App.tsx
+8:46:55 PM [vite] (client) hmr update /src/pages/App.tsx
+8:47:02 PM [vite] (client) hmr update /src/pages/App.tsx
+8:47:09 PM [vite] (client) hmr update /src/pages/App.tsx
+8:47:15 PM [vite] (client) hmr update /src/pages/App.tsx
+8:47:22 PM [vite] (client) hmr update /src/pages/App.tsx
+8:47:28 PM [vite] (client) hmr update /src/pages/App.tsx
+8:47:35 PM [vite] (client) hmr update /src/pages/App.tsx
+8:47:44 PM [vite] (client) hmr update /src/pages/App.tsx
+8:47:55 PM [vite] (client) hmr update /src/pages/App.tsx
+8:48:03 PM [vite] (client) hmr update /src/pages/App.tsx
+8:50:37 PM [vite] (client) hmr update /src/components/AuthContext.tsx
+8:50:37 PM [vite] (client) hmr update /src/components/ApolloClientProvider.tsx
+8:50:37 PM [vite] (client) hmr update /src/pages/App.tsx
