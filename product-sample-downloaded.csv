@@ -1,0 +1,24 @@
+id,name,description,customAttrs,licenseIds
+# CSV Format: Product Import/Export
+# 
+# Field Descriptions:
+# - id: Product ID (OPTIONAL for import - leave empty to create new product, provide ID to update existing)
+# - name: Product name (REQUIRED - text, max 255 characters)
+# - description: Product description (OPTIONAL - text, can be multiline in quotes)
+# - customAttrs: Custom attributes (OPTIONAL - JSON format in quotes, e.g., "{""key"": ""value""}")
+# - licenseIds: License IDs (OPTIONAL - JSON array of license IDs, e.g., "['lic1', 'lic2']")
+#
+# Import Behavior:
+# - If 'id' is empty, a new product will be created
+# - If 'id' is provided, the existing product will be updated
+# - licenseIds will associate existing licenses with the product
+# - Tasks are NOT included in product import - use separate task import
+#
+# JSON Field Formats:
+# - customAttrs: {"key": "value", "number": 123, "boolean": true}
+# - licenseIds: ["license_id_1", "license_id_2"]
+#
+# Sample Data (remove these lines for actual import):
+,Sample Product 1,"This is a sample product for demonstration purposes with multiline description","{""priority"": ""high"", ""department"": ""engineering"", ""version"": 1.0}","[]"
+,Sample Product 2,Basic product with no custom attributes,,
+prod123,Update Existing Product,"This will update the product with ID 'prod123' including its licenses","{""status"": ""active"", ""lastUpdated"": ""2024-01-15""}","[""license_essential"", ""license_advantage""]"

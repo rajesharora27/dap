@@ -1,0 +1,5 @@
+id,name,description,customAttrs,licenseIds
+,E-Commerce Platform Complete,"Complete e-commerce solution with payment processing, inventory management, and customer portal","{""priority"": ""high"", ""department"": ""product"", ""version"": ""2.1"", ""features"": [""payments"", ""inventory"", ""portal""]}","[]"
+,Mobile Banking Solution,"Secure mobile banking application with biometric authentication and real-time fraud detection","{""security_level"": ""high"", ""compliance"": [""PCI-DSS"", ""SOX""], ""target_platform"": ""mobile""}","[]"
+,Healthcare Management System,"Comprehensive healthcare management with patient records, appointment scheduling, and billing integration","{""industry"": ""healthcare"", ""compliance"": [""HIPAA"", ""HL7""], ""modules"": [""patients"", ""appointments"", ""billing""]}","[]"
+prod001,Business Intelligence Dashboard,"Advanced analytics and reporting platform with real-time data visualization and automated insights","{""analytics_type"": ""real-time"", ""data_sources"": [""database"", ""api"", ""files""], ""visualization"": true}","[]"

@@ -1,0 +1,1871 @@
+import * as React from 'react';
+import { useState } from 'react';
+import {
+    Box,
+    Paper,
+    Typography,
+    Button,
+    Card,
+    CardContent,
+    CardHeader,
+    Grid,
+    Chip,
+    LinearProgress,
+    Divider,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    TextField,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    Alert,
+    AlertTitle,
+    Collapse,
+    IconButton,
+    List,
+    ListItem,
+    ListItemText,
+    ListItemIcon,
+    Accordion,
+    AccordionSummary,
+    AccordionDetails,
+    Switch,
+    FormControlLabel,
+    Tooltip,
+    Tabs,
+    Tab
+} from '@mui/material';
+import {
+    PlayArrow,
+    Stop,
+    Refresh,
+    CheckCircle,
+    Error as ErrorIcon,
+    Warning,
+    Info,
+    ExpandMore,
+    Science,
+    Storage,
+    Build,
+    Delete,
+    Add,
+    Edit,
+    Visibility,
+    Download,
+    Upload,
+    Settings,
+    Inventory,
+    Timeline,
+    Clear
+} from '@mui/icons-material';
+import { gql, useApolloClient, useQuery } from '@apollo/client';
+
+// Custom Error class for better error handling
+class UserError extends Error {
+    public name: string;
+
+    constructor(message: string) {
+        super(message);
+        this.name = 'UserError';
+    }
+}
+
+// Log entry interface
+interface LogEntry {
+    message: string;
+    level: 'info' | 'success' | 'warning' | 'error';
+    timestamp: Date;
+}
+
+// Test result interface
+interface TestResult {
+    testId: string;
+    testName: string;
+    status: 'pending' | 'running' | 'passed' | 'failed' | 'skipped';
+    duration?: number;
+    message?: string;
+    error?: string;
+    data?: any;
+    timestamp: Date;
+}
+
+// Test suite interface
+interface TestSuite {
+    id: string;
+    name: string;
+    description: string;
+    category: 'product' | 'task' | 'data' | 'integration';
+    tests: TestDefinition[];
+}
+
+interface TestDefinition {
+    id: string;
+    name: string;
+    description: string;
+    execute: () => Promise<TestResult>;
+    cleanup?: () => Promise<void>;
+}
+
+// GraphQL queries and mutations for testing
+const TEST_PRODUCTS_QUERY = gql`
+  query TestProducts {
+    products {
+      edges {
+        node {
+          id
+          name
+          description
+          customAttrs
+          licenses {
+            id
+            name
+            level
+            isActive
+          }
+          outcomes {
+            id
+            name
+            description
+          }
+        }
+      }
+    }
+  }
+`;
+
+const CREATE_TEST_PRODUCT = gql`
+  mutation CreateTestProduct($input: ProductInput!) {
+    createProduct(input: $input) {
+      id
+      name
+      description
+      customAttrs
+    }
+  }
+`;
+
+const UPDATE_TEST_PRODUCT = gql`
+  mutation UpdateTestProduct($id: ID!, $input: ProductInput!) {
+    updateProduct(id: $id, input: $input) {
+      id
+      name
+      description
+      customAttrs
+    }
+  }
+`;
+
+const DELETE_TEST_PRODUCT = gql`
+  mutation DeleteTestProduct($id: ID!) {
+    deleteProduct(id: $id)
+  }
+`;
+
+const CREATE_TEST_TASK = gql`
+  mutation CreateTestTask($input: TaskInput!) {
+    createTask(input: $input) {
+      id
+      name
+      description
+      estMinutes
+      weight
+      licenseLevel
+      priority
+      notes
+      license {
+        id
+        name
+        level
+      }
+      outcomes {
+        id
+        name
+      }
+    }
+  }
+`;
+
+const UPDATE_TEST_TASK = gql`
+  mutation UpdateTestTask($id: ID!, $input: TaskInput!) {
+    updateTask(id: $id, input: $input) {
+      id
+      name
+      description
+      estMinutes
+      weight
+      licenseLevel
+      priority
+      notes
+      license {
+        id
+        name
+        level
+      }
+      outcomes {
+        id
+        name
+      }
+    }
+  }
+`;
+
+const DELETE_TEST_TASK = gql`
+  mutation DeleteTestTask($id: ID!) {
+    queueTaskSoftDelete(id: $id)
+  }
+`;
+
+const PROCESS_DELETION_QUEUE = gql`
+  mutation ProcessDeletionQueue {
+    processDeletionQueue
+  }
+`;
+
+const GET_TASKS_FOR_PRODUCT = gql`
+  query GetTasksForTestProduct($productId: ID!) {
+    tasks(productId: $productId, first: 100) {
+      edges {
+        node {
+          id
+          name
+          description
+          estMinutes
+          weight
+          sequenceNumber
+          licenseLevel
+          priority
+          notes
+          license {
+            id
+            name
+            level
+          }
+          outcomes {
+            id
+            name
+          }
+        }
+      }
+    }
+  }
+`;
+
+const CREATE_TEST_LICENSE = gql`
+  mutation CreateTestLicense($input: LicenseInput!) {
+    createLicense(input: $input) {
+      id
+      name
+      description
+      level
+      isActive
+    }
+  }
+`;
+
+const CREATE_TEST_OUTCOME = gql`
+  mutation CreateTestOutcome($input: OutcomeInput!) {
+    createOutcome(input: $input) {
+      id
+      name
+      description
+    }
+  }
+`;
+
+export const TestStudio: React.FC = () => {
+    const client = useApolloClient();
+
+    // State for test execution
+    const [testResults, setTestResults] = useState<TestResult[]>([]);
+    const [currentlyRunning, setCurrentlyRunning] = useState<string[]>([]);
+    const [selectedSuites, setSelectedSuites] = useState<string[]>(['product', 'task', 'data']);
+    const [autoCleanup, setAutoCleanup] = useState(true);
+
+    // State for test data management
+    const [testProductId, setTestProductId] = useState<string>('');
+    const [testProductName, setTestProductName] = useState('TEST-Product-' + Date.now());
+    const [testProductData, setTestProductData] = useState<any>(null);
+    const [showDataManager, setShowDataManager] = useState(false);
+    const [sampleDataExists, setSampleDataExists] = useState(false);
+
+    // State for live logging
+    const [testLogs, setTestLogs] = useState<LogEntry[]>([]);
+    const [rightPanelTab, setRightPanelTab] = useState<'product' | 'logs'>('product');
+
+    // Query for existing products to check for test data
+    const { data: productsData, refetch: refetchProducts } = useQuery(TEST_PRODUCTS_QUERY, {
+        errorPolicy: 'all',
+        onCompleted: (data) => {
+            const products = data?.products?.edges?.map((edge: any) => edge.node) || [];
+            const testProduct = products.find((p: any) => p.name.startsWith('TEST-Product-'));
+            if (testProduct && !testProductId) {
+                setTestProductId(testProduct.id);
+                setTestProductData(testProduct);
+                setSampleDataExists(true);
+            }
+        }
+    });
+
+    // Logging functions
+    const addLog = (message: string, level: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+        const logEntry: LogEntry = {
+            message,
+            level,
+            timestamp: new Date()
+        };
+        setTestLogs(prev => [...prev, logEntry]);
+    };
+
+    const clearLogs = () => {
+        setTestLogs([]);
+    };    // Test suite definitions
+    const testSuites: TestSuite[] = React.useMemo(() => [
+        {
+            id: 'product',
+            name: 'Product Tests',
+            description: 'Comprehensive product CRUD operations with all attributes',
+            category: 'product',
+            tests: [
+                {
+                    id: 'product-create',
+                    name: 'Create Product with All Attributes',
+                    description: 'Creates a test product with custom attributes, licenses, and outcomes',
+                    execute: async () => {
+                        const testName = 'TEST-Product-' + Date.now();
+                        addLog(`Starting product creation: ${testName}`, 'info');
+
+                        const customAttrs = {
+                            version: '1.0.0',
+                            category: 'Testing',
+                            priority: 'High',
+                            environment: 'Test Studio',
+                            metadata: { testRun: true, created: new Date().toISOString() }
+                        };
+
+                        try {
+                            addLog('Creating product with custom attributes...', 'info');
+
+                            // Create product
+                            const productResult = await client.mutate({
+                                mutation: CREATE_TEST_PRODUCT,
+                                variables: {
+                                    input: {
+                                        name: testName,
+                                        description: 'Test product created by Test Studio for comprehensive testing',
+                                        customAttrs
+                                    }
+                                }
+                            });
+
+                            const productId = productResult.data.createProduct.id;
+                            setTestProductId(productId);
+                            setTestProductName(testName);
+
+                            addLog(`Product created successfully with ID: ${productId}`, 'success');
+
+                            addLog('Creating test licenses...', 'info');
+
+                            // Create test licenses
+                            await client.mutate({
+                                mutation: CREATE_TEST_LICENSE,
+                                variables: {
+                                    input: {
+                                        name: 'Test Essential',
+                                        description: 'Essential test license',
+                                        level: 1,
+                                        isActive: true,
+                                        productId
+                                    }
+                                }
+                            });
+
+                            addLog('Created Essential license (Level 1)', 'success');
+
+                            await client.mutate({
+                                mutation: CREATE_TEST_LICENSE,
+                                variables: {
+                                    input: {
+                                        name: 'Test Advantage',
+                                        description: 'Advantage test license',
+                                        level: 2,
+                                        isActive: true,
+                                        productId
+                                    }
+                                }
+                            });
+
+                            addLog('Created Advantage license (Level 2)', 'success');
+
+                            addLog('Creating test outcomes...', 'info');
+
+                            // Create test outcomes
+                            await client.mutate({
+                                mutation: CREATE_TEST_OUTCOME,
+                                variables: {
+                                    input: {
+                                        name: 'Test Primary Outcome',
+                                        description: 'Primary outcome for testing',
+                                        productId
+                                    }
+                                }
+                            });
+
+                            addLog('Created Primary outcome', 'success');
+
+                            await client.mutate({
+                                mutation: CREATE_TEST_OUTCOME,
+                                variables: {
+                                    input: {
+                                        name: 'Test Secondary Outcome',
+                                        description: 'Secondary outcome for testing',
+                                        productId
+                                    }
+                                }
+                            });
+
+                            addLog('Created Secondary outcome', 'success');
+
+                            await refetchProducts();
+
+                            // Update product data for display
+                            const products = await client.query({
+                                query: TEST_PRODUCTS_QUERY,
+                                fetchPolicy: 'network-only'
+                            });
+
+                            const createdProduct = products.data?.products?.edges
+                                ?.find((edge: any) => edge.node.id === productId)?.node;
+
+                            if (createdProduct) {
+                                setTestProductData(createdProduct);
+                                addLog('Updated product data display', 'info');
+                            }
+
+                            setSampleDataExists(true);
+
+                            addLog(`Product creation completed successfully!`, 'success');
+
+                            return {
+                                testId: 'product-create',
+                                testName: 'Create Product with All Attributes',
+                                status: 'passed' as const,
+                                message: `Successfully created product: ${testName} with 2 licenses and 2 outcomes`,
+                                data: { productId, productName: testName },
+                                timestamp: new Date()
+                            };
+                        } catch (error: any) {
+                            addLog(`Product creation failed: ${error.message}`, 'error');
+                            return {
+                                testId: 'product-create',
+                                testName: 'Create Product with All Attributes',
+                                status: 'failed' as const,
+                                error: error.message,
+                                timestamp: new Date()
+                            };
+                        }
+                    }
+                },
+                {
+                    id: 'product-update',
+                    name: 'Update Product All Attributes',
+                    description: 'Updates all product attributes including custom attributes',
+                    execute: async () => {
+                        if (!testProductId) {
+                            addLog('Product update test skipped - no test product available', 'warning');
+                            return {
+                                testId: 'product-update',
+                                testName: 'Update Product All Attributes',
+                                status: 'failed' as const,
+                                error: 'No test product available. Run product creation test first.',
+                                timestamp: new Date()
+                            };
+                        }
+
+                        try {
+                            addLog(`Starting product update for product ID: ${testProductId}`, 'info');
+
+                            const updatedAttrs = {
+                                version: '2.0.0',
+                                category: 'Updated Testing',
+                                priority: 'Critical',
+                                environment: 'Test Studio Updated',
+                                metadata: {
+                                    testRun: true,
+                                    updated: new Date().toISOString(),
+                                    updateCount: 1
+                                },
+                                newAttribute: 'Added during update test'
+                            };
+
+                            addLog('Executing product update mutation...', 'info');
+                            const result = await client.mutate({
+                                mutation: UPDATE_TEST_PRODUCT,
+                                variables: {
+                                    id: testProductId,
+                                    input: {
+                                        name: testProductName + ' [UPDATED]',
+                                        description: 'Updated test product description with comprehensive changes',
+                                        customAttrs: updatedAttrs
+                                    }
+                                }
+                            });
+
+                            addLog('Product updated successfully, refreshing product list...', 'success');
+                            await refetchProducts();
+
+                            // Update test product data for right panel
+                            if (result.data?.updateTestProduct) {
+                                setTestProductData(result.data.updateTestProduct);
+                                addLog('Test product data updated in right panel', 'success');
+                            }
+
+                            addLog(`Product update completed: ${testProductName} [UPDATED]`, 'success');
+                            return {
+                                testId: 'product-update',
+                                testName: 'Update Product All Attributes',
+                                status: 'passed' as const,
+                                message: 'Successfully updated product with new custom attributes',
+                                data: { productId: testProductId, updatedAttrs },
+                                timestamp: new Date()
+                            };
+                        } catch (error: any) {
+                            addLog(`Product update failed: ${error.message}`, 'error');
+                            return {
+                                testId: 'product-update',
+                                testName: 'Update Product All Attributes',
+                                status: 'failed' as const,
+                                error: error.message,
+                                timestamp: new Date()
+                            };
+                        }
+                    }
+                },
+                {
+                    id: 'product-delete',
+                    name: 'Delete Test Product',
+                    description: 'Deletes the test product and cleans up',
+                    execute: async () => {
+                        if (!testProductId) {
+                            addLog('Product delete test skipped - no test product to delete', 'warning');
+                            return {
+                                testId: 'product-delete',
+                                testName: 'Delete Test Product',
+                                status: 'skipped' as const,
+                                message: 'No test product to delete',
+                                timestamp: new Date()
+                            };
+                        }
+
+                        try {
+                            addLog(`Starting deletion of test product ID: ${testProductId}`, 'info');
+
+                            await client.mutate({
+                                mutation: DELETE_TEST_PRODUCT,
+                                variables: { id: testProductId }
+                            });
+
+                            addLog('Product deleted successfully, refreshing product list...', 'success');
+                            await refetchProducts();
+
+                            // Clear test data
+                            setTestProductId('');
+                            setTestProductData(null);
+                            setSampleDataExists(false);
+
+                            addLog('Test product data cleared from system', 'success');
+                            addLog(`Product deletion completed: ${testProductName}`, 'success');
+
+                            return {
+                                testId: 'product-delete',
+                                testName: 'Delete Test Product',
+                                status: 'passed' as const,
+                                message: 'Successfully deleted test product',
+                                timestamp: new Date()
+                            };
+                        } catch (error: any) {
+                            addLog(`Product deletion failed: ${error.message}`, 'error');
+                            return {
+                                testId: 'product-delete',
+                                testName: 'Delete Test Product',
+                                status: 'failed' as const,
+                                error: error.message,
+                                timestamp: new Date()
+                            };
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            id: 'task',
+            name: 'Task Tests',
+            description: 'Comprehensive task CRUD operations with all attributes',
+            category: 'task',
+            tests: [
+                {
+                    id: 'task-create',
+                    name: 'Create Tasks with All Attributes',
+                    description: 'Creates test tasks with various attributes and associations',
+                    execute: async () => {
+                        if (!testProductId) {
+                            return {
+                                testId: 'task-create',
+                                testName: 'Create Tasks with All Attributes',
+                                status: 'failed' as const,
+                                error: 'No test product available. Run product creation test first.',
+                                timestamp: new Date()
+                            };
+                        }
+
+                        try {
+                            // Get product data for licenses and outcomes
+                            const productQuery = await client.query({
+                                query: TEST_PRODUCTS_QUERY,
+                                fetchPolicy: 'network-only'
+                            });
+
+                            const product = productQuery.data?.products?.edges
+                                ?.find((edge: any) => edge.node.id === testProductId)?.node;
+
+                            if (!product) {
+                                throw new UserError('Test product not found');
+                            }
+
+                            // Create multiple test tasks
+                            const tasks = [
+                                {
+                                    name: 'Test Task 1 - High Priority',
+                                    description: 'First test task with high priority and full attributes',
+                                    estMinutes: 120,
+                                    weight: 40,
+                                    licenseLevel: 'ESSENTIAL',
+                                    priority: 'High',
+                                    notes: 'This is a test task created by Test Studio',
+                                    outcomeIds: product.outcomes?.slice(0, 1).map((o: any) => o.id) || []
+                                },
+                                {
+                                    name: 'Test Task 2 - Medium Priority',
+                                    description: 'Second test task with medium priority',
+                                    estMinutes: 90,
+                                    weight: 35,
+                                    licenseLevel: 'ADVANTAGE',
+                                    priority: 'Medium',
+                                    notes: 'Another test task with different attributes',
+                                    outcomeIds: product.outcomes?.slice(1, 2).map((o: any) => o.id) || []
+                                },
+                                {
+                                    name: 'Test Task 3 - Low Priority',
+                                    description: 'Third test task with low priority',
+                                    estMinutes: 60,
+                                    weight: 25,
+                                    licenseLevel: 'SIGNATURE',
+                                    priority: 'Low',
+                                    notes: 'Final test task completing the suite',
+                                    outcomeIds: product.outcomes?.map((o: any) => o.id) || []
+                                }
+                            ];
+
+                            const createdTasks = [];
+                            for (const taskInput of tasks) {
+                                const result = await client.mutate({
+                                    mutation: CREATE_TEST_TASK,
+                                    variables: {
+                                        input: {
+                                            productId: testProductId,
+                                            ...taskInput
+                                        }
+                                    }
+                                });
+                                createdTasks.push(result.data.createTask);
+                            }
+
+                            return {
+                                testId: 'task-create',
+                                testName: 'Create Tasks with All Attributes',
+                                status: 'passed' as const,
+                                message: `Successfully created ${createdTasks.length} test tasks with various attributes`,
+                                data: { tasks: createdTasks },
+                                timestamp: new Date()
+                            };
+                        } catch (error: any) {
+                            return {
+                                testId: 'task-create',
+                                testName: 'Create Tasks with All Attributes',
+                                status: 'failed' as const,
+                                error: error.message,
+                                timestamp: new Date()
+                            };
+                        }
+                    }
+                },
+                {
+                    id: 'task-update',
+                    name: 'Update Tasks All Attributes',
+                    description: 'Updates all task attributes including weight and associations',
+                    execute: async () => {
+                        if (!testProductId) {
+                            return {
+                                testId: 'task-update',
+                                testName: 'Update Tasks All Attributes',
+                                status: 'failed' as const,
+                                error: 'No test product available. Run task creation test first.',
+                                timestamp: new Date()
+                            };
+                        }
+
+                        try {
+                            // Get existing tasks
+                            const tasksQuery = await client.query({
+                                query: GET_TASKS_FOR_PRODUCT,
+                                variables: { productId: testProductId },
+                                fetchPolicy: 'network-only'
+                            });
+
+                            const tasks = tasksQuery.data?.tasks?.edges?.map((edge: any) => edge.node) || [];
+                            if (tasks.length === 0) {
+                                throw new UserError('No tasks found to update. Run task creation test first.');
+                            }
+
+                            // Update first task
+                            const taskToUpdate = tasks[0];
+                            await client.mutate({
+                                mutation: UPDATE_TEST_TASK,
+                                variables: {
+                                    id: taskToUpdate.id,
+                                    input: {
+                                        productId: testProductId,
+                                        name: taskToUpdate.name + ' [UPDATED]',
+                                        description: 'Updated description with comprehensive changes',
+                                        estMinutes: taskToUpdate.estMinutes + 30,
+                                        weight: Math.min(taskToUpdate.weight + 10, 100),
+                                        licenseLevel: 'SIGNATURE',
+                                        priority: 'Critical',
+                                        notes: 'Updated notes with additional test information',
+                                        outcomeIds: taskToUpdate.outcomes?.map((o: any) => o.id) || []
+                                    }
+                                }
+                            });
+
+                            return {
+                                testId: 'task-update',
+                                testName: 'Update Tasks All Attributes',
+                                status: 'passed' as const,
+                                message: 'Successfully updated task with all attribute changes',
+                                data: { updatedTaskId: taskToUpdate.id },
+                                timestamp: new Date()
+                            };
+                        } catch (error: any) {
+                            return {
+                                testId: 'task-update',
+                                testName: 'Update Tasks All Attributes',
+                                status: 'failed' as const,
+                                error: error.message,
+                                timestamp: new Date()
+                            };
+                        }
+                    }
+                },
+                {
+                    id: 'task-delete',
+                    name: 'Delete Test Tasks',
+                    description: 'Deletes test tasks using soft deletion queue',
+                    execute: async () => {
+                        if (!testProductId) {
+                            return {
+                                testId: 'task-delete',
+                                testName: 'Delete Test Tasks',
+                                status: 'skipped' as const,
+                                message: 'No test product available',
+                                timestamp: new Date()
+                            };
+                        }
+
+                        try {
+                            // Get existing tasks
+                            const tasksQuery = await client.query({
+                                query: GET_TASKS_FOR_PRODUCT,
+                                variables: { productId: testProductId },
+                                fetchPolicy: 'network-only'
+                            });
+
+                            const tasks = tasksQuery.data?.tasks?.edges?.map((edge: any) => edge.node) || [];
+                            if (tasks.length === 0) {
+                                return {
+                                    testId: 'task-delete',
+                                    testName: 'Delete Test Tasks',
+                                    status: 'skipped' as const,
+                                    message: 'No tasks found to delete',
+                                    timestamp: new Date()
+                                };
+                            }
+
+                            // Delete all tasks
+                            for (const task of tasks) {
+                                await client.mutate({
+                                    mutation: DELETE_TEST_TASK,
+                                    variables: { id: task.id }
+                                });
+                            }
+
+                            // Process deletion queue
+                            await client.mutate({
+                                mutation: PROCESS_DELETION_QUEUE
+                            });
+
+                            return {
+                                testId: 'task-delete',
+                                testName: 'Delete Test Tasks',
+                                status: 'passed' as const,
+                                message: `Successfully deleted ${tasks.length} test tasks`,
+                                data: { deletedCount: tasks.length },
+                                timestamp: new Date()
+                            };
+                        } catch (error: any) {
+                            return {
+                                testId: 'task-delete',
+                                testName: 'Delete Test Tasks',
+                                status: 'failed' as const,
+                                error: error.message,
+                                timestamp: new Date()
+                            };
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            id: 'data',
+            name: 'Data Management Tests',
+            description: 'Sample data creation, reset, and management operations',
+            category: 'data',
+            tests: [
+                {
+                    id: 'data-create-sample',
+                    name: 'Create Five Sample Products',
+                    description: 'Creates five complete sample products with tasks, licenses, and outcomes for comprehensive testing',
+                    execute: async () => {
+                        try {
+                            addLog('Starting creation of five sample products...', 'info');
+                            
+                            const sampleProducts = [
+                                {
+                                    name: 'Sample Product Alpha - CRM System',
+                                    description: 'Customer relationship management system with advanced analytics',
+                                    customAttrs: {
+                                        version: '2.1.0',
+                                        category: 'CRM',
+                                        industry: 'Sales',
+                                        targetMarket: 'Enterprise',
+                                        features: ['Lead Management', 'Pipeline Analytics', 'Email Integration'],
+                                        pricing: { tier: 'Enterprise', amount: 299.99 }
+                                    }
+                                },
+                                {
+                                    name: 'Sample Product Beta - Project Manager',
+                                    description: 'Comprehensive project management tool with team collaboration',
+                                    customAttrs: {
+                                        version: '3.0.1',
+                                        category: 'Project Management',
+                                        industry: 'Technology',
+                                        targetMarket: 'Mid-Market',
+                                        features: ['Task Tracking', 'Gantt Charts', 'Time Tracking'],
+                                        pricing: { tier: 'Professional', amount: 149.99 }
+                                    }
+                                },
+                                {
+                                    name: 'Sample Product Gamma - Analytics Dashboard',
+                                    description: 'Business intelligence and analytics dashboard platform',
+                                    customAttrs: {
+                                        version: '1.5.2',
+                                        category: 'Analytics',
+                                        industry: 'Data Science',
+                                        targetMarket: 'Enterprise',
+                                        features: ['Real-time Dashboards', 'Custom Reports', 'Data Visualization'],
+                                        pricing: { tier: 'Premium', amount: 199.99 }
+                                    }
+                                },
+                                {
+                                    name: 'Sample Product Delta - E-commerce Platform',
+                                    description: 'Full-featured e-commerce solution with payment integration',
+                                    customAttrs: {
+                                        version: '4.2.0',
+                                        category: 'E-commerce',
+                                        industry: 'Retail',
+                                        targetMarket: 'SMB',
+                                        features: ['Shopping Cart', 'Payment Processing', 'Inventory Management'],
+                                        pricing: { tier: 'Standard', amount: 79.99 }
+                                    }
+                                },
+                                {
+                                    name: 'Sample Product Epsilon - HR Management',
+                                    description: 'Human resources management system with payroll integration',
+                                    customAttrs: {
+                                        version: '2.3.1',
+                                        category: 'HR',
+                                        industry: 'Human Resources',
+                                        targetMarket: 'Enterprise',
+                                        features: ['Employee Records', 'Payroll Processing', 'Performance Reviews'],
+                                        pricing: { tier: 'Enterprise', amount: 399.99 }
+                                    }
+                                }
+                            ];
+
+                            const createdProductIds = [];
+
+                            for (let i = 0; i < sampleProducts.length; i++) {
+                                const product = sampleProducts[i];
+                                addLog(`Creating product ${i + 1}/5: ${product.name}`, 'info');
+
+                                // Create product
+                                const productResult = await client.mutate({
+                                    mutation: CREATE_TEST_PRODUCT,
+                                    variables: { input: product }
+                                });
+
+                                const productId = productResult.data.createProduct.id;
+                                createdProductIds.push(productId);
+
+                                // Create licenses for each product
+                                const licenses = [
+                                    { name: `${product.name} - Essential`, type: 'ESSENTIAL', level: 1, description: 'Basic features and functionality' },
+                                    { name: `${product.name} - Professional`, type: 'ADVANTAGE', level: 2, description: 'Advanced features for professionals' },
+                                    { name: `${product.name} - Enterprise`, type: 'SIGNATURE', level: 3, description: 'Full enterprise suite with all features' }
+                                ];
+
+                                for (const license of licenses) {
+                                    await client.mutate({
+                                        mutation: CREATE_TEST_LICENSE,
+                                        variables: {
+                                            input: {
+                                                ...license,
+                                                isActive: true,
+                                                productId: productId
+                                            }
+                                        }
+                                    });
+                                }
+
+                                // Create outcomes for each product
+                                const outcomes = [
+                                    { title: `${product.name} - User Satisfaction`, outcomeType: 'SATISFACTION', description: 'Measure user satisfaction and engagement' },
+                                    { title: `${product.name} - Performance`, outcomeType: 'PERFORMANCE', description: 'Track performance gains and optimizations' },
+                                    { title: `${product.name} - Cost Efficiency`, outcomeType: 'COST', description: 'Monitor cost savings and efficiency gains' }
+                                ];
+
+                                for (const outcome of outcomes) {
+                                    await client.mutate({
+                                        mutation: CREATE_TEST_OUTCOME,
+                                        variables: {
+                                            input: {
+                                                ...outcome,
+                                                productId: productId
+                                            }
+                                        }
+                                    });
+                                }
+
+                                // Create tasks for each product
+                                const tasks = [
+                                    {
+                                        name: `${product.name} - Setup & Configuration`,
+                                        description: 'Initial system setup and configuration',
+                                        estMinutes: 120,
+                                        weight: 20,
+                                        licenseLevel: 'ESSENTIAL',
+                                        priority: 'High'
+                                    },
+                                    {
+                                        name: `${product.name} - User Training`,
+                                        description: 'Comprehensive user training and onboarding',
+                                        estMinutes: 180,
+                                        weight: 25,
+                                        licenseLevel: 'ADVANTAGE',
+                                        priority: 'Medium'
+                                    },
+                                    {
+                                        name: `${product.name} - Integration`,
+                                        description: 'System integration and data migration',
+                                        estMinutes: 240,
+                                        weight: 35,
+                                        licenseLevel: 'SIGNATURE',
+                                        priority: 'Critical'
+                                    }
+                                ];
+
+                                // Get created outcomes to associate with tasks
+                                const productQuery = await client.query({
+                                    query: TEST_PRODUCTS_QUERY,
+                                    fetchPolicy: 'network-only'
+                                });
+
+                                const createdProduct = productQuery.data?.products?.edges
+                                    ?.find((edge: any) => edge.node.id === productId)?.node;
+
+                                for (const task of tasks) {
+                                    await client.mutate({
+                                        mutation: CREATE_TEST_TASK,
+                                        variables: {
+                                            input: {
+                                                ...task,
+                                                productId: productId,
+                                                outcomeIds: createdProduct?.outcomes?.slice(0, 1).map((o: any) => o.id) || []
+                                            }
+                                        }
+                                    });
+                                }
+
+                                addLog(`Product ${i + 1}/5 completed: ${product.name}`, 'success');
+                            }
+
+                            setSampleDataExists(true);
+                            await refetchProducts();
+
+                            addLog(`Successfully created all 5 sample products with complete data sets`, 'success');
+
+                            return {
+                                testId: 'data-create-sample',
+                                testName: 'Create Five Sample Products',
+                                status: 'passed' as const,
+                                message: `Successfully created ${createdProductIds.length} sample products with licenses, outcomes, and tasks`,
+                                data: { productIds: createdProductIds },
+                                timestamp: new Date()
+                            };
+                        } catch (error: any) {
+                            addLog(`Sample data creation failed: ${error.message}`, 'error');
+                            return {
+                                testId: 'data-create-sample',
+                                testName: 'Create Five Sample Products',
+                                status: 'failed' as const,
+                                error: error.message,
+                                timestamp: new Date()
+                            };
+                        }
+                    }
+                },
+                                        }
+                                    }
+                                });
+                            }
+
+                            await refetchProducts();
+
+                            return {
+                                testId: 'data-create-sample',
+                                testName: 'Create Sample Data Set',
+                                status: 'passed' as const,
+                                message: `Created complete sample data: 1 product, ${licenses.length} licenses, ${outcomes.length} outcomes, ${tasks.length} tasks`,
+                                data: {
+                                    sampleProductId,
+                                    licensesCount: licenses.length,
+                                    outcomesCount: outcomes.length,
+                                    tasksCount: tasks.length
+                                },
+                                timestamp: new Date()
+                            };
+                        } catch (error: any) {
+                            return {
+                                testId: 'data-create-sample',
+                                testName: 'Create Sample Data Set',
+                                status: 'failed' as const,
+                                error: error.message,
+                                timestamp: new Date()
+                            };
+                        }
+                    }
+                },
+                {
+                    id: 'data-cleanup',
+                    name: 'Clean Up Test Data',
+                    description: 'Removes all test-related products and data',
+                    execute: async () => {
+                        try {
+                            const productsQuery = await client.query({
+                                query: TEST_PRODUCTS_QUERY,
+                                fetchPolicy: 'network-only'
+                            });
+
+                            const products = productsQuery.data?.products?.edges?.map((edge: any) => edge.node) || [];
+                            const testProducts = products.filter((p: any) =>
+                                p.name.includes('TEST-') || p.name.includes('Sample Demo')
+                            );
+
+                            if (testProducts.length === 0) {
+                                return {
+                                    testId: 'data-cleanup',
+                                    testName: 'Clean Up Test Data',
+                                    status: 'skipped' as const,
+                                    message: 'No test data found to clean up',
+                                    timestamp: new Date()
+                                };
+                            }
+
+                            // Delete all test products
+                            for (const product of testProducts) {
+                                await client.mutate({
+                                    mutation: DELETE_TEST_PRODUCT,
+                                    variables: { id: product.id }
+                                });
+                            }
+
+                            await refetchProducts();
+                            setTestProductId('');
+                            setSampleDataExists(false);
+
+                            return {
+                                testId: 'data-cleanup',
+                                testName: 'Clean Up Test Data',
+                                status: 'passed' as const,
+                                message: `Successfully cleaned up ${testProducts.length} test products`,
+                                data: { cleanedCount: testProducts.length },
+                                timestamp: new Date()
+                            };
+                        } catch (error: any) {
+                            return {
+                                testId: 'data-cleanup',
+                                testName: 'Clean Up Test Data',
+                                status: 'failed' as const,
+                                error: error.message,
+                                timestamp: new Date()
+                            };
+                        }
+                    }
+                }
+            ]
+        }
+    ], [testProductId, testProductName, client, refetchProducts]);
+
+    // Test execution functions
+    const runSingleTest = async (test: TestDefinition) => {
+        const testId = test.id;
+
+        addLog(`Starting test: ${test.name}`, 'info');
+
+        // Mark as running
+        setCurrentlyRunning(prev => [...prev, testId]);
+
+        // Add pending result
+        const pendingResult: TestResult = {
+            testId,
+            testName: test.name,
+            status: 'running',
+            timestamp: new Date()
+        };
+
+        setTestResults(prev => {
+            const filtered = prev.filter(r => r.testId !== testId);
+            return [...filtered, pendingResult];
+        });
+
+        // Execute test
+        const startTime = Date.now();
+        try {
+            const result = await test.execute();
+            const duration = Date.now() - startTime;
+
+            const finalResult: TestResult = {
+                ...result,
+                duration
+            };
+
+            addLog(`Test ${result.status}: ${test.name} (${duration}ms)`,
+                result.status === 'passed' ? 'success' :
+                    result.status === 'failed' ? 'error' : 'warning');
+
+            setTestResults(prev => {
+                const filtered = prev.filter(r => r.testId !== testId);
+                return [...filtered, finalResult];
+            });
+
+        } catch (error: any) {
+            const failedResult: TestResult = {
+                testId,
+                testName: test.name,
+                status: 'failed',
+                error: error.message,
+                duration: Date.now() - startTime,
+                timestamp: new Date()
+            };
+
+            addLog(`Test failed: ${test.name} - ${error.message}`, 'error');
+
+            setTestResults(prev => {
+                const filtered = prev.filter(r => r.testId !== testId);
+                return [...filtered, failedResult];
+            });
+        } finally {
+            // Remove from running
+            setCurrentlyRunning(prev => prev.filter(id => id !== testId));
+
+            // Auto cleanup if enabled
+            if (autoCleanup && test.cleanup) {
+                try {
+                    addLog(`Running cleanup for: ${test.name}`, 'info');
+                    await test.cleanup();
+                    addLog(`Cleanup completed for: ${test.name}`, 'success');
+                } catch (error) {
+                    addLog(`Cleanup failed for: ${test.name}`, 'warning');
+                    console.warn('Cleanup failed for test:', testId, error);
+                }
+            }
+        }
+    }; const runSelectedSuites = async () => {
+        const selectedTests = testSuites
+            .filter(suite => selectedSuites.includes(suite.id))
+            .flatMap(suite => suite.tests);
+
+        // Clear previous results for selected tests
+        setTestResults(prev =>
+            prev.filter(r => !selectedTests.some(t => t.id === r.testId))
+        );
+
+        // Run tests sequentially
+        for (const test of selectedTests) {
+            await runSingleTest(test);
+        }
+    };
+
+    const runAllTests = async () => {
+        const allTests = testSuites.flatMap(suite => suite.tests);
+
+        if (currentlyRunning.length > 0) {
+            addLog('Cannot run all tests - some tests are already running', 'warning');
+            return;
+        }
+
+        if (allTests.length === 0) {
+            addLog('No tests available to run', 'warning');
+            return;
+        }
+
+        addLog(`Starting batch execution of ${allTests.length} tests...`, 'info');
+
+        // Clear all previous results
+        setTestResults([]);
+
+        // Run all tests sequentially
+        for (const test of allTests) {
+            await runSingleTest(test);
+
+            // Small delay between tests
+            if (allTests.indexOf(test) < allTests.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+        }
+
+        addLog(`Batch execution completed. Tests run: ${allTests.length}`, 'success');
+    };
+
+    const clearResults = () => {
+        setTestResults([]);
+    };
+
+    // Data management functions
+    const createSampleData = async () => {
+        const sampleTest = testSuites
+            .find(suite => suite.id === 'data')
+            ?.tests.find(test => test.id === 'data-create-sample');
+
+        if (sampleTest) {
+            await runSingleTest(sampleTest);
+        }
+    };
+
+    const resetTestData = async () => {
+        const cleanupTest = testSuites
+            .find(suite => suite.id === 'data')
+            ?.tests.find(test => test.id === 'data-cleanup');
+
+        if (cleanupTest) {
+            await runSingleTest(cleanupTest);
+        }
+    };
+
+    // Reset entire test environment
+    const resetTestEnvironment = async () => {
+        addLog('Starting complete test environment reset...', 'info');
+        
+        try {
+            // Clear all test results
+            setTestResults([]);
+            addLog('Cleared test results', 'info');
+            
+            // If there's a test product, delete it
+            if (testProductId) {
+                addLog(`Deleting test product: ${testProductName} (${testProductId})`, 'info');
+                
+                try {
+                    await client.mutate({
+                        mutation: DELETE_TEST_PRODUCT,
+                        variables: { id: testProductId }
+                    });
+                    addLog('Test product deleted successfully', 'success');
+                } catch (error: any) {
+                    addLog(`Failed to delete test product: ${error.message}`, 'warning');
+                }
+            }
+            
+            // Clear all test data state
+            setTestProductId('');
+            setTestProductName('');
+            setTestProductData(null);
+            setSampleDataExists(false);
+            
+            // Refresh products to ensure clean state
+            await refetchProducts();
+            
+            addLog('Test environment reset completed successfully', 'success');
+            addLog('Ready for fresh testing session', 'info');
+            
+        } catch (error: any) {
+            addLog(`Error during environment reset: ${error.message}`, 'error');
+        }
+    };
+
+    // Get test statistics
+    const getTestStats = () => {
+        const total = testResults.length;
+        const passed = testResults.filter(r => r.status === 'passed').length;
+        const failed = testResults.filter(r => r.status === 'failed').length;
+        const running = testResults.filter(r => r.status === 'running').length;
+        const skipped = testResults.filter(r => r.status === 'skipped').length;
+
+        return { total, passed, failed, running, skipped };
+    };
+
+    const stats = getTestStats();
+
+    return (
+        <Box sx={{ p: 3 }}>
+            {/* Header */}
+            <Box sx={{ mb: 3 }}>
+                <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Science color="primary" />
+                    Test Studio
+                </Typography>
+                <Typography variant="body1" color="text.secondary">
+                    Comprehensive testing suite for all DAP functionality including product CRUD, task management, and data operations.
+                </Typography>
+            </Box>
+
+            {/* Two-Panel Layout */}
+            <Box sx={{ display: 'flex', gap: 3, minHeight: '70vh' }}>
+                {/* Left Panel - Test Controls */}
+                <Box sx={{ flex: 1, minWidth: '400px' }}>
+                    {/* Test Controls */}
+                    <Card sx={{ mb: 3 }}>
+                        <CardHeader
+                            title="Test Controls"
+                            avatar={<Build />}
+                        />
+                        <CardContent>
+                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 2, alignItems: 'center' }}>
+                                <Box sx={{ flex: 1 }}>
+                                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<PlayArrow />}
+                                            onClick={runAllTests}
+                                            disabled={currentlyRunning.length > 0}
+                                        >
+                                            Run All Tests
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            startIcon={<PlayArrow />}
+                                            onClick={runSelectedSuites}
+                                            disabled={currentlyRunning.length > 0 || selectedSuites.length === 0}
+                                        >
+                                            Run Selected
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            startIcon={<Refresh />}
+                                            onClick={clearResults}
+                                            disabled={currentlyRunning.length > 0}
+                                        >
+                                            Clear Results
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            color="error"
+                                            startIcon={<Delete />}
+                                            onClick={resetTestEnvironment}
+                                            disabled={currentlyRunning.length > 0}
+                                            sx={{ fontWeight: 'bold' }}
+                                        >
+                                            Reset Test Environment
+                                        </Button>
+                                    </Box>
+                                </Box>
+                                <Box sx={{ flex: 1 }}>
+                                    <FormControlLabel
+                                        control={
+                                            <Switch
+                                                checked={autoCleanup}
+                                                onChange={(e) => setAutoCleanup(e.target.checked)}
+                                            />
+                                        }
+                                        label="Auto Cleanup"
+                                    />
+                                </Box>
+                            </Box>
+
+                            {/* Suite Selection */}
+                            <Box sx={{ mt: 2 }}>
+                                <Typography variant="subtitle2" gutterBottom>
+                                    Test Suites to Run:
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                                    {testSuites.map(suite => (
+                                        <FormControlLabel
+                                            key={suite.id}
+                                            control={
+                                                <Switch
+                                                    checked={selectedSuites.includes(suite.id)}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            setSelectedSuites(prev => [...prev, suite.id]);
+                                                        } else {
+                                                            setSelectedSuites(prev => prev.filter(id => id !== suite.id));
+                                                        }
+                                                    }}
+                                                    size="small"
+                                                />
+                                            }
+                                            label={suite.name}
+                                        />
+                                    ))}
+                                </Box>
+                            </Box>
+                        </CardContent>
+                    </Card>
+
+                    {/* Test Results Summary */}
+                    {testResults.length > 0 && (
+                        <Card sx={{ mb: 3 }}>
+                            <CardHeader
+                                title="Test Results Summary"
+                                avatar={<CheckCircle />}
+                            />
+                            <CardContent>
+                                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2 }}>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography variant="h6" color="primary">
+                                            {stats.total}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Total Tests
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography variant="h6" color="success.main">
+                                            {stats.passed}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Passed
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography variant="h6" color="error.main">
+                                            {stats.failed}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Failed
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ textAlign: 'center' }}>
+                                        <Typography variant="h6" color="warning.main">
+                                            {stats.skipped}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            Skipped
+                                        </Typography>
+                                    </Box>
+                                </Box>
+
+                                {stats.running > 0 && (
+                                    <Box sx={{ mt: 2 }}>
+                                        <Typography variant="body2" gutterBottom>
+                                            Running {stats.running} test(s)...
+                                        </Typography>
+                                        <LinearProgress />
+                                    </Box>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Data Management Center */}
+                    <Card sx={{ mb: 3 }}>
+                        <CardHeader
+                            title="Data Management Center"
+                            avatar={<Storage />}
+                            action={
+                                <IconButton onClick={() => setShowDataManager(!showDataManager)}>
+                                    <ExpandMore sx={{ transform: showDataManager ? 'rotate(180deg)' : 'rotate(0)' }} />
+                                </IconButton>
+                            }
+                        />
+                        <Collapse in={showDataManager}>
+                            <CardContent>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                    <Alert severity={sampleDataExists ? "success" : "info"}>
+                                        <AlertTitle>Sample Data Status</AlertTitle>
+                                        {sampleDataExists
+                                            ? "Sample data exists and is ready for testing"
+                                            : "No sample data found. Create sample data to begin testing."
+                                        }
+                                    </Alert>
+                                    <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<Add />}
+                                            onClick={createSampleData}
+                                            disabled={currentlyRunning.length > 0}
+                                        >
+                                            Create Sample Data
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            color="warning"
+                                            startIcon={<Refresh />}
+                                            onClick={resetTestData}
+                                            disabled={currentlyRunning.length > 0 || !sampleDataExists}
+                                        >
+                                            Reset Test Data
+                                        </Button>
+                                    </Box>
+                                </Box>
+                            </CardContent>
+                        </Collapse>
+                    </Card>
+
+                    {/* Test Suites */}
+                    {testSuites.map(suite => (
+                        <Accordion key={suite.id} sx={{ mb: 2 }}>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                                    <Typography variant="h6">{suite.name}</Typography>
+                                    <Chip
+                                        label={`${suite.tests.length} tests`}
+                                        size="small"
+                                        color="primary"
+                                        variant="outlined"
+                                    />
+                                    {suite.tests.some(test => testResults.find(r => r.testId === test.id)) && (
+                                        <Box sx={{ display: 'flex', gap: 1 }}>
+                                            {suite.tests.filter(test =>
+                                                testResults.find(r => r.testId === test.id && r.status === 'passed')
+                                            ).length > 0 && (
+                                                    <Chip
+                                                        icon={<CheckCircle />}
+                                                        label={suite.tests.filter(test =>
+                                                            testResults.find(r => r.testId === test.id && r.status === 'passed')
+                                                        ).length}
+                                                        size="small"
+                                                        color="success"
+                                                    />
+                                                )}
+                                            {suite.tests.filter(test =>
+                                                testResults.find(r => r.testId === test.id && r.status === 'failed')
+                                            ).length > 0 && (
+                                                    <Chip
+                                                        icon={<ErrorIcon />}
+                                                        label={suite.tests.filter(test =>
+                                                            testResults.find(r => r.testId === test.id && r.status === 'failed')
+                                                        ).length}
+                                                        size="small"
+                                                        color="error"
+                                                    />
+                                                )}
+                                        </Box>
+                                    )}
+                                </Box>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                    {suite.description}
+                                </Typography>
+
+                                <List>
+                                    {suite.tests.map(test => {
+                                        const result = testResults.find(r => r.testId === test.id);
+                                        const isRunning = currentlyRunning.includes(test.id);
+
+                                        return (
+                                            <ListItem
+                                                key={test.id}
+                                                sx={{
+                                                    border: '1px solid #e0e0e0',
+                                                    borderRadius: 1,
+                                                    mb: 1,
+                                                    bgcolor: result?.status === 'passed' ? 'success.light' :
+                                                        result?.status === 'failed' ? 'error.light' :
+                                                            isRunning ? 'warning.light' : 'background.paper'
+                                                }}
+                                            >
+                                                <ListItemIcon>
+                                                    {isRunning ? (
+                                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                            <LinearProgress sx={{ width: 20 }} />
+                                                        </Box>
+                                                    ) : result?.status === 'passed' ? (
+                                                        <CheckCircle color="success" />
+                                                    ) : result?.status === 'failed' ? (
+                                                        <ErrorIcon color="error" />
+                                                    ) : result?.status === 'skipped' ? (
+                                                        <Warning color="warning" />
+                                                    ) : (
+                                                        <PlayArrow color="action" />
+                                                    )}
+                                                </ListItemIcon>
+                                                <ListItemText
+                                                    primary={test.name}
+                                                    secondary={
+                                                        <Box>
+                                                            <Typography variant="body2" color="text.secondary">
+                                                                {test.description}
+                                                            </Typography>
+                                                            {result && (
+                                                                <Box sx={{ mt: 1, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                                                                    <Chip
+                                                                        label={result.status.toUpperCase()}
+                                                                        size="small"
+                                                                        color={
+                                                                            result.status === 'passed' ? 'success' :
+                                                                                result.status === 'failed' ? 'error' :
+                                                                                    result.status === 'running' ? 'warning' : 'default'
+                                                                        }
+                                                                    />
+                                                                    {result.duration && (
+                                                                        <Typography variant="caption" color="text.secondary">
+                                                                            {result.duration}ms
+                                                                        </Typography>
+                                                                    )}
+                                                                    {result.message && (
+                                                                        <Typography variant="caption" color="text.secondary">
+                                                                            {result.message}
+                                                                        </Typography>
+                                                                    )}
+                                                                    {result.error && (
+                                                                        <Tooltip title={result.error}>
+                                                                            <Typography
+                                                                                variant="caption"
+                                                                                color="error"
+                                                                                sx={{
+                                                                                    maxWidth: 200,
+                                                                                    overflow: 'hidden',
+                                                                                    textOverflow: 'ellipsis',
+                                                                                    whiteSpace: 'nowrap'
+                                                                                }}
+                                                                            >
+                                                                                Error: {result.error}
+                                                                            </Typography>
+                                                                        </Tooltip>
+                                                                    )}
+                                                                </Box>
+                                                            )}
+                                                        </Box>
+                                                    }
+                                                />
+                                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                                    <Tooltip title="Run this test">
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => runSingleTest(test)}
+                                                            disabled={isRunning}
+                                                            color="primary"
+                                                        >
+                                                            <PlayArrow />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Box>
+                                            </ListItem>
+                                        );
+                                    })}
+                                </List>
+                            </AccordionDetails>
+                        </Accordion>
+                    ))}
+                </Box>
+
+                {/* Right Panel - Product Info & Logs */}
+                <Box sx={{ flex: 1, minWidth: '400px' }}>
+                    <Card sx={{ height: '100%' }}>
+                        <CardContent sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            {/* Tab Navigation */}
+                            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+                                <Tabs value={rightPanelTab} onChange={(e, value) => setRightPanelTab(value)}>
+                                    <Tab label="Product Info" value="product" />
+                                    <Tab label="Test Logs" value="logs" />
+                                </Tabs>
+                            </Box>
+
+                            {/* Product Info Tab */}
+                            {rightPanelTab === 'product' && (
+                                <Box sx={{ flex: 1, overflow: 'auto' }}>
+                                    {testProductData ? (
+                                        <Box>
+                                            <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Inventory />
+                                                Test Product Information
+                                            </Typography>
+
+                                            <Box sx={{ mb: 3 }}>
+                                                <Typography variant="subtitle2" color="primary" gutterBottom>
+                                                    Basic Information
+                                                </Typography>
+                                                <Box sx={{ pl: 2 }}>
+                                                    <Typography variant="body2">
+                                                        <strong>Product ID:</strong> {testProductData.id}
+                                                    </Typography>
+                                                    <Typography variant="body2">
+                                                        <strong>Product Name:</strong> {testProductData.name}
+                                                    </Typography>
+                                                    <Typography variant="body2">
+                                                        <strong>Created:</strong> {new Date(testProductData.createdAt || '').toLocaleString()}
+                                                    </Typography>
+                                                    <Typography variant="body2">
+                                                        <strong>Status:</strong> Active
+                                                    </Typography>
+                                                </Box>
+                                            </Box>
+
+                                            {testProductData.licenses && testProductData.licenses.length > 0 && (
+                                                <Box sx={{ mb: 3 }}>
+                                                    <Typography variant="subtitle2" color="primary" gutterBottom>
+                                                        Licenses ({testProductData.licenses.length})
+                                                    </Typography>
+                                                    <Box sx={{ pl: 2 }}>
+                                                        {testProductData.licenses.map((license: any, index: number) => (
+                                                            <Box key={index} sx={{ mb: 1 }}>
+                                                                <Typography variant="body2">
+                                                                    <strong>{license.type}:</strong> {license.name}
+                                                                </Typography>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    ID: {license.id}
+                                                                </Typography>
+                                                            </Box>
+                                                        ))}
+                                                    </Box>
+                                                </Box>
+                                            )}
+
+                                            {testProductData.outcomes && testProductData.outcomes.length > 0 && (
+                                                <Box sx={{ mb: 3 }}>
+                                                    <Typography variant="subtitle2" color="primary" gutterBottom>
+                                                        Outcomes ({testProductData.outcomes.length})
+                                                    </Typography>
+                                                    <Box sx={{ pl: 2 }}>
+                                                        {testProductData.outcomes.map((outcome: any, index: number) => (
+                                                            <Box key={index} sx={{ mb: 1 }}>
+                                                                <Typography variant="body2">
+                                                                    <strong>{outcome.outcomeType}:</strong> {outcome.title}
+                                                                </Typography>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    ID: {outcome.id}
+                                                                </Typography>
+                                                            </Box>
+                                                        ))}
+                                                    </Box>
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    ) : (
+                                        <Box sx={{ textAlign: 'center', py: 4 }}>
+                                            <Typography variant="h6" color="text.secondary" gutterBottom>
+                                                No Test Product Data
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Run product tests to see test product information here
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                </Box>
+                            )}
+
+                            {/* Test Logs Tab */}
+                            {rightPanelTab === 'logs' && (
+                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'between', alignItems: 'center', mb: 2 }}>
+                                        <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Timeline />
+                                            Test Execution Logs
+                                        </Typography>
+                                        <Button
+                                            size="small"
+                                            startIcon={<Clear />}
+                                            onClick={clearLogs}
+                                            disabled={testLogs.length === 0}
+                                        >
+                                            Clear Logs
+                                        </Button>
+                                    </Box>
+
+                                    <Box sx={{ flex: 1, overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 1, p: 2, bgcolor: '#f8f9fa' }}>
+                                        {testLogs.length > 0 ? (
+                                            <Box>
+                                                {testLogs.map((log, index) => (
+                                                    <Box
+                                                        key={index}
+                                                        sx={{
+                                                            mb: 1,
+                                                            display: 'flex',
+                                                            alignItems: 'flex-start',
+                                                            gap: 1,
+                                                            p: 1,
+                                                            borderRadius: 1,
+                                                            bgcolor: log.level === 'error' ? '#ffebee' :
+                                                                log.level === 'warning' ? '#fff8e1' :
+                                                                    log.level === 'success' ? '#e8f5e8' : '#f5f5f5'
+                                                        }}
+                                                    >
+                                                        <Typography variant="caption" color="text.secondary" sx={{ minWidth: '60px' }}>
+                                                            {log.timestamp.toLocaleTimeString()}
+                                                        </Typography>
+                                                        <Box
+                                                            sx={{
+                                                                width: 8,
+                                                                height: 8,
+                                                                borderRadius: '50%',
+                                                                bgcolor: log.level === 'error' ? 'error.main' :
+                                                                    log.level === 'warning' ? 'warning.main' :
+                                                                        log.level === 'success' ? 'success.main' : 'info.main',
+                                                                mt: 0.5
+                                                            }}
+                                                        />
+                                                        <Typography
+                                                            variant="body2"
+                                                            sx={{
+                                                                flex: 1,
+                                                                color: log.level === 'error' ? 'error.main' :
+                                                                    log.level === 'success' ? 'success.main' : 'text.primary'
+                                                            }}
+                                                        >
+                                                            {log.message}
+                                                        </Typography>
+                                                    </Box>
+                                                ))}
+                                            </Box>
+                                        ) : (
+                                            <Box sx={{ textAlign: 'center', py: 4 }}>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    No test logs yet. Run tests to see execution logs here.
+                                                </Typography>
+                                            </Box>
+                                        )}
+                                    </Box>
+                                </Box>
+                            )}
+                        </CardContent>
+                    </Card>
+                </Box>
+            </Box>
+        </Box>
+    );
+};
+
+export default TestStudio;

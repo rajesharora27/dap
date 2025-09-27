@@ -1,0 +1,48 @@
+version: '3.9'
+services:
+  db:
+    # Fully qualify image to avoid Podman searching incorrect registries
+    image: docker.io/library/postgres:16
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_DB: dap
+    ports:
+      - '5432:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@db:5432/dap?schema=public
+      DB_PROVIDER: postgresql
+      NODE_ENV: development
+      SEED_DEFAULT_USERS: "false"
+      SEED_SAMPLE_DATA: "true"
+      DEFAULT_ADMIN_EMAIL: admin@example.com
+      DEFAULT_ADMIN_PASSWORD: admin
+      DEFAULT_USER_EMAIL: user@example.com
+      DEFAULT_USER_PASSWORD: user
+      SKIP_MIGRATE: "1"
+      SKIP_SEED: "1"
+      AUTH_FALLBACK: "1"
+      DISABLE_AUTH: "true"
+      NO_AUTH: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '4000:4000'
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - '5173:5173'
+volumes:
+  db-data: {}

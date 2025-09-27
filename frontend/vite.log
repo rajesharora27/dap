@@ -1,0 +1,14 @@
+nohup: ignoring input
+
+> dap-frontend@0.1.0 dev
+> vite
+
+
+  VITE v7.1.2  ready in 273 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://10.207.195.7:5173/
+8:58:34 PM [vite] (client) hmr update /src/pages/App.tsx
+9:00:54 PM [vite] (client) hmr update /src/pages/App.tsx
+9:01:07 PM [vite] (client) hmr update /src/pages/App.tsx
+9:01:22 PM [vite] (client) hmr update /src/pages/App.tsx
