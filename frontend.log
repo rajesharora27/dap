@@ -3,16 +3,7 @@
 > vite
 
 
-  VITE v7.1.2  ready in 299 ms
+  VITE v7.1.2  ready in 410 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://172.22.156.32:5173/
-4:41:24 PM [vite] (client) hmr update /src/components/TestStudio.tsx
-4:41:24 PM [vite] (client) Pre-transform error: Failed to load url /src/components/TestStudio.tsx (resolved id: /data/dap/frontend/src/components/TestStudio.tsx) in /data/dap/frontend/src/pages/App.tsx. Does the file exist?
-4:43:05 PM [vite] (client) hmr update /src/pages/App.tsx
-4:43:13 PM [vite] (client) hmr update /src/pages/App.tsx
-4:43:22 PM [vite] (client) hmr update /src/pages/App.tsx
-4:43:31 PM [vite] (client) hmr update /src/pages/App.tsx
-4:43:45 PM [vite] (client) hmr update /src/pages/App.tsx
-4:47:31 PM [vite] (client) hmr update /src/pages/App.tsx
-4:48:22 PM [vite] (client) hmr update /src/pages/App.tsx
