@@ -1,54 +1,118 @@
 # Quick Start Guide for DAP Application
 
-## Services Status Check
+## Services Management
+
+### Using the DAP Management Script
 ```bash
-# Check backend health
-curl -s http://localhost:4000/health
+cd /data/dap
 
-# Check if frontend is accessible  
-curl -s http://localhost:5173 > /dev/null && echo "Frontend accessible" || echo "Frontend not running"
+# Start all services
+./dap start
 
-# Check GraphQL endpoint
+# Stop all services  
+./dap stop
+
+# Restart all services
+./dap restart
+
+# View service logs
+./dap logs
+
+# Reset database with sample data
+./dap reset
+```
+
+### Manual Service Management
+```bash
+# Start individual services
+docker compose up -d postgres      # Database only
+docker compose up -d backend       # Backend API only  
+docker compose up -d frontend      # Frontend only
+
+# Check service health
+curl -s http://localhost:4000/health           # Backend health
+curl -s http://localhost:5173                  # Frontend accessibility
 curl -X POST http://localhost:4000/graphql -H "Content-Type: application/json" -d '{"query":"query{__typename}"}'
 ```
 
-## Start/Restart Services
-```bash
-# Full app restart
-cd /home/rajarora/dap
-scripts/app.sh restart
+## Application Access
 
-# Start frontend separately if needed
-cd frontend && npm run dev
+- **Frontend Application**: http://localhost:5173
+- **GraphQL Playground**: http://localhost:4000/graphql
+- **Backend API**: http://localhost:4000
+
+### Default Navigation
+1. **Products** (Opens to Tasks submenu by default)
+   - **Tasks**: Primary work items and task management
+   - **Main**: Product overview and details
+   - **Licenses**: Essential/Advantage/Signature license management
+   - **Outcomes**: Business outcome tracking
+   - **Custom Attributes**: Additional product metadata
+
+2. **Solutions**: Business solution packages
+3. **Customers**: Customer relationship management
+
+## Sample Data
+
+The application includes comprehensive sample data:
+- **5 Enterprise Products**: E-Commerce, FinTech, Healthcare, Logistics, EdTech
+- **40 Tasks**: Distributed across products with realistic attributes
+- **License Levels**: Essential (Level 1), Advantage (Level 2), Signature (Level 3)
+- **Outcomes**: Business outcomes linked to products and tasks
+- **Custom Attributes**: Rich metadata for products and tasks
+
+## Authentication
+
+For API testing, use these authentication headers:
+```bash
+# Admin access (full CRUD operations)
+Authorization: admin
+
+# User access (read + limited write)
+Authorization: user
 ```
 
-## Test Suite Execution  
-```bash
-cd /home/rajarora/dap
+## Common Operations
 
-# Main comprehensive tests (87.5% success rate)
-node comprehensive-task-creation-tests.js
+### Create a Product
+```graphql
+mutation {
+  createProduct(input: {
+    name: "My New Product"
+    description: "Product description"
+    customAttrs: {
+      priority: "high"
+      technology: "React"
+    }
+  }) {
+    id
+    name
+  }
+}
+```
 
-# Sequence number management tests (100% success)
-node sequence-number-comprehensive-test.js  
-
-# Task visibility tests (100% success)
-node test-task-visibility-fix.js
-
-# Weight validation tests (100% success)
-node test-task-editing-weight-fix.js
+### Create a Task with License and Outcomes
+```graphql
+mutation {
+  createTask(input: {
+    name: "User Authentication"
+    description: "Implement secure authentication"
+    estMinutes: 480
+    weight: 15
+    priority: "High"
+    productId: "product-id"
+    licenseId: "license-id"
+    outcomeIds: ["outcome-id"]
+  }) {
+    id
+    name
+  }
+}
 ```
 
 ## Key Achievements
-✅ **Task Creation**: Sequence number conflicts resolved  
-✅ **Task Editing**: Weight capacity validation fixed  
-✅ **Task Visibility**: GraphQL query limits increased  
-✅ **Sequence Management**: Auto-reordering on deletion  
-✅ **Error Handling**: Comprehensive error recovery  
-
-## Recent Fixes Applied
-1. **Visibility Fix**: `tasks(first: 10)` → `tasks(first: 100)` in GraphQL queries
-2. **Weight Fix**: Smart capacity-aware weight adjustment in task editing  
-3. **Sequence Fix**: Retry logic with P2002 error detection and automatic reordering
-
-**Last Updated**: September 11, 2025 - All systems operational
+✅ **Task-Centric Workflow**: Tasks are now the primary focus when viewing products  
+✅ **3-Tier Licensing**: Simplified Essential/Advantage/Signature license structure  
+✅ **Separate Dialog Windows**: Clean UI with dedicated dialogs for each attribute type  
+✅ **Streamlined Architecture**: Removed testing UI and focused on core business functionality  
+✅ **Production Ready**: Optimized for /data partition deployment with comprehensive documentation

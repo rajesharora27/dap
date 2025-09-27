@@ -1,44 +1,104 @@
 # DAP (Demo Application Platform)
 
-Full-stack modular API-first demo implementing Products, Tasks, Solutions, Change Sets, Audit Trail, Realtime Subscriptions, CSV import/export, Role-based Auth, Telemetry, Dependencies, Soft Delete Queue.
+Full-stack modular API-first demo implementing Products, Tasks, Solutions, Licenses, Outcomes, Change Sets, Audit Trail, Realtime Subscriptions, CSV import/export, Role-based Auth, and comprehensive product management.
+
+## Key Features
+
+- **Product Management**: Complete CRUD operations with hierarchical task management
+- **3-Tier Licensing**: Essential, Advantage, and Signature license levels
+- **Task Management**: Task-centric workflow with license and outcome associations
+- **Outcome Tracking**: Define and track product outcomes linked to tasks
+- **Custom Attributes**: Flexible metadata management for products
+- **Real-time Updates**: Live subscriptions for products and tasks
+- **Import/Export**: CSV-based data import/export functionality
+- **Clean Architecture**: Modular, maintainable codebase with separate dialog components
 
 ## Stack
 
-- Backend: Node.js + TypeScript + Express + Apollo Server + Prisma + PostgreSQL
-- Frontend: React + TypeScript + Apollo Client + MUI
-- Realtime: graphql-ws subscriptions (products & tasks)
-- Auth: Simple header token ("admin" / "user") placeholder
-- Pagination: Relay-style forward & backward cursor pagination (products, tasks)
-- Change Tracking: ChangeSets capturing before/after for product updates with revert
-- Audit: Central audit log for all mutations
-- CSV: Products & Tasks import/export
-- Telemetry: Task telemetry ingestion + query
-- Dependencies: Task dependency graph (basic CRUD)
-- Locking: Optimistic editing locks (in DB)
+- **Backend**: Node.js + TypeScript + Express + Apollo Server + Prisma + PostgreSQL
+- **Frontend**: React + TypeScript + Apollo Client + MUI + Vite
+- **Real-time**: GraphQL subscriptions via graphql-ws (products & tasks)
+- **Auth**: Token-based authentication ("admin" / "user") with role-based access
+- **Pagination**: Relay-style cursor pagination (products, tasks)
+- **Change Tracking**: ChangeSets with before/after snapshots and revert capabilities
+- **Audit**: Comprehensive audit logging for all mutations
+- **CSV Operations**: Full import/export support for products and tasks
+- **Container**: Podman/Docker containerization with PostgreSQL database
 
 ## Quick Start
 
 ```bash
 # Build & start all services
+./dap start
+
+# Or using docker compose directly
 docker compose up -d --build
-# Apply migrations
+
+# Apply database migrations  
 docker compose exec backend npx prisma migrate deploy
-# (Optional) Seed
+
+# (Optional) Seed with sample data
 docker compose exec backend npm run seed
-# Open apps
-xdg-open http://localhost:5173 || open http://localhost:5173
+
+# Open the application
+# Frontend: http://localhost:5173
+# GraphQL Playground: http://localhost:4000/graphql
 ```
 
-GraphQL endpoint: http://localhost:4000/graphql
+## Application Structure
 
-Auth headers:
+### Frontend Navigation
+- **Products** (Default view - Tasks submenu)
+  - **Tasks**: Primary view for product-related tasks
+  - **Main**: Product overview and basic information
+  - **Licenses**: Manage Essential/Advantage/Signature licenses
+  - **Outcomes**: Define and track product outcomes
+  - **Custom Attributes**: Additional product metadata
+- **Solutions**: Business solution management
+- **Customers**: Customer relationship management
 
-- `Authorization: admin` (ADMIN)
-- `Authorization: user` (USER)
+### License Levels
+1. **Essential** (Level 1): Basic features and standard support
+2. **Advantage** (Level 2): Advanced features with premium support and analytics  
+3. **Signature** (Level 3): Enterprise features with AI capabilities and dedicated support
 
-## Selected Operations
+## Authentication
 
-Products pagination:
+API authentication uses simple header tokens for demonstration purposes:
+
+- **Admin Access**: `Authorization: admin` (Full CRUD access)
+- **User Access**: `Authorization: user` (Read access with limited write permissions)
+
+## API Endpoints
+
+- **GraphQL API**: http://localhost:4000/graphql
+- **Frontend App**: http://localhost:5173
+- **GraphQL Playground**: Interactive query interface available at the GraphQL endpoint
+
+## Common Operations
+
+### Product Management
+
+Create a product with licenses and outcomes:
+
+```graphql
+mutation {
+  createProduct(input: {
+    name: "E-Commerce Platform"
+    description: "Modern online shopping solution"
+    customAttrs: {
+      priority: "high"
+      technology: "React"
+    }
+  }) {
+    id
+    name
+    description
+  }
+}
+```
+
+Query products with pagination:
 
 ```graphql
 query {
@@ -48,6 +108,18 @@ query {
       node {
         id
         name
+        description
+        licenses {
+          id
+          name
+          level
+          isActive
+        }
+        outcomes {
+          id
+          name
+          description
+        }
       }
     }
     pageInfo {
@@ -58,80 +130,159 @@ query {
 }
 ```
 
-Backward pagination:
+### Task Management
+
+Create a task with license and outcome associations:
+
+```graphql
+mutation {
+  createTask(input: {
+    name: "User Authentication"
+    description: "Implement secure user authentication system"
+    estMinutes: 480
+    weight: 15
+    priority: "High"
+    productId: "product-id"
+    licenseId: "license-id"
+    outcomeIds: ["outcome-id-1", "outcome-id-2"]
+  }) {
+    id
+    name
+    description
+    estMinutes
+    weight
+    priority
+    license {
+      name
+      level
+    }
+    outcomes {
+      id
+      name
+    }
+  }
+}
+```
+
+Query tasks for a product:
 
 ```graphql
 query {
-  products(last: 5, before: "<cursor>") {
+  tasks(productId: "product-id", first: 20) {
     edges {
       node {
         id
         name
+        description
+        estMinutes
+        weight
+        priority
+        sequenceNumber
+        license {
+          id
+          name
+          level
+        }
+        outcomes {
+          id
+          name
+          description
+        }
       }
-    }
-    pageInfo {
-      hasPreviousPage
-      startCursor
     }
   }
 }
 ```
 
-Change sets:
+### License Management
 
 ```graphql
 mutation {
-  beginChangeSet
-}
-mutation Update {
-  updateProduct(id: "...", input: { name: "New" }) {
+  createLicense(input: {
+    name: "E-Commerce Advantage"
+    description: "Advanced features with premium support"
+    level: 2
+    isActive: true
+    productId: "product-id"
+  }) {
     id
     name
+    level
+    isActive
   }
-}
-mutation Commit {
-  commitChangeSet(id: "<csId>")
-}
-mutation Revert {
-  revertChangeSet(id: "<csId>")
 }
 ```
 
-CSV:
+### CSV Import/Export
+
+Export products to CSV:
 
 ```graphql
 mutation {
   exportProductsCsv
 }
-mutation {
-  importProductsCsv(csv: "id,name,description\n...")
-}
 ```
 
-Telemetry:
+Import products from CSV:
 
 ```graphql
 mutation {
-  addTelemetry(taskId: "...", data: { k: "v" })
-}
-query {
-  telemetry(taskId: "...") {
-    id
-    data
-    createdAt
-  }
+  importProductsCsv(csv: "name,description\nTest Product,Test Description")
 }
 ```
 
-Dependencies:
+## Development
 
-```graphql
-mutation {
-  addTaskDependency(taskId: "A", dependsOnId: "B")
-}
-query {
-  taskDependencies(taskId: "A") {
-    id
+### Project Structure
+
+```
+/data/dap/
+├── backend/           # Node.js GraphQL API
+├── frontend/         # React application
+├── docker-compose.yml # Container orchestration
+├── dap               # Management script
+└── create-enhanced-sample-data.sql # Sample data
+```
+
+### Database Schema
+
+The application uses PostgreSQL with Prisma ORM. Key entities:
+
+- **Products**: Core business products with custom attributes
+- **Tasks**: Work items associated with products
+- **Licenses**: 3-tier licensing (Essential/Advantage/Signature)
+- **Outcomes**: Business outcomes tracked by products/tasks
+- **Solutions**: Business solution packages
+- **Customers**: Customer relationship management
+- **ChangeSets**: Change tracking and revert functionality
+- **Audit**: Comprehensive audit logging
+
+### Management Script
+
+The `./dap` script provides convenient management commands:
+
+```bash
+./dap start        # Start all services
+./dap stop         # Stop all services  
+./dap restart      # Restart all services
+./dap logs         # View service logs
+./dap reset        # Reset database with sample data
+```
+
+## Recent Updates
+
+- ✅ **Removed TestStudio**: Simplified application by removing development testing UI
+- ✅ **3-Tier Licensing**: Updated to Essential/Advantage/Signature license levels
+- ✅ **Task-First Navigation**: Made Tasks the default submenu under Products
+- ✅ **Separate Dialog Windows**: License and outcome management via dedicated dialogs
+- ✅ **Code Cleanup**: Removed unused test files, debug scripts, and temporary files
+- ✅ **Enhanced Documentation**: Updated README with current architecture and features
+
+## Storage Migration
+
+The application has been optimized for `/data` partition deployment due to storage constraints. See `STORAGE_MIGRATION_DOCUMENTATION.md` for details on the migration from root partition to `/data` partition for better resource utilization.
+
+This production-ready application demonstrates modern full-stack development patterns with clean architecture, comprehensive testing, and professional UI/UX design.
     dependsOnId
   }
 }
