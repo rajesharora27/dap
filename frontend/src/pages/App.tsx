@@ -34,15 +34,12 @@ import { ProductDialog } from '../components/dialogs/ProductDialog';
 import { LicenseDialog } from '../components/dialogs/LicenseDialog';
 import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
 import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
-import TestStudio from '../components/TestStudio';
-import { DataManagerNew } from '../components/DataManagerNew';
 import { LicenseHandlers, OutcomeHandlers, ProductHandlers } from '../utils/sharedHandlers';
 import { License, Outcome } from '../types/shared';
 import {
   Inventory2 as ProductIcon,
   Lightbulb as SolutionIcon,
   People as CustomerIcon,
-  Science as TestStudioIcon,
   Edit,
   Delete,
   Add,
@@ -382,7 +379,7 @@ export function App() {
   const isAuthenticated = true; // Always authenticated for demo
 
   // State management
-  const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers' | 'testing'>('products');
+  const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers'>('products');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [selectedSolution, setSelectedSolution] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState('');
@@ -535,7 +532,7 @@ export function App() {
   });
 
   // Navigation handlers
-  const handleSectionChange = (section: 'products' | 'solutions' | 'customers' | 'testing') => {
+  const handleSectionChange = (section: 'products' | 'solutions' | 'customers') => {
     setSelectedSection(section);
     setSelectedSolution('');
     setSelectedCustomer('');
@@ -2582,16 +2579,6 @@ export function App() {
               </ListItemIcon>
               <ListItemText primary="Customers" />
             </ListItemButton>
-
-            <ListItemButton
-              selected={selectedSection === 'testing'}
-              onClick={() => handleSectionChange('testing')}
-            >
-              <ListItemIcon>
-                <TestStudioIcon />
-              </ListItemIcon>
-              <ListItemText primary="Test Studio" />
-            </ListItemButton>
           </List>
           <Divider />
         </Box>
@@ -3291,41 +3278,6 @@ export function App() {
                   )}
                 </Paper>
               </Box>
-            )}
-
-            {/* Testing Section */}
-            {selectedSection === 'testing' && (
-              <Box sx={{ width: '100%', overflow: 'auto' }}>
-                <TestStudio />
-                <Box sx={{ mt: 4 }}>
-                  <DataManagerNew />
-                </Box>
-              </Box>
-            )}
-
-            {/* Quick Test Access FAB - Only show when NOT in testing section */}
-            {selectedSection !== 'testing' && (
-              <Fab
-                color="primary"
-                sx={{
-                  position: 'fixed',
-                  bottom: 24,
-                  right: 24,
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  '&:hover': {
-                    transform: 'scale(1.1)',
-                    background: 'linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%)'
-                  },
-                  transition: 'all 0.3s ease',
-                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
-                  fontSize: '0.875rem'
-                }}
-                onClick={() => handleSectionChange('testing')}
-                title="Open Test Studio"
-                variant="extended"
-              >
-                🧪 Test Studio
-              </Fab>
             )}
 
             {/* Add Product Dialog */}

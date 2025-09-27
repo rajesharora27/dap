@@ -1,4 +1,0 @@
-id,name,description,customAttrs,licenseIds
-test-prod-1,UPDATED E-Commerce Platform,UPDATED modern e-commerce platform with new features,"{""status"":""updated"",""version"":""2.0"",""category"":""ecommerce"",""priority"":""critical""}",[]
-test-prod-2,Test Mobile Banking,Secure mobile banking with biometric auth,"{""security"":""high"",""platform"":""mobile"",""compliance"":[""PCI""]}",[]
-test-prod-3,Test CRM System,Customer relationship management platform,"{""type"":""crm"",""users"":100,""features"":[""contacts"",""sales""]}",[]

@@ -1,2 +1,0 @@
-name,description,attributes
-"Test Import Product","Product created via import test for separate functionality","{"testImport": true, "source": "CSV"}"

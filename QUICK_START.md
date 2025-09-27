@@ -39,12 +39,6 @@ node test-task-visibility-fix.js
 node test-task-editing-weight-fix.js
 ```
 
-## GUI Test Studio Access
-- **URL**: http://localhost:5173
-- **Status**: All tests working ✅
-- **Features**: Task creation, editing, deletion, product management
-- **Test Results**: Visible in real-time with detailed logging
-
 ## Key Achievements
 ✅ **Task Creation**: Sequence number conflicts resolved  
 ✅ **Task Editing**: Weight capacity validation fixed  

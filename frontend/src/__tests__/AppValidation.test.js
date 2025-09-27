@@ -21,12 +21,6 @@ describe('Product Management App Validation', () => {
         expect(defaultSubmenu).toBe('main');
     });
 
-    test('Test Studio name validation', () => {
-        const testStudioName = '🧪 Test Studio';
-        expect(testStudioName).not.toContain('GUI');
-        expect(testStudioName).toContain('Test Studio');
-    });
-
     test('CRUD buttons for all submenus', () => {
         const crudButtons = {
             main: ['Edit Product', 'Export All', 'Import'],
@@ -265,7 +259,6 @@ const testSummary = {
     },
     requirements: {
         mainSubmenuCreated: true,
-        testStudioRenamed: true,
         crudButtonsImplemented: true,
         allSubmenusWorking: true,
         testsCreated: true
