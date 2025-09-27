@@ -2,7 +2,5 @@
 > dap-backend@0.1.0 dev
 > ts-node-dev --respawn --transpile-only src/server.ts
 
-[INFO] 11:26:09 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.2)
-API + WS ready at http://localhost:4000/graphql (health at /health)
-[INFO] 11:52:04 Restarting: /Users/rajarora/dap/backend/src/schema/typeDefs.ts has been modified
+[INFO] 16:29:43 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.2)
 API + WS ready at http://localhost:4000/graphql (health at /health)
