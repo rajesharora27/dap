@@ -2,16 +2,5 @@
 > dap-backend@0.1.0 dev
 > ts-node-dev --respawn --transpile-only src/server.ts
 
-[INFO] 20:50:31 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.2)
+[INFO] 23:52:39 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.2)
 API + WS ready at http://localhost:4000/graphql (health at /health)
-Deleting task cmg2s5iag0001b2vuryrq5ltv with sequence 1 for product cmg2qsics0000b2q9air4xe2p
-Reordering tasks with sequence > 1 for product cmg2qsics0000b2q9air4xe2p
-Failed to delete task cmg2s5iag0001b2vuryrq5ltv: 
-Invalid `prisma.task.updateMany()` invocation in
-/data/dap/backend/src/schema/resolvers/index.ts:1606:52
-
-  1603 if (taskToDelete.sequenceNumber) {
-  1604   console.log(`Reordering tasks with sequence > ${taskToDelete.sequenceNumber} for product ${taskToDelete.productId}`);
-  1605 
-→ 1606   const updatedCount = await prisma.task.updateMany(
-Unique constraint failed on the fields: (`productId`,`sequenceNumber`)
