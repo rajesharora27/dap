@@ -1,0 +1,1191 @@
+
+> dap-frontend@0.1.0 dev
+> vite
+
+
+  VITE v7.1.2  ready in 313 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://172.22.156.32:5173/
+8:51:15 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+8:51:22 PM [vite] (client) hmr update /src/pages/App.tsx
+8:51:29 PM [vite] (client) hmr update /src/pages/App.tsx
+8:53:18 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+8:53:18 PM [vite] (client) hmr update /src/pages/App.tsx
+8:55:35 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+8:57:07 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+8:58:23 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+8:58:32 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:00:03 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:01:10 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:01:19 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:01:39 PM [vite] (client) hmr update /src/pages/App.tsx
+9:01:49 PM [vite] (client) hmr update /src/pages/App.tsx
+9:04:12 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:04:22 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:04:31 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:05:53 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:07:07 PM [vite] (client) hmr update /src/pages/App.tsx
+9:07:07 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:09:40 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:09:50 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:09:50 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unterminated string constant. (21:24)
+
+  19 |   OutlinedInput
+  20 | } from '@mui/material';
+> 21 | import { Release } from '../../ty          {/* Releases Selection */}
+     |                         ^
+  22 |           <Box sx={{ mt: 2 }}>
+  23 |             <FormControl fullWidth margin="normal">
+  24 |               <InputLabel>Releases</InputLabel>
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:21:24
+  19 |    OutlinedInput
+  20 |  } from '@mui/material';
+  21 |  import { Release } from '../../ty          {/* Releases Selection */}
+     |                          ^
+  22 |            <Box sx={{ mt: 2 }}>
+  23 |              <FormControl fullWidth margin="normal">
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at Object.unterminated (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5692:20)
+      at readStringContents (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5434:16)
+      at TypeScriptParserMixin.readString (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6526:9)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6286:14)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4827:11)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10004:11)
+      at TypeScriptParserMixin.nextToken (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5810:10)
+      at TypeScriptParserMixin.next (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5720:10)
+      at TypeScriptParserMixin.eatContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6896:12)
+      at TypeScriptParserMixin.expectContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6902:15)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14243:10)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:09:50 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unterminated string constant. (21:24)
+
+  19 |   OutlinedInput
+  20 | } from '@mui/material';
+> 21 | import { Release } from '../../ty          {/* Releases Selection */}
+     |                         ^
+  22 |           <Box sx={{ mt: 2 }}>
+  23 |             <FormControl fullWidth margin="normal">
+  24 |               <InputLabel>Releases</InputLabel>
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:21:24
+  19 |    OutlinedInput
+  20 |  } from '@mui/material';
+  21 |  import { Release } from '../../ty          {/* Releases Selection */}
+     |                          ^
+  22 |            <Box sx={{ mt: 2 }}>
+  23 |              <FormControl fullWidth margin="normal">
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at Object.unterminated (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5692:20)
+      at readStringContents (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5434:16)
+      at TypeScriptParserMixin.readString (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6526:9)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6286:14)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4827:11)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10004:11)
+      at TypeScriptParserMixin.nextToken (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5810:10)
+      at TypeScriptParserMixin.next (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5720:10)
+      at TypeScriptParserMixin.eatContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6896:12)
+      at TypeScriptParserMixin.expectContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6902:15)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14243:10)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:10:06 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:10:06 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unterminated string constant. (21:24)
+
+  19 |   OutlinedInput
+  20 | } from '@mui/material';
+> 21 | import { Release } from '../../ty          {/* Releases Selection */}
+     |                         ^
+  22 |           <Box sx={{ mt: 2 }}>
+  23 |             <FormControl fullWidth margin="normal">
+  24 |               <InputLabel>Releases</InputLabel>
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:21:24
+  19 |    OutlinedInput
+  20 |  } from '@mui/material';
+  21 |  import { Release } from '../../ty          {/* Releases Selection */}
+     |                          ^
+  22 |            <Box sx={{ mt: 2 }}>
+  23 |              <FormControl fullWidth margin="normal">
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at Object.unterminated (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5692:20)
+      at readStringContents (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5434:16)
+      at TypeScriptParserMixin.readString (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6526:9)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6286:14)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4827:11)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10004:11)
+      at TypeScriptParserMixin.nextToken (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5810:10)
+      at TypeScriptParserMixin.next (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5720:10)
+      at TypeScriptParserMixin.eatContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6896:12)
+      at TypeScriptParserMixin.expectContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6902:15)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14243:10)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:10:06 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unterminated string constant. (21:24)
+
+  19 |   OutlinedInput
+  20 | } from '@mui/material';
+> 21 | import { Release } from '../../ty          {/* Releases Selection */}
+     |                         ^
+  22 |           <Box sx={{ mt: 2 }}>
+  23 |             <FormControl fullWidth margin="normal">
+  24 |               <InputLabel>Releases</InputLabel>
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:21:24
+  19 |    OutlinedInput
+  20 |  } from '@mui/material';
+  21 |  import { Release } from '../../ty          {/* Releases Selection */}
+     |                          ^
+  22 |            <Box sx={{ mt: 2 }}>
+  23 |              <FormControl fullWidth margin="normal">
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at Object.unterminated (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5692:20)
+      at readStringContents (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5434:16)
+      at TypeScriptParserMixin.readString (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6526:9)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6286:14)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4827:11)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10004:11)
+      at TypeScriptParserMixin.nextToken (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5810:10)
+      at TypeScriptParserMixin.next (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5720:10)
+      at TypeScriptParserMixin.eatContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6896:12)
+      at TypeScriptParserMixin.expectContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6902:15)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14243:10)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:10:20 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:10:20 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unterminated string constant. (21:24)
+
+  19 |   OutlinedInput
+  20 | } from '@mui/material';
+> 21 | import { Release } from '../../ty          {/* Releases Selection */}
+     |                         ^
+  22 |           <Box sx={{ mt: 2 }}>
+  23 |             <FormControl fullWidth margin="normal">
+  24 |               <InputLabel>Releases</InputLabel>
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:21:24
+  19 |    OutlinedInput
+  20 |  } from '@mui/material';
+  21 |  import { Release } from '../../ty          {/* Releases Selection */}
+     |                          ^
+  22 |            <Box sx={{ mt: 2 }}>
+  23 |              <FormControl fullWidth margin="normal">
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at Object.unterminated (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5692:20)
+      at readStringContents (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5434:16)
+      at TypeScriptParserMixin.readString (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6526:9)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6286:14)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4827:11)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10004:11)
+      at TypeScriptParserMixin.nextToken (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5810:10)
+      at TypeScriptParserMixin.next (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5720:10)
+      at TypeScriptParserMixin.eatContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6896:12)
+      at TypeScriptParserMixin.expectContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6902:15)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14243:10)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:10:20 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unterminated string constant. (21:24)
+
+  19 |   OutlinedInput
+  20 | } from '@mui/material';
+> 21 | import { Release } from '../../ty          {/* Releases Selection */}
+     |                         ^
+  22 |           <Box sx={{ mt: 2 }}>
+  23 |             <FormControl fullWidth margin="normal">
+  24 |               <InputLabel>Releases</InputLabel>
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:21:24
+  19 |    OutlinedInput
+  20 |  } from '@mui/material';
+  21 |  import { Release } from '../../ty          {/* Releases Selection */}
+     |                          ^
+  22 |            <Box sx={{ mt: 2 }}>
+  23 |              <FormControl fullWidth margin="normal">
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at Object.unterminated (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5692:20)
+      at readStringContents (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5434:16)
+      at TypeScriptParserMixin.readString (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6526:9)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6286:14)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4827:11)
+      at TypeScriptParserMixin.getTokenFromCode (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10004:11)
+      at TypeScriptParserMixin.nextToken (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5810:10)
+      at TypeScriptParserMixin.next (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:5720:10)
+      at TypeScriptParserMixin.eatContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6896:12)
+      at TypeScriptParserMixin.expectContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6902:15)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14243:10)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:10:31 PM [vite] (client) hmr update /src/pages/App.tsx
+9:10:31 PM [vite] (client) Pre-transform error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unterminated string constant. (21:24)
+
+  19 |   OutlinedInput
+  20 | } from '@mui/material';
+> 21 | import { Release } from '../../ty          {/* Releases Selection */}
+     |                         ^
+  22 |           <Box sx={{ mt: 2 }}>
+  23 |             <FormControl fullWidth margin="normal">
+  24 |               <InputLabel>Releases</InputLabel>
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:21:24
+  19 |    OutlinedInput
+  20 |  } from '@mui/material';
+  21 |  import { Release } from '../../ty          {/* Releases Selection */}
+     |                          ^
+  22 |            <Box sx={{ mt: 2 }}>
+  23 |              <FormControl fullWidth margin="normal">
+9:10:41 PM [vite] (client) hmr update /src/pages/App.tsx
+9:10:41 PM [vite] (client) Pre-transform error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unterminated string constant. (21:24)
+
+  19 |   OutlinedInput
+  20 | } from '@mui/material';
+> 21 | import { Release } from '../../ty          {/* Releases Selection */}
+     |                         ^
+  22 |           <Box sx={{ mt: 2 }}>
+  23 |             <FormControl fullWidth margin="normal">
+  24 |               <InputLabel>Releases</InputLabel>
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:21:24
+  19 |    OutlinedInput
+  20 |  } from '@mui/material';
+  21 |  import { Release } from '../../ty          {/* Releases Selection */}
+     |                          ^
+  22 |            <Box sx={{ mt: 2 }}>
+  23 |              <FormControl fullWidth margin="normal">
+9:11:47 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:12:12 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:14:16 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:14:16 PM [vite] (client) hmr update /src/pages/App.tsx
+9:16:54 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:17:01 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:17:09 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:17:44 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:17:44 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unexpected token, expected "from" (22:10)
+
+  20 | } from '@mui/material';
+  21 | import          {/* Releases Selection */}
+> 22 |           <Box sx={{ mt: 2 }}>
+     |           ^
+  23 |             <FormControl fullWidth margin="normal">
+  24 |               <InputLabel>Releases</InputLabel>from '../../types/shared';
+  25 |
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:22:10
+  20 |  } from '@mui/material';
+  21 |  import          {/* Releases Selection */}
+  22 |            <Box sx={{ mt: 2 }}>
+     |            ^
+  23 |              <FormControl fullWidth margin="normal">
+  24 |                <InputLabel>Releases</InputLabel>from '../../types/shared';
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptParserMixin.unexpected (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6647:16)
+      at TypeScriptParserMixin.expectContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6906:12)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14243:10)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:17:44 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unexpected token, expected "from" (22:10)
+
+  20 | } from '@mui/material';
+  21 | import          {/* Releases Selection */}
+> 22 |           <Box sx={{ mt: 2 }}>
+     |           ^
+  23 |             <FormControl fullWidth margin="normal">
+  24 |               <InputLabel>Releases</InputLabel>from '../../types/shared';
+  25 |
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:22:10
+  20 |  } from '@mui/material';
+  21 |  import          {/* Releases Selection */}
+  22 |            <Box sx={{ mt: 2 }}>
+     |            ^
+  23 |              <FormControl fullWidth margin="normal">
+  24 |                <InputLabel>Releases</InputLabel>from '../../types/shared';
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptParserMixin.unexpected (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6647:16)
+      at TypeScriptParserMixin.expectContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6906:12)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14243:10)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:17:55 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:21:09 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:21:09 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unexpected token, expected "from" (22:10)
+
+  20 | } from '@mui/material';
+  21 | import          {/* Releases Selection */}
+> 22 |           <Box sx={{ mt: 2 }}>
+     |           ^
+  23 |             <FormControl fullWidth margin="normal">
+  24 |               <InputLabel>Releases</InputLabel>
+  25 |               <Select
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:22:10
+  20 |  } from '@mui/material';
+  21 |  import          {/* Releases Selection */}
+  22 |            <Box sx={{ mt: 2 }}>
+     |            ^
+  23 |              <FormControl fullWidth margin="normal">
+  24 |                <InputLabel>Releases</InputLabel>
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptParserMixin.unexpected (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6647:16)
+      at TypeScriptParserMixin.expectContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6906:12)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14243:10)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:21:09 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unexpected token, expected "from" (22:10)
+
+  20 | } from '@mui/material';
+  21 | import          {/* Releases Selection */}
+> 22 |           <Box sx={{ mt: 2 }}>
+     |           ^
+  23 |             <FormControl fullWidth margin="normal">
+  24 |               <InputLabel>Releases</InputLabel>
+  25 |               <Select
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:22:10
+  20 |  } from '@mui/material';
+  21 |  import          {/* Releases Selection */}
+  22 |            <Box sx={{ mt: 2 }}>
+     |            ^
+  23 |              <FormControl fullWidth margin="normal">
+  24 |                <InputLabel>Releases</InputLabel>
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptParserMixin.unexpected (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6647:16)
+      at TypeScriptParserMixin.expectContextual (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6906:12)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14243:10)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:22:01 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:22:01 PM [vite] (client) Pre-transform error: Failed to load url /src/components/dialogs/TaskDialog.tsx (resolved id: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx) in /data/dap/frontend/src/pages/App.tsx. Does the file exist?
+9:22:33 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:22:33 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Identifier 'React' has already been declared. (1:43)
+
+> 1 | import * as React from 'react';import * as React from 'react';
+    |                                            ^
+  2 |
+  3 | import { useState, useEffect } from 'react';import { useState, useEffect } from 'react';
+  4 |
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:1:43
+  1  |  import * as React from 'react';import * as React from 'react';
+     |                                             ^
+  2  |  
+  3  |  import { useState, useEffect } from 'react';import { useState, useEffect } from 'react';
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptScopeHandler.checkRedeclarationInScope (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:1644:19)
+      at TypeScriptScopeHandler.declareName (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:1610:12)
+      at TypeScriptScopeHandler.declareName (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4910:11)
+      at TypeScriptParserMixin.declareNameFromIdentifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:7591:16)
+      at TypeScriptParserMixin.checkIdentifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:7587:12)
+      at TypeScriptParserMixin.checkLVal (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:7526:12)
+      at TypeScriptParserMixin.finishImportSpecifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14266:10)
+      at TypeScriptParserMixin.parseImportSpecifierLocal (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14263:31)
+      at TypeScriptParserMixin.maybeParseStarImportSpecifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14380:12)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14241:39)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:22:34 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Identifier 'React' has already been declared. (1:43)
+
+> 1 | import * as React from 'react';import * as React from 'react';
+    |                                            ^
+  2 |
+  3 | import { useState, useEffect } from 'react';import { useState, useEffect } from 'react';
+  4 |
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:1:43
+  1  |  import * as React from 'react';import * as React from 'react';
+     |                                             ^
+  2  |  
+  3  |  import { useState, useEffect } from 'react';import { useState, useEffect } from 'react';
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptScopeHandler.checkRedeclarationInScope (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:1644:19)
+      at TypeScriptScopeHandler.declareName (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:1610:12)
+      at TypeScriptScopeHandler.declareName (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4910:11)
+      at TypeScriptParserMixin.declareNameFromIdentifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:7591:16)
+      at TypeScriptParserMixin.checkIdentifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:7587:12)
+      at TypeScriptParserMixin.checkLVal (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:7526:12)
+      at TypeScriptParserMixin.finishImportSpecifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14266:10)
+      at TypeScriptParserMixin.parseImportSpecifierLocal (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14263:31)
+      at TypeScriptParserMixin.maybeParseStarImportSpecifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14380:12)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14241:39)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:22:41 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:22:41 PM [vite] (client) Pre-transform error: Failed to load url /src/components/dialogs/TaskDialog.tsx (resolved id: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx) in /data/dap/frontend/src/pages/App.tsx. Does the file exist?
+9:23:19 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:23:19 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Identifier 'React' has already been declared. (1:43)
+
+> 1 | import * as React from 'react';import * as React from 'react';import * as React from 'react';
+    |                                            ^
+  2 |
+  3 | import { useState, useEffect } from 'react';
+  4 |
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:1:43
+  1  |  import * as React from 'react';import * as React from 'react';import * as React from 'react';
+     |                                             ^
+  2  |  
+  3  |  import { useState, useEffect } from 'react';
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptScopeHandler.checkRedeclarationInScope (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:1644:19)
+      at TypeScriptScopeHandler.declareName (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:1610:12)
+      at TypeScriptScopeHandler.declareName (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4910:11)
+      at TypeScriptParserMixin.declareNameFromIdentifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:7591:16)
+      at TypeScriptParserMixin.checkIdentifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:7587:12)
+      at TypeScriptParserMixin.checkLVal (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:7526:12)
+      at TypeScriptParserMixin.finishImportSpecifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14266:10)
+      at TypeScriptParserMixin.parseImportSpecifierLocal (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14263:31)
+      at TypeScriptParserMixin.maybeParseStarImportSpecifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14380:12)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14241:39)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:23:19 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Identifier 'React' has already been declared. (1:43)
+
+> 1 | import * as React from 'react';import * as React from 'react';import * as React from 'react';
+    |                                            ^
+  2 |
+  3 | import { useState, useEffect } from 'react';
+  4 |
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:1:43
+  1  |  import * as React from 'react';import * as React from 'react';import * as React from 'react';
+     |                                             ^
+  2  |  
+  3  |  import { useState, useEffect } from 'react';
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptScopeHandler.checkRedeclarationInScope (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:1644:19)
+      at TypeScriptScopeHandler.declareName (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:1610:12)
+      at TypeScriptScopeHandler.declareName (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4910:11)
+      at TypeScriptParserMixin.declareNameFromIdentifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:7591:16)
+      at TypeScriptParserMixin.checkIdentifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:7587:12)
+      at TypeScriptParserMixin.checkLVal (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:7526:12)
+      at TypeScriptParserMixin.finishImportSpecifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14266:10)
+      at TypeScriptParserMixin.parseImportSpecifierLocal (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14263:31)
+      at TypeScriptParserMixin.maybeParseStarImportSpecifier (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14380:12)
+      at TypeScriptParserMixin.parseImportSpecifiersAndAfter (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14241:39)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14235:17)
+      at TypeScriptParserMixin.parseImport (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9436:26)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12876:27)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseModuleItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12744:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:36)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseProgram (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12625:10)
+      at TypeScriptParserMixin.parseTopLevel (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12615:25)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14492:10)
+      at TypeScriptParserMixin.parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10144:18)
+      at parse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:14526:38)
+      at parser (/data/dap/frontend/node_modules/@babel/core/lib/parser/index.js:41:34)
+      at parser.next (<anonymous>)
+      at normalizeFile (/data/dap/frontend/node_modules/@babel/core/lib/transformation/normalize-file.js:64:37)
+      at normalizeFile.next (<anonymous>)
+      at run (/data/dap/frontend/node_modules/@babel/core/lib/transformation/index.js:22:50)
+      at run.next (<anonymous>)
+      at transform (/data/dap/frontend/node_modules/@babel/core/lib/transform.js:22:33)
+      at transform.next (<anonymous>)
+      at step (/data/dap/frontend/node_modules/gensync/index.js:261:32)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+      at /data/dap/frontend/node_modules/gensync/index.js:189:28
+      at /data/dap/frontend/node_modules/@babel/core/lib/gensync-utils/async.js:67:7
+      at /data/dap/frontend/node_modules/gensync/index.js:113:33
+      at step (/data/dap/frontend/node_modules/gensync/index.js:287:14)
+      at /data/dap/frontend/node_modules/gensync/index.js:273:13
+      at async.call.result.err.err (/data/dap/frontend/node_modules/gensync/index.js:223:11)
+9:23:31 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:24:16 PM [vite] (client) hmr update /src/pages/App.tsx
+9:26:27 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:35:57 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:36:08 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:36:18 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:36:30 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:40:09 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:46:01 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:48:00 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:48:10 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:58:25 PM [vite] (client) hmr update /src/components/ProductDetailPage.tsx
+9:58:40 PM [vite] (client) hmr update /src/components/ProductDetailPage.tsx
+10:05:07 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:05:16 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:05:40 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:06:11 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:06:22 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:06:33 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:06:47 PM [vite] (client) hmr update /src/pages/App.tsx
+10:14:42 PM [vite] (client) hmr update /src/components/ProductDetailPage.tsx
+10:14:55 PM [vite] (client) hmr update /src/components/ProductDetailPage.tsx
+10:14:56 PM [vite] (client) hmr update /src/components/ProductDetailPage.tsx
+10:19:56 PM [vite] (client) hmr update /src/pages/App.tsx
+10:20:19 PM [vite] (client) hmr update /src/pages/App.tsx
+10:20:34 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+10:25:49 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:25:58 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:26:27 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:26:42 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:27:16 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:27:56 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:28:16 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:28:41 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:28:42 PM [vite] Internal server error: /data/dap/frontend/src/components/TaskDetailDialog.tsx: Expected corresponding JSX closing tag for <DialogContent>. (387:8)
+
+  385 |             </Box>
+  386 |           </Box>
+> 387 |         </Box>
+      |         ^
+  388 |       </DialogContent>
+  389 |       <DialogActions>
+  390 |         <Button onClick={onClose}>Cancel</Button>
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/TaskDetailDialog.tsx:387:8
+  385 |              </Box>
+  386 |            </Box>
+  387 |          </Box>
+      |          ^
+  388 |        </DialogContent>
+  389 |        <DialogActions>
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptParserMixin.jsxParseElementAt (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4757:16)
+      at TypeScriptParserMixin.jsxParseElementAt (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4728:32)
+      at TypeScriptParserMixin.jsxParseElement (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4779:17)
+      at TypeScriptParserMixin.parseExprAtom (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4789:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11076:23)
+      at TypeScriptParserMixin.parseUpdate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11061:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11041:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9852:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10894:61)
+      at TypeScriptParserMixin.parseExprOps (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10899:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10876:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10826:21)
+      at /data/dap/frontend/node_modules/@babel/parser/lib/index.js:9790:39
+      at TypeScriptParserMixin.tryParse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6935:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9790:18)
+      at /data/dap/frontend/node_modules/@babel/parser/lib/index.js:10795:39
+      at TypeScriptParserMixin.allowInAnd (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12427:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10795:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12494:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11674:28)
+      at TypeScriptParserMixin.parseExprAtom (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11326:23)
+      at TypeScriptParserMixin.parseExprAtom (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4794:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11076:23)
+      at TypeScriptParserMixin.parseUpdate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11061:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11041:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9852:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10894:61)
+      at TypeScriptParserMixin.parseExprOps (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10899:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10876:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10826:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9801:20)
+      at TypeScriptParserMixin.parseExpressionBase (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10779:23)
+      at /data/dap/frontend/node_modules/@babel/parser/lib/index.js:10775:39
+      at TypeScriptParserMixin.allowInAnd (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12422:16)
+      at TypeScriptParserMixin.parseExpression (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10775:17)
+      at TypeScriptParserMixin.parseReturnStatement (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13142:28)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12798:21)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseStatementListItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseBlock (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at TypeScriptParserMixin.parseFunctionBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12101:24)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12087:10)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9248:18)
+      at /data/dap/frontend/node_modules/@babel/parser/lib/index.js:13445:12
+      at TypeScriptParserMixin.withSmartMixTopicForbiddingContext (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12404:14)
+10:28:42 PM [vite] Internal server error: /data/dap/frontend/src/components/TaskDetailDialog.tsx: Expected corresponding JSX closing tag for <DialogContent>. (387:8)
+
+  385 |             </Box>
+  386 |           </Box>
+> 387 |         </Box>
+      |         ^
+  388 |       </DialogContent>
+  389 |       <DialogActions>
+  390 |         <Button onClick={onClose}>Cancel</Button>
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/TaskDetailDialog.tsx:387:8
+  385 |              </Box>
+  386 |            </Box>
+  387 |          </Box>
+      |          ^
+  388 |        </DialogContent>
+  389 |        <DialogActions>
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptParserMixin.jsxParseElementAt (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4757:16)
+      at TypeScriptParserMixin.jsxParseElementAt (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4728:32)
+      at TypeScriptParserMixin.jsxParseElement (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4779:17)
+      at TypeScriptParserMixin.parseExprAtom (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4789:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11076:23)
+      at TypeScriptParserMixin.parseUpdate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11061:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11041:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9852:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10894:61)
+      at TypeScriptParserMixin.parseExprOps (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10899:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10876:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10826:21)
+      at /data/dap/frontend/node_modules/@babel/parser/lib/index.js:9790:39
+      at TypeScriptParserMixin.tryParse (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6935:20)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9790:18)
+      at /data/dap/frontend/node_modules/@babel/parser/lib/index.js:10795:39
+      at TypeScriptParserMixin.allowInAnd (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12427:12)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10795:17)
+      at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12494:17)
+      at TypeScriptParserMixin.parseParenAndDistinguishExpression (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11674:28)
+      at TypeScriptParserMixin.parseExprAtom (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11326:23)
+      at TypeScriptParserMixin.parseExprAtom (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4794:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11076:23)
+      at TypeScriptParserMixin.parseUpdate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11061:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11041:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9852:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10894:61)
+      at TypeScriptParserMixin.parseExprOps (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10899:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10876:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10826:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9801:20)
+      at TypeScriptParserMixin.parseExpressionBase (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10779:23)
+      at /data/dap/frontend/node_modules/@babel/parser/lib/index.js:10775:39
+      at TypeScriptParserMixin.allowInAnd (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12422:16)
+      at TypeScriptParserMixin.parseExpression (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10775:17)
+      at TypeScriptParserMixin.parseReturnStatement (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13142:28)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12798:21)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseStatementListItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseBlock (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at TypeScriptParserMixin.parseFunctionBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12101:24)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12087:10)
+      at TypeScriptParserMixin.parseFunctionBodyAndFinish (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9248:18)
+      at /data/dap/frontend/node_modules/@babel/parser/lib/index.js:13445:12
+      at TypeScriptParserMixin.withSmartMixTopicForbiddingContext (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12404:14)
+10:29:03 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:29:18 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:29:27 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:29:35 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:29:59 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:32:45 PM [vite] (client) hmr update /src/pages/App.tsx
+10:32:45 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+10:32:45 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:39:50 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:39:58 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:44:54 PM [vite] (client) hmr update /src/pages/App.tsx
+10:45:12 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+10:45:13 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unexpected token (413:2)
+
+  411 |     </Dialog>
+  412 |   );
+> 413 | };
+      |   ^
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:413:2
+  411 |      </Dialog>
+  412 |    );
+  413 |  };
+      |    ^
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptParserMixin.unexpected (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6647:16)
+      at TypeScriptParserMixin.parseExprAtom (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11442:16)
+      at TypeScriptParserMixin.parseExprAtom (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4794:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11076:23)
+      at TypeScriptParserMixin.parseUpdate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11061:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11041:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9852:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10894:61)
+      at TypeScriptParserMixin.parseExprOps (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10899:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10876:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10826:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9801:20)
+      at TypeScriptParserMixin.parseExpressionBase (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10779:23)
+      at /data/dap/frontend/node_modules/@babel/parser/lib/index.js:10775:39
+      at TypeScriptParserMixin.allowInAnd (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12422:16)
+      at TypeScriptParserMixin.parseExpression (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10775:17)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12895:23)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseStatementListItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseBlock (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at TypeScriptParserMixin.parseFunctionBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12101:24)
+      at TypeScriptParserMixin.parseArrowExpression (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12076:10)
+      at TypeScriptParserMixin.parseAsyncArrowFromCallExpression (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11259:10)
+      at TypeScriptParserMixin.parseAsyncArrowFromCallExpression (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9781:18)
+      at TypeScriptParserMixin.parseCoverCallAndAsyncArrowHead (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11189:27)
+      at TypeScriptParserMixin.parseSubscript (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11115:19)
+      at TypeScriptParserMixin.parseSubscript (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9353:18)
+      at TypeScriptParserMixin.parseSubscripts (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11089:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11080:17)
+      at TypeScriptParserMixin.parseUpdate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11061:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11041:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9852:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10894:61)
+      at TypeScriptParserMixin.parseExprOps (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10899:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10876:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10826:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9801:20)
+      at /data/dap/frontend/node_modules/@babel/parser/lib/index.js:10795:39
+      at TypeScriptParserMixin.allowInAnd (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12422:16)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10795:17)
+      at TypeScriptParserMixin.parseVar (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13384:91)
+      at TypeScriptParserMixin.parseVarStatement (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13230:10)
+      at TypeScriptParserMixin.parseVarStatement (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9493:31)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12851:23)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+10:45:13 PM [vite] Internal server error: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx: Unexpected token (413:2)
+
+  411 |     </Dialog>
+  412 |   );
+> 413 | };
+      |   ^
+  Plugin: vite:react-babel
+  File: /data/dap/frontend/src/components/dialogs/TaskDialog.tsx:413:2
+  411 |      </Dialog>
+  412 |    );
+  413 |  };
+      |    ^
+      at constructor (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:367:19)
+      at TypeScriptParserMixin.raise (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6627:19)
+      at TypeScriptParserMixin.unexpected (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:6647:16)
+      at TypeScriptParserMixin.parseExprAtom (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11442:16)
+      at TypeScriptParserMixin.parseExprAtom (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:4794:20)
+      at TypeScriptParserMixin.parseExprSubscripts (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11076:23)
+      at TypeScriptParserMixin.parseUpdate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11061:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11041:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9852:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10894:61)
+      at TypeScriptParserMixin.parseExprOps (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10899:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10876:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10826:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9801:20)
+      at TypeScriptParserMixin.parseExpressionBase (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10779:23)
+      at /data/dap/frontend/node_modules/@babel/parser/lib/index.js:10775:39
+      at TypeScriptParserMixin.allowInAnd (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12422:16)
+      at TypeScriptParserMixin.parseExpression (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10775:17)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12895:23)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+      at TypeScriptParserMixin.parseStatementLike (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12767:17)
+      at TypeScriptParserMixin.parseStatementListItem (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12747:17)
+      at TypeScriptParserMixin.parseBlockOrModuleBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13316:61)
+      at TypeScriptParserMixin.parseBlockBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13309:10)
+      at TypeScriptParserMixin.parseBlock (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13297:10)
+      at TypeScriptParserMixin.parseFunctionBody (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12101:24)
+      at TypeScriptParserMixin.parseArrowExpression (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12076:10)
+      at TypeScriptParserMixin.parseAsyncArrowFromCallExpression (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11259:10)
+      at TypeScriptParserMixin.parseAsyncArrowFromCallExpression (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9781:18)
+      at TypeScriptParserMixin.parseCoverCallAndAsyncArrowHead (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11189:27)
+      at TypeScriptParserMixin.parseSubscript (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11115:19)
+      at TypeScriptParserMixin.parseSubscript (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9353:18)
+      at TypeScriptParserMixin.parseSubscripts (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11089:19)
+      at TypeScriptParserMixin.parseExprSubscripts (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11080:17)
+      at TypeScriptParserMixin.parseUpdate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11061:21)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:11041:23)
+      at TypeScriptParserMixin.parseMaybeUnary (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9852:18)
+      at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10894:61)
+      at TypeScriptParserMixin.parseExprOps (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10899:23)
+      at TypeScriptParserMixin.parseMaybeConditional (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10876:23)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10826:21)
+      at TypeScriptParserMixin.parseMaybeAssign (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9801:20)
+      at /data/dap/frontend/node_modules/@babel/parser/lib/index.js:10795:39
+      at TypeScriptParserMixin.allowInAnd (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12422:16)
+      at TypeScriptParserMixin.parseMaybeAssignAllowIn (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:10795:17)
+      at TypeScriptParserMixin.parseVar (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13384:91)
+      at TypeScriptParserMixin.parseVarStatement (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:13230:10)
+      at TypeScriptParserMixin.parseVarStatement (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9493:31)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:12851:23)
+      at TypeScriptParserMixin.parseStatementContent (/data/dap/frontend/node_modules/@babel/parser/lib/index.js:9527:18)
+10:45:26 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+10:50:52 PM [vite] (client) hmr update /src/pages/App.tsx
+10:51:03 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:53:17 PM [vite] (client) hmr update /src/pages/App.tsx
+10:53:17 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+10:53:17 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+10:54:10 PM [vite] (client) hmr update /src/pages/App.tsx
+10:58:27 PM [vite] (client) hmr update /src/pages/App.tsx
+11:02:53 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+11:03:13 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+11:03:40 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+11:04:12 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+11:04:39 PM [vite] (client) hmr update /src/components/TaskDetailDialog.tsx
+11:05:29 PM [vite] (client) hmr update /src/pages/App.tsx

@@ -29,6 +29,7 @@ import {
 import {
   ArrowBack,
   Add,
+  Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
   FileUpload as FileUploadIcon,
@@ -59,6 +60,13 @@ const TASKS_FOR_PRODUCT = gql`
           name
           description
           weight
+          estMinutes
+          licenseLevel
+          availableInReleases {
+            id
+            name
+            level
+          }
         }
       }
     }
@@ -114,6 +122,21 @@ const LICENSES_FOR_PRODUCT = gql`
   }
 `;
 
+const RELEASES_FOR_PRODUCT = gql`
+  query ReleasesForProduct($productId: ID!) {
+    product(id: $productId) {
+      id
+      releases {
+        id
+        name
+        description
+        level
+        isActive
+      }
+    }
+  }
+`;
+
 const CREATE_LICENSE = gql`
   mutation CreateLicense($input: LicenseInput!) {
     createLicense(input: $input) {
@@ -144,6 +167,36 @@ const DELETE_LICENSE = gql`
   }
 `;
 
+const CREATE_RELEASE = gql`
+  mutation CreateRelease($input: ReleaseInput!) {
+    createRelease(input: $input) {
+      id
+      name
+      description
+      level
+      isActive
+    }
+  }
+`;
+
+const UPDATE_RELEASE = gql`
+  mutation UpdateRelease($id: ID!, $input: ReleaseInput!) {
+    updateRelease(id: $id, input: $input) {
+      id
+      name
+      description
+      level
+      isActive
+    }
+  }
+`;
+
+const DELETE_RELEASE = gql`
+  mutation DeleteRelease($id: ID!) {
+    deleteRelease(id: $id)
+  }
+`;
+
 const CREATE_TASK = gql`
   mutation CreateTask($input: TaskInput!) {
     createTask(input: $input) {
@@ -153,6 +206,11 @@ const CREATE_TASK = gql`
       weight
       estMinutes
       licenseLevel
+      availableInReleases {
+        id
+        name
+        level
+      }
     }
   }
 `;
@@ -166,6 +224,11 @@ const UPDATE_TASK = gql`
       weight
       estMinutes
       licenseLevel
+      availableInReleases {
+        id
+        name
+        level
+      }
     }
   }
 `;
@@ -221,10 +284,16 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
   const [newLicense, setNewLicense] = useState({ name: '', description: '', level: 1 });
   const [editingLicense, setEditingLicense] = useState<any>(null);
 
+  // Release states
+  const [addReleaseDialog, setAddReleaseDialog] = useState(false);
+  const [editReleaseDialog, setEditReleaseDialog] = useState(false);
+  const [newRelease, setNewRelease] = useState({ name: '', description: '', level: 1.0 });
+  const [editingRelease, setEditingRelease] = useState<any>(null);
+
   // Task states
   const [addTaskDialog, setAddTaskDialog] = useState(false);
   const [editTaskDialog, setEditTaskDialog] = useState(false);
-  const [newTask, setNewTask] = useState({ name: '', description: '', weight: 0, estMinutes: 0, licenseLevel: 1 });
+  const [newTask, setNewTask] = useState({ name: '', description: '', weight: 0, estMinutes: 0, licenseLevel: 1, releaseIds: [] as string[] });
   const [editingTask, setEditingTask] = useState<any>(null);
 
   // Custom Attributes states
@@ -260,6 +329,17 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
     errorPolicy: 'all'
   });
 
+  const { data: releasesData, loading: releasesLoading, refetch: refetchReleases } = useQuery(RELEASES_FOR_PRODUCT, {
+    variables: { productId: product.id },
+    errorPolicy: 'all',
+    onCompleted: (data) => {
+      console.log('RELEASES_FOR_PRODUCT completed:', data);
+    },
+    onError: (error) => {
+      console.log('RELEASES_FOR_PRODUCT error:', error);
+    }
+  });
+
   const [createOutcome] = useMutation(CREATE_OUTCOME, {
     errorPolicy: 'all',
     onError: (error) => {
@@ -276,6 +356,10 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
   const [updateLicense] = useMutation(UPDATE_LICENSE);
   const [deleteLicense] = useMutation(DELETE_LICENSE);
 
+  const [createRelease] = useMutation(CREATE_RELEASE);
+  const [updateRelease] = useMutation(UPDATE_RELEASE);
+  const [deleteRelease] = useMutation(DELETE_RELEASE);
+
   const [createTask] = useMutation(CREATE_TASK);
   const [updateTask] = useMutation(UPDATE_TASK);
   const [deleteTask] = useMutation(DELETE_TASK);
@@ -285,6 +369,13 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
 
   const outcomes = outcomesData?.outcomes || [];
   const licenses = licensesData?.product?.licenses || [];
+  const releases = releasesData?.product?.releases || [];
+  
+  // Debug logging
+  console.log('Product ID:', product.id);
+  console.log('Releases data:', releasesData);
+  console.log('Releases:', releases);
+  console.log('Releases loading:', releasesLoading);
   const tasks = tasksData?.tasks?.edges?.map((e: any) => e.node) || [];
 
   const handleCreateOutcome = async () => {
@@ -556,6 +647,134 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
     setEditLicenseDialog(true);
   };
 
+  // Release handlers
+  const handleCreateRelease = async () => {
+    if (!newRelease.name.trim()) {
+      alert('Please enter a release name');
+      return;
+    }
+
+    // Check if release name already exists
+    const existingRelease = releases.find((release: any) =>
+      release.name.toLowerCase() === newRelease.name.trim().toLowerCase()
+    );
+
+    if (existingRelease) {
+      alert(`A release with the name "${newRelease.name}" already exists. Please choose a different name.`);
+      return;
+    }
+
+    // Validate release level (must be a positive decimal)
+    const level = Number(newRelease.level);
+    if (isNaN(level) || level <= 0) {
+      alert('Release level must be a positive number (e.g., 1.0, 1.1, 2.0)');
+      return;
+    }
+
+    // Check if release level already exists
+    const existingLevelRelease = releases.find((release: any) => release.level === level);
+    if (existingLevelRelease) {
+      alert(`A release with level ${level} already exists for this product. Please choose a different level.`);
+      return;
+    }
+
+    try {
+      const result = await createRelease({
+        variables: {
+          input: {
+            name: newRelease.name.trim(),
+            description: newRelease.description.trim(),
+            level: level,
+            productId: product.id,
+            isActive: true
+          }
+        }
+      });
+
+      if (result.data?.createRelease) {
+        setNewRelease({ name: '', description: '', level: 1.0 });
+        setAddReleaseDialog(false);
+        await refetchReleases();
+      } else {
+        throw new Error('No data returned from mutation');
+      }
+    } catch (error: any) {
+      console.error('Error creating release:', error);
+
+      let errorMessage = 'Unknown error occurred';
+      if (error?.graphQLErrors?.length > 0) {
+        errorMessage = error.graphQLErrors[0].message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      alert('Failed to create release: ' + errorMessage);
+    }
+  };
+
+  const handleUpdateRelease = async () => {
+    if (!editingRelease?.name?.trim()) {
+      alert('Please enter a release name');
+      return;
+    }
+
+    const level = Number(editingRelease.level);
+    if (isNaN(level) || level <= 0) {
+      alert('Release level must be a positive number (e.g., 1.0, 1.1, 2.0)');
+      return;
+    }
+
+    try {
+      await updateRelease({
+        variables: {
+          id: editingRelease.id,
+          input: {
+            name: editingRelease.name.trim(),
+            description: editingRelease.description?.trim() || '',
+            level: level,
+            productId: product.id,
+            isActive: editingRelease.isActive !== false
+          }
+        }
+      });
+
+      setEditReleaseDialog(false);
+      setEditingRelease(null);
+      await refetchReleases();
+    } catch (error: any) {
+      console.error('Error updating release:', error);
+
+      let errorMessage = 'Unknown error occurred';
+      if (error?.graphQLErrors?.length > 0) {
+        errorMessage = error.graphQLErrors[0].message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      alert('Failed to update release: ' + errorMessage);
+    }
+  };
+
+  const handleDeleteRelease = async (releaseId: string) => {
+    if (!confirm('Are you sure you want to delete this release? This may affect tasks that reference it.')) return;
+
+    try {
+      await deleteRelease({
+        variables: { id: releaseId }
+      });
+
+      await refetchReleases();
+    } catch (error: any) {
+      console.error('Error deleting release:', error);
+      alert('Failed to delete release: ' + (error?.message || 'Unknown error'));
+    }
+  };
+
+  const handleEditRelease = (release: any) => {
+    setEditingRelease({ ...release });
+    setEditReleaseDialog(true);
+  };
+
   // Import/Export handlers
   const handleExportOutcomes = () => {
     if (outcomes.length === 0) {
@@ -667,6 +886,33 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportReleases = () => {
+    if (releases.length === 0) {
+      alert('No releases to export');
+      return;
+    }
+
+    const exportData = {
+      productId: product.id,
+      productName: product.name,
+      exportType: 'releases',
+      exportDate: new Date().toISOString(),
+      data: releases.map((release: any) => ({
+        name: release.name,
+        description: release.description,
+        level: release.level
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${product.name}-releases-${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleImportLicenses = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -768,13 +1014,14 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
             weight: parseFloat(newTask.weight.toString()),
             estMinutes: parseInt(newTask.estMinutes.toString()),
             licenseLevel: newTask.licenseLevel,
-            productId: product.id
+            productId: product.id,
+            releaseIds: newTask.releaseIds || []
           }
         }
       });
 
       if (result.data?.createTask) {
-        setNewTask({ name: '', description: '', weight: 0, estMinutes: 0, licenseLevel: 1 });
+        setNewTask({ name: '', description: '', weight: 0, estMinutes: 0, licenseLevel: 1, releaseIds: [] as string[] });
         setAddTaskDialog(false);
         await refetchTasks();
       } else {
@@ -834,7 +1081,8 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
             weight: parseFloat(editingTask.weight.toString()),
             estMinutes: parseInt(editingTask.estMinutes.toString()),
             licenseLevel: editingTask.licenseLevel,
-            productId: product.id
+            productId: product.id,
+            releaseIds: editingTask.releaseIds || []
           }
         }
       });
@@ -872,7 +1120,10 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
   };
 
   const handleEditTask = (task: any) => {
-    setEditingTask({ ...task });
+    setEditingTask({ 
+      ...task, 
+      releaseIds: task.availableInReleases?.map((release: any) => release.id) || [] 
+    });
     setEditTaskDialog(true);
   };
 
@@ -1428,7 +1679,7 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
           <Typography>Loading licenses...</Typography>
         ) : licenses.length > 0 ? (
           <List>
-            {licenses
+            {[...licenses]
               .sort((a: any, b: any) => a.level - b.level)
               .map((license: any) => {
                 const levelNames = { 1: 'Essential', 2: 'Advantage', 3: 'Signature' };
@@ -1491,6 +1742,98 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
         )}
       </Paper>
 
+      {/* Releases Section */}
+      <Paper sx={{ p: 3, mt: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h6">
+            Product Releases
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              size="small"
+              onClick={handleExportReleases}
+              disabled={releases.length === 0}
+            >
+              Export
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              size="small"
+              onClick={() => setAddReleaseDialog(true)}
+            >
+              Add Release
+            </Button>
+          </Box>
+        </Box>
+
+        {releasesLoading ? (
+          <Typography>Loading releases...</Typography>
+        ) : releases.length > 0 ? (
+          <List>
+            {releases
+              .sort((a: any, b: any) => a.level - b.level)
+              .map((release: any) => {
+                return (
+                  <ListItem
+                    key={release.id}
+                    sx={{
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 1,
+                      mb: 1,
+                      display: 'flex',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="subtitle1">{release.name}</Typography>
+                          <Chip
+                            label={`v${release.level}`}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                          />
+                          {!release.isActive && (
+                            <Chip label="Inactive" size="small" color="error" variant="outlined" />
+                          )}
+                        </Box>
+                      }
+                      secondary={release.description}
+                    />
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleEditRelease(release)}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => handleDeleteRelease(release.id)}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  </ListItem>
+                );
+              })}
+          </List>
+        ) : (
+          <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+            No releases defined for this product. Click "Add Release" to create one.
+            <br />
+            <Typography variant="caption" color="text.disabled" sx={{ mt: 1, display: 'block' }}>
+              Releases define version levels (e.g., 1.0, 1.1, 2.0). Tasks assigned to lower versions are automatically available in higher versions.
+            </Typography>
+          </Typography>
+        )}
+      </Paper>
+
       {/* Tasks Section */}
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -1524,7 +1867,7 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
           <Typography>Loading tasks...</Typography>
         ) : tasks.length > 0 ? (
           <TableContainer>
-            {tasks
+            {[...tasks]
               .sort((a: any, b: any) => a.name.localeCompare(b.name))
               .map((task: any) => (
                 <Card key={task.id} sx={{ mb: 2, border: '1px solid #e0e0e0' }}>
@@ -1559,7 +1902,16 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
                             size="small"
                             color="info"
                             variant="outlined"
+                            sx={{ mr: 1 }}
                           />
+                          {task.availableInReleases && task.availableInReleases.length > 0 && (
+                            <Chip
+                              label={`Releases: ${task.availableInReleases.map((r: any) => `v${r.level}`).join(', ')}`}
+                              size="small"
+                              color="success"
+                              variant="outlined"
+                            />
+                          )}
                         </Box>
                       </Box>
                       <Box sx={{ ml: 2 }}>
@@ -1808,6 +2160,103 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
         </DialogActions>
       </Dialog>
 
+      {/* Add Release Dialog */}
+      <Dialog open={addReleaseDialog} onClose={() => setAddReleaseDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Add New Release</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            label="Release Name"
+            value={newRelease.name}
+            onChange={(e) => setNewRelease({ ...newRelease, name: e.target.value })}
+            fullWidth
+            margin="normal"
+            helperText="Release names must be unique within this product (e.g., Version 1.0, Alpha, Beta)"
+          />
+          <TextField
+            label="Description"
+            value={newRelease.description}
+            onChange={(e) => setNewRelease({ ...newRelease, description: e.target.value })}
+            fullWidth
+            margin="normal"
+            multiline
+            rows={3}
+          />
+          <TextField
+            label="Release Level"
+            type="number"
+            value={newRelease.level}
+            onChange={(e) => setNewRelease({ ...newRelease, level: parseFloat(e.target.value) || 1.0 })}
+            fullWidth
+            margin="normal"
+            inputProps={{ step: 0.1, min: 0.1 }}
+            helperText="Decimal version number (e.g., 1.0, 1.1, 2.0). Each level must be unique."
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            Tasks assigned to lower release levels are automatically available in higher levels.
+            For example, tasks in release 1.0 are available in 1.1, 2.0, etc.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAddReleaseDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleCreateRelease}>
+            Add Release
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Release Dialog */}
+      <Dialog open={editReleaseDialog} onClose={() => setEditReleaseDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Edit Release</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            label="Release Name"
+            value={editingRelease?.name || ''}
+            onChange={(e) => setEditingRelease({ ...editingRelease, name: e.target.value })}
+            fullWidth
+            margin="normal"
+          />
+          <TextField
+            label="Description"
+            value={editingRelease?.description || ''}
+            onChange={(e) => setEditingRelease({ ...editingRelease, description: e.target.value })}
+            fullWidth
+            margin="normal"
+            multiline
+            rows={3}
+          />
+          <TextField
+            label="Release Level"
+            type="number"
+            value={editingRelease?.level || 1.0}
+            onChange={(e) => setEditingRelease({ ...editingRelease, level: parseFloat(e.target.value) || 1.0 })}
+            fullWidth
+            margin="normal"
+            inputProps={{ step: 0.1, min: 0.1 }}
+          />
+          <FormControlLabel
+            control={
+              <Switch
+                checked={editingRelease?.isActive !== false}
+                onChange={(e) => setEditingRelease({ ...editingRelease, isActive: e.target.checked })}
+              />
+            }
+            label="Active Release"
+            sx={{ mt: 2 }}
+          />
+          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+            Inactive releases cannot be assigned to new tasks but existing task assignments remain valid.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditReleaseDialog(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleUpdateRelease}>
+            Update Release
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Add Task Dialog */}
       <Dialog open={addTaskDialog} onClose={() => setAddTaskDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Add New Task</DialogTitle>
@@ -1858,7 +2307,7 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
             margin="normal"
             helperText="Required license level for this task"
           >
-            {licenses
+            {[...licenses]
               .filter((license: any) => license.active)
               .sort((a: any, b: any) => a.level - b.level)
               .map((license: any) => (
@@ -1868,6 +2317,41 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
               ))
             }
           </TextField>
+          
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Releases</InputLabel>
+            <Select
+              multiple
+              value={newTask.releaseIds || []}
+              onChange={(e) => setNewTask({ ...newTask, releaseIds: e.target.value as string[] })}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {(selected as string[]).map((releaseId) => {
+                    const release = releases.find((r: any) => r.id === releaseId);
+                    return (
+                      <Chip 
+                        key={releaseId} 
+                        label={release ? `${release.name} (v${release.level})` : releaseId}
+                        size="small" 
+                      />
+                    );
+                  })}
+                </Box>
+              )}
+            >
+              {[...releases]
+                .sort((a: any, b: any) => a.level - b.level)
+                .map((release: any) => (
+                  <MenuItem key={release.id} value={release.id}>
+                    {release.name} (v{release.level})
+                  </MenuItem>
+                ))
+              }
+            </Select>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+              Select releases where this task should be available. Tasks are automatically available in higher release levels.
+            </Typography>
+          </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setAddTaskDialog(false)}>Cancel</Button>
@@ -1923,7 +2407,7 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
             fullWidth
             margin="normal"
           >
-            {licenses
+            {[...licenses]
               .filter((license: any) => license.active)
               .sort((a: any, b: any) => a.level - b.level)
               .map((license: any) => (
@@ -1933,6 +2417,41 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
               ))
             }
           </TextField>
+          
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Releases</InputLabel>
+            <Select
+              multiple
+              value={editingTask?.releaseIds || []}
+              onChange={(e) => setEditingTask({ ...editingTask, releaseIds: e.target.value as string[] })}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {(selected as string[]).map((releaseId) => {
+                    const release = releases.find((r: any) => r.id === releaseId);
+                    return (
+                      <Chip 
+                        key={releaseId} 
+                        label={release ? `${release.name} (v${release.level})` : releaseId}
+                        size="small" 
+                      />
+                    );
+                  })}
+                </Box>
+              )}
+            >
+              {[...releases]
+                .sort((a: any, b: any) => a.level - b.level)
+                .map((release: any) => (
+                  <MenuItem key={release.id} value={release.id}>
+                    {release.name} (v{release.level})
+                  </MenuItem>
+                ))
+              }
+            </Select>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+              Select releases where this task should be available. Tasks are automatically available in higher release levels.
+            </Typography>
+          </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditTaskDialog(false)}>Cancel</Button>

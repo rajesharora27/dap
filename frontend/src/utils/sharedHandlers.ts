@@ -63,6 +63,36 @@ const DELETE_LICENSE = gql`
   }
 `;
 
+const CREATE_RELEASE = gql`
+  mutation CreateRelease($input: ReleaseInput!) {
+    createRelease(input: $input) {
+      id
+      name
+      level
+      description
+      isActive
+    }
+  }
+`;
+
+const UPDATE_RELEASE = gql`
+  mutation UpdateRelease($id: ID!, $input: ReleaseInput!) {
+    updateRelease(id: $id, input: $input) {
+      id
+      name
+      level
+      description
+      isActive
+    }
+  }
+`;
+
+const DELETE_RELEASE = gql`
+  mutation DeleteRelease($id: ID!) {
+    deleteRelease(id: $id)
+  }
+`;
+
 const CREATE_OUTCOME = gql`
   mutation CreateOutcome($input: OutcomeInput!) {
     createOutcome(input: $input) {
@@ -263,6 +293,168 @@ export class LicenseHandlers {
             }
 
             console.error('Error deleting license:', error);
+            return {
+                success: false,
+                error: errorDetails
+            };
+        }
+    }
+}
+
+// Release handlers
+export class ReleaseHandlers {
+    constructor(private client: ApolloClient<any>) { }
+
+    async createRelease(
+        release: { name: string; level: number; description?: string; productId: string },
+        options: HandlerOptions = {}
+    ): Promise<OperationResult<any>> {
+        try {
+            if (!release.name?.trim()) {
+                throw new Error('Release name is required');
+            }
+
+            if (!release.productId) {
+                throw new Error('Product ID is required for release creation');
+            }
+
+            if (release.level <= 0) {
+                throw new Error('Release level must be greater than 0');
+            }
+
+            const result = await this.client.mutate({
+                mutation: CREATE_RELEASE,
+                variables: {
+                    input: {
+                        name: release.name.trim(),
+                        level: Number(release.level),
+                        description: release.description?.trim() || '',
+                        productId: release.productId,
+                        isActive: true
+                    }
+                },
+                refetchQueries: ['Products'],
+                awaitRefetchQueries: true
+            });
+
+            // Trigger additional refetch if provided
+            if (options.refetchProducts) {
+                await options.refetchProducts();
+            }
+
+            return {
+                success: true,
+                data: result.data.createRelease
+            };
+        } catch (error) {
+            const errorDetails = handleError(error);
+
+            if (options.showAlert !== false) {
+                alert(`Failed to create release: ${errorDetails.message}`);
+            }
+
+            console.error('Error creating release:', error);
+            return {
+                success: false,
+                error: errorDetails
+            };
+        }
+    }
+
+    async updateRelease(
+        id: string,
+        release: { name?: string; level?: number; description?: string; productId: string },
+        options: HandlerOptions = {}
+    ): Promise<OperationResult<any>> {
+        try {
+            if (!id) {
+                throw new Error('Release ID is required for update');
+            }
+
+            if (release.name && !release.name.trim()) {
+                throw new Error('Release name cannot be empty');
+            }
+
+            if (!release.productId) {
+                throw new Error('Product ID is required for release update');
+            }
+
+            if (release.level !== undefined && release.level <= 0) {
+                throw new Error('Release level must be greater than 0');
+            }
+
+            const result = await this.client.mutate({
+                mutation: UPDATE_RELEASE,
+                variables: {
+                    id,
+                    input: {
+                        ...(release.name && { name: release.name.trim() }),
+                        ...(release.level !== undefined && { level: Number(release.level) }),
+                        ...(release.description !== undefined && { description: release.description.trim() }),
+                        productId: release.productId
+                    }
+                },
+                refetchQueries: ['Products'],
+                awaitRefetchQueries: true
+            });
+
+            // Trigger additional refetch if provided
+            if (options.refetchProducts) {
+                await options.refetchProducts();
+            }
+
+            return {
+                success: true,
+                data: result.data.updateRelease
+            };
+        } catch (error) {
+            const errorDetails = handleError(error);
+
+            if (options.showAlert !== false) {
+                alert(`Failed to update release: ${errorDetails.message}`);
+            }
+
+            console.error('Error updating release:', error);
+            return {
+                success: false,
+                error: errorDetails
+            };
+        }
+    }
+
+    async deleteRelease(
+        id: string,
+        options: HandlerOptions = {}
+    ): Promise<OperationResult<boolean>> {
+        try {
+            if (!id) {
+                throw new Error('Release ID is required for deletion');
+            }
+
+            const result = await this.client.mutate({
+                mutation: DELETE_RELEASE,
+                variables: { id },
+                refetchQueries: ['Products'],
+                awaitRefetchQueries: true
+            });
+
+            // Trigger additional refetch if provided
+            if (options.refetchProducts) {
+                await options.refetchProducts();
+            }
+
+            return {
+                success: true,
+                data: result.data.deleteRelease
+            };
+        } catch (error) {
+            const errorDetails = handleError(error);
+
+            if (options.showAlert !== false) {
+                alert(`Failed to delete release: ${errorDetails.message}`);
+            }
+
+            console.error('Error deleting release:', error);
             return {
                 success: false,
                 error: errorDetails
@@ -584,6 +776,7 @@ export class ProductHandlers {
             customAttrs?: any;
             outcomes?: Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>;
             licenses?: Array<{ id?: string; name: string; description?: string; level: string; isActive: boolean; isNew?: boolean; delete?: boolean }>;
+            releases?: Array<{ id?: string; name: string; level: number; description?: string; isNew?: boolean; delete?: boolean }>;
         },
         options: HandlerOptions = {}
     ): Promise<OperationResult<Product>> {
@@ -679,6 +872,47 @@ export class ProductHandlers {
                                 input: {
                                     name: outcome.name,
                                     description: outcome.description,
+                                    productId: id
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Handle releases if provided
+            if (productData.releases) {
+                for (const release of productData.releases) {
+                    if (release.delete && release.id) {
+                        // Delete existing release
+                        await this.client.mutate({
+                            mutation: DELETE_RELEASE,
+                            variables: { id: release.id }
+                        });
+                    } else if (release.isNew) {
+                        // Create new release
+                        await this.client.mutate({
+                            mutation: CREATE_RELEASE,
+                            variables: {
+                                input: {
+                                    name: release.name,
+                                    level: release.level,
+                                    description: release.description || '',
+                                    productId: id,
+                                    isActive: true
+                                }
+                            }
+                        });
+                    } else if (release.id) {
+                        // Update existing release
+                        await this.client.mutate({
+                            mutation: UPDATE_RELEASE,
+                            variables: {
+                                id: release.id,
+                                input: {
+                                    name: release.name,
+                                    level: release.level,
+                                    description: release.description || '',
                                     productId: id
                                 }
                             }

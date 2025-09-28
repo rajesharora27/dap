@@ -32,9 +32,10 @@ import {
 import { TaskDialog } from '../components/dialogs/TaskDialog';
 import { ProductDialog } from '../components/dialogs/ProductDialog';
 import { LicenseDialog } from '../components/dialogs/LicenseDialog';
+import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
 import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
-import { LicenseHandlers, OutcomeHandlers, ProductHandlers } from '../utils/sharedHandlers';
+import { LicenseHandlers, ReleaseHandlers, OutcomeHandlers, ProductHandlers } from '../utils/sharedHandlers';
 import { License, Outcome } from '../types/shared';
 import {
   Inventory2 as ProductIcon,
@@ -53,7 +54,8 @@ import {
   Settings as CustomAttributeIcon,
   Home as MainIcon,
   ExpandLess,
-  ExpandMore
+  ExpandMore,
+  Rocket as ReleaseIcon
 } from '@mui/icons-material';
 import { AuthBar } from '../components/AuthBar';
 import { ProductDetailPage } from '../components/ProductDetailPage';
@@ -91,6 +93,13 @@ const PRODUCTS = gql`
           statusPercent
           customAttrs
           licenses {
+            id
+            name
+            description
+            level
+            isActive
+          }
+          releases {
             id
             name
             description
@@ -155,6 +164,12 @@ const TASKS_FOR_PRODUCT = gql`
             id
             name
           }
+          releases {
+            id
+            name
+            level
+            description
+          }
         }
       }
     }
@@ -195,7 +210,7 @@ const UPDATE_PRODUCT = gql`
 `;
 
 const UPDATE_TASK = gql`
-  mutation UpdateTask($id: ID!, $input: TaskInput!) {
+  mutation UpdateTask($id: ID!, $input: TaskUpdateInput!) {
     updateTask(id: $id, input: $input) {
       id
       name
@@ -214,6 +229,11 @@ const UPDATE_TASK = gql`
       outcomes {
         id
         name
+      }
+      releases {
+        id
+        name
+        level
       }
     }
   }
@@ -264,6 +284,36 @@ const UPDATE_LICENSE = gql`
 const DELETE_LICENSE = gql`
   mutation DeleteLicense($id: ID!) {
     deleteLicense(id: $id)
+  }
+`;
+
+const CREATE_RELEASE = gql`
+  mutation CreateRelease($input: ReleaseInput!) {
+    createRelease(input: $input) {
+      id
+      name
+      description
+      level
+      isActive
+    }
+  }
+`;
+
+const UPDATE_RELEASE = gql`
+  mutation UpdateRelease($id: ID!, $input: ReleaseInput!) {
+    updateRelease(id: $id, input: $input) {
+      id
+      name
+      description
+      level
+      isActive
+    }
+  }
+`;
+
+const DELETE_RELEASE = gql`
+  mutation DeleteRelease($id: ID!) {
+    deleteRelease(id: $id)
   }
 `;
 
@@ -332,7 +382,7 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick }: any) {
             <Box sx={{ mt: 1 }}>
               {/* Outcomes for this task */}
               {task.outcomes && task.outcomes.length > 0 ? (
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center', mb: 0.5 }}>
                   <Typography variant="caption" color="info.main" sx={{ mr: 0.5 }}>
                     Outcomes:
                   </Typography>
@@ -348,8 +398,31 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick }: any) {
                   ))}
                 </Box>
               ) : (
-                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', mb: 0.5, display: 'block' }}>
                   No outcomes linked
+                </Typography>
+              )}
+
+              {/* Releases for this task */}
+              {task.releases && task.releases.length > 0 ? (
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Typography variant="caption" color="success.main" sx={{ mr: 0.5 }}>
+                    Releases:
+                  </Typography>
+                  {task.releases.map((release: any) => (
+                    <Chip
+                      key={release.id}
+                      size="small"
+                      label={`${release.name} (v${release.level})`}
+                      color="success"
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem', height: '20px' }}
+                    />
+                  ))}
+                </Box>
+              ) : (
+                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                  No releases assigned
                 </Typography>
               )}
             </Box>
@@ -386,7 +459,7 @@ export function App() {
   const [selectedTask, setSelectedTask] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [detailProduct, setDetailProduct] = useState<any>(null);
-  const [selectedProductSubSection, setSelectedProductSubSection] = useState<'tasks' | 'main' | 'licenses' | 'outcomes' | 'customAttributes'>('tasks');
+  const [selectedProductSubSection, setSelectedProductSubSection] = useState<'tasks' | 'main' | 'licenses' | 'releases' | 'outcomes' | 'customAttributes'>('tasks');
   const [productsExpanded, setProductsExpanded] = useState(true);
 
   // Dialog states
@@ -405,6 +478,9 @@ export function App() {
   const [addLicenseDialog, setAddLicenseDialog] = useState(false);
   const [editLicenseDialog, setEditLicenseDialog] = useState(false);
   const [editingLicense, setEditingLicense] = useState<any>(null);
+  const [addReleaseDialog, setAddReleaseDialog] = useState(false);
+  const [editReleaseDialog, setEditReleaseDialog] = useState(false);
+  const [editingRelease, setEditingRelease] = useState<any>(null);
   const [addOutcomeDialog, setAddOutcomeDialog] = useState(false);
   const [editOutcomeDialog, setEditOutcomeDialog] = useState(false);
   const [editingOutcome, setEditingOutcome] = useState<any>(null);
@@ -489,12 +565,13 @@ export function App() {
   }) || [];
   const solutions = solutionsData?.solutions?.edges?.map((edge: any) => edge.node) || [];
   const customers = customersData?.customers || [];
-  const tasks = (tasksData?.tasks?.edges?.map((edge: any) => edge.node) || [])
+  const tasks = [...(tasksData?.tasks?.edges?.map((edge: any) => edge.node) || [])]
     .sort((a: any, b: any) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
   const outcomes = outcomesData?.outcomes || [];
 
   // Initialize shared handlers
   const licenseHandlers = new LicenseHandlers(client);
+  const releaseHandlers = new ReleaseHandlers(client);
   const outcomeHandlers = new OutcomeHandlers(client);
   const productHandlers = new ProductHandlers(client);
 
@@ -531,6 +608,53 @@ export function App() {
     outcomes: outcomes.slice(0, 2)
   });
 
+  // Release handlers
+  const handleDeleteRelease = async (releaseId: string) => {
+    try {
+      await client.mutate({
+        mutation: DELETE_RELEASE,
+        variables: { id: releaseId },
+        refetchQueries: ['Products'],
+        awaitRefetchQueries: true
+      });
+      await refetchProducts();
+    } catch (error) {
+      console.error('Error deleting release:', error);
+      alert('Failed to delete release');
+    }
+  };
+
+  const handleExportReleases = () => {
+    const currentProduct = products.find((p: any) => p.id === selectedProduct);
+    const releases = currentProduct?.releases || [];
+
+    if (releases.length === 0) {
+      alert('No releases to export');
+      return;
+    }
+
+    const exportData = {
+      productId: selectedProduct,
+      productName: currentProduct?.name,
+      exportType: 'releases',
+      exportDate: new Date().toISOString(),
+      data: releases.map((release: any) => ({
+        name: release.name,
+        description: release.description,
+        level: release.level,
+        isActive: release.isActive
+      }))
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${currentProduct?.name || 'product'}-releases-${Date.now()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Navigation handlers
   const handleSectionChange = (section: 'products' | 'solutions' | 'customers') => {
     setSelectedSection(section);
@@ -552,7 +676,7 @@ export function App() {
     }
   };
 
-  const handleProductSubSectionChange = (subSection: 'main' | 'licenses' | 'outcomes' | 'customAttributes' | 'tasks') => {
+  const handleProductSubSectionChange = (subSection: 'main' | 'licenses' | 'releases' | 'outcomes' | 'customAttributes' | 'tasks') => {
     setSelectedProductSubSection(subSection);
     setSelectedSection('products');
   };
@@ -673,6 +797,53 @@ export function App() {
       refetchProducts,
       showAlert: true
     });
+  };
+
+  // Release handlers for standalone release management
+  const handleAddReleaseSave = async (releaseData: { name: string; level: number; description?: string }) => {
+    const result = await releaseHandlers.createRelease({
+      ...releaseData,
+      productId: selectedProduct!
+    }, {
+      refetchProducts,
+      showAlert: true
+    });
+
+    if (result.success) {
+      setAddReleaseDialog(false);
+    }
+  };
+
+  const handleEditReleaseSave = async (releaseData: { name: string; level: number; description?: string }) => {
+    if (!editingRelease?.id) {
+      alert('No release selected for editing');
+      return;
+    }
+
+    // Ensure productId is included for the update
+    const updateData = {
+      ...releaseData,
+      productId: selectedProduct || editingRelease.productId
+    };
+
+    if (!updateData.productId) {
+      alert('Product ID is required for release update');
+      return;
+    }
+
+    const result = await releaseHandlers.updateRelease(
+      editingRelease.id,
+      updateData,
+      {
+        refetchProducts,
+        showAlert: true
+      }
+    );
+
+    if (result.success) {
+      setEditReleaseDialog(false);
+      setEditingRelease(null);
+    }
   };
 
   const handleDeleteOutcome = async (outcomeId: string) => {
@@ -1088,6 +1259,7 @@ export function App() {
     customAttrs?: any;
     outcomes?: Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>;
     licenses?: Array<{ id?: string; name: string; description?: string; level: string; isActive: boolean; isNew?: boolean; delete?: boolean }>;
+    releases?: Array<{ id?: string; name: string; level: number; description?: string; isNew?: boolean; delete?: boolean }>;
   }) => {
     if (!data.name?.trim()) return;
 
@@ -1159,7 +1331,7 @@ export function App() {
     if (!editingTask?.id) return;
 
     try {
-      // Create input with only valid TaskInput fields
+      // Create input with only valid TaskUpdateInput fields
       const input: any = {
         name: taskData.name,
         estMinutes: taskData.estMinutes,
@@ -1180,9 +1352,10 @@ export function App() {
       if (taskData.outcomeIds && taskData.outcomeIds.length > 0) {
         input.outcomeIds = taskData.outcomeIds;
       }
-      if (selectedProduct) {
-        input.productId = selectedProduct;
+      if (taskData.releaseIds && taskData.releaseIds.length > 0) {
+        input.releaseIds = taskData.releaseIds;
       }
+      // Note: productId is not part of TaskUpdateInput, it's inferred from the task being updated
 
       await client.mutate({
         mutation: UPDATE_TASK,
@@ -1194,7 +1367,6 @@ export function App() {
         awaitRefetchQueries: true
       });
 
-      console.log('Task updated successfully');
       setEditTaskDialog(false);
       setEditingTask(null);
       await refetchTasks();
@@ -1292,6 +1464,7 @@ export function App() {
     customAttrs?: any;
     outcomes?: Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>;
     licenses?: Array<{ id?: string; name: string; description?: string; level: string; isActive: boolean; isNew?: boolean; delete?: boolean }>;
+    releases?: Array<{ id?: string; name: string; level: number; description?: string; isNew?: boolean; delete?: boolean }>;
   }) => {
     if (!data.name?.trim()) return;
 
@@ -1374,6 +1547,27 @@ export function App() {
           refetchProducts,
           showAlert: false
         });
+      }
+
+      // Create releases if provided
+      if (data.releases && data.releases.length > 0 && productId) {
+        for (const release of data.releases) {
+          if (!release.delete) {
+            const releaseResult = await releaseHandlers.createRelease({
+              name: release.name,
+              level: release.level,
+              description: release.description || '',
+              productId: productId
+            }, {
+              refetchProducts,
+              showAlert: false
+            });
+
+            if (!releaseResult.success) {
+              console.error('Failed to create release:', releaseResult.error?.message);
+            }
+          }
+        }
       }
 
       console.log('Product created successfully');
@@ -1483,6 +1677,9 @@ export function App() {
       if (taskData.outcomeIds && taskData.outcomeIds.length > 0) {
         input.outcomeIds = taskData.outcomeIds;
       }
+      if (taskData.releaseIds && taskData.releaseIds.length > 0) {
+        input.releaseIds = taskData.releaseIds;
+      }
 
       await client.mutate({
         mutation: gql`
@@ -1505,6 +1702,11 @@ export function App() {
               outcomes {
                 id
                 name
+              }
+              releases {
+                id
+                name
+                level
               }
             }
           }
@@ -1716,9 +1918,19 @@ export function App() {
                       licenseLevel
                       priority
                       notes
+                      license {
+                        id
+                        name
+                        level
+                      }
                       outcomes {
                         id
                         name
+                      }
+                      releases {
+                        id
+                        name
+                        level
                       }
                     }
                   }
@@ -2226,6 +2438,26 @@ export function App() {
                         id
                         name
                         description
+                        estMinutes
+                        weight
+                        sequenceNumber
+                        licenseLevel
+                        priority
+                        notes
+                        license {
+                          id
+                          name
+                          level
+                        }
+                        outcomes {
+                          id
+                          name
+                        }
+                        releases {
+                          id
+                          name
+                          level
+                        }
                       }
                     }
                   `,
@@ -2534,6 +2766,17 @@ export function App() {
                     <LicenseIcon />
                   </ListItemIcon>
                   <ListItemText primary="Licenses" />
+                </ListItemButton>
+
+                <ListItemButton
+                  sx={{ pl: 4 }}
+                  selected={selectedProductSubSection === 'releases'}
+                  onClick={() => handleProductSubSectionChange('releases')}
+                >
+                  <ListItemIcon>
+                    <ReleaseIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Releases" />
                 </ListItemButton>
 
                 <ListItemButton
@@ -3021,6 +3264,101 @@ export function App() {
                   </Paper>
                 )}
 
+                {/* Releases Sub-section */}
+                {selectedProductSubSection === 'releases' && selectedProduct && (
+                  <Paper sx={{ p: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="h6">
+                        Releases for {products.find((p: any) => p.id === selectedProduct)?.name}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button variant="contained" startIcon={<Add />} onClick={() => setAddReleaseDialog(true)}>
+                          Add Release
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          startIcon={<FileDownload />}
+                          onClick={handleExportReleases}
+                        >
+                          Export
+                        </Button>
+                      </Box>
+                    </Box>
+
+                    {(() => {
+                      const currentProduct = products.find((p: any) => p.id === selectedProduct);
+                      const releases = currentProduct?.releases || [];
+
+                      return releases.length > 0 ? (
+                        <List>
+                          {[...releases]
+                            .sort((a: any, b: any) => a.level - b.level)
+                            .map((release: any) => (
+                              <ListItemButton
+                                key={release.id}
+                                sx={{
+                                  border: '1px solid #e0e0e0',
+                                  borderRadius: 1,
+                                  mb: 1,
+                                  '&:hover': {
+                                    backgroundColor: '#f5f5f5'
+                                  }
+                                }}
+                                onDoubleClick={() => {
+                                  setEditingRelease(release);
+                                  setEditReleaseDialog(true);
+                                }}
+                              >
+                                <ListItemText
+                                  primary={
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Typography variant="body1" fontWeight="medium">
+                                        {release.name}
+                                      </Typography>
+                                      <Chip
+                                        label={`v${release.level}`}
+                                        size="small"
+                                        color="primary"
+                                        variant="outlined"
+                                      />
+                                      {release.isActive ? (
+                                        <Chip label="Active" size="small" color="success" variant="outlined" />
+                                      ) : (
+                                        <Chip label="Inactive" size="small" color="error" variant="outlined" />
+                                      )}
+                                    </Box>
+                                  }
+                                  secondary={release.description}
+                                />
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <IconButton size="small" onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingRelease(release);
+                                    setEditReleaseDialog(true);
+                                  }}>
+                                    <Edit fontSize="small" />
+                                  </IconButton>
+                                  <IconButton size="small" color="error" onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm('Are you sure you want to delete this release? This may affect tasks that reference it.')) {
+                                      handleDeleteRelease(release.id);
+                                    }
+                                  }}>
+                                    <Delete fontSize="small" />
+                                  </IconButton>
+                                </Box>
+                              </ListItemButton>
+                            ))}
+                        </List>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                          No releases found for this product. Click "Add Release" to create one.
+                        </Typography>
+                      );
+                    })()}
+                  </Paper>
+                )}
+
                 {/* Custom Attributes Sub-section */}
                 {selectedProductSubSection === 'customAttributes' && selectedProduct && (
                   <Paper sx={{ p: 2 }}>
@@ -3287,6 +3625,7 @@ export function App() {
               onSave={handleAddProductSave}
               product={null}
               title="Add New Product"
+              availableReleases={[]}
             />
 
             {/* Add Task Dialog */}
@@ -3295,11 +3634,12 @@ export function App() {
               onClose={() => setAddTaskDialog(false)}
               onSave={handleAddTaskSave}
               task={null}
-              title="Add New Task"
+              title="Task Details"
               productId={selectedProduct}
               existingTasks={tasks.filter((t: any) => !t.deletedAt)}
               outcomes={outcomes.filter((o: any) => o.product?.id === selectedProduct)}
               availableLicenses={selectedProduct ? products.find((p: any) => p.id === selectedProduct)?.licenses || [] : []}
+              availableReleases={selectedProduct ? products.find((p: any) => p.id === selectedProduct)?.releases || [] : []}
             />
 
             {/* Edit Product Dialog */}
@@ -3309,6 +3649,7 @@ export function App() {
               onSave={handleUpdateProduct}
               product={editingProduct}
               title="Edit Product"
+              availableReleases={editingProduct?.releases || []}
             />
 
             {/* Edit Task Dialog */}
@@ -3317,11 +3658,12 @@ export function App() {
               onClose={() => setEditTaskDialog(false)}
               onSave={handleEditTaskSave}
               task={editingTask}
-              title="Edit Task"
+              title="Task Details"
               productId={selectedProduct}
               existingTasks={tasks.filter((t: any) => !t.deletedAt)}
               outcomes={outcomes.filter((o: any) => o.product?.id === selectedProduct)}
               availableLicenses={selectedProduct ? products.find((p: any) => p.id === selectedProduct)?.licenses || [] : []}
+              availableReleases={selectedProduct ? products.find((p: any) => p.id === selectedProduct)?.releases || [] : []}
             />
 
             {/* Task Detail Dialog */}
@@ -3330,6 +3672,7 @@ export function App() {
               task={selectedTaskForDetail}
               productId={selectedProduct}
               availableLicenses={selectedProduct ? products.find((p: any) => p.id === selectedProduct)?.licenses || [] : []}
+              availableReleases={selectedProduct ? products.find((p: any) => p.id === selectedProduct)?.releases || [] : []}
               onClose={() => {
                 setTaskDetailDialog(false);
                 setSelectedTaskForDetail(null);
@@ -3354,6 +3697,27 @@ export function App() {
               }}
               onSave={handleEditLicenseSave}
               license={editingLicense}
+            />
+
+            {/* Add Release Dialog */}
+            <ReleaseDialog
+              open={addReleaseDialog}
+              onClose={() => setAddReleaseDialog(false)}
+              onSave={handleAddReleaseSave}
+              release={null}
+              title="Add New Release"
+            />
+
+            {/* Edit Release Dialog */}
+            <ReleaseDialog
+              open={editReleaseDialog}
+              onClose={() => {
+                setEditReleaseDialog(false);
+                setEditingRelease(null);
+              }}
+              onSave={handleEditReleaseSave}
+              release={editingRelease}
+              title="Edit Release"
             />
 
             {/* Add Outcome Dialog */}

@@ -18,6 +18,7 @@ import {
   Chip,
   OutlinedInput
 } from '@mui/material';
+import { Release } from '../../types/shared';
 
 interface Task {
   id: string;
@@ -32,6 +33,8 @@ interface Task {
   requiredLicenseLevel?: number;
   licenseId?: string;
   outcomes?: Array<{ id: string; name: string }>;
+  releases?: Array<{ id: string; name: string; level: number }>;
+  releaseIds?: string[];
 }
 
 interface Outcome {
@@ -45,8 +48,6 @@ interface License {
   level?: number;
 }
 
-
-
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -59,6 +60,7 @@ interface Props {
     priority?: string;
     licenseId?: string;
     outcomeIds?: string[];
+    releaseIds?: string[];
   }) => Promise<void>;
   task?: Task | null;
   title: string;
@@ -67,6 +69,7 @@ interface Props {
   existingTasks: Task[];
   outcomes?: Outcome[];
   availableLicenses?: License[];
+  availableReleases?: Release[];
 }
 
 const priorities = ['Low', 'Medium', 'High', 'Critical'];
@@ -81,7 +84,8 @@ export const TaskDialog: React.FC<Props> = ({
   solutionId,
   existingTasks,
   outcomes = [],
-  availableLicenses = []
+  availableLicenses = [],
+  availableReleases = []
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -91,37 +95,15 @@ export const TaskDialog: React.FC<Props> = ({
   const [priority, setPriority] = useState('Medium');
   const [selectedLicense, setSelectedLicense] = useState<string>('');
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([]);
+  const [selectedReleases, setSelectedReleases] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   // Calculate total weight of other tasks to show remaining weight
   const otherTasks = existingTasks.filter(t => t.id !== task?.id);
   const totalUsedWeight = otherTasks.reduce((sum, t) => sum + (t.weight || 0), 0);
-  const remainingWeight = 100 - totalUsedWeight;
-
-  console.log('TaskDialog Weight Calculation Details:', {
-    existingTasksTotal: existingTasks.length,
-    currentTaskId: task?.id,
-    otherTasksCount: otherTasks.length,
-    otherTasksWeights: otherTasks.map(t => ({ id: t.id, name: t.name, weight: t.weight })),
-    totalUsedWeight,
-    remainingWeight,
-    calculation: `100 - ${totalUsedWeight} = ${remainingWeight}`
-  });
-
-  // Debug weight calculation
-  React.useEffect(() => {
-    console.log('Weight Debug - TaskDialog:', {
-      existingTasksCount: existingTasks.length,
-      currentTaskId: task?.id,
-      allExistingTasks: existingTasks.map(t => ({ id: t.id, name: t.name, weight: t.weight })),
-      filteredTasks: existingTasks.filter(t => t.id !== task?.id).map(t => ({ id: t.id, name: t.name, weight: t.weight })),
-      totalUsedWeight,
-      remainingWeight,
-      productId,
-      solutionId
-    });
-  }, [existingTasks, task?.id, totalUsedWeight, remainingWeight, productId, solutionId]);
+  const remainingWeight = Math.max(0, 100 - totalUsedWeight);
+  const maxAllowedWeight = Math.max(1, remainingWeight + (task?.weight || 0));
 
   useEffect(() => {
     if (task) {
@@ -133,43 +115,32 @@ export const TaskDialog: React.FC<Props> = ({
       setPriority(task.priority || 'Medium');
       setSelectedLicense(task.licenseId || '');
       setSelectedOutcomes(task.outcomes?.map(o => o.id) || []);
+      setSelectedReleases(task.releases?.map(r => r.id) || task.releaseIds || []);
     } else {
       setName('');
       setDescription('');
       setEstMinutes(60);
-      setWeight(Math.min(remainingWeight, 10));
+      setWeight(Math.min(maxAllowedWeight, Math.max(1, remainingWeight)));
       setNotes('');
       setPriority('Medium');
       setSelectedLicense('');
       setSelectedOutcomes([]);
+      setSelectedReleases([]);
     }
     setError('');
   }, [task, open, remainingWeight]);
 
-  const formatTime = (minutes: number) => {
-    if (minutes < 60) return `${minutes}m`;
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
-  };
-
-  const handleSave = async () => {
+    const handleSave = async () => {
     if (!name.trim()) {
       setError('Task name is required');
       return;
     }
 
-    const maxAllowedWeight = remainingWeight + (task?.weight || 0);
-    console.log('Weight Validation Debug:', {
-      inputWeight: weight,
-      remainingWeight,
-      currentTaskWeight: task?.weight || 0,
-      maxAllowedWeight,
-      wouldExceedLimit: weight > maxAllowedWeight
-    });
+    // Validate weight against remaining weight
+    const maxAllowedWeightForValidation = remainingWeight + (task?.weight || 0);
 
-    if (weight <= 0 || weight > maxAllowedWeight) {
-      setError(`Weight must be between 1 and ${maxAllowedWeight} (remaining weight in product)`);
+    if (weight <= 0 || weight > maxAllowedWeightForValidation) {
+      setError(`Weight must be between 1 and ${maxAllowedWeightForValidation} (remaining weight in product)`);
       return;
     }
 
@@ -190,7 +161,8 @@ export const TaskDialog: React.FC<Props> = ({
         notes: notes.trim() || undefined,
         priority: priority,
         licenseId: selectedLicense || undefined,
-        outcomeIds: selectedOutcomes.length > 0 ? selectedOutcomes : undefined
+        outcomeIds: selectedOutcomes.length > 0 ? selectedOutcomes : undefined,
+        releaseIds: selectedReleases.length > 0 ? selectedReleases : undefined
       });
       onClose();
     } catch (err: any) {
@@ -205,7 +177,6 @@ export const TaskDialog: React.FC<Props> = ({
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
-          {/* Basic Information */}
           <TextField
             fullWidth
             label="Task Name"
@@ -228,7 +199,6 @@ export const TaskDialog: React.FC<Props> = ({
             placeholder="Detailed description of what needs to be accomplished..."
           />
 
-          {/* Time, Weight, Priority, and License Level */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>
             <Box sx={{ flex: '1 1 200px' }}>
               <TextField
@@ -249,7 +219,7 @@ export const TaskDialog: React.FC<Props> = ({
                   value={weight}
                   onChange={(_, value) => setWeight(value as number)}
                   min={1}
-                  max={remainingWeight + (task?.weight || 0)}
+                  max={maxAllowedWeight}
                   marks
                   valueLabelDisplay="auto"
                   sx={{ mt: 1 }}
@@ -274,7 +244,6 @@ export const TaskDialog: React.FC<Props> = ({
             </Box>
           </Box>
 
-          {/* License Selection */}
           {availableLicenses.length > 0 && (
             <Box sx={{ mt: 2 }}>
               <FormControl fullWidth margin="normal">
@@ -297,7 +266,6 @@ export const TaskDialog: React.FC<Props> = ({
             </Box>
           )}
 
-          {/* Outcomes Selection */}
           {outcomes.length > 0 && (
             <Box sx={{ mt: 2 }}>
               <FormControl fullWidth margin="normal">
@@ -328,7 +296,46 @@ export const TaskDialog: React.FC<Props> = ({
             </Box>
           )}
 
-          {/* Notes */}
+          {/* Releases Selection */}
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Releases</InputLabel>
+            <Select
+              multiple
+              value={selectedReleases}
+              onChange={(e) => setSelectedReleases(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+              input={<OutlinedInput label="Releases" />}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selected.map((value) => {
+                    const release = availableReleases.find(r => r.id === value);
+                    return (
+                      <Chip key={value} label={release ? `${release.name} (v${release.level})` : value} size="small" />
+                    );
+                  })}
+                </Box>
+              )}
+              disabled={availableReleases?.length === 0}
+            >
+              {availableReleases?.length > 0 ? (
+                [...availableReleases]
+                  .sort((a, b) => a.level - b.level)
+                  .map((release) => (
+                    <MenuItem key={release.id} value={release.id}>
+                      {release.name} (v{release.level})
+                    </MenuItem>
+                  ))
+              ) : (
+                <MenuItem disabled>No releases available for this product</MenuItem>
+              )}
+            </Select>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              {availableReleases?.length > 0 
+                ? "Tasks are automatically available in higher release levels."
+                : "Create releases for this product to assign tasks to specific versions."
+              }
+            </Typography>
+          </FormControl>
+
           <TextField
             fullWidth
             label="Notes"
@@ -340,7 +347,6 @@ export const TaskDialog: React.FC<Props> = ({
             placeholder="Additional notes, comments, or requirements..."
           />
 
-          {/* Validation Alerts */}
           {totalUsedWeight > 90 && (
             <Alert severity="warning" sx={{ mt: 2 }}>
               Product weight is almost fully allocated ({totalUsedWeight}% used). Consider adjusting task weights.

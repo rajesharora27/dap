@@ -23,11 +23,12 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
 import { ExpandMore } from '@mui/icons-material';
-import { License, Outcome, Product, CustomAttribute } from '../../types/shared';
+import { License, Outcome, Product, CustomAttribute, Release } from '../../types/shared';
 import { ValidationUtils } from '../../utils/sharedHandlers';
 import { CustomAttributeDialog } from './CustomAttributeDialog';
 import { LicenseDialog } from './LicenseDialog';
 import { OutcomeDialog } from './OutcomeDialog';
+import { ReleaseDialog } from './ReleaseDialog';
 
 interface Props {
   open: boolean;
@@ -38,19 +39,22 @@ interface Props {
     customAttrs?: any;
     outcomes?: Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>;
     licenses?: Array<{ id?: string; name: string; description?: string; level: string; isActive: boolean; isNew?: boolean; delete?: boolean }>;
+    releases?: Array<{ id?: string; name: string; level: number; description?: string; isNew?: boolean; delete?: boolean }>;
   }) => Promise<void>;
   product?: Product | null;
   title: string;
+  availableReleases: Release[];
 }
 
 
 
-export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product, title }) => {
+export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product, title, availableReleases }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [customAttrs, setCustomAttrs] = useState<{ [key: string]: any }>({});
   const [outcomes, setOutcomes] = useState<Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>>([]);
   const [licenses, setLicenses] = useState<Array<{ id?: string; name: string; description?: string; level: number; isActive: boolean; isNew?: boolean; delete?: boolean }>>([]);
+  const [releases, setReleases] = useState<Array<{ id?: string; name: string; level: number; description?: string; isNew?: boolean; delete?: boolean }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -64,6 +68,9 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
   const [addOutcomeDialog, setAddOutcomeDialog] = useState(false);
   const [editOutcomeDialog, setEditOutcomeDialog] = useState(false);
   const [editingOutcome, setEditingOutcome] = useState<Outcome | null>(null);
+  const [addReleaseDialog, setAddReleaseDialog] = useState(false);
+  const [editReleaseDialog, setEditReleaseDialog] = useState(false);
+  const [editingRelease, setEditingRelease] = useState<Release | null>(null);
 
   useEffect(() => {
     if (product) {
@@ -77,12 +84,19 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         level: license.level,
         isActive: license.isActive
       })));
+      setReleases((product.releases || []).map(release => ({
+        id: release.id,
+        name: release.name,
+        level: release.level,
+        description: release.description
+      })));
       setCustomAttrs(product.customAttrs || {});
     } else {
       setName('');
       setDescription('');
       setOutcomes([]);
       setLicenses([]);
+      setReleases([]);
       setCustomAttrs({
         priority: "medium",
         owner: "",
@@ -202,6 +216,45 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
     setCustomAttrs(updatedCustomAttrs);
   };
 
+  // Release dialog handlers
+  const handleAddRelease = (releaseData: { name: string; level: number; description?: string }) => {
+    setReleases([...releases, {
+      ...releaseData,
+      isNew: true
+    }]);
+    setAddReleaseDialog(false);
+  };
+
+  const handleEditRelease = (releaseData: { name: string; level: number; description?: string }) => {
+    if (editingRelease) {
+      const updatedReleases = releases.map(release => 
+        release.id === editingRelease.id || release === editingRelease
+          ? { ...release, ...releaseData }
+          : release
+      );
+      setReleases(updatedReleases);
+    }
+    setEditReleaseDialog(false);
+    setEditingRelease(null);
+  };
+
+  const handleDeleteRelease = (index: number) => {
+    const updatedReleases = [...releases];
+    if (updatedReleases[index].id) {
+      // Mark existing release for deletion
+      updatedReleases[index] = { ...updatedReleases[index], delete: true };
+    } else {
+      // Remove new release that wasn't saved yet
+      updatedReleases.splice(index, 1);
+    }
+    setReleases(updatedReleases);
+  };
+
+  const handleEditReleaseClick = (release: any, index: number) => {
+    setEditingRelease(release);
+    setEditReleaseDialog(true);
+  };
+
   const handleSave = async () => {
     if (!name.trim()) {
       setError('Name is required');
@@ -235,7 +288,8 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         licenses: licenses.length > 0 ? licenses.map(license => ({
           ...license,
           level: license.level.toString() // Convert level to string
-        })) : undefined
+        })) : undefined,
+        releases: releases.length > 0 ? releases : undefined
       });
       onClose();
     } catch (err: any) {
@@ -529,6 +583,84 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
             </AccordionDetails>
           </Accordion>
 
+          {/* Releases Section */}
+          <Accordion sx={{ mt: 2 }}>
+            <AccordionSummary expandIcon={<ExpandMore />}>
+              <Typography>Releases ({releases.filter(r => !r.delete).length})</Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Manage releases for this product
+                </Typography>
+                <Button
+                  variant="outlined"
+                  startIcon={<AddIcon />}
+                  onClick={() => setAddReleaseDialog(true)}
+                  size="small"
+                >
+                  Add Release
+                </Button>
+              </Box>
+
+              {releases.filter(r => !r.delete).length > 0 ? (
+                <List dense>
+                  {releases.map((release, index) =>
+                    !release.delete && (
+                      <ListItemButton
+                        key={index}
+                        sx={{
+                          border: '1px solid #e0e0e0',
+                          borderRadius: 1,
+                          mb: 1,
+                          '&:hover': {
+                            backgroundColor: '#f5f5f5',
+                          },
+                        }}
+                        onClick={() => handleEditReleaseClick(release, index)}
+                      >
+                        <ListItemText
+                          primary={release.name}
+                          secondary={`Level: ${release.level}`}
+                          sx={{
+                            '& .MuiListItemText-primary': {
+                              fontWeight: release.isNew ? 'bold' : 'normal'
+                            }
+                          }}
+                        />
+                        <IconButton
+                          edge="end"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleEditReleaseClick(release, index);
+                          }}
+                          size="small"
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          edge="end"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteRelease(index);
+                          }}
+                          color="error"
+                          size="small"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </ListItemButton>
+                    )
+                  )}
+                </List>
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                  No releases defined for this product.
+                </Typography>
+              )}
+            </AccordionDetails>
+          </Accordion>
+
           {error && (
             <Typography color="error" variant="body2" sx={{ mt: 1 }}>
               {error}
@@ -604,6 +736,27 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         }}
         onSave={handleEditOutcome}
         outcome={editingOutcome}
+      />
+
+      {/* Add Release Dialog */}
+      <ReleaseDialog
+        open={addReleaseDialog}
+        onClose={() => setAddReleaseDialog(false)}
+        onSave={handleAddRelease}
+        release={null}
+        title="Add Release"
+      />
+
+      {/* Edit Release Dialog */}
+      <ReleaseDialog
+        open={editReleaseDialog}
+        onClose={() => {
+          setEditReleaseDialog(false);
+          setEditingRelease(null);
+        }}
+        onSave={handleEditRelease}
+        release={editingRelease}
+        title="Edit Release"
       />
     </Dialog>
   );

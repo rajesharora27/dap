@@ -161,6 +161,7 @@ export const ProductManagement: React.FC<Props> = ({
         onSave={handleSave}
         product={editingProduct}
         title={editingProduct ? 'Edit Product' : 'Add Product'}
+        availableReleases={[]}
       />
     </Box>
   );
