@@ -459,7 +459,7 @@ export function App() {
   const [selectedTask, setSelectedTask] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [detailProduct, setDetailProduct] = useState<any>(null);
-  const [selectedProductSubSection, setSelectedProductSubSection] = useState<'tasks' | 'main' | 'licenses' | 'releases' | 'outcomes' | 'customAttributes'>('tasks');
+  const [selectedProductSubSection, setSelectedProductSubSection] = useState<'tasks' | 'main' | 'licenses' | 'releases' | 'outcomes' | 'customAttributes'>('main');
   const [productsExpanded, setProductsExpanded] = useState(true);
 
   // Dialog states
@@ -579,7 +579,7 @@ export function App() {
   React.useEffect(() => {
     if (products.length > 0 && !selectedProduct) {
       setSelectedProduct(products[0].id);
-      setSelectedProductSubSection('tasks');
+      setSelectedProductSubSection('main');
     }
   }, [products, selectedProduct]);
 
@@ -667,7 +667,7 @@ export function App() {
       // Reset to first product when clicking Products menu
       if (products.length > 0) {
         setSelectedProduct(products[0].id);
-        setSelectedProductSubSection('tasks');
+        setSelectedProductSubSection('main');
       } else {
         setSelectedProduct('');
       }
@@ -693,7 +693,7 @@ export function App() {
 
   const handleProductChange = (productId: string) => {
     setSelectedProduct(productId);
-    setSelectedProductSubSection('tasks');
+    setSelectedProductSubSection('main');
     setSelectedTask('');
   };
 
@@ -2737,17 +2737,6 @@ export function App() {
               <List component="div" disablePadding>
                 <ListItemButton
                   sx={{ pl: 4 }}
-                  selected={selectedProductSubSection === 'tasks'}
-                  onClick={() => handleProductSubSectionChange('tasks')}
-                >
-                  <ListItemIcon>
-                    <TaskIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Tasks" />
-                </ListItemButton>
-
-                <ListItemButton
-                  sx={{ pl: 4 }}
                   selected={selectedProductSubSection === 'main'}
                   onClick={() => handleProductSubSectionChange('main')}
                 >
@@ -2755,6 +2744,17 @@ export function App() {
                     <MainIcon />
                   </ListItemIcon>
                   <ListItemText primary="Main" />
+                </ListItemButton>
+
+                <ListItemButton
+                  sx={{ pl: 4 }}
+                  selected={selectedProductSubSection === 'tasks'}
+                  onClick={() => handleProductSubSectionChange('tasks')}
+                >
+                  <ListItemIcon>
+                    <TaskIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Tasks" />
                 </ListItemButton>
 
                 <ListItemButton
@@ -2949,141 +2949,352 @@ export function App() {
 
                 {/* Consolidated Product Details */}
                 {selectedProduct && selectedProductSubSection === 'main' && (
-                  <Paper sx={{ p: 2 }}>
-                    {/* Import/Export Header */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                      <Typography variant="h5">
-                        Product Details
+                  <Paper elevation={0} sx={{ p: 0 }}>
+                    {/* Header */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, pb: 2, borderBottom: '1px solid #e0e0e0' }}>
+                      <Typography variant="h4" sx={{ fontWeight: 600, color: '#1976d2', fontSize: '2rem' }}>
+                        Product Overview
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button variant="outlined" startIcon={<FileDownload />} onClick={() => handleExportAllProductData()}>
+                      <Box sx={{ display: 'flex', gap: 2 }}>
+                        <Button 
+                          variant="outlined" 
+                          onClick={() => handleExportAllProductData()}
+                          sx={{ 
+                            textTransform: 'none',
+                            borderColor: '#666',
+                            color: '#666',
+                            fontSize: '0.875rem',
+                            '&:hover': {
+                              backgroundColor: '#f5f5f5',
+                              borderColor: '#666'
+                            }
+                          }}
+                        >
                           Export All
                         </Button>
-                        <Button variant="outlined" startIcon={<FileUpload />} onClick={() => handleImportAllProductData()}>
+                        <Button 
+                          variant="outlined" 
+                          onClick={() => handleImportAllProductData()}
+                          sx={{ 
+                            textTransform: 'none',
+                            borderColor: '#666',
+                            color: '#666',
+                            fontSize: '0.875rem',
+                            '&:hover': {
+                              backgroundColor: '#f5f5f5',
+                              borderColor: '#666'
+                            }
+                          }}
+                        >
                           Import All
+                        </Button>
+                        <Button 
+                          variant="contained" 
+                          onClick={() => setEditProductDialog(true)}
+                          sx={{ 
+                            textTransform: 'none',
+                            backgroundColor: '#1976d2',
+                            fontSize: '0.875rem',
+                            '&:hover': {
+                              backgroundColor: '#1565c0'
+                            }
+                          }}
+                        >
+                          Edit Product
                         </Button>
                       </Box>
                     </Box>
 
-                    <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                      {/* Outcomes Section */}
-                      <Box sx={{ flex: '1 1 300px', minWidth: '300px', border: '1px solid #e0e0e0', borderRadius: 1, p: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                          <Typography variant="h6" color="primary">
-                            <OutcomeIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                            Outcomes
-                          </Typography>
-                        </Box>
-                        {(() => {
-                          const currentProduct = products.find((p: any) => p.id === selectedProduct);
-                          const outcomes = currentProduct?.outcomes || [];
+                    {(() => {
+                      const currentProduct = products.find((p: any) => p.id === selectedProduct);
+                      
+                      if (!currentProduct) {
+                        return <Typography variant="body1">No product selected or product not found</Typography>;
+                      }
 
-                          return outcomes.length > 0 ? (
-                            <List dense>
-                              {outcomes.map((outcome: any) => (
-                                <ListItem key={outcome.id} sx={{ px: 0 }}>
-                                  <ListItemText
-                                    primary={
-                                      <Typography variant="body2" fontWeight="medium">
-                                        {outcome.name}
-                                      </Typography>
-                                    }
-                                    secondary={
-                                      <Typography variant="caption" color="text.secondary">
-                                        {outcome.description}
-                                      </Typography>
-                                    }
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                              No outcomes found
+                      return (
+                        <Box>
+                          {/* Basic Product Information */}
+                          <Paper elevation={1} sx={{ p: 4, mb: 4, backgroundColor: '#ffffff', border: '1px solid #e0e0e0' }}>
+                            <Typography variant="h5" sx={{ fontWeight: 600, color: '#1976d2', mb: 3, fontSize: '1.5rem' }}>
+                              Basic Information
                             </Typography>
-                          );
-                        })()}
-                      </Box>
+                            <Box sx={{ display: 'grid', gap: 2 }}>
+                              <Box>
+                                <Typography variant="subtitle2" sx={{ color: '#666', fontSize: '0.875rem', mb: 0.5 }}>
+                                  Product Name
+                                </Typography>
+                                <Typography variant="body1" sx={{ color: '#333', fontSize: '1rem' }}>
+                                  {currentProduct.name}
+                                </Typography>
+                              </Box>
+                              <Box>
+                                <Typography variant="subtitle2" sx={{ color: '#666', fontSize: '0.875rem', mb: 0.5 }}>
+                                  Description
+                                </Typography>
+                                <Typography variant="body1" sx={{ color: '#333', fontSize: '1rem' }}>
+                                  {currentProduct.description || 'No description provided'}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </Paper>
 
-                      {/* Licenses Section */}
-                      <Box sx={{ flex: '1 1 300px', minWidth: '300px', border: '1px solid #e0e0e0', borderRadius: 1, p: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                          <Typography variant="h6" color="primary">
-                            <LicenseIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                            Licenses
-                          </Typography>
+                          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 3 }}>
+                            {/* Outcomes Section - First */}
+                            <Paper elevation={1} sx={{ p: 3, border: '1px solid #e0e0e0' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2', fontSize: '1.25rem' }}>
+                                  Outcomes ({currentProduct.outcomes?.length || 0})
+                                </Typography>
+                                <Button 
+                                  size="small" 
+                                  variant="outlined"
+                                  sx={{ 
+                                    textTransform: 'none',
+                                    borderColor: '#1976d2',
+                                    color: '#1976d2',
+                                    fontSize: '0.875rem',
+                                    '&:hover': {
+                                      backgroundColor: '#f5f5f5',
+                                      borderColor: '#1976d2'
+                                    }
+                                  }}
+                                  onClick={() => handleProductSubSectionChange('outcomes')}
+                                >
+                                  View All
+                                </Button>
+                              </Box>
+                              {currentProduct.outcomes?.length > 0 ? (
+                                <List dense>
+                                  {currentProduct.outcomes.slice(0, 3).map((outcome: any) => (
+                                    <ListItem key={outcome.id} sx={{ px: 0, py: 1 }}>
+                                      <ListItemText
+                                        primary={
+                                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>
+                                            {outcome.name}
+                                          </Typography>
+                                        }
+                                        secondary={
+                                          <Typography variant="caption" color="text.secondary">
+                                            {outcome.description || 'No description'}
+                                          </Typography>
+                                        }
+                                      />
+                                    </ListItem>
+                                  ))}
+                                  {currentProduct.outcomes.length > 3 && (
+                                    <Typography variant="caption" sx={{ textAlign: 'center', display: 'block', mt: 1, color: '#666', fontSize: '0.75rem' }}>
+                                      +{currentProduct.outcomes.length - 3} more outcomes
+                                    </Typography>
+                                  )}
+                                </List>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                                  No outcomes defined. Click "View All" to add outcomes.
+                                </Typography>
+                              )}
+                            </Paper>
+
+                            {/* Licenses Section - Second */}
+                            <Paper elevation={1} sx={{ p: 3, border: '1px solid #e0e0e0' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2', fontSize: '1.25rem' }}>
+                                  Licenses ({currentProduct.licenses?.length || 0})
+                                </Typography>
+                                <Button 
+                                  size="small" 
+                                  variant="outlined"
+                                  sx={{ 
+                                    textTransform: 'none',
+                                    borderColor: '#1976d2',
+                                    color: '#1976d2',
+                                    fontSize: '0.875rem',
+                                    '&:hover': {
+                                      backgroundColor: '#f5f5f5',
+                                      borderColor: '#1976d2'
+                                    }
+                                  }}
+                                  onClick={() => handleProductSubSectionChange('licenses')}
+                                >
+                                  View All
+                                </Button>
+                              </Box>
+                              {currentProduct.licenses?.length > 0 ? (
+                                <List dense>
+                                  {currentProduct.licenses.slice(0, 3).map((license: any) => (
+                                    <ListItem key={license.id} sx={{ px: 0, py: 1 }}>
+                                      <ListItemText
+                                        primary={
+                                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>
+                                              {license.name}
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ 
+                                              backgroundColor: '#f5f5f5', 
+                                              px: 1.5, 
+                                              py: 0.5, 
+                                              borderRadius: 1,
+                                              fontSize: '0.75rem',
+                                              color: '#666'
+                                            }}>
+                                              Level {license.level}
+                                            </Typography>
+                                          </Box>
+                                        }
+                                        secondary={
+                                          <Typography variant="caption" color="text.secondary">
+                                            {license.description || 'No description'} • {license.isActive ? 'Active' : 'Inactive'}
+                                          </Typography>
+                                        }
+                                      />
+                                    </ListItem>
+                                  ))}
+                                  {currentProduct.licenses.length > 3 && (
+                                    <Typography variant="caption" sx={{ textAlign: 'center', display: 'block', mt: 1, color: '#666', fontSize: '0.75rem' }}>
+                                      +{currentProduct.licenses.length - 3} more licenses
+                                    </Typography>
+                                  )}
+                                </List>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                                  No licenses defined. Click "View All" to add licenses.
+                                </Typography>
+                              )}
+                            </Paper>
+
+                            {/* Releases Section - Third */}
+                            <Paper elevation={1} sx={{ p: 3, border: '1px solid #e0e0e0' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2', fontSize: '1.25rem' }}>
+                                  Releases ({currentProduct.releases?.length || 0})
+                                </Typography>
+                                <Button 
+                                  size="small" 
+                                  variant="outlined"
+                                  sx={{ 
+                                    textTransform: 'none',
+                                    borderColor: '#1976d2',
+                                    color: '#1976d2',
+                                    fontSize: '0.875rem',
+                                    '&:hover': {
+                                      backgroundColor: '#f5f5f5',
+                                      borderColor: '#1976d2'
+                                    }
+                                  }}
+                                  onClick={() => handleProductSubSectionChange('releases')}
+                                >
+                                  View All
+                                </Button>
+                              </Box>
+                              {currentProduct.releases?.length > 0 ? (
+                                <List dense>
+                                  {[...currentProduct.releases]
+                                    .sort((a: any, b: any) => a.level - b.level)
+                                    .slice(0, 3)
+                                    .map((release: any) => (
+                                      <ListItem key={release.id} sx={{ px: 0, py: 1 }}>
+                                        <ListItemText
+                                          primary={
+                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                              <Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>
+                                                {release.name}
+                                              </Typography>
+                                              <Typography variant="caption" sx={{ 
+                                                backgroundColor: '#f5f5f5', 
+                                                px: 1.5, 
+                                                py: 0.5, 
+                                                borderRadius: 1,
+                                                fontSize: '0.75rem',
+                                                color: '#666'
+                                              }}>
+                                                v{release.level}
+                                              </Typography>
+                                            </Box>
+                                          }
+                                          secondary={
+                                            <Typography variant="caption" color="text.secondary">
+                                              {release.description || 'No description'} • {release.isActive ? 'Active' : 'Inactive'}
+                                            </Typography>
+                                          }
+                                        />
+                                      </ListItem>
+                                    ))}
+                                  {currentProduct.releases.length > 3 && (
+                                    <Typography variant="caption" sx={{ textAlign: 'center', display: 'block', mt: 1, color: '#666', fontSize: '0.75rem' }}>
+                                      +{currentProduct.releases.length - 3} more releases
+                                    </Typography>
+                                  )}
+                                </List>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                                  No releases defined. Click "View All" to add releases.
+                                </Typography>
+                              )}
+                            </Paper>
+
+                            {/* Custom Attributes Section - Fourth */}
+                            <Paper elevation={1} sx={{ p: 3, border: '1px solid #e0e0e0' }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                                <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2', fontSize: '1.25rem' }}>
+                                  Custom Attributes ({Object.keys(currentProduct.customAttrs || {}).length})
+                                </Typography>
+                                <Button 
+                                  size="small" 
+                                  variant="outlined"
+                                  sx={{ 
+                                    textTransform: 'none',
+                                    borderColor: '#1976d2',
+                                    color: '#1976d2',
+                                    fontSize: '0.875rem',
+                                    '&:hover': {
+                                      backgroundColor: '#f5f5f5',
+                                      borderColor: '#1976d2'
+                                    }
+                                  }}
+                                  onClick={() => handleProductSubSectionChange('customAttributes')}
+                                >
+                                  View All
+                                </Button>
+                              </Box>
+                              {(() => {
+                                const customAttrs = currentProduct.customAttrs || {};
+                                const attrEntries = Object.entries(customAttrs);
+
+                                return attrEntries.length > 0 ? (
+                                  <List dense>
+                                    {attrEntries.slice(0, 3).map(([key, value]: [string, any]) => (
+                                      <ListItem key={key} sx={{ px: 0, py: 1 }}>
+                                        <ListItemText
+                                          primary={
+                                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>
+                                              {key}
+                                            </Typography>
+                                          }
+                                          secondary={
+                                            <Typography variant="caption" color="text.secondary">
+                                              {typeof value === 'object' ? JSON.stringify(value).substring(0, 50) + '...' : String(value)}
+                                            </Typography>
+                                          }
+                                        />
+                                      </ListItem>
+                                    ))}
+                                    {attrEntries.length > 3 && (
+                                      <Typography variant="caption" sx={{ textAlign: 'center', display: 'block', mt: 1, color: '#666', fontSize: '0.75rem' }}>
+                                        +{attrEntries.length - 3} more attributes
+                                      </Typography>
+                                    )}
+                                  </List>
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                                    No custom attributes defined. Click "View All" to add attributes.
+                                  </Typography>
+                                );
+                              })()}
+                            </Paper>
+                          </Box>
                         </Box>
-                        {(() => {
-                          const currentProduct = products.find((p: any) => p.id === selectedProduct);
-                          const licenses = currentProduct?.licenses || [];
-
-                          return licenses.length > 0 ? (
-                            <List dense>
-                              {licenses.map((license: any) => (
-                                <ListItem key={license.id} sx={{ px: 0 }}>
-                                  <ListItemText
-                                    primary={
-                                      <Typography variant="body2" fontWeight="medium">
-                                        {license.name}
-                                      </Typography>
-                                    }
-                                    secondary={
-                                      <Typography variant="caption" color="text.secondary">
-                                        Level {license.level} - {license.isActive ? 'Active' : 'Inactive'}
-                                      </Typography>
-                                    }
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                              No licenses found
-                            </Typography>
-                          );
-                        })()}
-                      </Box>
-
-                      {/* Custom Attributes Section */}
-                      <Box sx={{ flex: '1 1 300px', minWidth: '300px', border: '1px solid #e0e0e0', borderRadius: 1, p: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                          <Typography variant="h6" color="primary">
-                            <CustomAttributeIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-                            Other Product Attributes
-                          </Typography>
-                        </Box>
-                        {(() => {
-                          const currentProduct = products.find((p: any) => p.id === selectedProduct);
-                          const customAttrs = currentProduct?.customAttrs || {};
-                          const attrEntries = Object.entries(customAttrs);
-
-                          return attrEntries.length > 0 ? (
-                            <List dense>
-                              {attrEntries.map(([key, value]: [string, any]) => (
-                                <ListItem key={key} sx={{ px: 0 }}>
-                                  <ListItemText
-                                    primary={
-                                      <Typography variant="body2" fontWeight="medium">
-                                        {key}
-                                      </Typography>
-                                    }
-                                    secondary={
-                                      <Typography variant="caption" color="text.secondary">
-                                        {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                                      </Typography>
-                                    }
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                          ) : (
-                            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                              No additional product attributes found
-                            </Typography>
-                          );
-                        })()}
-                      </Box>
-                    </Box>
+                      );
+                    })()}
                   </Paper>
                 )}
 
