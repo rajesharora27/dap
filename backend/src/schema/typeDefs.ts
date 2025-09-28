@@ -21,6 +21,18 @@ export const typeDefs = gql`
     product: Product!
   }
 
+  type Release implements Node {
+    id: ID!
+    name: String!
+    description: String
+    level: Float!                   # Decimal level (1.0, 1.1, 2.0, etc.)
+    isActive: Boolean!              # Whether this release is currently active
+    product: Product                # Product this release belongs to
+    productId: ID                   # Product this release belongs to
+    tasks: [Task!]!                 # Tasks directly assigned to this release
+    inheritedTasks: [Task!]!        # Tasks available through inheritance from lower releases
+  }
+
   type Product implements Node {
     id: ID!
     name: String!
@@ -33,6 +45,7 @@ export const typeDefs = gql`
     customers: [Customer!]!
     licenses: [License!]!
     outcomes: [Outcome!]!
+    releases: [Release!]!
   }
 
   type Solution implements Node {
@@ -45,6 +58,7 @@ export const typeDefs = gql`
     customAttrs: JSON
     customers: [Customer!]!
     licenses: [License!]!
+    releases: [Release!]!
   }
 
   type Customer implements Node {
@@ -69,6 +83,8 @@ export const typeDefs = gql`
     solution: Solution              # Parent solution (mutually exclusive with product)
     outcomes: [Outcome!]!           # Outcomes this task contributes to
     license: License                # Single license associated with this task (hierarchical)
+    releases: [Release!]!           # Releases this task is directly assigned to
+    availableInReleases: [Release!]! # All releases this task is available in (including inheritance)
     deletedAt: String               # Soft delete timestamp
   }
 
@@ -121,11 +137,13 @@ export const typeDefs = gql`
 
   type Query {
     node(id: ID!): Node
+    product(id: ID!): Product
     products(first: Int, after: String, last: Int, before: String): ProductConnection!
     solutions(first: Int, after: String, last: Int, before: String): ProductConnection! # simplified
     tasks(first: Int, after: String, last: Int, before: String, productId: ID, solutionId: ID): TaskConnection!
     customers: [Customer!]!
     licenses: [License!]!
+    releases: [Release!]!
     taskStatuses: [TaskStatus!]!
   outcomes(productId: ID): [Outcome!]!
     auditLogs(limit: Int = 50): [AuditLog!]!
@@ -151,6 +169,13 @@ export const typeDefs = gql`
     isActive: Boolean
     productId: ID!              # Product this license belongs to
   }
+  input ReleaseInput {
+    name: String!
+    description: String
+    level: Float!               # Decimal level (1.0, 1.1, 2.0, etc.)
+    isActive: Boolean
+    productId: ID!              # Product this release belongs to
+  }
   input TaskStatusInput { code: String! label: String! }
   input OutcomeInput { name: String! description: String productId: ID! }
   input TaskInput { 
@@ -166,6 +191,7 @@ export const typeDefs = gql`
     priority: String
     outcomeIds: [ID!]
     licenseId: ID                   # Single license ID for hierarchical system
+    releaseIds: [ID!]               # Release IDs this task should be assigned to
   }
 
   input TaskUpdateInput { 
@@ -179,6 +205,7 @@ export const typeDefs = gql`
     priority: String
     outcomeIds: [ID!]
     licenseId: ID                   # Single license ID for hierarchical system
+    releaseIds: [ID!]               # Release IDs this task should be assigned to
   }
 
   type Mutation {
@@ -197,6 +224,9 @@ export const typeDefs = gql`
   createLicense(input: LicenseInput!): License!
   updateLicense(id: ID!, input: LicenseInput!): License!
   deleteLicense(id: ID!): Boolean!
+  createRelease(input: ReleaseInput!): Release!
+  updateRelease(id: ID!, input: ReleaseInput!): Release!
+  deleteRelease(id: ID!): Boolean!
   createTaskStatus(input: TaskStatusInput!): TaskStatus!
   updateTaskStatus(id: ID!, input: TaskStatusInput!): TaskStatus!
   deleteTaskStatus(id: ID!): Boolean!

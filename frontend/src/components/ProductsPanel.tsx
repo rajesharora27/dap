@@ -485,6 +485,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
       onSave={handleSave}
       product={editingProduct}
       title={editingProduct ? 'Edit Product' : 'Create Product'}
+      availableReleases={[]}
     />
   </Box>;
 };

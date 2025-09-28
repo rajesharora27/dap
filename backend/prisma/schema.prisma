@@ -57,6 +57,7 @@ model Product {
   solutions   SolutionProduct[]
   tasks       Task[]
   outcomes    Outcome[]
+  releases    Release[]
 }
 
 model Solution {
@@ -71,6 +72,7 @@ model Solution {
   licenses    License[]
   products    SolutionProduct[]
   tasks       Task[]
+  releases    Release[]
 }
 
 model SolutionProduct {
@@ -138,6 +140,7 @@ model Task {
   solution            Solution?        @relation(fields: [solutionId], references: [id])
   telemetry           Telemetry[]
   outcomes            TaskOutcome[]
+  releases            TaskRelease[]
 
   @@unique([productId, sequenceNumber], name: "unique_product_sequence")
   @@unique([solutionId, sequenceNumber], name: "unique_solution_sequence")
@@ -236,4 +239,33 @@ model TaskOutcome {
   outcome   Outcome @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, outcomeId])
+}
+
+model Release {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  level       Float         @default(1.0)    // Decimal level (1.0, 1.1, 2.0, etc.)
+  isActive    Boolean       @default(true)   // Whether this release is currently active
+  productId   String?
+  solutionId  String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
+  product     Product?      @relation(fields: [productId], references: [id])
+  solution    Solution?     @relation(fields: [solutionId], references: [id])
+  tasks       TaskRelease[]
+
+  @@unique([productId, level], name: "unique_product_release_level")
+  @@unique([solutionId, level], name: "unique_solution_release_level")
+}
+
+model TaskRelease {
+  id        String  @id @default(cuid())
+  taskId    String
+  releaseId String
+  task      Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  release   Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, releaseId])
 }

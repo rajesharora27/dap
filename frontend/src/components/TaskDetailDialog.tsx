@@ -14,9 +14,8 @@ import {
   Box,
   Typography,
   Chip,
-  Checkbox,
-  FormControlLabel,
-  FormGroup
+  OutlinedInput,
+  Slider
 } from '@mui/material';
 import { gql, useQuery, useMutation } from '@apollo/client';
 
@@ -30,7 +29,7 @@ const OUTCOMES_FOR_PRODUCT = gql`
   }
 `;
 
-const UPDATE_TASK_WITH_OUTCOMES = gql`
+const UPDATE_TASK = gql`
   mutation UpdateTask($id: ID!, $input: TaskUpdateInput!) {
     updateTask(id: $id, input: $input) {
       id
@@ -42,9 +41,19 @@ const UPDATE_TASK_WITH_OUTCOMES = gql`
       licenseLevel
       priority
       notes
+      license {
+        id
+        name
+        level
+      }
       outcomes {
         id
         name
+      }
+      releases {
+        id
+        name
+        level
       }
     }
   }
@@ -56,20 +65,43 @@ interface License {
   level?: number;
 }
 
+interface Release {
+  id: string;
+  name: string;
+  level: number;
+}
+
 interface TaskDetailDialogProps {
   open: boolean;
   task: any;
   productId: string;
   availableLicenses?: License[];
+  availableReleases?: Release[];
   onClose: () => void;
   onSave: () => void;
 }
 
-export function TaskDetailDialog({ open, task, productId, availableLicenses = [], onClose, onSave }: TaskDetailDialogProps) {
+export function TaskDetailDialog({ open, task, productId, availableLicenses = [], availableReleases = [], onClose, onSave }: TaskDetailDialogProps) {
   const [editingTask, setEditingTask] = useState<any>(null);
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([]);
+  const [selectedReleases, setSelectedReleases] = useState<string[]>([]);
 
-  const [updateTask] = useMutation(UPDATE_TASK_WITH_OUTCOMES);
+  // Add individual state for form fields to match TaskDialog
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [estMinutes, setEstMinutes] = useState(60);
+  const [weight, setWeight] = useState(1);
+  const [notes, setNotes] = useState('');
+  const [priority, setPriority] = useState('Medium');
+  const [selectedLicense, setSelectedLicense] = useState<string>('');
+
+  const priorities = ['Low', 'Medium', 'High', 'Critical'];
+  
+  // Weight calculation (simplified since we don't have existingTasks in this context)
+  const remainingWeight = Math.max(0, 100 - (task?.weight || 0));
+  const maxAllowedWeight = Math.max(1, remainingWeight + (task?.weight || 0));
+
+  const [updateTask] = useMutation(UPDATE_TASK);
 
   const { data: outcomesData } = useQuery(OUTCOMES_FOR_PRODUCT, {
     variables: { productId },
@@ -101,35 +133,54 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
           const matchingLicense = availableLicenses.find(license => license.level === requiredLevel);
           if (matchingLicense) {
             taskData.licenseId = matchingLicense.id;
-            console.log(`Mapped licenseLevel "${task.licenseLevel}" to licenseId "${matchingLicense.id}" (${matchingLicense.name})`);
           }
         }
       }
 
       setEditingTask(taskData);
+      
+      // Set individual form fields
+      setName(task.name || '');
+      setDescription(task.description || '');
+      setEstMinutes(task.estMinutes || 60);
+      setWeight(task.weight || 1);
+      setNotes(task.notes || '');
+      setPriority(task.priority || 'Medium');
+      setSelectedLicense(taskData.licenseId || '');
+      
       setSelectedOutcomes(task.outcomes?.map((outcome: any) => outcome.id) || []);
+      setSelectedReleases(task.releases?.map((r: any) => r.id) || task.availableInReleases?.map((r: any) => r.id) || []);
     } else {
       setEditingTask(null);
+      setName('');
+      setDescription('');
+      setEstMinutes(60);
+      setWeight(1);
+      setNotes('');
+      setPriority('Medium');
+      setSelectedLicense('');
       setSelectedOutcomes([]);
+      setSelectedReleases([]);
     }
-  }, [task, availableLicenses]);
+  }, [task, availableLicenses, availableReleases]);
 
   const handleSave = async () => {
-    if (!editingTask?.name?.trim()) {
+    if (!name?.trim()) {
       alert('Task name is required');
       return;
     }
 
     // Ensure all required fields have valid values
     const taskInput = {
-      name: editingTask.name.trim(),
-      description: editingTask.description || '',
-      estMinutes: Math.max(1, parseInt(editingTask.estMinutes) || 1),
-      weight: Math.max(0, parseFloat(editingTask.weight) || 0),
-      licenseId: editingTask.licenseId || undefined,
-      priority: editingTask.priority || undefined,
-      notes: editingTask.notes || '',
-      outcomeIds: selectedOutcomes
+      name: name.trim(),
+      description: description || '',
+      estMinutes: Math.max(1, parseInt(estMinutes.toString()) || 1),
+      weight: Math.max(0, parseFloat(weight.toString()) || 0),
+      licenseId: selectedLicense || undefined,
+      priority: priority || undefined,
+      notes: notes || '',
+      outcomeIds: selectedOutcomes,
+      releaseIds: selectedReleases
     };
 
     console.log('Attempting to update task with input:', taskInput);
@@ -155,157 +206,186 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
     }
   };
 
-  const handleOutcomeToggle = (outcomeId: string) => {
-    setSelectedOutcomes(prev =>
-      prev.includes(outcomeId)
-        ? prev.filter(id => id !== outcomeId)
-        : [...prev, outcomeId]
-    );
-  };
-
   if (!editingTask) return null;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>Task Details - {editingTask.name}</DialogTitle>
+      <DialogTitle>Task Details</DialogTitle>
       <DialogContent>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-          <Box sx={{ flex: '1 1 300px' }}>
-            <TextField
-              label="Task Name"
-              value={editingTask.name || ''}
-              onChange={(e) => setEditingTask({ ...editingTask, name: e.target.value })}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label="Description"
-              value={editingTask.description || ''}
-              onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })}
-              fullWidth
-              margin="normal"
-              multiline
-              rows={3}
-            />
-            <TextField
-              label="Notes"
-              value={editingTask.notes || ''}
-              onChange={(e) => setEditingTask({ ...editingTask, notes: e.target.value })}
-              fullWidth
-              margin="normal"
-              multiline
-              rows={2}
-            />
-          </Box>
+        <Box sx={{ pt: 1 }}>
+          <TextField
+            fullWidth
+            label="Task Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            margin="normal"
+            required
+            autoFocus
+            placeholder="e.g., Implement user authentication"
+          />
 
-          <Box sx={{ flex: '1 1 300px' }}>
-            <TextField
-              label="Estimated Minutes"
-              type="number"
-              value={editingTask.estMinutes || 0}
-              onChange={(e) => setEditingTask({ ...editingTask, estMinutes: parseInt(e.target.value) })}
-              fullWidth
-              margin="normal"
-            />
-            <TextField
-              label="Weight (%)"
-              type="number"
-              value={editingTask.weight || 0}
-              onChange={(e) => setEditingTask({ ...editingTask, weight: parseFloat(e.target.value) })}
-              fullWidth
-              margin="normal"
-            />
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Required License</InputLabel>
-              <Select
-                value={editingTask.licenseId || ''}
-                onChange={(e) => setEditingTask({ ...editingTask, licenseId: e.target.value })}
-                label="Required License"
-              >
-                <MenuItem value="">
-                  <em>No license required</em>
-                </MenuItem>
-                {availableLicenses.map((license) => (
-                  <MenuItem key={license.id} value={license.id}>
-                    {license.name} (Level {license.level})
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          <TextField
+            fullWidth
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            margin="normal"
+            multiline
+            rows={3}
+            placeholder="Detailed description of what needs to be accomplished..."
+          />
 
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Priority</InputLabel>
-              <Select
-                value={editingTask.priority || ''}
-                onChange={(e) => setEditingTask({ ...editingTask, priority: e.target.value })}
-                label="Priority"
-              >
-                <MenuItem value="">None</MenuItem>
-                <MenuItem value="Low">Low</MenuItem>
-                <MenuItem value="Medium">Medium</MenuItem>
-                <MenuItem value="High">High</MenuItem>
-                <MenuItem value="Critical">Critical</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-
-          <Box sx={{ width: '100%' }}>
-            <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
-              Associated Outcomes
-            </Typography>
-
-            {outcomes.length > 0 ? (
-              <FormGroup>
-                {outcomes.map((outcome: any) => (
-                  <FormControlLabel
-                    key={outcome.id}
-                    control={
-                      <Checkbox
-                        checked={selectedOutcomes.includes(outcome.id)}
-                        onChange={() => handleOutcomeToggle(outcome.id)}
-                      />
-                    }
-                    label={
-                      <Box>
-                        <Typography variant="body1">{outcome.name}</Typography>
-                        {outcome.description && (
-                          <Typography variant="body2" color="text.secondary">
-                            {outcome.description}
-                          </Typography>
-                        )}
-                      </Box>
-                    }
-                  />
-                ))}
-              </FormGroup>
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                No outcomes available for this product. Create outcomes in the Product Details page.
-              </Typography>
-            )}
-
-            {selectedOutcomes.length > 0 && (
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" gutterBottom>
-                  Selected Outcomes:
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>
+            <Box sx={{ flex: '1 1 200px' }}>
+              <TextField
+                fullWidth
+                label="Estimated Time (minutes)"
+                type="number"
+                value={estMinutes}
+                onChange={(e) => setEstMinutes(parseInt(e.target.value) || 0)}
+                margin="normal"
+              />
+            </Box>
+            <Box sx={{ flex: '1 1 200px' }}>
+              <Box sx={{ mt: 2, mb: 1 }}>
+                <Typography gutterBottom>
+                  Weight: {weight}% (Max: {maxAllowedWeight}%)
                 </Typography>
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                  {selectedOutcomes.map(outcomeId => {
-                    const outcome = outcomes.find((o: any) => o.id === outcomeId);
-                    return outcome ? (
-                      <Chip
-                        key={outcome.id}
-                        label={outcome.name}
-                        size="small"
-                        color="primary"
-                        variant="outlined"
-                      />
-                    ) : null;
+                <Slider
+                  value={weight}
+                  onChange={(_, value) => setWeight(value as number)}
+                  min={1}
+                  max={maxAllowedWeight}
+                  marks
+                  valueLabelDisplay="auto"
+                  sx={{ mt: 1 }}
+                />
+              </Box>
+            </Box>
+            <Box sx={{ flex: '1 1 200px' }}>
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Priority</InputLabel>
+                <Select
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value)}
+                  label="Priority"
+                >
+                  {priorities.map((pri) => (
+                    <MenuItem key={pri} value={pri}>
+                      {pri}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          </Box>
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Required License</InputLabel>
+            <Select
+              value={selectedLicense}
+              onChange={(e) => setSelectedLicense(e.target.value)}
+              label="Required License"
+            >
+              <MenuItem value="">
+                <em>No license required</em>
+              </MenuItem>
+              {availableLicenses.map((license) => (
+                <MenuItem key={license.id} value={license.id}>
+                  {license.name} (Level {license.level})
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {outcomes.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Expected Outcomes</InputLabel>
+                <Select
+                  multiple
+                  value={selectedOutcomes}
+                  onChange={(e) => setSelectedOutcomes(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                  input={<OutlinedInput label="Expected Outcomes" />}
+                  renderValue={(selected) => (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => {
+                        const outcome = outcomes.find((o: any) => o.id === value);
+                        return (
+                          <Chip key={value} label={outcome?.name || value} size="small" />
+                        );
+                      })}
+                    </Box>
+                  )}
+                >
+                  {outcomes.map((outcome: any) => (
+                    <MenuItem key={outcome.id} value={outcome.id}>
+                      {outcome.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          )}
+
+          {/* Releases Section */}
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Releases</InputLabel>
+            <Select
+              multiple
+              value={selectedReleases}
+              onChange={(e) => setSelectedReleases(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+              input={<OutlinedInput label="Releases" />}
+              renderValue={(selected) => (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selected.map((value) => {
+                    const release = availableReleases.find(r => r.id === value);
+                    return (
+                      <Chip key={value} label={release ? `${release.name} (v${release.level})` : value} size="small" />
+                    );
                   })}
                 </Box>
-              </Box>
-            )}
-          </Box>
+              )}
+              disabled={availableReleases?.length === 0}
+            >
+              {availableReleases?.length > 0 ? (
+                [...availableReleases]
+                  .sort((a, b) => a.level - b.level)
+                  .map((release) => (
+                    <MenuItem key={release.id} value={release.id}>
+                      {release.name} (v{release.level})
+                    </MenuItem>
+                  ))
+              ) : (
+                <MenuItem disabled>No releases available for this product</MenuItem>
+              )}
+            </Select>
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+              {availableReleases?.length > 0 
+                ? "Tasks are automatically available in higher release levels."
+                : "Create releases for this product to assign tasks to specific versions."
+              }
+            </Typography>
+          </FormControl>
+
+          <TextField
+            fullWidth
+            label="Notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            margin="normal"
+            multiline
+            rows={2}
+            placeholder="Additional notes, comments, or requirements..."
+          />
+
+          {weight > 90 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography color="warning.main" variant="body2">
+                ⚠️ High task weight ({weight}%). Consider breaking this into smaller tasks.
+              </Typography>
+            </Box>
+          )}
         </Box>
       </DialogContent>
       <DialogActions>

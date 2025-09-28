@@ -26,6 +26,18 @@ exports.typeDefs = (0, graphql_tag_1.default) `
     product: Product!
   }
 
+  type Release implements Node {
+    id: ID!
+    name: String!
+    description: String
+    level: Float!                   # Decimal level (1.0, 1.1, 2.0, etc.)
+    isActive: Boolean!              # Whether this release is currently active
+    product: Product                # Product this release belongs to
+    productId: ID                   # Product this release belongs to
+    tasks: [Task!]!                 # Tasks directly assigned to this release
+    inheritedTasks: [Task!]!        # Tasks available through inheritance from lower releases
+  }
+
   type Product implements Node {
     id: ID!
     name: String!
@@ -38,6 +50,7 @@ exports.typeDefs = (0, graphql_tag_1.default) `
     customers: [Customer!]!
     licenses: [License!]!
     outcomes: [Outcome!]!
+    releases: [Release!]!
   }
 
   type Solution implements Node {
@@ -50,6 +63,7 @@ exports.typeDefs = (0, graphql_tag_1.default) `
     customAttrs: JSON
     customers: [Customer!]!
     licenses: [License!]!
+    releases: [Release!]!
   }
 
   type Customer implements Node {
@@ -74,6 +88,8 @@ exports.typeDefs = (0, graphql_tag_1.default) `
     solution: Solution              # Parent solution (mutually exclusive with product)
     outcomes: [Outcome!]!           # Outcomes this task contributes to
     license: License                # Single license associated with this task (hierarchical)
+    releases: [Release!]!           # Releases this task is directly assigned to
+    availableInReleases: [Release!]! # All releases this task is available in (including inheritance)
     deletedAt: String               # Soft delete timestamp
   }
 
@@ -131,6 +147,7 @@ exports.typeDefs = (0, graphql_tag_1.default) `
     tasks(first: Int, after: String, last: Int, before: String, productId: ID, solutionId: ID): TaskConnection!
     customers: [Customer!]!
     licenses: [License!]!
+    releases: [Release!]!
     taskStatuses: [TaskStatus!]!
   outcomes(productId: ID): [Outcome!]!
     auditLogs(limit: Int = 50): [AuditLog!]!
@@ -156,6 +173,13 @@ exports.typeDefs = (0, graphql_tag_1.default) `
     isActive: Boolean
     productId: ID!              # Product this license belongs to
   }
+  input ReleaseInput {
+    name: String!
+    description: String
+    level: Float!               # Decimal level (1.0, 1.1, 2.0, etc.)
+    isActive: Boolean
+    productId: ID!              # Product this release belongs to
+  }
   input TaskStatusInput { code: String! label: String! }
   input OutcomeInput { name: String! description: String productId: ID! }
   input TaskInput { 
@@ -171,6 +195,7 @@ exports.typeDefs = (0, graphql_tag_1.default) `
     priority: String
     outcomeIds: [ID!]
     licenseId: ID                   # Single license ID for hierarchical system
+    releaseIds: [ID!]               # Release IDs this task should be assigned to
   }
 
   input TaskUpdateInput { 
@@ -184,6 +209,7 @@ exports.typeDefs = (0, graphql_tag_1.default) `
     priority: String
     outcomeIds: [ID!]
     licenseId: ID                   # Single license ID for hierarchical system
+    releaseIds: [ID!]               # Release IDs this task should be assigned to
   }
 
   type Mutation {
@@ -202,6 +228,9 @@ exports.typeDefs = (0, graphql_tag_1.default) `
   createLicense(input: LicenseInput!): License!
   updateLicense(id: ID!, input: LicenseInput!): License!
   deleteLicense(id: ID!): Boolean!
+  createRelease(input: ReleaseInput!): Release!
+  updateRelease(id: ID!, input: ReleaseInput!): Release!
+  deleteRelease(id: ID!): Boolean!
   createTaskStatus(input: TaskStatusInput!): TaskStatus!
   updateTaskStatus(id: ID!, input: TaskStatusInput!): TaskStatus!
   deleteTaskStatus(id: ID!): Boolean!

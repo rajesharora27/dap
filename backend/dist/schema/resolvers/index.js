@@ -110,6 +110,16 @@ exports.resolvers = {
                 return (0, fallbackStore_1.listLicenses)().filter((l) => l.productId === parent.id);
             }
             return context_1.prisma.license.findMany({ where: { productId: parent.id, deletedAt: null } });
+        },
+        releases: async (parent) => {
+            if (context_1.fallbackActive) {
+                // Fallback logic for releases would go here if needed
+                return [];
+            }
+            return context_1.prisma.release.findMany({
+                where: { productId: parent.id, deletedAt: null },
+                orderBy: { level: 'asc' }
+            });
         }
     },
     Solution: {
@@ -140,6 +150,16 @@ exports.resolvers = {
             const totalWeight = tasks.reduce((a, t) => a + t.weight, 0) || 1;
             const completed = tasks.filter((t) => !!t.completedAt).reduce((a, t) => a + t.weight, 0);
             return Math.round((completed / totalWeight) * 100);
+        },
+        releases: async (parent) => {
+            if (context_1.fallbackActive) {
+                // Fallback logic for releases would go here if needed
+                return [];
+            }
+            return context_1.prisma.release.findMany({
+                where: { solutionId: parent.id, deletedAt: null },
+                orderBy: { level: 'asc' }
+            });
         }
     },
     Customer: {
@@ -191,6 +211,48 @@ exports.resolvers = {
                 'SIGNATURE': 'Signature'
             };
             return prismaToGraphQLMap[parent.licenseLevel] || 'Essential';
+        },
+        releases: async (parent) => {
+            if (context_1.fallbackActive) {
+                return [];
+            }
+            const taskReleases = await context_1.prisma.taskRelease.findMany({
+                where: { taskId: parent.id },
+                include: { release: true }
+            });
+            return taskReleases.map((tr) => tr.release);
+        },
+        availableInReleases: async (parent) => {
+            if (context_1.fallbackActive) {
+                return [];
+            }
+            // Get directly assigned releases
+            const taskReleases = await context_1.prisma.taskRelease.findMany({
+                where: { taskId: parent.id },
+                include: { release: true }
+            });
+            const directReleases = taskReleases.map((tr) => tr.release);
+            // Find all releases for the product/solution that have higher levels
+            const productId = parent.productId;
+            const solutionId = parent.solutionId;
+            let allReleases = [];
+            if (productId) {
+                allReleases = await context_1.prisma.release.findMany({
+                    where: { productId, deletedAt: null },
+                    orderBy: { level: 'asc' }
+                });
+            }
+            else if (solutionId) {
+                allReleases = await context_1.prisma.release.findMany({
+                    where: { solutionId, deletedAt: null },
+                    orderBy: { level: 'asc' }
+                });
+            }
+            // Get minimum release level this task is assigned to
+            const minDirectLevel = Math.min(...directReleases.map((r) => r.level));
+            // Include all releases at or above the minimum level
+            const availableReleases = allReleases.filter((r) => r.level >= minDirectLevel);
+            return availableReleases;
         }
     },
     Outcome: {
@@ -209,6 +271,75 @@ exports.resolvers = {
                 return products.find((p) => p.id === parent.productId);
             }
             return parent.productId ? context_1.prisma.product.findUnique({ where: { id: parent.productId } }) : null;
+        }
+    },
+    Release: {
+        product: (parent) => {
+            if (context_1.fallbackActive) {
+                const { products } = require('../../lib/fallbackStore');
+                return products.find((p) => p.id === parent.productId);
+            }
+            return parent.productId ? context_1.prisma.product.findUnique({ where: { id: parent.productId } }) : null;
+        },
+        tasks: async (parent) => {
+            if (context_1.fallbackActive) {
+                return [];
+            }
+            const taskReleases = await context_1.prisma.taskRelease.findMany({
+                where: { releaseId: parent.id },
+                include: { task: true }
+            });
+            return taskReleases.map((tr) => tr.task);
+        },
+        inheritedTasks: async (parent) => {
+            if (context_1.fallbackActive) {
+                return [];
+            }
+            // Get all tasks that should be available in this release through inheritance
+            // This includes tasks directly assigned to this release AND tasks from lower releases
+            const productId = parent.productId;
+            const solutionId = parent.solutionId;
+            let lowerReleases = [];
+            if (productId) {
+                lowerReleases = await context_1.prisma.release.findMany({
+                    where: {
+                        productId,
+                        level: { lte: parent.level },
+                        deletedAt: null
+                    },
+                    include: {
+                        tasks: {
+                            include: { task: true }
+                        }
+                    }
+                });
+            }
+            else if (solutionId) {
+                lowerReleases = await context_1.prisma.release.findMany({
+                    where: {
+                        solutionId,
+                        level: { lte: parent.level },
+                        deletedAt: null
+                    },
+                    include: {
+                        tasks: {
+                            include: { task: true }
+                        }
+                    }
+                });
+            }
+            // Collect all tasks from releases at or below this level
+            const taskSet = new Set();
+            const tasks = [];
+            lowerReleases.forEach((release) => {
+                release.tasks.forEach((tr) => {
+                    if (!taskSet.has(tr.task.id)) {
+                        taskSet.add(tr.task.id);
+                        tasks.push(tr.task);
+                    }
+                });
+            });
+            return tasks;
         }
     },
     Query: {
@@ -237,6 +368,14 @@ exports.resolvers = {
             return (0, fallbackStore_1.listCustomers)(); return context_1.prisma.customer.findMany({ where: { deletedAt: null } }).catch(() => []); },
         licenses: async () => { if (context_1.fallbackActive)
             return (0, fallbackStore_1.listLicenses)(); return context_1.prisma.license.findMany({ where: { deletedAt: null } }); },
+        releases: async () => {
+            if (context_1.fallbackActive)
+                return [];
+            return context_1.prisma.release.findMany({
+                where: { deletedAt: null },
+                orderBy: [{ productId: 'asc' }, { level: 'asc' }]
+            });
+        },
         outcomes: async (_, { productId }) => {
             if (context_1.fallbackActive)
                 return productId ? (0, fallbackStore_1.listOutcomesForProduct)(productId) : (0, fallbackStore_1.listOutcomes)();
@@ -490,6 +629,71 @@ exports.resolvers = {
             await context_1.prisma.license.update({ where: { id }, data: { deletedAt: new Date() } });
         }
         catch { } await (0, audit_1.logAudit)('DELETE_LICENSE', 'License', id, {}, ctx.user?.id); return true; },
+        createRelease: async (_, { input }, ctx) => {
+            (0, auth_1.ensureRole)(ctx, 'ADMIN');
+            if (context_1.fallbackActive) {
+                // TODO: Add fallback support for releases if needed
+                throw new Error('Release management not supported in fallback mode');
+            }
+            try {
+                const r = await context_1.prisma.release.create({
+                    data: {
+                        name: input.name,
+                        description: input.description,
+                        level: input.level,
+                        isActive: input.isActive,
+                        productId: input.productId
+                    }
+                });
+                await (0, audit_1.logAudit)('CREATE_RELEASE', 'Release', r.id, { input }, ctx.user?.id);
+                return r;
+            }
+            catch (error) {
+                if (error.code === 'P2002') {
+                    throw new Error('A release with this level already exists for this product');
+                }
+                throw error;
+            }
+        },
+        updateRelease: async (_, { id, input }, ctx) => {
+            (0, auth_1.ensureRole)(ctx, 'ADMIN');
+            if (context_1.fallbackActive) {
+                throw new Error('Release management not supported in fallback mode');
+            }
+            const before = await context_1.prisma.release.findUnique({ where: { id } });
+            try {
+                const r = await context_1.prisma.release.update({
+                    where: { id },
+                    data: {
+                        name: input.name,
+                        description: input.description,
+                        level: input.level,
+                        isActive: input.isActive,
+                        productId: input.productId
+                    }
+                });
+                await (0, audit_1.logAudit)('UPDATE_RELEASE', 'Release', id, { before, after: r }, ctx.user?.id);
+                return r;
+            }
+            catch (error) {
+                if (error.code === 'P2002') {
+                    throw new Error('A release with this level already exists for this product');
+                }
+                throw error;
+            }
+        },
+        deleteRelease: async (_, { id }, ctx) => {
+            (0, auth_1.ensureRole)(ctx, 'ADMIN');
+            if (context_1.fallbackActive) {
+                throw new Error('Release management not supported in fallback mode');
+            }
+            try {
+                await context_1.prisma.release.update({ where: { id }, data: { deletedAt: new Date() } });
+            }
+            catch { }
+            await (0, audit_1.logAudit)('DELETE_RELEASE', 'Release', id, {}, ctx.user?.id);
+            return true;
+        },
         createOutcome: async (_, { input }, ctx) => {
             (0, auth_1.requireUser)(ctx);
             if (context_1.fallbackActive) {
@@ -817,6 +1021,28 @@ exports.resolvers = {
                     }))
                 });
             }
+            // Handle release associations if provided
+            const { releaseIds } = input;
+            if (releaseIds && releaseIds.length > 0) {
+                // Validate that all releases belong to the task's product/solution
+                const validReleases = await context_1.prisma.release.findMany({
+                    where: {
+                        id: { in: releaseIds },
+                        deletedAt: null,
+                        isActive: true,
+                        ...(input.productId ? { productId: input.productId } : { solutionId: input.solutionId })
+                    }
+                });
+                if (validReleases.length !== releaseIds.length) {
+                    throw new Error(`Some releases are invalid, inactive, or do not belong to this ${input.productId ? 'product' : 'solution'}`);
+                }
+                await context_1.prisma.taskRelease.createMany({
+                    data: releaseIds.map((releaseId) => ({
+                        taskId: task.id,
+                        releaseId: releaseId
+                    }))
+                });
+            }
             await (0, audit_1.logAudit)('CREATE_TASK', 'Task', task.id, { input }, ctx.user?.id);
             return task;
         },
@@ -957,6 +1183,35 @@ exports.resolvers = {
                         data: outcomeIds.map((outcomeId) => ({
                             taskId: id,
                             outcomeId: outcomeId
+                        }))
+                    });
+                }
+            }
+            // Handle release associations if provided
+            const { releaseIds } = input;
+            if (releaseIds !== undefined) {
+                // First, remove all existing associations
+                await context_1.prisma.taskRelease.deleteMany({
+                    where: { taskId: id }
+                });
+                // Then, create new associations if provided
+                if (releaseIds.length > 0) {
+                    // Validate that all releases belong to the task's product/solution
+                    const validReleases = await context_1.prisma.release.findMany({
+                        where: {
+                            id: { in: releaseIds },
+                            deletedAt: null,
+                            isActive: true,
+                            ...(before.productId ? { productId: before.productId } : { solutionId: before.solutionId })
+                        }
+                    });
+                    if (validReleases.length !== releaseIds.length) {
+                        throw new Error(`Some releases are invalid, inactive, or do not belong to this ${before.productId ? 'product' : 'solution'}`);
+                    }
+                    await context_1.prisma.taskRelease.createMany({
+                        data: releaseIds.map((releaseId) => ({
+                            taskId: id,
+                            releaseId: releaseId
                         }))
                     });
                 }
