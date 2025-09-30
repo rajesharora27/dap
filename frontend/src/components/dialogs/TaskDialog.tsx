@@ -14,7 +14,6 @@ import {
   Select,
   MenuItem,
   Alert,
-  Slider,
   Chip,
   OutlinedInput
 } from '@mui/material';
@@ -32,6 +31,8 @@ interface Task {
   licenseLevel?: string;
   requiredLicenseLevel?: number;
   licenseId?: string;
+  howToDoc?: string;
+  howToVideo?: string;
   outcomes?: Array<{ id: string; name: string }>;
   releases?: Array<{ id: string; name: string; level: number }>;
   releaseIds?: string[];
@@ -93,6 +94,8 @@ export const TaskDialog: React.FC<Props> = ({
   const [weight, setWeight] = useState(1);
   const [notes, setNotes] = useState('');
   const [priority, setPriority] = useState('Medium');
+  const [howToDoc, setHowToDoc] = useState('');
+  const [howToVideo, setHowToVideo] = useState('');
   const [selectedLicense, setSelectedLicense] = useState<string>('');
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([]);
   const [selectedReleases, setSelectedReleases] = useState<string[]>([]);
@@ -113,6 +116,8 @@ export const TaskDialog: React.FC<Props> = ({
       setWeight(task.weight || 1);
       setNotes(task.notes || '');
       setPriority(task.priority || 'Medium');
+      setHowToDoc(task.howToDoc || '');
+      setHowToVideo(task.howToVideo || '');
       setSelectedLicense(task.licenseId || '');
       setSelectedOutcomes(task.outcomes?.map(o => o.id) || []);
       setSelectedReleases(task.releases?.map(r => r.id) || task.releaseIds || []);
@@ -123,6 +128,8 @@ export const TaskDialog: React.FC<Props> = ({
       setWeight(Math.min(maxAllowedWeight, Math.max(1, remainingWeight)));
       setNotes('');
       setPriority('Medium');
+      setHowToDoc('');
+      setHowToVideo('');
       setSelectedLicense('');
       setSelectedOutcomes([]);
       setSelectedReleases([]);
@@ -160,6 +167,8 @@ export const TaskDialog: React.FC<Props> = ({
         weight: weight,
         notes: notes.trim() || undefined,
         priority: priority,
+        howToDoc: howToDoc.trim() || undefined,
+        howToVideo: howToVideo.trim() || undefined,
         licenseId: selectedLicense || undefined,
         outcomeIds: selectedOutcomes.length > 0 ? selectedOutcomes : undefined,
         releaseIds: selectedReleases.length > 0 ? selectedReleases : undefined
@@ -173,7 +182,29 @@ export const TaskDialog: React.FC<Props> = ({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="md" 
+      fullWidth
+      keepMounted
+      disableEnforceFocus
+      container={document.getElementById('root')}
+      BackdropProps={{
+        onClick: onClose
+      }}
+      slotProps={{
+        backdrop: {
+          invisible: false
+        }
+      }}
+      sx={{
+        '& .MuiDialog-container': {
+          alignItems: 'flex-start',
+          mt: 4
+        }
+      }}
+    >
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
@@ -184,7 +215,6 @@ export const TaskDialog: React.FC<Props> = ({
             onChange={(e) => setName(e.target.value)}
             margin="normal"
             required
-            autoFocus
             placeholder="e.g., Implement user authentication"
           />
 
@@ -211,20 +241,22 @@ export const TaskDialog: React.FC<Props> = ({
               />
             </Box>
             <Box sx={{ flex: '1 1 200px' }}>
-              <Box sx={{ mt: 2, mb: 1 }}>
-                <Typography gutterBottom>
-                  Weight: {weight}% (Remaining: {remainingWeight + (task?.weight || 0)}%)
-                </Typography>
-                <Slider
-                  value={weight}
-                  onChange={(_, value) => setWeight(value as number)}
-                  min={1}
-                  max={maxAllowedWeight}
-                  marks
-                  valueLabelDisplay="auto"
-                  sx={{ mt: 1 }}
-                />
-              </Box>
+              <TextField
+                fullWidth
+                label="Weight (%)"
+                type="number"
+                value={weight}
+                onChange={(e) => {
+                  const value = Math.min(maxAllowedWeight, Math.max(1, parseInt(e.target.value) || 1));
+                  setWeight(value);
+                }}
+                margin="normal"
+                inputProps={{ 
+                  min: 1, 
+                  max: maxAllowedWeight
+                }}
+                helperText={`Remaining weight: ${remainingWeight + (task?.weight || 0)}% • Max allowed: ${maxAllowedWeight}%`}
+              />
             </Box>
             <Box sx={{ flex: '1 1 200px' }}>
               <FormControl fullWidth margin="normal">
@@ -347,6 +379,26 @@ export const TaskDialog: React.FC<Props> = ({
             placeholder="Additional notes, comments, or requirements..."
           />
 
+          <TextField
+            fullWidth
+            label="How To Documentation"
+            value={howToDoc}
+            onChange={(e) => setHowToDoc(e.target.value)}
+            margin="normal"
+            multiline
+            rows={3}
+            placeholder="Documentation on how to complete this task..."
+          />
+
+          <TextField
+            fullWidth
+            label="How To Video"
+            value={howToVideo}
+            onChange={(e) => setHowToVideo(e.target.value)}
+            margin="normal"
+            placeholder="URL or reference to video instructions..."
+          />
+
           {totalUsedWeight > 90 && (
             <Alert severity="warning" sx={{ mt: 2 }}>
               Product weight is almost fully allocated ({totalUsedWeight}% used). Consider adjusting task weights.
@@ -361,11 +413,12 @@ export const TaskDialog: React.FC<Props> = ({
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose} disableRipple>Cancel</Button>
         <Button
           onClick={handleSave}
           variant="contained"
           disabled={loading}
+          disableRipple
         >
           {loading ? 'Saving...' : 'Save Task'}
         </Button>

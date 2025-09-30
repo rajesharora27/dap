@@ -196,6 +196,40 @@ export const resolvers = {
       };
       return prismaToGraphQLMap[parent.licenseLevel] || 'Essential';
     },
+    license: async (parent: any) => {
+      if (fallbackActive) {
+        // In fallback mode, convert licenseLevel back to license object
+        const licenses = listLicenses();
+        const levelMap: { [key: string]: number } = {
+          'ESSENTIAL': 1,
+          'ADVANTAGE': 2,
+          'SIGNATURE': 3
+        };
+        const requiredLevel = levelMap[parent.licenseLevel];
+        return licenses.find((l: any) => l.level === requiredLevel && l.productId === parent.productId);
+      }
+      
+      // Convert licenseLevel back to actual license object
+      const levelMap: { [key: string]: number } = {
+        'ESSENTIAL': 1,
+        'ADVANTAGE': 2,
+        'SIGNATURE': 3
+      };
+      const requiredLevel = levelMap[parent.licenseLevel];
+      
+      if (!requiredLevel || !parent.productId) {
+        return null;
+      }
+      
+      return await prisma.license.findFirst({
+        where: {
+          productId: parent.productId,
+          level: requiredLevel,
+          isActive: true,
+          deletedAt: null
+        }
+      });
+    },
     releases: async (parent: any) => {
       if (fallbackActive) {
         return [];
@@ -741,6 +775,12 @@ export const resolvers = {
       }
     },
     createTask: async (_: any, { input }: any, ctx: any) => {
+      console.log('🚀 CREATE_TASK CALLED - Raw input received:', JSON.stringify(input, null, 2));
+      console.log('🚀 CREATE_TASK - howToDoc:', `"${input.howToDoc}"`);
+      console.log('🚀 CREATE_TASK - howToVideo:', `"${input.howToVideo}"`);
+      console.log('🚀 CREATE_TASK - Has howToDoc field:', Object.hasOwnProperty.call(input, 'howToDoc'));
+      console.log('🚀 CREATE_TASK - Has howToVideo field:', Object.hasOwnProperty.call(input, 'howToVideo'));
+      
       requireUser(ctx);
 
       // Ensure either productId or solutionId is provided
@@ -916,7 +956,10 @@ export const resolvers = {
           task = await prisma.task.create({
             data: {
               ...taskData,
-              licenseLevel: prismaLicenseLevel
+              licenseLevel: prismaLicenseLevel,
+              // EXPLICIT FIX: Always include howToDoc and howToVideo even if undefined in input
+              howToDoc: input.howToDoc || null,
+              howToVideo: input.howToVideo || null
             }
           });
 

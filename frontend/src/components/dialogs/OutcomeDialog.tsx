@@ -66,6 +66,17 @@ export const OutcomeDialog: React.FC<OutcomeDialogProps> = ({
             onClose={onClose}
             maxWidth="sm"
             fullWidth
+            keepMounted
+            disableEnforceFocus
+            container={document.getElementById('root')}
+            BackdropProps={{
+                onClick: onClose
+            }}
+            slotProps={{
+                backdrop: {
+                    invisible: false
+                }
+            }}
         >
             <DialogTitle>
                 {outcome ? 'Edit Outcome' : 'Add New Outcome'}

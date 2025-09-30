@@ -12,13 +12,9 @@ const TASKS = gql`query Tasks($productId:ID,$solutionId:ID,$first:Int,$after:Str
       node { 
         id 
         name 
-        weight 
-        estMinutes 
-        description 
-        notes 
-        sequenceNumber
         licenseLevel
-        priority
+        howToDoc
+        howToVideo
         product { id name }
         solution { id name }
         outcomes { id name }
@@ -43,13 +39,13 @@ const OUTCOMES = gql`
 const TASK_UPDATED = gql`subscription { taskUpdated { id name product { id } weight priority } }`;
 const CREATE_TASK = gql`mutation CreateTask($input:TaskInput!){ 
   createTask(input:$input){ 
-    id name description estMinutes weight notes priority licenseLevel 
+    id name description estMinutes weight notes priority licenseLevel howToDoc howToVideo
     product { id name } outcomes { id name }
   } 
 }`;
 const UPDATE_TASK = gql`mutation UpdateTask($id:ID!,$input:TaskInput!){ 
   updateTask(id:$id,input:$input){ 
-    id name description estMinutes weight notes priority licenseLevel 
+    id name description estMinutes weight notes priority licenseLevel howToDoc howToVideo
     product { id name } outcomes { id name }
   } 
 }`;
@@ -109,14 +105,31 @@ export const TasksPanel: React.FC<Props> = ({ productId, solutionId, onSelect })
   };
 
   const handleSave = async (data: any) => {
+    console.log('�🚨🚨 TasksPanel.handleSave called!');
+    console.log('�🔍 TasksPanel handleSave received data:', JSON.stringify(data, null, 2));
     const input = {
       ...data,
       ...(productId ? { productId } : { solutionId })
     };
-    if (editingTask) {
-      await updateTask({ variables: { id: editingTask.id, input } });
-    } else {
-      await createTask({ variables: { input } });
+    console.log('🔍 TasksPanel about to send input to GraphQL:', JSON.stringify(input, null, 2));
+    console.log('🔍 TasksPanel input.howToDoc:', input.howToDoc);
+    console.log('🔍 TasksPanel input.howToVideo:', input.howToVideo);
+    console.log('🔍 TasksPanel input.notes:', input.notes);
+    
+    try {
+      if (editingTask) {
+        console.log('🔄 Calling updateTask mutation...');
+        const result = await updateTask({ variables: { id: editingTask.id, input } });
+        console.log('✅ updateTask completed:', result);
+      } else {
+        console.log('🚀 Calling createTask mutation...');
+        const result = await createTask({ variables: { input } });
+        console.log('✅ createTask completed:', result);
+        console.log('✅ createTask result data:', result.data);
+      }
+    } catch (error) {
+      console.error('💥 GraphQL mutation failed:', error);
+      throw error;
     }
   };
 
@@ -338,53 +351,70 @@ export const TasksPanel: React.FC<Props> = ({ productId, solutionId, onSelect })
           <ListItemText
             primary={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Chip
-                  size="small"
-                  label={`#${task.sequenceNumber || '?'}`}
-                  color="secondary"
-                  variant="filled"
-                  sx={{
-                    fontWeight: 'bold',
-                    minWidth: '40px',
-                    '& .MuiChip-label': { fontSize: '0.75rem', fontWeight: 'bold' }
-                  }}
-                />
                 <Typography variant="body2" sx={{ fontWeight: 'medium', flex: 1 }}>
                   {task.name}
                 </Typography>
-                <Chip
-                  size="small"
-                  label={`${task.weight}%`}
-                  color={task.weight > 0 ? 'primary' : 'default'}
-                />
-                <Chip
-                  size="small"
-                  label={`${task.estMinutes}m`}
-                  variant="outlined"
-                />
+                {task.licenseLevel && (
+                  <Chip
+                    size="small"
+                    label={task.licenseLevel}
+                    color="info"
+                    variant="outlined"
+                  />
+                )}
               </Box>
             }
             secondary={
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
-                <Chip
-                  size="small"
-                  label={task.priority || 'Medium'}
-                  color={task.priority === 'High' ? 'error' : task.priority === 'Low' ? 'default' : 'primary'}
-                />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                {/* Show outcomes */}
+                {task.outcomes && task.outcomes.length > 0 && (
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                    {task.outcomes.map((outcome: any) => (
+                      <Chip
+                        key={outcome.id}
+                        size="small"
+                        label={outcome.name}
+                        color="success"
+                        variant="outlined"
+                      />
+                    ))}
+                  </Box>
+                )}
+                
+                {/* Show how-to links */}
+                {task.howToDoc && (
+                  <Chip
+                    size="small"
+                    label="📄 Documentation"
+                    color="primary"
+                    variant="filled"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(task.howToDoc, '_blank');
+                    }}
+                    sx={{ cursor: 'pointer' }}
+                  />
+                )}
+                {task.howToVideo && (
+                  <Chip
+                    size="small"
+                    label="🎥 Video"
+                    color="primary"
+                    variant="filled"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(task.howToVideo, '_blank');
+                    }}
+                    sx={{ cursor: 'pointer' }}
+                  />
+                )}
+                
                 <IconButton
                   size="small"
                   onClick={(ev) => { ev.stopPropagation(); openEditDialog(task); }}
                 >
                   <Edit fontSize="small" />
                 </IconButton>
-                {/* Done button removed in simplified schema */}
-                {/* <IconButton
-                  size="small"
-                  onClick={(ev) => { ev.stopPropagation(); handleMarkDone(task.id); }}
-                  color="success"
-                >
-                  <Done fontSize="small" />
-                </IconButton> */}
               </Box>
             }
           />

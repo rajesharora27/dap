@@ -9,6 +9,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "seed": "ts-node src/seed.ts",
+    "seed:clean": "ts-node --transpile-only src/seed-clean.ts",
     "test": "jest --runInBand --passWithNoTests",
     "lint": "eslint . --ext .ts"
   },

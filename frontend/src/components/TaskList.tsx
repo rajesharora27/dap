@@ -102,21 +102,15 @@ export const TaskList: React.FC<Props> = ({
                 <ListItemText
                   primary={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {getStatusIcon(task)}
                       <Typography variant="body2" fontWeight="medium">
                         {task.name}
                       </Typography>
-                      <Chip 
-                        label={`W:${task.weight || 0}`}
-                        size="small"
-                        variant="outlined"
-                        sx={{ fontSize: '0.7rem', height: 18 }}
-                      />
-                      {task.estMinutes && (
+                      {task.licenseLevel && (
                         <Chip 
-                          label={formatDuration(task.estMinutes)}
+                          label={task.licenseLevel}
                           size="small"
                           color="info"
+                          variant="outlined"
                           sx={{ fontSize: '0.7rem', height: 18 }}
                         />
                       )}
@@ -124,27 +118,60 @@ export const TaskList: React.FC<Props> = ({
                   }
                   secondary={
                     <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        {task.description}
-                      </Typography>
                       {showProductName && task.productName && (
                         <>
-                          <br />
                           <Chip 
                             label={task.productName}
                             size="small"
                             variant="outlined"
                             sx={{ fontSize: '0.6rem', height: 16, mt: 0.5 }}
                           />
+                          <br />
                         </>
                       )}
-                      {task.completedAt && (
-                        <>
-                          <br />
-                          <Typography variant="caption" color="success.main">
-                            Completed: {new Date(task.completedAt).toLocaleDateString()}
-                          </Typography>
-                        </>
+                      {/* Show outcomes */}
+                      {task.outcomes && task.outcomes.length > 0 && (
+                        <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {task.outcomes.map((outcome: any) => (
+                            <Chip 
+                              key={outcome.id}
+                              label={outcome.name}
+                              size="small"
+                              color="success"
+                              variant="outlined"
+                              sx={{ fontSize: '0.6rem', height: 16 }}
+                            />
+                          ))}
+                        </Box>
+                      )}
+                      {/* Show how-to links */}
+                      {(task.howToDoc || task.howToVideo) && (
+                        <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5 }}>
+                          {task.howToDoc && (
+                            <Chip 
+                              label="📄"
+                              size="small"
+                              color="primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(task.howToDoc, '_blank');
+                              }}
+                              sx={{ fontSize: '0.6rem', height: 16, cursor: 'pointer' }}
+                            />
+                          )}
+                          {task.howToVideo && (
+                            <Chip 
+                              label="🎥"
+                              size="small"
+                              color="primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(task.howToVideo, '_blank');
+                              }}
+                              sx={{ fontSize: '0.6rem', height: 16, cursor: 'pointer' }}
+                            />
+                          )}
+                        </Box>
                       )}
                     </Box>
                   }

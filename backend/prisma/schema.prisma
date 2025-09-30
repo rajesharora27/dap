@@ -129,6 +129,8 @@ model Task {
   sequenceNumber      Int
   licenseLevel        LicenseLevel     @default(ESSENTIAL)
   priority            String?          // Priority level (Low, Medium, High, Critical)
+  howToDoc            String?          // HTTP link explaining how to implement the task
+  howToVideo          String?          // Link to video explaining how to implement the task
   rawTelemetryMapping String?
   completedAt         DateTime?
   completedReason     String?

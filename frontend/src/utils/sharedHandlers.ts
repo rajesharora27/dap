@@ -1026,4 +1026,32 @@ export class ValidationUtils {
 
         return errors;
     }
+
+    static validateProductWithMandatoryAttributes(
+        product: Partial<Product>, 
+        licenses: any[], 
+        outcomes: any[], 
+        releases: any[]
+    ): string[] {
+        const errors = this.validateProduct(product);
+
+        // For new products, validate mandatory attributes
+        const activeLicenses = licenses?.filter(license => !license.delete) || [];
+        const activeOutcomes = outcomes?.filter(outcome => !outcome.delete) || [];
+        const activeReleases = releases?.filter(release => !release.delete) || [];
+
+        if (activeLicenses.length === 0) {
+            errors.push('At least one license is required (Essential - Level 1 recommended)');
+        }
+
+        if (activeOutcomes.length === 0) {
+            errors.push('At least one outcome is required (product name recommended)');
+        }
+
+        if (activeReleases.length === 0) {
+            errors.push('At least one release is required (1.0 recommended)');
+        }
+
+        return errors;
+    }
 }

@@ -346,6 +346,20 @@ exports.resolvers = {
         node: async (_, { id }) => {
             return context_1.prisma.product.findUnique({ where: { id } }) || context_1.prisma.task.findUnique({ where: { id } });
         },
+        product: async (_, { id }) => {
+            if (context_1.fallbackActive) {
+                const { products } = require('../../lib/fallbackStore');
+                return products.find((p) => p.id === id);
+            }
+            return context_1.prisma.product.findUnique({
+                where: { id, deletedAt: null },
+                include: {
+                    licenses: true,
+                    releases: true,
+                    outcomes: true
+                }
+            });
+        },
         products: async (_, args) => {
             if (context_1.fallbackActive)
                 return fallbackStore_1.fallbackConnections.products();
@@ -832,6 +846,7 @@ exports.resolvers = {
         },
         createTask: async (_, { input }, ctx) => {
             (0, auth_1.requireUser)(ctx);
+            console.log('🔍 CREATE_TASK received input:', JSON.stringify(input, null, 2));
             // Ensure either productId or solutionId is provided
             if (!input.productId && !input.solutionId) {
                 throw new Error('Either productId or solutionId must be provided');
@@ -889,7 +904,7 @@ exports.resolvers = {
                 throw new Error(`Total weight of tasks cannot exceed 100% for this ${input.productId ? 'product' : 'solution'}. Current: ${currentWeightSum}%, Trying to add: ${input.weight || 0}%`);
             }
             // Extract fields that need special handling
-            const { outcomeIds, dependencies, licenseId, ...taskData } = input;
+            const { outcomeIds, dependencies, licenseId, releaseIds, ...taskData } = input;
             // Handle licenseId by converting it to licenseLevel
             let effectiveLicenseLevel = input.licenseLevel;
             if (licenseId && !effectiveLicenseLevel) {
@@ -981,13 +996,13 @@ exports.resolvers = {
                             },
                             orderBy: { sequenceNumber: 'desc' }
                         });
-                        input.sequenceNumber = (lastTask?.sequenceNumber || 0) + 1;
+                        taskData.sequenceNumber = (lastTask?.sequenceNumber || 0) + 1;
                     }
+                    console.log('🔍 About to create task with data:', JSON.stringify({ ...taskData, licenseLevel: prismaLicenseLevel }, null, 2));
                     task = await context_1.prisma.task.create({
                         data: {
                             ...taskData,
-                            licenseLevel: prismaLicenseLevel,
-                            sequenceNumber: input.sequenceNumber
+                            licenseLevel: prismaLicenseLevel
                         }
                     });
                     // Success - break out of retry loop
@@ -1022,7 +1037,6 @@ exports.resolvers = {
                 });
             }
             // Handle release associations if provided
-            const { releaseIds } = input;
             if (releaseIds && releaseIds.length > 0) {
                 // Validate that all releases belong to the task's product/solution
                 const validReleases = await context_1.prisma.release.findMany({
@@ -1105,7 +1119,7 @@ exports.resolvers = {
                 }
             }
             // Extract fields that need special handling
-            const { outcomeIds, licenseId, ...inputData } = input;
+            const { outcomeIds, licenseId, releaseIds, ...inputData } = input;
             // Handle licenseId by converting it to licenseLevel
             let effectiveLicenseLevel = inputData.licenseLevel;
             if (licenseId && !effectiveLicenseLevel) {
@@ -1188,7 +1202,6 @@ exports.resolvers = {
                 }
             }
             // Handle release associations if provided
-            const { releaseIds } = input;
             if (releaseIds !== undefined) {
                 // First, remove all existing associations
                 await context_1.prisma.taskRelease.deleteMany({

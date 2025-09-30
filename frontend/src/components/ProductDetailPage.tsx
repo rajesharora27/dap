@@ -58,14 +58,12 @@ const TASKS_FOR_PRODUCT = gql`
         node {
           id
           name
-          description
-          weight
-          estMinutes
           licenseLevel
-          availableInReleases {
+          howToDoc
+          howToVideo
+          outcomes {
             id
             name
-            level
           }
         }
       }
@@ -197,23 +195,6 @@ const DELETE_RELEASE = gql`
   }
 `;
 
-const CREATE_TASK = gql`
-  mutation CreateTask($input: TaskInput!) {
-    createTask(input: $input) {
-      id
-      name
-      description
-      weight
-      estMinutes
-      licenseLevel
-      availableInReleases {
-        id
-        name
-        level
-      }
-    }
-  }
-`;
 
 const UPDATE_TASK = gql`
   mutation UpdateTask($id: ID!, $input: TaskInput!) {
@@ -224,6 +205,8 @@ const UPDATE_TASK = gql`
       weight
       estMinutes
       licenseLevel
+      howToDoc
+      howToVideo
       availableInReleases {
         id
         name
@@ -290,10 +273,8 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
   const [newRelease, setNewRelease] = useState({ name: '', description: '', level: 1.0 });
   const [editingRelease, setEditingRelease] = useState<any>(null);
 
-  // Task states
-  const [addTaskDialog, setAddTaskDialog] = useState(false);
+  // Task states (edit only)
   const [editTaskDialog, setEditTaskDialog] = useState(false);
-  const [newTask, setNewTask] = useState({ name: '', description: '', weight: 0, estMinutes: 0, licenseLevel: 1, releaseIds: [] as string[] });
   const [editingTask, setEditingTask] = useState<any>(null);
 
   // Custom Attributes states
@@ -360,7 +341,6 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
   const [updateRelease] = useMutation(UPDATE_RELEASE);
   const [deleteRelease] = useMutation(DELETE_RELEASE);
 
-  const [createTask] = useMutation(CREATE_TASK);
   const [updateTask] = useMutation(UPDATE_TASK);
   const [deleteTask] = useMutation(DELETE_TASK);
   const [updateProduct] = useMutation(UPDATE_PRODUCT);
@@ -975,72 +955,7 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
     input.click();
   };
 
-  // Task handlers
-  const handleCreateTask = async () => {
-    if (!newTask.name.trim()) {
-      alert('Please enter a task name');
-      return;
-    }
-
-    // Check if task name already exists
-    const existingTask = tasks.find((task: any) =>
-      task.name.toLowerCase() === newTask.name.trim().toLowerCase()
-    );
-
-    if (existingTask) {
-      alert(`A task with the name "${newTask.name}" already exists. Please choose a different name.`);
-      return;
-    }
-
-    // Validate weight (0-100)
-    if (newTask.weight < 0 || newTask.weight > 100) {
-      alert('Task weight must be between 0 and 100');
-      return;
-    }
-
-    // Validate license level exists
-    const licenseExists = licenses.find((license: any) => license.level === newTask.licenseLevel);
-    if (!licenseExists) {
-      alert(`No license found for level ${newTask.licenseLevel}. Please create the license first.`);
-      return;
-    }
-
-    try {
-      const result = await createTask({
-        variables: {
-          input: {
-            name: newTask.name.trim(),
-            description: newTask.description.trim(),
-            weight: parseFloat(newTask.weight.toString()),
-            estMinutes: parseInt(newTask.estMinutes.toString()),
-            licenseLevel: newTask.licenseLevel,
-            productId: product.id,
-            releaseIds: newTask.releaseIds || []
-          }
-        }
-      });
-
-      if (result.data?.createTask) {
-        setNewTask({ name: '', description: '', weight: 0, estMinutes: 0, licenseLevel: 1, releaseIds: [] as string[] });
-        setAddTaskDialog(false);
-        await refetchTasks();
-      } else {
-        throw new Error('No data returned from mutation');
-      }
-    } catch (error: any) {
-      console.error('Error creating task:', error);
-
-      let errorMessage = 'Unknown error occurred';
-      if (error?.graphQLErrors?.length > 0) {
-        errorMessage = error.graphQLErrors[0].message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
-      alert('Failed to create task: ' + errorMessage);
-    }
-  };
-
+  // Task handlers (edit only)
   const handleUpdateTask = async () => {
     if (!editingTask?.name?.trim()) {
       alert('Please enter a task name');
@@ -1082,7 +997,10 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
             estMinutes: parseInt(editingTask.estMinutes.toString()),
             licenseLevel: editingTask.licenseLevel,
             productId: product.id,
-            releaseIds: editingTask.releaseIds || []
+            releaseIds: editingTask.releaseIds || [],
+            howToDoc: (editingTask.howToDoc || '').trim(),
+            howToVideo: (editingTask.howToVideo || '').trim(),
+            notes: (editingTask.notes || '').trim()
           }
         }
       });
@@ -1154,66 +1072,6 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
     link.download = `${product.name}-tasks-${Date.now()}.json`;
     link.click();
     URL.revokeObjectURL(url);
-  };
-
-  const handleImportTasks = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-
-      try {
-        const text = await file.text();
-        const importData = JSON.parse(text);
-
-        if (importData.exportType !== 'tasks') {
-          alert('Invalid file format. Please select a tasks export file.');
-          return;
-        }
-
-        if (!importData.data || !Array.isArray(importData.data)) {
-          alert('Invalid file structure. No tasks data found.');
-          return;
-        }
-
-        let importedCount = 0;
-        for (const taskData of importData.data) {
-          // Check if task already exists
-          const exists = tasks.find((task: any) =>
-            task.name.toLowerCase() === taskData.name.toLowerCase()
-          );
-
-          if (!exists) {
-            try {
-              await createTask({
-                variables: {
-                  input: {
-                    name: taskData.name,
-                    description: taskData.description || '',
-                    weight: taskData.weight || 0,
-                    estMinutes: taskData.estMinutes || 0,
-                    licenseLevel: taskData.licenseLevel || 1,
-                    productId: product.id
-                  }
-                }
-              });
-              importedCount++;
-            } catch (error) {
-              console.error(`Failed to import task: ${taskData.name}`, error);
-            }
-          }
-        }
-
-        await refetchTasks();
-        alert(`Successfully imported ${importedCount} tasks. Duplicates were skipped.`);
-      } catch (error) {
-        console.error('Import error:', error);
-        alert('Failed to import tasks. Please check the file format.');
-      }
-    };
-    input.click();
   };
 
   // Custom Attributes handlers
@@ -1843,22 +1701,11 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
           <Box>
             <Button
               variant="outlined"
-              startIcon={<FileUploadIcon />}
-              onClick={() => handleImportTasks()}
-              sx={{ mr: 1 }}
-            >
-              Import
-            </Button>
-            <Button
-              variant="outlined"
               startIcon={<FileDownloadIcon />}
               onClick={() => handleExportTasks()}
               sx={{ mr: 1 }}
             >
               Export
-            </Button>
-            <Button variant="contained" onClick={() => setAddTaskDialog(true)}>
-              Add Task
             </Button>
           </Box>
         </Box>
@@ -1877,39 +1724,53 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
                         <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
                           {task.name}
                         </Typography>
-                        {task.description && (
-                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                            {task.description}
-                          </Typography>
-                        )}
                         <Box sx={{ mt: 1 }}>
-                          <Chip
-                            label={`Weight: ${task.weight}%`}
-                            size="small"
-                            color="primary"
-                            variant="outlined"
-                            sx={{ mr: 1 }}
-                          />
-                          <Chip
-                            label={`Est. ${task.estMinutes} min`}
-                            size="small"
-                            color="secondary"
-                            variant="outlined"
-                            sx={{ mr: 1 }}
-                          />
-                          <Chip
-                            label={`License Level ${task.licenseLevel}`}
-                            size="small"
-                            color="info"
-                            variant="outlined"
-                            sx={{ mr: 1 }}
-                          />
-                          {task.availableInReleases && task.availableInReleases.length > 0 && (
+                          {/* Show license level */}
+                          {task.licenseLevel && (
                             <Chip
-                              label={`Releases: ${task.availableInReleases.map((r: any) => `v${r.level}`).join(', ')}`}
+                              label={`License: ${task.licenseLevel}`}
                               size="small"
-                              color="success"
+                              color="info"
                               variant="outlined"
+                              sx={{ mr: 1, mb: 1 }}
+                            />
+                          )}
+                          
+                          {/* Show outcomes */}
+                          {task.outcomes && task.outcomes.length > 0 && (
+                            <Box sx={{ display: 'inline-block', mr: 1, mb: 1 }}>
+                              {task.outcomes.map((outcome: any) => (
+                                <Chip
+                                  key={outcome.id}
+                                  label={outcome.name}
+                                  size="small"
+                                  color="success"
+                                  variant="outlined"
+                                  sx={{ mr: 0.5, mb: 0.5 }}
+                                />
+                              ))}
+                            </Box>
+                          )}
+                          
+                          {/* Show how-to links */}
+                          {task.howToDoc && (
+                            <Chip
+                              label="📄 Documentation"
+                              size="small"
+                              color="primary"
+                              variant="filled"
+                              onClick={() => window.open(task.howToDoc, '_blank')}
+                              sx={{ cursor: 'pointer', mr: 1, mb: 1 }}
+                            />
+                          )}
+                          {task.howToVideo && (
+                            <Chip
+                              label="🎥 Video"
+                              size="small"
+                              color="primary"
+                              variant="filled"
+                              onClick={() => window.open(task.howToVideo, '_blank')}
+                              sx={{ cursor: 'pointer', mr: 1, mb: 1 }}
                             />
                           )}
                         </Box>
@@ -1939,7 +1800,7 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
           </TableContainer>
         ) : (
           <Typography variant="body1" color="text.secondary">
-            No tasks defined for this product. Click "Add Task" to create one.
+            No tasks defined for this product. Use the Tasks submenu to create tasks.
             <Typography variant="caption" color="text.disabled" sx={{ mt: 1, display: 'block' }}>
               Tasks define the work items for this product with weights and time estimates.
             </Typography>
@@ -2257,109 +2118,6 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
         </DialogActions>
       </Dialog>
 
-      {/* Add Task Dialog */}
-      <Dialog open={addTaskDialog} onClose={() => setAddTaskDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Add New Task</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Task Name"
-            value={newTask.name}
-            onChange={(e) => setNewTask({ ...newTask, name: e.target.value })}
-            fullWidth
-            margin="normal"
-            helperText="Task names must be unique within this product"
-          />
-          <TextField
-            label="Description"
-            value={newTask.description}
-            onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-            fullWidth
-            margin="normal"
-            multiline
-            rows={3}
-          />
-          <TextField
-            label="Weight (%)"
-            type="number"
-            value={newTask.weight}
-            onChange={(e) => setNewTask({ ...newTask, weight: Math.max(0, Math.min(100, parseInt(e.target.value) || 0)) })}
-            fullWidth
-            margin="normal"
-            inputProps={{ min: 0, max: 100 }}
-            helperText="Task weight as percentage (0-100)"
-          />
-          <TextField
-            label="Estimated Minutes"
-            type="number"
-            value={newTask.estMinutes}
-            onChange={(e) => setNewTask({ ...newTask, estMinutes: Math.max(0, parseInt(e.target.value) || 0) })}
-            fullWidth
-            margin="normal"
-            inputProps={{ min: 0 }}
-            helperText="Estimated time to complete in minutes"
-          />
-          <TextField
-            label="License Level"
-            select
-            value={newTask.licenseLevel}
-            onChange={(e) => setNewTask({ ...newTask, licenseLevel: parseInt(e.target.value) })}
-            fullWidth
-            margin="normal"
-            helperText="Required license level for this task"
-          >
-            {[...licenses]
-              .filter((license: any) => license.active)
-              .sort((a: any, b: any) => a.level - b.level)
-              .map((license: any) => (
-                <MenuItem key={license.level} value={license.level}>
-                  Level {license.level} - {license.name}
-                </MenuItem>
-              ))
-            }
-          </TextField>
-          
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Releases</InputLabel>
-            <Select
-              multiple
-              value={newTask.releaseIds || []}
-              onChange={(e) => setNewTask({ ...newTask, releaseIds: e.target.value as string[] })}
-              renderValue={(selected) => (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {(selected as string[]).map((releaseId) => {
-                    const release = releases.find((r: any) => r.id === releaseId);
-                    return (
-                      <Chip 
-                        key={releaseId} 
-                        label={release ? `${release.name} (v${release.level})` : releaseId}
-                        size="small" 
-                      />
-                    );
-                  })}
-                </Box>
-              )}
-            >
-              {[...releases]
-                .sort((a: any, b: any) => a.level - b.level)
-                .map((release: any) => (
-                  <MenuItem key={release.id} value={release.id}>
-                    {release.name} (v{release.level})
-                  </MenuItem>
-                ))
-              }
-            </Select>
-            <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-              Select releases where this task should be available. Tasks are automatically available in higher release levels.
-            </Typography>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setAddTaskDialog(false)}>Cancel</Button>
-          <Button variant="contained" onClick={handleCreateTask}>
-            Add Task
-          </Button>
-        </DialogActions>
-      </Dialog>
 
       {/* Edit Task Dialog */}
       <Dialog open={editTaskDialog} onClose={() => setEditTaskDialog(false)} maxWidth="sm" fullWidth>
@@ -2452,6 +2210,37 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
               Select releases where this task should be available. Tasks are automatically available in higher release levels.
             </Typography>
           </FormControl>
+
+          <TextField
+            label="Notes"
+            value={editingTask?.notes || ''}
+            onChange={(e) => setEditingTask({ ...editingTask, notes: e.target.value })}
+            fullWidth
+            margin="normal"
+            multiline
+            rows={2}
+            helperText="Internal notes about this task"
+          />
+          
+          <TextField
+            label="How To Documentation"
+            value={editingTask?.howToDoc || ''}
+            onChange={(e) => setEditingTask({ ...editingTask, howToDoc: e.target.value })}
+            fullWidth
+            margin="normal"
+            multiline
+            rows={3}
+            helperText="Documentation on how to complete this task"
+          />
+          
+          <TextField
+            label="How To Video"
+            value={editingTask?.howToVideo || ''}
+            onChange={(e) => setEditingTask({ ...editingTask, howToVideo: e.target.value })}
+            fullWidth
+            margin="normal"
+            helperText="URL or reference to video instructions"
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setEditTaskDialog(false)}>Cancel</Button>

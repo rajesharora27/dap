@@ -128,7 +128,16 @@ async function fetchProductsPaginated(args) {
         else if (after?.id) {
             where.id = { gt: after.id };
         }
-        rows = await context_1.prisma.product.findMany({ where, orderBy: forwardOrder, take: limit + 1 });
+        rows = await context_1.prisma.product.findMany({
+            where,
+            orderBy: forwardOrder,
+            take: limit + 1,
+            include: {
+                licenses: true,
+                releases: true,
+                outcomes: true
+            }
+        });
         hasNext = rows.length > limit;
         hasPrev = !!after;
         rows = rows.slice(0, limit);
@@ -146,13 +155,31 @@ async function fetchProductsPaginated(args) {
         else if (before?.id) {
             where.id = { lt: before.id };
         }
-        rows = await context_1.prisma.product.findMany({ where, orderBy: backwardOrder, take: limit + 1 });
+        rows = await context_1.prisma.product.findMany({
+            where,
+            orderBy: backwardOrder,
+            take: limit + 1,
+            include: {
+                licenses: true,
+                releases: true,
+                outcomes: true
+            }
+        });
         hasPrev = rows.length > limit;
         rows = rows.slice(0, limit).reverse();
         hasNext = !!before;
     }
     else {
-        rows = await context_1.prisma.product.findMany({ where: baseWhere, orderBy: forwardOrder, take: limit + 1 });
+        rows = await context_1.prisma.product.findMany({
+            where: baseWhere,
+            orderBy: forwardOrder,
+            take: limit + 1,
+            include: {
+                licenses: true,
+                releases: true,
+                outcomes: true
+            }
+        });
         hasNext = rows.length > limit;
         rows = rows.slice(0, limit);
     }

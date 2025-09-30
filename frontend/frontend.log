@@ -1,0 +1,16 @@
+nohup: ignoring input
+
+> dap-frontend@0.1.0 dev
+> vite
+
+
+  VITE v7.1.2  ready in 276 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: http://172.22.156.32:5173/
+9:29:43 PM [vite] (client) hmr update /src/components/dialogs/ProductDialog.tsx
+9:29:43 PM [vite] (client) hmr update /src/components/dialogs/LicenseDialog.tsx
+9:29:43 PM [vite] (client) hmr update /src/components/dialogs/OutcomeDialog.tsx
+9:29:43 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+9:29:43 PM [vite] (client) hmr update /src/components/dialogs/ReleaseDialog.tsx
+9:29:43 PM [vite] (client) hmr update /src/components/dialogs/CustomAttributeDialog.tsx
