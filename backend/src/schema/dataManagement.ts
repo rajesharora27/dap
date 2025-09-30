@@ -1,10 +1,11 @@
 import { logger } from '../context';
 import { prisma } from '../context';
+import { Context } from '../context';
 
 const dataManagementResolvers = {
   Mutation: {
     // Create sample data with 5 products
-    async createSampleData(_, __, { prisma }) {
+    async createSampleData(_: any, __: any, { prisma }: Context) {
       try {
         const sampleProducts = [
           {
@@ -83,14 +84,14 @@ const dataManagementResolvers = {
           message: `Successfully created ${createdCount} sample products`,
           productsCreated: createdCount
         };
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Error creating sample data:', error);
-        throw new Error(`Failed to create sample data: ${error.message}`);
+        throw new Error(`Failed to create sample data: ${error?.message || 'Unknown error'}`);
       }
     },
 
     // Reset sample data
-    async resetSampleData(_, __, { prisma }) {
+    async resetSampleData(_: any, __: any, { prisma }: Context) {
       try {
         // Delete existing sample products
         const deleted = await prisma.product.deleteMany({
@@ -109,14 +110,14 @@ const dataManagementResolvers = {
           message: `Reset completed: Deleted ${deleted.count} products and created ${result.productsCreated} new ones`,
           productsAffected: result.productsCreated
         };
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Error resetting sample data:', error);
-        throw new Error(`Failed to reset sample data: ${error.message}`);
+        throw new Error(`Failed to reset sample data: ${error?.message || 'Unknown error'}`);
       }
     },
 
     // Delete all data
-    async deleteAllData(_, __, { prisma }) {
+    async deleteAllData(_: any, __: any, { prisma }: Context) {
       try {
         // Delete in the correct order to respect foreign key constraints
         const deletedTasks = await prisma.task.deleteMany();
@@ -141,9 +142,9 @@ const dataManagementResolvers = {
           message: 'Successfully deleted all data',
           itemsDeleted: totalDeleted
         };
-      } catch (error) {
+      } catch (error: any) {
         logger.error('Error deleting all data:', error);
-        throw new Error(`Failed to delete all data: ${error.message}`);
+        throw new Error(`Failed to delete all data: ${error?.message || 'Unknown error'}`);
       }
     }
   }

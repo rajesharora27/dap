@@ -3,12 +3,8 @@
 > vite
 
 
-  VITE v7.1.2  ready in 266 ms
+  VITE v7.1.2  ready in 276 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://172.22.156.32:5173/
-11:58:42 PM [vite] (client) hmr update /src/pages/App.tsx
-11:59:05 PM [vite] (client) hmr update /src/pages/App.tsx
-11:59:29 PM [vite] (client) hmr update /src/pages/App.tsx
-12:01:07 AM [vite] (client) hmr update /src/pages/App.tsx
-12:01:31 AM [vite] (client) hmr update /src/pages/App.tsx
+9:21:05 PM [vite] (client) hmr update /src/components/dialogs/ProductDialog.tsx

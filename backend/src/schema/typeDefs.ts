@@ -79,6 +79,8 @@ export const typeDefs = gql`
     sequenceNumber: Int!            # Execution sequence number
     licenseLevel: LicenseLevel!     # License level required for this task (backward compatibility)
     priority: String                # Priority level (Low, Medium, High, Critical)
+    howToDoc: String                # HTTP link explaining how to implement the task
+    howToVideo: String              # Link to video explaining how to implement the task
     product: Product                # Parent product (mutually exclusive with solution)
     solution: Solution              # Parent solution (mutually exclusive with product)
     outcomes: [Outcome!]!           # Outcomes this task contributes to
@@ -189,6 +191,8 @@ export const typeDefs = gql`
     licenseLevel: LicenseLevel
     notes: String 
     priority: String
+    howToDoc: String                # HTTP link explaining how to implement the task
+    howToVideo: String              # Link to video explaining how to implement the task
     outcomeIds: [ID!]
     licenseId: ID                   # Single license ID for hierarchical system
     releaseIds: [ID!]               # Release IDs this task should be assigned to
@@ -203,6 +207,8 @@ export const typeDefs = gql`
     licenseLevel: LicenseLevel
     notes: String 
     priority: String
+    howToDoc: String                # HTTP link explaining how to implement the task
+    howToVideo: String              # Link to video explaining how to implement the task
     outcomeIds: [ID!]
     licenseId: ID                   # Single license ID for hierarchical system
     releaseIds: [ID!]               # Release IDs this task should be assigned to

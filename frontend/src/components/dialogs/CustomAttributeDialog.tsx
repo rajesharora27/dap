@@ -145,6 +145,17 @@ export const CustomAttributeDialog: React.FC<CustomAttributeDialogProps> = ({
             onClose={onClose}
             maxWidth="md"
             fullWidth
+            keepMounted
+            disableEnforceFocus
+            container={document.getElementById('root')}
+            BackdropProps={{
+                onClick: onClose
+            }}
+            slotProps={{
+                backdrop: {
+                    invisible: false
+                }
+            }}
         >
             <DialogTitle>
                 {attribute ? 'Edit Product Attribute' : 'Add Product Attribute'}

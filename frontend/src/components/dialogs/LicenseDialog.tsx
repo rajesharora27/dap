@@ -78,6 +78,17 @@ export const LicenseDialog: React.FC<LicenseDialogProps> = ({
       onClose={onClose}
       maxWidth="sm"
       fullWidth
+      keepMounted
+      disableEnforceFocus
+      container={document.getElementById('root')}
+      BackdropProps={{
+        onClick: onClose
+      }}
+      slotProps={{
+        backdrop: {
+          invisible: false
+        }
+      }}
     >
       <DialogTitle>
         {license ? 'Edit License' : 'Add New License'}

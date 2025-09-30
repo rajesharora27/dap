@@ -155,6 +155,8 @@ const TASKS_FOR_PRODUCT = gql`
           licenseLevel
           priority
           notes
+          howToDoc
+          howToVideo
           license {
             id
             name
@@ -221,6 +223,8 @@ const UPDATE_TASK = gql`
       licenseLevel
       priority
       notes
+      howToDoc
+      howToVideo
       license {
         id
         name
@@ -354,80 +358,114 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick }: any) {
         >
           <DragIndicator sx={{ color: 'text.secondary' }} />
         </ListItemIcon>
-        <ListItemText
-          primary={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {task.sequenceNumber && (
-                <Chip
-                  size="small"
-                  label={`#${task.sequenceNumber}`}
-                  color="secondary"
-                  variant="outlined"
-                  sx={{ fontWeight: 'bold', minWidth: '48px' }}
-                />
-              )}
-              <Typography variant="subtitle1" component="div">
-                {task.name}
-              </Typography>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          {/* Primary content */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {task.sequenceNumber && (
               <Chip
                 size="small"
-                label={`${task.weight}%`}
-                color="primary"
+                label={`#${task.sequenceNumber}`}
+                color="secondary"
                 variant="outlined"
-                sx={{ fontWeight: 'bold' }}
+                sx={{ fontWeight: 'bold', minWidth: '48px' }}
               />
-            </Box>
-          }
-          secondary={
-            <Box sx={{ mt: 1 }}>
-              {/* Outcomes for this task */}
-              {task.outcomes && task.outcomes.length > 0 ? (
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center', mb: 0.5 }}>
-                  <Typography variant="caption" color="info.main" sx={{ mr: 0.5 }}>
-                    Outcomes:
-                  </Typography>
-                  {task.outcomes.map((outcome: any) => (
-                    <Chip
-                      key={outcome.id}
-                      size="small"
-                      label={outcome.name}
-                      color="info"
-                      variant="outlined"
-                      sx={{ fontSize: '0.7rem', height: '20px' }}
-                    />
-                  ))}
-                </Box>
-              ) : (
-                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', mb: 0.5, display: 'block' }}>
-                  No outcomes linked
+            )}
+            <Typography variant="subtitle1" component="div">
+              {task.name}
+            </Typography>
+            <Chip
+              size="small"
+              label={`${task.weight}%`}
+              color="primary"
+              variant="outlined"
+              sx={{ fontWeight: 'bold' }}
+            />
+          </Box>
+          
+          {/* Secondary content */}
+          <Box sx={{ mt: 1 }}>
+            {/* Outcomes for this task */}
+            {task.outcomes && task.outcomes.length > 0 ? (
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center', mb: 0.5 }}>
+                <Typography variant="caption" color="info.main" sx={{ mr: 0.5 }}>
+                  Outcomes:
                 </Typography>
-              )}
+                {task.outcomes.map((outcome: any) => (
+                  <Chip
+                    key={outcome.id}
+                    size="small"
+                    label={outcome.name}
+                    color="info"
+                    variant="outlined"
+                    sx={{ fontSize: '0.7rem', height: '20px' }}
+                  />
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', mb: 0.5, display: 'block' }}>
+                No outcomes linked
+              </Typography>
+            )}
 
-              {/* Releases for this task */}
-              {task.releases && task.releases.length > 0 ? (
-                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <Typography variant="caption" color="success.main" sx={{ mr: 0.5 }}>
-                    Releases:
-                  </Typography>
-                  {task.releases.map((release: any) => (
-                    <Chip
-                      key={release.id}
-                      size="small"
-                      label={`${release.name} (v${release.level})`}
-                      color="success"
-                      variant="outlined"
-                      sx={{ fontSize: '0.7rem', height: '20px' }}
-                    />
-                  ))}
-                </Box>
-              ) : (
-                <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                  No releases assigned
+            {/* Releases for this task */}
+            {task.releases && task.releases.length > 0 ? (
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Typography variant="caption" color="success.main" sx={{ mr: 0.5 }}>
+                  Releases:
                 </Typography>
-              )}
-            </Box>
-          }
-        />
+                {task.releases.map((release: any) => (
+                  <Chip
+                    key={release.id}
+                    size="small"
+                    label={`${release.name} (v${release.level})`}
+                    color="success"
+                    variant="outlined"
+                    sx={{ fontSize: '0.7rem', height: '20px' }}
+                  />
+                ))}
+              </Box>
+            ) : (
+              <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                No releases assigned
+              </Typography>
+            )}
+
+            {/* How-to links */}
+            {(task.howToDoc || task.howToVideo) && (
+              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center', mt: 0.5 }}>
+                <Typography variant="caption" color="primary.main" sx={{ mr: 0.5 }}>
+                  How-to:
+                </Typography>
+                {task.howToDoc && (
+                  <Chip
+                    size="small"
+                    label="📖 Docs"
+                    color="primary"
+                    variant="outlined"
+                    sx={{ fontSize: '0.7rem', height: '20px', cursor: 'pointer' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(task.howToDoc, '_blank');
+                    }}
+                  />
+                )}
+                {task.howToVideo && (
+                  <Chip
+                    size="small"
+                    label="🎥 Video"
+                    color="primary"
+                    variant="outlined"
+                    sx={{ fontSize: '0.7rem', height: '20px', cursor: 'pointer' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(task.howToVideo, '_blank');
+                    }}
+                  />
+                )}
+              </Box>
+            )}
+          </Box>
+        </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <IconButton size="small" onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
             <Edit fontSize="small" />
@@ -1346,6 +1384,12 @@ export function App() {
       if (taskData.notes?.trim()) {
         input.notes = taskData.notes.trim();
       }
+      if (taskData.howToDoc?.trim()) {
+        input.howToDoc = taskData.howToDoc.trim();
+      }
+      if (taskData.howToVideo?.trim()) {
+        input.howToVideo = taskData.howToVideo.trim();
+      }
       if (taskData.licenseId) {
         input.licenseId = taskData.licenseId;
       }
@@ -1549,7 +1593,7 @@ export function App() {
         });
       }
 
-      // Create releases if provided
+      // Create releases if provided, or create default 1.0 release
       if (data.releases && data.releases.length > 0 && productId) {
         for (const release of data.releases) {
           if (!release.delete) {
@@ -1568,6 +1612,17 @@ export function App() {
             }
           }
         }
+      } else {
+        // Create default 1.0 release
+        await releaseHandlers.createRelease({
+          name: "1.0",
+          level: 1.0,
+          description: "Initial release for " + data.name,
+          productId: productId
+        }, {
+          refetchProducts,
+          showAlert: false
+        });
       }
 
       console.log('Product created successfully');
@@ -1652,6 +1707,10 @@ export function App() {
   };
 
   const handleAddTaskSave = async (taskData: any) => {
+    console.log('🚨🚨🚨 App.tsx handleAddTaskSave called!');
+    console.log('🚨🚨🚨 TaskData received:', JSON.stringify(taskData, null, 2));
+    console.log('🚨🚨🚨 selectedProduct:', selectedProduct);
+    console.log('🚨🚨🚨 selectedProductSubSection:', selectedProductSubSection);
     if (!selectedProduct) return;
 
     try {
@@ -1670,6 +1729,12 @@ export function App() {
       }
       if (taskData.notes?.trim()) {
         input.notes = taskData.notes.trim();
+      }
+      if (taskData.howToDoc?.trim()) {
+        input.howToDoc = taskData.howToDoc.trim();
+      }
+      if (taskData.howToVideo?.trim()) {
+        input.howToVideo = taskData.howToVideo.trim();
       }
       if (taskData.licenseId) {
         input.licenseId = taskData.licenseId;
@@ -1694,6 +1759,8 @@ export function App() {
               licenseLevel
               priority
               notes
+              howToDoc
+              howToVideo
               license {
                 id
                 name
@@ -1738,7 +1805,7 @@ export function App() {
     }
 
     // Create CSV content
-    const csvHeaders = 'id,name,description,estMinutes,weight,sequenceNumber,licenseLevel,priority,notes\n';
+    const csvHeaders = 'id,name,description,estMinutes,weight,sequenceNumber,licenseLevel,priority,notes,howToDoc,howToVideo\n';
     const csvRows = tasks.map((task: any) => {
       const escapeCsv = (field: any) => {
         const str = String(field || '');
@@ -1758,7 +1825,9 @@ export function App() {
         escapeCsv(task.sequenceNumber),
         escapeCsv(task.licenseLevel),
         escapeCsv(task.priority),
-        escapeCsv(task.notes)
+        escapeCsv(task.notes),
+        escapeCsv(task.howToDoc),
+        escapeCsv(task.howToVideo)
       ].join(',');
     }).join('\n');
 
@@ -1918,6 +1987,8 @@ export function App() {
                       licenseLevel
                       priority
                       notes
+                      howToDoc
+                      howToVideo
                       license {
                         id
                         name
@@ -2444,6 +2515,8 @@ export function App() {
                         licenseLevel
                         priority
                         notes
+                        howToDoc
+                        howToVideo
                         license {
                           id
                           name

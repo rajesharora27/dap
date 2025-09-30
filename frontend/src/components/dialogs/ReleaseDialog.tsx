@@ -66,7 +66,23 @@ export const ReleaseDialog: React.FC<Props> = ({ open, onClose, onSave, release,
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="sm" 
+      fullWidth
+      keepMounted
+      disableEnforceFocus
+      container={document.getElementById('root')}
+      BackdropProps={{
+        onClick: onClose
+      }}
+      slotProps={{
+        backdrop: {
+          invisible: false
+        }
+      }}
+    >
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>

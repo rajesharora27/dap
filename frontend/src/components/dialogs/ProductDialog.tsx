@@ -92,11 +92,27 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
       })));
       setCustomAttrs(product.customAttrs || {});
     } else {
+      // New product - set defaults for mandatory attributes
       setName('');
       setDescription('');
-      setOutcomes([]);
-      setLicenses([]);
-      setReleases([]);
+      setOutcomes([{
+        name: '', // Will be set to product name when product name is entered
+        description: '',
+        isNew: true
+      }]);
+      setLicenses([{
+        name: 'Essential',
+        description: 'Default essential license',
+        level: 1,
+        isActive: true,
+        isNew: true
+      }]);
+      setReleases([{
+        name: '1.0',
+        level: 1.0,
+        description: 'Initial release',
+        isNew: true
+      }]);
       setCustomAttrs({
         priority: "medium",
         owner: "",
@@ -105,6 +121,17 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
     }
     setError('');
   }, [product, open]);
+
+  // Update default outcome name when product name changes (for new products only)
+  useEffect(() => {
+    if (!product && name.trim() && outcomes.length === 1 && outcomes[0].isNew && !outcomes[0].name) {
+      setOutcomes([{
+        ...outcomes[0],
+        name: name.trim(),
+        description: `Primary outcome for ${name.trim()}`
+      }]);
+    }
+  }, [name, product, outcomes]);
 
   // License dialog handlers
   const handleAddLicense = (licenseData: Omit<License, 'id'>) => {
@@ -256,9 +283,58 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
   };
 
   const handleSave = async () => {
+    // Validate mandatory fields
     if (!name.trim()) {
-      setError('Name is required');
+      setError('Product name is required');
       return;
+    }
+
+    // Validate mandatory attributes for new products
+    if (!product) {
+      // Check for at least one active license
+      const activeLicenses = licenses.filter(license => !license.delete);
+      if (activeLicenses.length === 0) {
+        setError('At least one license is required. Default "Essential" license has been added.');
+        return;
+      }
+
+      // Check for at least one outcome
+      const activeOutcomes = outcomes.filter(outcome => !outcome.delete);
+      if (activeOutcomes.length === 0) {
+        setError('At least one outcome is required. Default outcome with product name has been added.');
+        return;
+      }
+
+      // Check for at least one release
+      const activeReleases = releases.filter(release => !release.delete);
+      if (activeReleases.length === 0) {
+        setError('At least one release is required. Default "1.0" release has been added.');
+        return;
+      }
+
+      // Validate outcome names are not empty
+      for (const outcome of activeOutcomes) {
+        if (!outcome.name.trim()) {
+          setError('All outcome names must be specified');
+          return;
+        }
+      }
+
+      // Validate license names are not empty
+      for (const license of activeLicenses) {
+        if (!license.name.trim()) {
+          setError('All license names must be specified');
+          return;
+        }
+      }
+
+      // Validate release names are not empty
+      for (const release of activeReleases) {
+        if (!release.name.trim()) {
+          setError('All release names must be specified');
+          return;
+        }
+      }
     }
 
     // customAttrs is already an object, no need to parse
@@ -300,7 +376,23 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="md" 
+      fullWidth
+      keepMounted
+      disableEnforceFocus
+      container={document.getElementById('root')}
+      BackdropProps={{
+        onClick: onClose
+      }}
+      slotProps={{
+        backdrop: {
+          invisible: false
+        }
+      }}
+    >
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
@@ -454,6 +546,7 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
                               </Typography>
                             </Box>
                           }
+                          secondaryTypographyProps={{ component: 'div' }}
                           sx={{
                             '& .MuiListItemText-primary': {
                               fontWeight: license.isNew ? 'bold' : 'normal'

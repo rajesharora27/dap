@@ -41,6 +41,8 @@ const UPDATE_TASK = gql`
       licenseLevel
       priority
       notes
+      howToDoc
+      howToVideo
       license {
         id
         name
@@ -93,6 +95,8 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
   const [weight, setWeight] = useState(1);
   const [notes, setNotes] = useState('');
   const [priority, setPriority] = useState('Medium');
+  const [howToDoc, setHowToDoc] = useState('');
+  const [howToVideo, setHowToVideo] = useState('');
   const [selectedLicense, setSelectedLicense] = useState<string>('');
 
   const priorities = ['Low', 'Medium', 'High', 'Critical'];
@@ -146,6 +150,8 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
       setWeight(task.weight || 1);
       setNotes(task.notes || '');
       setPriority(task.priority || 'Medium');
+      setHowToDoc(task.howToDoc || '');
+      setHowToVideo(task.howToVideo || '');
       setSelectedLicense(taskData.licenseId || '');
       
       setSelectedOutcomes(task.outcomes?.map((outcome: any) => outcome.id) || []);
@@ -158,6 +164,8 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
       setWeight(1);
       setNotes('');
       setPriority('Medium');
+      setHowToDoc('');
+      setHowToVideo('');
       setSelectedLicense('');
       setSelectedOutcomes([]);
       setSelectedReleases([]);
@@ -179,6 +187,8 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
       licenseId: selectedLicense || undefined,
       priority: priority || undefined,
       notes: notes || '',
+      howToDoc: howToDoc.trim() || undefined,
+      howToVideo: howToVideo.trim() || undefined,
       outcomeIds: selectedOutcomes,
       releaseIds: selectedReleases
     };
@@ -209,7 +219,28 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
   if (!editingTask) return null;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="md" 
+      fullWidth
+      keepMounted
+      container={document.getElementById('root')}
+      BackdropProps={{
+        onClick: onClose
+      }}
+      slotProps={{
+        backdrop: {
+          invisible: false
+        }
+      }}
+      sx={{
+        '& .MuiDialog-container': {
+          alignItems: 'flex-start',
+          mt: 4
+        }
+      }}
+    >
       <DialogTitle>Task Details</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
@@ -247,20 +278,22 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
               />
             </Box>
             <Box sx={{ flex: '1 1 200px' }}>
-              <Box sx={{ mt: 2, mb: 1 }}>
-                <Typography gutterBottom>
-                  Weight: {weight}% (Max: {maxAllowedWeight}%)
-                </Typography>
-                <Slider
-                  value={weight}
-                  onChange={(_, value) => setWeight(value as number)}
-                  min={1}
-                  max={maxAllowedWeight}
-                  marks
-                  valueLabelDisplay="auto"
-                  sx={{ mt: 1 }}
-                />
-              </Box>
+              <TextField
+                fullWidth
+                label="Weight (%)"
+                type="number"
+                value={weight}
+                onChange={(e) => {
+                  const value = Math.min(maxAllowedWeight, Math.max(1, parseInt(e.target.value) || 1));
+                  setWeight(value);
+                }}
+                margin="normal"
+                inputProps={{ 
+                  min: 1, 
+                  max: maxAllowedWeight
+                }}
+                helperText={`Max allowed: ${maxAllowedWeight}%`}
+              />
             </Box>
             <Box sx={{ flex: '1 1 200px' }}>
               <FormControl fullWidth margin="normal">
@@ -377,6 +410,26 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
             multiline
             rows={2}
             placeholder="Additional notes, comments, or requirements..."
+          />
+
+          <TextField
+            fullWidth
+            label="How To Documentation Link"
+            value={howToDoc}
+            onChange={(e) => setHowToDoc(e.target.value)}
+            margin="normal"
+            placeholder="https://docs.example.com/how-to-implement-this-task"
+            helperText="HTTP link to documentation explaining how to implement this task"
+          />
+
+          <TextField
+            fullWidth
+            label="How To Video Link"
+            value={howToVideo}
+            onChange={(e) => setHowToVideo(e.target.value)}
+            margin="normal"
+            placeholder="https://youtube.com/watch?v=example"
+            helperText="Link to video tutorial explaining how to implement this task"
           />
 
           {weight > 90 && (
