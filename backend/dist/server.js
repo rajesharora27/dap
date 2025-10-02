@@ -16,17 +16,12 @@ const typeDefs_1 = require("./schema/typeDefs");
 const resolvers_1 = require("./schema/resolvers");
 const schema_1 = require("@graphql-tools/schema");
 const context_1 = require("./context");
+const app_config_1 = require("./config/app.config");
 async function createApp() {
     const app = (0, express_1.default)();
     // Configure CORS to allow frontend requests
     app.use((0, cors_1.default)({
-        origin: [
-            'http://localhost:5173',
-            'http://localhost:3000',
-            'http://127.0.0.1:5173',
-            'http://10.207.195.7:5173', // Add external IP as fallback
-            'http://172.22.156.32:5173' // Add current network IP
-        ], // Allow frontend origins
+        origin: (0, app_config_1.getCorsOrigins)(), // Use configuration system
         credentials: true,
         allowedHeaders: ['Content-Type', 'Authorization', 'Apollo-Require-Preflight', 'authorization'], // Allow Apollo headers
         methods: ['GET', 'POST', 'OPTIONS']
@@ -52,8 +47,8 @@ async function createApp() {
 const isDirectRun = typeof require !== 'undefined' && require.main === module;
 if (isDirectRun) {
     createApp().then(({ httpServer }) => {
-        const port = process.env.PORT || 4000;
-        const host = process.env.HOST || '0.0.0.0';
+        const port = app_config_1.config.backend.port;
+        const host = app_config_1.config.backend.host;
         // simple retention / maintenance job
         setInterval(async () => {
             const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000);

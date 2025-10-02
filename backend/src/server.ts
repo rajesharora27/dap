@@ -10,19 +10,14 @@ import { typeDefs } from './schema/typeDefs';
 import { resolvers } from './schema/resolvers';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { createContext, prisma } from './context';
+import { config, getCorsOrigins } from './config/app.config';
 
 export async function createApp() {
   const app = express();
 
   // Configure CORS to allow frontend requests
   app.use(cors({
-    origin: [
-      'http://localhost:5173',
-      'http://localhost:3000',
-      'http://127.0.0.1:5173',
-      'http://10.207.195.7:5173', // Add external IP as fallback
-      'http://172.22.156.32:5173' // Add current network IP
-    ], // Allow frontend origins
+    origin: getCorsOrigins(), // Use configuration system
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'Apollo-Require-Preflight', 'authorization'], // Allow Apollo headers
     methods: ['GET', 'POST', 'OPTIONS']
@@ -51,8 +46,8 @@ export async function createApp() {
 const isDirectRun = typeof require !== 'undefined' && require.main === module;
 if (isDirectRun) {
   createApp().then(({ httpServer }) => {
-    const port = process.env.PORT || 4000;
-    const host = process.env.HOST || '0.0.0.0';
+    const port = config.backend.port;
+    const host = config.backend.host;
     // simple retention / maintenance job
     setInterval(async () => {
       const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000);

@@ -10,16 +10,16 @@
 # - Development environment management
 #
 # Usage: ./dap [command]
-# Commands: start, stop, restart, status, reset, clean-restart, test, help
+# Commands: start, stop, restart, status, reset, clean-restart, test, add-sample, reset-sample, help
 #######################################################################################
 
 set -e
 
-# Configuration
+# Configuration - Load from environment or use defaults
 APP_NAME="DAP Application"
 DB_CONTAINER="$(docker ps -a --format '{{.Names}}' | grep -E '^dap[-_]db[-_]1$|^dap_db_1$|^dap-db-1$|^db$' | head -n 1)"
-BACKEND_PORT=4000
-FRONTEND_PORT=5173
+BACKEND_PORT="${BACKEND_PORT:-4000}"
+FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 # Use the directory of this script as the project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$SCRIPT_DIR"
@@ -520,6 +520,76 @@ clean_restart() {
     log_info "🔄 Press Ctrl+Shift+R in your browser to see the enhanced sample data!"
 }
 
+# Add sample data without affecting user-created data
+add_sample_data() {
+    log_info "Adding sample data to existing database..."
+    
+    # Check if database container is running
+    if [ -z "$DB_CONTAINER" ]; then
+        log_error "No database container found. Run '$0 start' first."
+        exit 1
+    fi
+    
+    if ! docker ps --format "{{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
+        log_error "Database container '$DB_CONTAINER' is not running. Run '$0 start' first."
+        exit 1
+    fi
+    
+    # Execute the enhanced sample data script
+    log_info "📝 Executing enhanced sample data creation..."
+    if docker exec -i "$DB_CONTAINER" psql -U postgres -d dap < "$PROJECT_DIR/create-enhanced-sample-data.sql"; then
+        log_success "✅ Sample data added successfully!"
+        log_info "Sample data includes:"
+        log_info "  • 5 comprehensive products (ecommerce, fintech, healthcare, logistics, edtech)"
+        log_info "  • Associated licenses, outcomes, and releases"
+        log_info "  • Tasks with howToDoc and howToVideo fields"
+        log_info "  • Complete data relationships and constraints"
+    else
+        log_error "❌ Failed to add sample data"
+        exit 1
+    fi
+    
+    log_info "🔄 Refresh your browser to see the new sample data!"
+}
+
+# Remove sample data while preserving user-created data
+reset_sample_data() {
+    log_info "Removing sample data while preserving user-created data..."
+    
+    # Check if database container is running
+    if [ -z "$DB_CONTAINER" ]; then
+        log_error "No database container found. Run '$0 start' first."
+        exit 1
+    fi
+    
+    if ! docker ps --format "{{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
+        log_error "Database container '$DB_CONTAINER' is not running. Run '$0 start' first."
+        exit 1
+    fi
+    
+    # Check if remove-sample-data.sql exists
+    if [ ! -f "$PROJECT_DIR/remove-sample-data.sql" ]; then
+        log_error "❌ remove-sample-data.sql not found. This script is required for selective sample data removal."
+        exit 1
+    fi
+    
+    # Execute the sample data removal script
+    log_info "🗑️ Removing sample data (preserving user data)..."
+    if docker exec -i "$DB_CONTAINER" psql -U postgres -d dap < "$PROJECT_DIR/remove-sample-data.sql"; then
+        log_success "✅ Sample data removed successfully!"
+        log_info "Removed data:"
+        log_info "  • Sample products (prod-ecommerce-advanced, prod-fintech-suite, etc.)"
+        log_info "  • Associated tasks, licenses, outcomes, and releases"
+        log_info "  • Sample customers and relationships"
+        log_info "  • User-created data has been preserved"
+    else
+        log_error "❌ Failed to remove sample data"
+        exit 1
+    fi
+    
+    log_info "🔄 Refresh your browser to see the updated data!"
+}
+
 # Show help
 show_help() {
     echo -e "${PURPLE}DAP Application Manager${NC}"
@@ -533,6 +603,8 @@ show_help() {
     echo -e "  ${RED}stop${NC}          - Stop all application services" 
     echo -e "  ${YELLOW}restart${NC}       - Restart all services (keeps existing data)"
     echo -e "  ${CYAN}clean-restart${NC} - Stop, clean database, add sample data, restart"
+    echo -e "  ${BLUE}add-sample${NC}    - Add sample data to existing database (preserves user data)"
+    echo -e "  ${PURPLE}reset-sample${NC}  - Remove sample data only (preserves user data)"
     echo -e "  ${PURPLE}test${NC}          - Run comprehensive end-user test suite"
     echo -e "  ${BLUE}status${NC}        - Show status of all services and data"
     echo -e "  ${PURPLE}help${NC}          - Show this help message"
@@ -540,6 +612,8 @@ show_help() {
     echo "Examples:"
     echo "  $0 start           # Start for daily development"
     echo "  $0 clean-restart   # Fresh start with clean sample data"
+    echo "  $0 add-sample      # Add sample data to existing database"
+    echo "  $0 reset-sample    # Remove sample data, keep user data"
     echo "  $0 test            # Validate all functionality with comprehensive test"
     echo "  $0 status          # Check what's running"
     echo "  $0 stop            # End development session"
@@ -554,6 +628,11 @@ show_help() {
     echo "  • Tasks with howToDoc and howToVideo fields"
     echo "  • Complete data relationships and constraints"
     echo "  • Essential licenses, outcomes, and releases for each product"
+    echo ""
+    echo "Sample data management:"
+    echo "  • add-sample: Adds sample data without affecting existing user data"
+    echo "  • reset-sample: Removes only sample data, preserves user-created data"
+    echo "  • clean-restart: Completely resets database and adds fresh sample data"
     echo ""
     echo "The test command runs comprehensive validation:"
     echo "  • Simulates complete end-user workflows"
@@ -580,6 +659,12 @@ main() {
             ;;
         clean-restart)
             clean_restart
+            ;;
+        add-sample)
+            add_sample_data
+            ;;
+        reset-sample)
+            reset_sample_data
             ;;
         test)
             run_comprehensive_test

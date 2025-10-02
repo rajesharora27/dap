@@ -101,79 +101,92 @@ export const TaskList: React.FC<Props> = ({
               >
                 <ListItemText
                   primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Typography variant="body2" fontWeight="medium">
-                        {task.name}
-                      </Typography>
-                      {task.licenseLevel && (
-                        <Chip 
-                          label={task.licenseLevel}
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                      {/* Left side: Sequence number and task name */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
+                        {task.sequenceNumber && (
+                          <Chip
+                            size="small"
+                            label={`#${task.sequenceNumber}`}
+                            color="secondary"
+                            variant="outlined"
+                            sx={{ fontWeight: 'bold', minWidth: '48px' }}
+                          />
+                        )}
+                        <Typography variant="body2" fontWeight="medium" sx={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          flex: 1
+                        }}>
+                          {task.name}
+                        </Typography>
+                      </Box>
+                      
+                      {/* Right side: Weight and How-to links */}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+                        {/* Weight */}
+                        <Chip
                           size="small"
-                          color="info"
+                          label={`${task.weight}%`}
+                          color="primary"
                           variant="outlined"
-                          sx={{ fontSize: '0.7rem', height: 18 }}
+                          sx={{ fontWeight: 'bold' }}
                         />
-                      )}
+                        
+                        {/* How-to links - compact */}
+                        {task.howToDoc && (
+                          <Chip
+                            size="small"
+                            label="📖"
+                            color="primary"
+                            variant="outlined"
+                            sx={{ 
+                              fontSize: '0.7rem', 
+                              height: '20px', 
+                              minWidth: '28px',
+                              cursor: 'pointer',
+                              '&:hover': { backgroundColor: 'primary.light' }
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(task.howToDoc, '_blank');
+                            }}
+                            title="How-to Documentation"
+                          />
+                        )}
+                        {task.howToVideo && (
+                          <Chip
+                            size="small"
+                            label="🎥"
+                            color="primary"
+                            variant="outlined"
+                            sx={{ 
+                              fontSize: '0.7rem', 
+                              height: '20px', 
+                              minWidth: '28px',
+                              cursor: 'pointer',
+                              '&:hover': { backgroundColor: 'primary.light' }
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.open(task.howToVideo, '_blank');
+                            }}
+                            title="How-to Video"
+                          />
+                        )}
+                      </Box>
                     </Box>
                   }
                   secondary={
-                    <Box>
-                      {showProductName && task.productName && (
-                        <>
-                          <Chip 
-                            label={task.productName}
-                            size="small"
-                            variant="outlined"
-                            sx={{ fontSize: '0.6rem', height: 16, mt: 0.5 }}
-                          />
-                          <br />
-                        </>
-                      )}
-                      {/* Show outcomes */}
-                      {task.outcomes && task.outcomes.length > 0 && (
-                        <Box sx={{ mt: 0.5, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {task.outcomes.map((outcome: any) => (
-                            <Chip 
-                              key={outcome.id}
-                              label={outcome.name}
-                              size="small"
-                              color="success"
-                              variant="outlined"
-                              sx={{ fontSize: '0.6rem', height: 16 }}
-                            />
-                          ))}
-                        </Box>
-                      )}
-                      {/* Show how-to links */}
-                      {(task.howToDoc || task.howToVideo) && (
-                        <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5 }}>
-                          {task.howToDoc && (
-                            <Chip 
-                              label="📄"
-                              size="small"
-                              color="primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(task.howToDoc, '_blank');
-                              }}
-                              sx={{ fontSize: '0.6rem', height: 16, cursor: 'pointer' }}
-                            />
-                          )}
-                          {task.howToVideo && (
-                            <Chip 
-                              label="🎥"
-                              size="small"
-                              color="primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(task.howToVideo, '_blank');
-                              }}
-                              sx={{ fontSize: '0.6rem', height: 16, cursor: 'pointer' }}
-                            />
-                          )}
-                        </Box>
-                      )}
-                    </Box>
+                    showProductName && task.productName ? (
+                      <Chip 
+                        label={task.productName}
+                        size="small"
+                        variant="outlined"
+                        sx={{ fontSize: '0.6rem', height: 16, mt: 0.5 }}
+                      />
+                    ) : undefined
                   }
                 />
                 <ListItemSecondaryAction>

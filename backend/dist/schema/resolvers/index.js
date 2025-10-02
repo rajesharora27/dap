@@ -14,6 +14,7 @@ const changes_1 = require("../../lib/changes");
 const csv_1 = require("../../lib/csv");
 const csvSamples_1 = require("../../lib/csvSamples");
 const pubsub_1 = require("../../lib/pubsub");
+const telemetry_1 = require("./telemetry");
 const pagination_1 = require("../../lib/pagination");
 const audit_1 = require("../../lib/audit");
 const auth_1 = require("../../lib/auth");
@@ -212,6 +213,37 @@ exports.resolvers = {
             };
             return prismaToGraphQLMap[parent.licenseLevel] || 'Essential';
         },
+        license: async (parent) => {
+            if (context_1.fallbackActive) {
+                // In fallback mode, convert licenseLevel back to license object
+                const licenses = (0, fallbackStore_1.listLicenses)();
+                const levelMap = {
+                    'ESSENTIAL': 1,
+                    'ADVANTAGE': 2,
+                    'SIGNATURE': 3
+                };
+                const requiredLevel = levelMap[parent.licenseLevel];
+                return licenses.find((l) => l.level === requiredLevel && l.productId === parent.productId);
+            }
+            // Convert licenseLevel back to actual license object
+            const levelMap = {
+                'ESSENTIAL': 1,
+                'ADVANTAGE': 2,
+                'SIGNATURE': 3
+            };
+            const requiredLevel = levelMap[parent.licenseLevel];
+            if (!requiredLevel || !parent.productId) {
+                return null;
+            }
+            return await context_1.prisma.license.findFirst({
+                where: {
+                    productId: parent.productId,
+                    level: requiredLevel,
+                    isActive: true,
+                    deletedAt: null
+                }
+            });
+        },
         releases: async (parent) => {
             if (context_1.fallbackActive) {
                 return [];
@@ -253,8 +285,14 @@ exports.resolvers = {
             // Include all releases at or above the minimum level
             const availableReleases = allReleases.filter((r) => r.level >= minDirectLevel);
             return availableReleases;
-        }
+        },
+        // Telemetry-related computed fields
+        telemetryAttributes: telemetry_1.TaskTelemetryResolvers.telemetryAttributes,
+        isCompleteBasedOnTelemetry: telemetry_1.TaskTelemetryResolvers.isCompleteBasedOnTelemetry,
+        telemetryCompletionPercentage: telemetry_1.TaskTelemetryResolvers.telemetryCompletionPercentage,
     },
+    TelemetryAttribute: telemetry_1.TelemetryAttributeResolvers,
+    TelemetryValue: telemetry_1.TelemetryValueResolvers,
     Outcome: {
         product: (parent) => {
             if (context_1.fallbackActive) {
@@ -406,7 +444,14 @@ exports.resolvers = {
             const tasks = await context_1.prisma.task.findMany({ where: { name: { contains: q, mode: 'insensitive' }, deletedAt: null }, take: first });
             return [...products, ...tasks].slice(0, first);
         },
-        telemetry: async (_, { taskId, limit = 50 }) => context_1.prisma.telemetry.findMany({ where: { taskId }, orderBy: { createdAt: 'desc' }, take: Math.min(limit, 200) }),
+        telemetry: async (_, { taskId, limit = 50 }) => context_1.prisma.telemetry.findMany({ where: { taskId }, orderBy: { createdAt: 'desc' }, take: Math.min(limit, 200) })
+        // Telemetry Attribute queries
+        ,
+        telemetryAttribute: telemetry_1.TelemetryQueryResolvers.telemetryAttribute,
+        telemetryAttributes: telemetry_1.TelemetryQueryResolvers.telemetryAttributes,
+        telemetryValue: telemetry_1.TelemetryQueryResolvers.telemetryValue,
+        telemetryValues: telemetry_1.TelemetryQueryResolvers.telemetryValues,
+        telemetryValuesByBatch: telemetry_1.TelemetryQueryResolvers.telemetryValuesByBatch,
         taskDependencies: async (_, { taskId }) => context_1.prisma.taskDependency.findMany({ where: { taskId }, orderBy: { createdAt: 'asc' } })
     },
     Mutation: {
@@ -845,8 +890,12 @@ exports.resolvers = {
             }
         },
         createTask: async (_, { input }, ctx) => {
+            console.log('🚀 CREATE_TASK CALLED - Raw input received:', JSON.stringify(input, null, 2));
+            console.log('🚀 CREATE_TASK - howToDoc:', `"${input.howToDoc}"`);
+            console.log('🚀 CREATE_TASK - howToVideo:', `"${input.howToVideo}"`);
+            console.log('🚀 CREATE_TASK - Has howToDoc field:', Object.hasOwnProperty.call(input, 'howToDoc'));
+            console.log('🚀 CREATE_TASK - Has howToVideo field:', Object.hasOwnProperty.call(input, 'howToVideo'));
             (0, auth_1.requireUser)(ctx);
-            console.log('🔍 CREATE_TASK received input:', JSON.stringify(input, null, 2));
             // Ensure either productId or solutionId is provided
             if (!input.productId && !input.solutionId) {
                 throw new Error('Either productId or solutionId must be provided');
@@ -998,11 +1047,13 @@ exports.resolvers = {
                         });
                         taskData.sequenceNumber = (lastTask?.sequenceNumber || 0) + 1;
                     }
-                    console.log('🔍 About to create task with data:', JSON.stringify({ ...taskData, licenseLevel: prismaLicenseLevel }, null, 2));
                     task = await context_1.prisma.task.create({
                         data: {
                             ...taskData,
-                            licenseLevel: prismaLicenseLevel
+                            licenseLevel: prismaLicenseLevel,
+                            // EXPLICIT FIX: Always include howToDoc and howToVideo even if undefined in input
+                            howToDoc: input.howToDoc || null,
+                            howToVideo: input.howToVideo || null
                         }
                     });
                     // Success - break out of retry loop
@@ -1560,6 +1611,15 @@ exports.resolvers = {
         addTaskDependency: async (_, { taskId, dependsOnId }, ctx) => { (0, auth_1.requireUser)(ctx); await context_1.prisma.taskDependency.create({ data: { taskId, dependsOnId } }); await (0, audit_1.logAudit)('ADD_TASK_DEP', 'TaskDependency', taskId, { dependsOnId }); return true; },
         removeTaskDependency: async (_, { taskId, dependsOnId }, ctx) => { (0, auth_1.requireUser)(ctx); await context_1.prisma.taskDependency.deleteMany({ where: { taskId, dependsOnId } }); await (0, audit_1.logAudit)('REMOVE_TASK_DEP', 'TaskDependency', taskId, { dependsOnId }); return true; },
         addTelemetry: async (_, { taskId, data }, ctx) => { (0, auth_1.requireUser)(ctx); await context_1.prisma.telemetry.create({ data: { taskId, data } }); await (0, audit_1.logAudit)('ADD_TELEMETRY', 'Telemetry', taskId, {}); return true; },
+        // Telemetry Attribute mutations
+        createTelemetryAttribute: telemetry_1.TelemetryMutationResolvers.createTelemetryAttribute,
+        updateTelemetryAttribute: telemetry_1.TelemetryMutationResolvers.updateTelemetryAttribute,
+        deleteTelemetryAttribute: telemetry_1.TelemetryMutationResolvers.deleteTelemetryAttribute,
+        // Telemetry Value mutations
+        addTelemetryValue: telemetry_1.TelemetryMutationResolvers.addTelemetryValue,
+        addBatchTelemetryValues: telemetry_1.TelemetryMutationResolvers.addBatchTelemetryValues,
+        updateTelemetryValue: telemetry_1.TelemetryMutationResolvers.updateTelemetryValue,
+        deleteTelemetryValue: telemetry_1.TelemetryMutationResolvers.deleteTelemetryValue,
         queueTaskSoftDelete: async (_, { id }, ctx) => { (0, auth_1.ensureRole)(ctx, 'ADMIN'); if (context_1.fallbackActive) {
             (0, fallbackStore_1.softDeleteTask)(id);
         }

@@ -515,6 +515,181 @@ async function main() {
                 }
             }
         }
+        // Create comprehensive telemetry sample data
+        console.log('[seed] Creating telemetry sample data...');
+        const allTasks = await context_1.prisma.task.findMany({
+            where: { deletedAt: null },
+            take: 10 // Limit to first 10 tasks for sample data
+        });
+        for (const task of allTasks) {
+            try {
+                // Create different types of telemetry attributes for each task
+                const telemetryAttributes = [
+                    {
+                        name: 'Deployment Status',
+                        description: 'Boolean flag indicating if the task deployment is complete',
+                        dataType: 'BOOLEAN',
+                        successCriteria: JSON.stringify({
+                            type: 'boolean_flag',
+                            expectedValue: true,
+                            description: 'Task is considered complete when deployment status is true'
+                        }),
+                        isRequired: true,
+                        order: 1
+                    },
+                    {
+                        name: 'Performance Score',
+                        description: 'Numeric performance score (0-100) for the task',
+                        dataType: 'NUMBER',
+                        successCriteria: JSON.stringify({
+                            type: 'number_threshold',
+                            operator: 'greater_than_or_equal',
+                            threshold: 85,
+                            description: 'Task is successful when performance score >= 85'
+                        }),
+                        isRequired: true,
+                        order: 2
+                    },
+                    {
+                        name: 'Code Quality',
+                        description: 'String indicator of code quality status',
+                        dataType: 'STRING',
+                        successCriteria: JSON.stringify({
+                            type: 'string_match',
+                            mode: 'exact',
+                            pattern: 'PASSED',
+                            caseSensitive: false,
+                            description: 'Task passes when code quality status is PASSED'
+                        }),
+                        isRequired: false,
+                        order: 3
+                    },
+                    {
+                        name: 'Last Updated',
+                        description: 'Timestamp of last update to track freshness',
+                        dataType: 'TIMESTAMP',
+                        successCriteria: JSON.stringify({
+                            type: 'timestamp_comparison',
+                            mode: 'within_days',
+                            referenceTime: 'now',
+                            withinDays: 7,
+                            description: 'Task data is fresh when updated within 7 days'
+                        }),
+                        isRequired: false,
+                        order: 4
+                    },
+                    {
+                        name: 'Composite Health Check',
+                        description: 'Complex criteria combining multiple conditions',
+                        dataType: 'BOOLEAN',
+                        successCriteria: JSON.stringify({
+                            type: 'composite_and',
+                            description: 'All health conditions must pass',
+                            criteria: [
+                                {
+                                    type: 'boolean_flag',
+                                    expectedValue: true
+                                },
+                                {
+                                    type: 'composite_or',
+                                    criteria: [
+                                        {
+                                            type: 'string_match',
+                                            mode: 'contains',
+                                            pattern: 'healthy',
+                                            caseSensitive: false
+                                        },
+                                        {
+                                            type: 'string_match',
+                                            mode: 'exact',
+                                            pattern: 'operational',
+                                            caseSensitive: false
+                                        }
+                                    ]
+                                }
+                            ]
+                        }),
+                        isRequired: false,
+                        order: 5
+                    }
+                ];
+                // Create telemetry attributes for this task
+                for (const attrData of telemetryAttributes) {
+                    // Check if attribute already exists
+                    const existingAttribute = await context_1.prisma.telemetryAttribute.findFirst({
+                        where: {
+                            taskId: task.id,
+                            name: attrData.name
+                        }
+                    });
+                    if (existingAttribute) {
+                        console.log(`[seed] Telemetry attribute "${attrData.name}" already exists for task "${task.name}"`);
+                        continue;
+                    }
+                    const attribute = await context_1.prisma.telemetryAttribute.create({
+                        data: {
+                            taskId: task.id,
+                            ...attrData
+                        }
+                    });
+                    // Create sample values for each attribute
+                    const sampleValues = [];
+                    const taskIndex = allTasks.indexOf(task);
+                    const batchId = `batch_${task.id.slice(-8)}_${attrData.name.replace(/\s+/g, '_').toLowerCase()}`;
+                    switch (attrData.dataType) {
+                        case 'BOOLEAN':
+                            if (attrData.name === 'Composite Health Check') {
+                                sampleValues.push({ value: taskIndex % 2 === 0 ? 'true' : 'false', notes: 'All health checks passing' }, { value: 'false', notes: 'Some health checks failing' }, { value: 'true', notes: 'Systems operational' });
+                            }
+                            else {
+                                sampleValues.push({ value: 'false', notes: 'Initial deployment in progress' }, { value: taskIndex % 3 === 0 ? 'false' : 'true', notes: 'Deployment status update' }, { value: 'true', notes: 'Deployment completed successfully' });
+                            }
+                            break;
+                        case 'NUMBER':
+                            const baseScore = 70 + (taskIndex * 5) % 30; // Deterministic scores between 70-99
+                            sampleValues.push({ value: String(baseScore), notes: 'Initial performance benchmark' }, { value: String(baseScore + 10), notes: 'After optimization' }, { value: String(Math.min(baseScore + 20, 99)), notes: 'Latest performance score' });
+                            break;
+                        case 'STRING':
+                            if (attrData.name === 'Composite Health Check') {
+                                const healthStatuses = ['healthy', 'operational', 'healthy and operational'];
+                                sampleValues.push({ value: healthStatuses[taskIndex % 3], notes: 'System status check' }, { value: 'operational', notes: 'Service status confirmed' }, { value: 'healthy and operational', notes: 'Full system check' });
+                            }
+                            else {
+                                const qualityStatuses = ['PENDING', 'FAILED', 'PASSED'];
+                                const finalStatus = taskIndex % 3 === 0 ? 'FAILED' : 'PASSED';
+                                sampleValues.push({ value: 'PENDING', notes: 'Code review in progress' }, { value: qualityStatuses[taskIndex % 3], notes: 'Issues found during review' }, { value: finalStatus, notes: 'All quality checks completed' });
+                            }
+                            break;
+                        case 'TIMESTAMP':
+                            const now = new Date();
+                            const daysAgo1 = new Date(now.getTime() - (3 + taskIndex) * 24 * 60 * 60 * 1000);
+                            const daysAgo2 = new Date(now.getTime() - (1 + taskIndex * 0.5) * 24 * 60 * 60 * 1000);
+                            sampleValues.push({ value: daysAgo1.toISOString(), notes: 'Initial timestamp' }, { value: daysAgo2.toISOString(), notes: 'Recent update' }, { value: now.toISOString(), notes: 'Latest timestamp' });
+                            break;
+                    }
+                    // Create the values with deterministic timestamps
+                    for (let i = 0; i < sampleValues.length; i++) {
+                        const valueData = sampleValues[i];
+                        const daysBack = (sampleValues.length - i) * 2; // 6, 4, 2 days back
+                        const createdAt = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
+                        await context_1.prisma.telemetryValue.create({
+                            data: {
+                                attributeId: attribute.id,
+                                value: valueData.value,
+                                notes: valueData.notes,
+                                batchId: i < 2 ? batchId : null, // First 2 values in batch, last one individual
+                                createdAt
+                            }
+                        });
+                    }
+                    console.log(`[seed] Created telemetry attribute "${attrData.name}" for task "${task.name}" with ${sampleValues.length} values`);
+                }
+            }
+            catch (error) {
+                console.error(`[seed] Error creating telemetry data for task ${task.name}:`, error);
+            }
+        }
+        console.log('[seed] Completed telemetry sample data creation');
     }
     else {
         console.log('[seed] Skipping sample data');

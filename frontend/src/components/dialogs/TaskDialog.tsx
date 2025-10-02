@@ -15,9 +15,12 @@ import {
   MenuItem,
   Alert,
   Chip,
-  OutlinedInput
+  OutlinedInput,
+  Tabs,
+  Tab
 } from '@mui/material';
 import { Release } from '../../types/shared';
+import TelemetryConfiguration from '../telemetry/TelemetryConfiguration';
 
 interface Task {
   id: string;
@@ -36,6 +39,22 @@ interface Task {
   outcomes?: Array<{ id: string; name: string }>;
   releases?: Array<{ id: string; name: string; level: number }>;
   releaseIds?: string[];
+  telemetryAttributes?: TelemetryAttribute[];
+}
+
+interface TelemetryAttribute {
+  id?: string;
+  name: string;
+  description: string;
+  dataType: 'BOOLEAN' | 'NUMBER' | 'STRING' | 'TIMESTAMP';
+  successCriteria?: any;
+  isRequired: boolean;
+  order: number;
+  currentValue?: {
+    value: string;
+    notes?: string;
+  };
+  isSuccessful?: boolean;
 }
 
 interface Outcome {
@@ -62,6 +81,9 @@ interface Props {
     licenseId?: string;
     outcomeIds?: string[];
     releaseIds?: string[];
+    howToDoc?: string;
+    howToVideo?: string;
+    telemetryAttributes?: TelemetryAttribute[];
   }) => Promise<void>;
   task?: Task | null;
   title: string;
@@ -99,6 +121,8 @@ export const TaskDialog: React.FC<Props> = ({
   const [selectedLicense, setSelectedLicense] = useState<string>('');
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([]);
   const [selectedReleases, setSelectedReleases] = useState<string[]>([]);
+  const [telemetryAttributes, setTelemetryAttributes] = useState<TelemetryAttribute[]>([]);
+  const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -121,6 +145,7 @@ export const TaskDialog: React.FC<Props> = ({
       setSelectedLicense(task.licenseId || '');
       setSelectedOutcomes(task.outcomes?.map(o => o.id) || []);
       setSelectedReleases(task.releases?.map(r => r.id) || task.releaseIds || []);
+      setTelemetryAttributes(task.telemetryAttributes || []);
     } else {
       setName('');
       setDescription('');
@@ -133,8 +158,10 @@ export const TaskDialog: React.FC<Props> = ({
       setSelectedLicense('');
       setSelectedOutcomes([]);
       setSelectedReleases([]);
+      setTelemetryAttributes([]);
     }
     setError('');
+    setActiveTab(0);
   }, [task, open, remainingWeight]);
 
     const handleSave = async () => {
@@ -171,7 +198,8 @@ export const TaskDialog: React.FC<Props> = ({
         howToVideo: howToVideo.trim() || undefined,
         licenseId: selectedLicense || undefined,
         outcomeIds: selectedOutcomes.length > 0 ? selectedOutcomes : undefined,
-        releaseIds: selectedReleases.length > 0 ? selectedReleases : undefined
+        releaseIds: selectedReleases.length > 0 ? selectedReleases : undefined,
+        telemetryAttributes: telemetryAttributes.length > 0 ? telemetryAttributes : undefined
       });
       onClose();
     } catch (err: any) {
@@ -208,15 +236,26 @@ export const TaskDialog: React.FC<Props> = ({
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
-          <TextField
-            fullWidth
-            label="Task Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            margin="normal"
-            required
-            placeholder="e.g., Implement user authentication"
-          />
+          <Tabs 
+            value={activeTab} 
+            onChange={(e, newValue) => setActiveTab(newValue)}
+            sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+          >
+            <Tab label="Basic Info" />
+            <Tab label="Telemetry" />
+          </Tabs>
+
+          {activeTab === 0 && (
+            <Box>
+              <TextField
+                fullWidth
+                label="Task Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                margin="normal"
+                required
+                placeholder="e.g., Implement user authentication"
+              />
 
           <TextField
             fullWidth
@@ -403,6 +442,19 @@ export const TaskDialog: React.FC<Props> = ({
             <Alert severity="warning" sx={{ mt: 2 }}>
               Product weight is almost fully allocated ({totalUsedWeight}% used). Consider adjusting task weights.
             </Alert>
+          )}
+            </Box>
+          )}
+
+          {activeTab === 1 && (
+            <Box>
+              <TelemetryConfiguration
+                taskId={task?.id}
+                attributes={telemetryAttributes}
+                onChange={setTelemetryAttributes}
+                disabled={loading}
+              />
+            </Box>
           )}
 
           {error && (
