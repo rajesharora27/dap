@@ -8,6 +8,13 @@ import { createChangeSet, recordChange, commitChangeSet, undoChangeSet, listChan
 import { exportCsv, importCsv } from '../../lib/csv';
 import { generateProductSampleCsv, generateTaskSampleCsv, validateProductHeaders, validateTaskHeaders } from '../../lib/csvSamples';
 import { pubsub, PUBSUB_EVENTS } from '../../lib/pubsub';
+import { 
+  TelemetryAttributeResolvers,
+  TelemetryValueResolvers, 
+  TelemetryQueryResolvers,
+  TelemetryMutationResolvers,
+  TaskTelemetryResolvers
+} from './telemetry';
 import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../lib/pagination';
 import { logAudit } from '../../lib/audit';
 import { ensureRole, requireUser } from '../../lib/auth';
@@ -275,8 +282,20 @@ export const resolvers = {
       const availableReleases = allReleases.filter((r: any) => r.level >= minDirectLevel);
       
       return availableReleases;
-    }
+    },
+    
+    // Telemetry-related computed fields
+    telemetryAttributes: TaskTelemetryResolvers.telemetryAttributes,
+    
+    isCompleteBasedOnTelemetry: TaskTelemetryResolvers.isCompleteBasedOnTelemetry,
+    
+    telemetryCompletionPercentage: TaskTelemetryResolvers.telemetryCompletionPercentage,
   },
+  
+  TelemetryAttribute: TelemetryAttributeResolvers,
+  
+  TelemetryValue: TelemetryValueResolvers,
+  
   Outcome: {
     product: (parent: any) => {
       if (fallbackActive) {
@@ -425,6 +444,14 @@ export const resolvers = {
       return [...products, ...tasks].slice(0, first);
     }
     , telemetry: async (_: any, { taskId, limit = 50 }: any) => prisma.telemetry.findMany({ where: { taskId }, orderBy: { createdAt: 'desc' }, take: Math.min(limit, 200) })
+    
+    // Telemetry Attribute queries
+    , telemetryAttribute: TelemetryQueryResolvers.telemetryAttribute
+    , telemetryAttributes: TelemetryQueryResolvers.telemetryAttributes
+    , telemetryValue: TelemetryQueryResolvers.telemetryValue
+    , telemetryValues: TelemetryQueryResolvers.telemetryValues
+    , telemetryValuesByBatch: TelemetryQueryResolvers.telemetryValuesByBatch
+    
     , taskDependencies: async (_: any, { taskId }: any) => prisma.taskDependency.findMany({ where: { taskId }, orderBy: { createdAt: 'asc' } })
   },
   Mutation: {
@@ -1594,6 +1621,18 @@ export const resolvers = {
     addTaskDependency: async (_: any, { taskId, dependsOnId }: any, ctx: any) => { requireUser(ctx); await prisma.taskDependency.create({ data: { taskId, dependsOnId } }); await logAudit('ADD_TASK_DEP', 'TaskDependency', taskId, { dependsOnId }); return true; },
     removeTaskDependency: async (_: any, { taskId, dependsOnId }: any, ctx: any) => { requireUser(ctx); await prisma.taskDependency.deleteMany({ where: { taskId, dependsOnId } }); await logAudit('REMOVE_TASK_DEP', 'TaskDependency', taskId, { dependsOnId }); return true; },
     addTelemetry: async (_: any, { taskId, data }: any, ctx: any) => { requireUser(ctx); await prisma.telemetry.create({ data: { taskId, data } }); await logAudit('ADD_TELEMETRY', 'Telemetry', taskId, {}); return true; },
+    
+    // Telemetry Attribute mutations
+    createTelemetryAttribute: TelemetryMutationResolvers.createTelemetryAttribute,
+    updateTelemetryAttribute: TelemetryMutationResolvers.updateTelemetryAttribute,
+    deleteTelemetryAttribute: TelemetryMutationResolvers.deleteTelemetryAttribute,
+    
+    // Telemetry Value mutations
+    addTelemetryValue: TelemetryMutationResolvers.addTelemetryValue,
+    addBatchTelemetryValues: TelemetryMutationResolvers.addBatchTelemetryValues,
+    updateTelemetryValue: TelemetryMutationResolvers.updateTelemetryValue,
+    deleteTelemetryValue: TelemetryMutationResolvers.deleteTelemetryValue,
+    
     queueTaskSoftDelete: async (_: any, { id }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbSoftDeleteTask(id); } else { await prisma.task.update({ where: { id }, data: { deletedAt: new Date() } }); } await logAudit('QUEUE_TASK_DELETE', 'Task', id, {}); return true; },
     processDeletionQueue: async (_: any, { limit = 50 }: any, ctx: any) => {
       ensureRole(ctx, 'ADMIN');

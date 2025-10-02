@@ -172,6 +172,25 @@ const TASKS_FOR_PRODUCT = gql`
             level
             description
           }
+          telemetryAttributes {
+            id
+            name
+            description
+            dataType
+            isRequired
+            successCriteria
+            order
+            isActive
+            isSuccessful
+            currentValue {
+              id
+              value
+              source
+              createdAt
+            }
+          }
+          isCompleteBasedOnTelemetry
+          telemetryCompletionPercentage
         }
       }
     }
@@ -321,6 +340,45 @@ const DELETE_RELEASE = gql`
   }
 `;
 
+// Telemetry mutations
+const CREATE_TELEMETRY_ATTRIBUTE = gql`
+  mutation CreateTelemetryAttribute($input: TelemetryAttributeInput!) {
+    createTelemetryAttribute(input: $input) {
+      id
+      taskId
+      name
+      description
+      dataType
+      isRequired
+      successCriteria
+      order
+      isActive
+    }
+  }
+`;
+
+const UPDATE_TELEMETRY_ATTRIBUTE = gql`
+  mutation UpdateTelemetryAttribute($id: ID!, $input: TelemetryAttributeUpdateInput!) {
+    updateTelemetryAttribute(id: $id, input: $input) {
+      id
+      taskId
+      name
+      description
+      dataType
+      isRequired
+      successCriteria
+      order
+      isActive
+    }
+  }
+`;
+
+const DELETE_TELEMETRY_ATTRIBUTE = gql`
+  mutation DeleteTelemetryAttribute($id: ID!) {
+    deleteTelemetryAttribute(id: $id)
+  }
+`;
+
 // Sortable Task Item Component
 function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick }: any) {
   const {
@@ -359,111 +417,81 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick }: any) {
           <DragIndicator sx={{ color: 'text.secondary' }} />
         </ListItemIcon>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          {/* Primary content */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {task.sequenceNumber && (
+          {/* Primary content - more compact layout */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+            {/* Left side: Sequence number and task name */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
+              {task.sequenceNumber && (
+                <Chip
+                  size="small"
+                  label={`#${task.sequenceNumber}`}
+                  color="secondary"
+                  variant="outlined"
+                  sx={{ fontWeight: 'bold', minWidth: '48px' }}
+                />
+              )}
+              <Typography variant="subtitle1" component="div" sx={{ 
+                overflow: 'hidden', 
+                textOverflow: 'ellipsis', 
+                whiteSpace: 'nowrap' 
+              }}>
+                {task.name}
+              </Typography>
+            </Box>
+            
+            {/* Right side: Weight and How-to links in a horizontal layout */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
+              {/* Weight */}
               <Chip
                 size="small"
-                label={`#${task.sequenceNumber}`}
-                color="secondary"
+                label={`${task.weight}%`}
+                color="primary"
                 variant="outlined"
-                sx={{ fontWeight: 'bold', minWidth: '48px' }}
+                sx={{ fontWeight: 'bold' }}
               />
-            )}
-            <Typography variant="subtitle1" component="div">
-              {task.name}
-            </Typography>
-            <Chip
-              size="small"
-              label={`${task.weight}%`}
-              color="primary"
-              variant="outlined"
-              sx={{ fontWeight: 'bold' }}
-            />
-          </Box>
-          
-          {/* Secondary content */}
-          <Box sx={{ mt: 1 }}>
-            {/* Outcomes for this task */}
-            {task.outcomes && task.outcomes.length > 0 ? (
-              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center', mb: 0.5 }}>
-                <Typography variant="caption" color="info.main" sx={{ mr: 0.5 }}>
-                  Outcomes:
-                </Typography>
-                {task.outcomes.map((outcome: any) => (
-                  <Chip
-                    key={outcome.id}
-                    size="small"
-                    label={outcome.name}
-                    color="info"
-                    variant="outlined"
-                    sx={{ fontSize: '0.7rem', height: '20px' }}
-                  />
-                ))}
-              </Box>
-            ) : (
-              <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', mb: 0.5, display: 'block' }}>
-                No outcomes linked
-              </Typography>
-            )}
-
-            {/* Releases for this task */}
-            {task.releases && task.releases.length > 0 ? (
-              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Typography variant="caption" color="success.main" sx={{ mr: 0.5 }}>
-                  Releases:
-                </Typography>
-                {task.releases.map((release: any) => (
-                  <Chip
-                    key={release.id}
-                    size="small"
-                    label={`${release.name} (v${release.level})`}
-                    color="success"
-                    variant="outlined"
-                    sx={{ fontSize: '0.7rem', height: '20px' }}
-                  />
-                ))}
-              </Box>
-            ) : (
-              <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                No releases assigned
-              </Typography>
-            )}
-
-            {/* How-to links */}
-            {(task.howToDoc || task.howToVideo) && (
-              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center', mt: 0.5 }}>
-                <Typography variant="caption" color="primary.main" sx={{ mr: 0.5 }}>
-                  How-to:
-                </Typography>
-                {task.howToDoc && (
-                  <Chip
-                    size="small"
-                    label="📖 Docs"
-                    color="primary"
-                    variant="outlined"
-                    sx={{ fontSize: '0.7rem', height: '20px', cursor: 'pointer' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      window.open(task.howToDoc, '_blank');
-                    }}
-                  />
-                )}
-                {task.howToVideo && (
-                  <Chip
-                    size="small"
-                    label="🎥 Video"
-                    color="primary"
-                    variant="outlined"
-                    sx={{ fontSize: '0.7rem', height: '20px', cursor: 'pointer' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      window.open(task.howToVideo, '_blank');
-                    }}
-                  />
-                )}
-              </Box>
-            )}
+              
+              {/* How-to links - compact horizontal layout */}
+              {task.howToDoc && (
+                <Chip
+                  size="small"
+                  label="📖"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ 
+                    fontSize: '0.7rem', 
+                    height: '24px', 
+                    minWidth: '32px',
+                    cursor: 'pointer',
+                    '&:hover': { backgroundColor: 'primary.light' }
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(task.howToDoc, '_blank');
+                  }}
+                  title="How-to Documentation"
+                />
+              )}
+              {task.howToVideo && (
+                <Chip
+                  size="small"
+                  label="🎥"
+                  color="primary"
+                  variant="outlined"
+                  sx={{ 
+                    fontSize: '0.7rem', 
+                    height: '24px', 
+                    minWidth: '32px',
+                    cursor: 'pointer',
+                    '&:hover': { backgroundColor: 'primary.light' }
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.open(task.howToVideo, '_blank');
+                  }}
+                  title="How-to Video"
+                />
+              )}
+            </Box>
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -1401,6 +1429,7 @@ export function App() {
       }
       // Note: productId is not part of TaskUpdateInput, it's inferred from the task being updated
 
+      // Save basic task fields
       await client.mutate({
         mutation: UPDATE_TASK,
         variables: {
@@ -1410,6 +1439,93 @@ export function App() {
         refetchQueries: ['TasksForProduct'],
         awaitRefetchQueries: true
       });
+
+      // Handle telemetry attributes separately
+      if (taskData.telemetryAttributes) {
+        const existingAttributes = editingTask.telemetryAttributes || [];
+        const newAttributes = taskData.telemetryAttributes;
+
+        // Create arrays to track operations
+        const attributesToCreate: any[] = [];
+        const attributesToUpdate: any[] = [];
+        const attributesToDelete: string[] = [];
+
+        // Find attributes to delete (exist in old but not in new)
+        existingAttributes.forEach((existing: any) => {
+          const stillExists = newAttributes.find((attr: any) => attr.id === existing.id);
+          if (!stillExists) {
+            attributesToDelete.push(existing.id);
+          }
+        });
+
+        // Process new and updated attributes
+        for (const attr of newAttributes) {
+          if (attr.id) {
+            // Existing attribute - check if it needs updating
+            const existing = existingAttributes.find((e: any) => e.id === attr.id);
+            if (existing && (
+              existing.name !== attr.name ||
+              existing.description !== attr.description ||
+              existing.dataType !== attr.dataType ||
+              existing.isRequired !== attr.isRequired ||
+              JSON.stringify(existing.successCriteria) !== JSON.stringify(attr.successCriteria) ||
+              existing.order !== attr.order ||
+              existing.isActive !== attr.isActive
+            )) {
+              attributesToUpdate.push(attr);
+            }
+          } else {
+            // New attribute
+            if (attr.name && attr.name.trim()) {
+              attributesToCreate.push({
+                taskId: editingTask.id,
+                name: attr.name.trim(),
+                description: attr.description || '',
+                dataType: attr.dataType,
+                isRequired: attr.isRequired || false,
+                successCriteria: JSON.stringify(attr.successCriteria || {}),
+                order: attr.order || 0,
+                isActive: attr.isActive !== false
+              });
+            }
+          }
+        }
+
+        // Execute telemetry attribute operations
+        for (const attrId of attributesToDelete) {
+          await client.mutate({
+            mutation: DELETE_TELEMETRY_ATTRIBUTE,
+            variables: { id: attrId }
+          });
+        }
+
+        for (const attr of attributesToCreate) {
+          await client.mutate({
+            mutation: CREATE_TELEMETRY_ATTRIBUTE,
+            variables: { input: attr }
+          });
+        }
+
+        for (const attr of attributesToUpdate) {
+          const updateInput: any = {
+            name: attr.name.trim(),
+            description: attr.description || '',
+            dataType: attr.dataType,
+            isRequired: attr.isRequired || false,
+            successCriteria: JSON.stringify(attr.successCriteria || {}),
+            order: attr.order || 0,
+            isActive: attr.isActive !== false
+          };
+
+          await client.mutate({
+            mutation: UPDATE_TELEMETRY_ATTRIBUTE,
+            variables: { 
+              id: attr.id,
+              input: updateInput
+            }
+          });
+        }
+      }
 
       setEditTaskDialog(false);
       setEditingTask(null);
@@ -1494,8 +1610,9 @@ export function App() {
   };
 
   const handleTaskDoubleClick = (task: any) => {
-    setSelectedTaskForDetail(task);
-    setTaskDetailDialog(true);
+    // Use the same edit dialog that has telemetry support
+    setEditingTask(task);
+    setEditTaskDialog(true);
   };
 
   const handleTaskDetailSave = async () => {
@@ -1746,7 +1863,8 @@ export function App() {
         input.releaseIds = taskData.releaseIds;
       }
 
-      await client.mutate({
+      // Create the task first
+      const taskResult = await client.mutate({
         mutation: gql`
           mutation CreateTask($input: TaskInput!) {
             createTask(input: $input) {
@@ -1783,7 +1901,32 @@ export function App() {
         awaitRefetchQueries: true
       });
 
-      console.log('Task created successfully');
+      const newTaskId = taskResult.data.createTask.id;
+
+      // Handle telemetry attributes for new task
+      if (taskData.telemetryAttributes && taskData.telemetryAttributes.length > 0) {
+        for (const attr of taskData.telemetryAttributes) {
+          if (attr.name && attr.name.trim()) {
+            await client.mutate({
+              mutation: CREATE_TELEMETRY_ATTRIBUTE,
+              variables: {
+                input: {
+                  taskId: newTaskId,
+                  name: attr.name.trim(),
+                  description: attr.description || '',
+                  dataType: attr.dataType,
+                  isRequired: attr.isRequired || false,
+                  successCriteria: JSON.stringify(attr.successCriteria || {}),
+                  order: attr.order || 0,
+                  isActive: attr.isActive !== false
+                }
+              }
+            });
+          }
+        }
+      }
+
+      console.log('Task created successfully with telemetry attributes');
       setAddTaskDialog(false);
       await refetchTasks();
     } catch (error: any) {

@@ -82,7 +82,7 @@ const dataManagementResolvers = {
             }
             catch (error) {
                 context_1.logger.error('Error creating sample data:', error);
-                throw new Error(`Failed to create sample data: ${error.message}`);
+                throw new Error(`Failed to create sample data: ${error?.message || 'Unknown error'}`);
             }
         },
         // Reset sample data
@@ -106,7 +106,7 @@ const dataManagementResolvers = {
             }
             catch (error) {
                 context_1.logger.error('Error resetting sample data:', error);
-                throw new Error(`Failed to reset sample data: ${error.message}`);
+                throw new Error(`Failed to reset sample data: ${error?.message || 'Unknown error'}`);
             }
         },
         // Delete all data
@@ -134,7 +134,7 @@ const dataManagementResolvers = {
             }
             catch (error) {
                 context_1.logger.error('Error deleting all data:', error);
-                throw new Error(`Failed to delete all data: ${error.message}`);
+                throw new Error(`Failed to delete all data: ${error?.message || 'Unknown error'}`);
             }
         }
     }

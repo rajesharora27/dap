@@ -87,6 +87,9 @@ export const typeDefs = gql`
     license: License                # Single license associated with this task (hierarchical)
     releases: [Release!]!           # Releases this task is directly assigned to
     availableInReleases: [Release!]! # All releases this task is available in (including inheritance)
+    telemetryAttributes: [TelemetryAttribute!]! # Telemetry attributes for this task
+    isCompleteBasedOnTelemetry: Boolean! # Computed field based on telemetry criteria
+    telemetryCompletionPercentage: Float! # 0-100% completion based on telemetry
     deletedAt: String               # Soft delete timestamp
   }
 
@@ -103,6 +106,43 @@ export const typeDefs = gql`
   type AuditLog implements Node { id: ID! action: String! entity: String entityId: String details: JSON createdAt: String! }
 
   type Telemetry implements Node { id: ID! data: JSON createdAt: String! }
+  
+  type TelemetryAttribute implements Node {
+    id: ID!
+    taskId: ID!
+    name: String!
+    description: String
+    dataType: TelemetryDataType!
+    isRequired: Boolean!
+    successCriteria: JSON!
+    order: Int!
+    isActive: Boolean!
+    createdAt: String!
+    updatedAt: String!
+    task: Task!
+    values(limit: Int): [TelemetryValue!]!
+    currentValue: TelemetryValue
+    isSuccessful: Boolean!           # Computed field based on success criteria
+  }
+
+  type TelemetryValue implements Node {
+    id: ID!
+    attributeId: ID!
+    value: JSON!
+    source: String
+    batchId: String
+    notes: String
+    createdAt: String!
+    attribute: TelemetryAttribute!
+  }
+
+  enum TelemetryDataType {
+    BOOLEAN
+    NUMBER
+    STRING
+    TIMESTAMP
+    JSON
+  }
   type ChangeItem implements Node { id: ID! entityType: String! entityId: String! before: JSON after: JSON }
   type ChangeSet implements Node { id: ID! createdAt: String! committedAt: String items: [ChangeItem!]! }
 
@@ -153,6 +193,14 @@ export const typeDefs = gql`
     changeSet(id: ID!): ChangeSet
     search(query: String!, first: Int = 20, after: String): [SearchResult!]!
     telemetry(taskId: ID!, limit: Int = 50): [TelemetryEdge!]!
+    
+    # Telemetry Attribute queries
+    telemetryAttribute(id: ID!): TelemetryAttribute
+    telemetryAttributes(taskId: ID!): [TelemetryAttribute!]!
+    telemetryValue(id: ID!): TelemetryValue
+    telemetryValues(attributeId: ID!, limit: Int = 50): [TelemetryValue!]!
+    telemetryValuesByBatch(batchId: String!): [TelemetryValue!]!
+    
     taskDependencies(taskId: ID!): [TaskDependencyEdge!]!
   }
 
@@ -214,6 +262,40 @@ export const typeDefs = gql`
     releaseIds: [ID!]               # Release IDs this task should be assigned to
   }
 
+  input TelemetryAttributeInput {
+    taskId: ID!
+    name: String!
+    description: String
+    dataType: TelemetryDataType!
+    isRequired: Boolean = false
+    successCriteria: JSON!
+    order: Int = 0
+    isActive: Boolean = true
+  }
+
+  input TelemetryAttributeUpdateInput {
+    name: String
+    description: String
+    dataType: TelemetryDataType
+    isRequired: Boolean
+    successCriteria: JSON
+    order: Int
+    isActive: Boolean
+  }
+
+  input TelemetryValueInput {
+    attributeId: ID!
+    value: JSON!
+    source: String
+    batchId: String
+    notes: String
+  }
+
+  input BatchTelemetryValueInput {
+    batchId: String!
+    values: [TelemetryValueInput!]!
+  }
+
   type Mutation {
   signup(email: String!, username: String, password: String!, role: Role = USER, name: String): String! # returns JWT
   login(email: String, username: String, password: String!): String! # returns JWT (identify by email or username)
@@ -266,6 +348,18 @@ export const typeDefs = gql`
   addTaskDependency(taskId: ID!, dependsOnId: ID!): Boolean!
   removeTaskDependency(taskId: ID!, dependsOnId: ID!): Boolean!
   addTelemetry(taskId: ID!, data: JSON!): Boolean!
+  
+  # Telemetry Attribute mutations
+  createTelemetryAttribute(input: TelemetryAttributeInput!): TelemetryAttribute!
+  updateTelemetryAttribute(id: ID!, input: TelemetryAttributeUpdateInput!): TelemetryAttribute!
+  deleteTelemetryAttribute(id: ID!): Boolean!
+  
+  # Telemetry Value mutations  
+  addTelemetryValue(input: TelemetryValueInput!): TelemetryValue!
+  addBatchTelemetryValues(input: BatchTelemetryValueInput!): [TelemetryValue!]!
+  updateTelemetryValue(id: ID!, value: JSON!, notes: String): TelemetryValue!
+  deleteTelemetryValue(id: ID!): Boolean!
+  
   queueTaskSoftDelete(id: ID!): Boolean!
   processDeletionQueue(limit: Int = 50): Int!
   }

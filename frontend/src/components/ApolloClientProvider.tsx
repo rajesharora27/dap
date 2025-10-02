@@ -1,14 +1,22 @@
 import * as React from 'react';
 import { ApolloClient, InMemoryCache, ApolloProvider, HttpLink, from } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
+import { getApiUrl, isDevelopment } from '../config/frontend.config';
 
 interface WrapperProps { children: React.ReactNode }
 export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
-  // Use Vite proxy to avoid CORS issues
-  const httpUrl = '/graphql'; // Use proxy instead of direct connection
+  // Use configuration system for API URL
+  const configApiUrl = getApiUrl();
+  
+  // For development/localhost, use the proxy. For production, use direct URL
+  const httpUrl = (isDevelopment() && configApiUrl.includes('localhost')) 
+    ? '/graphql' 
+    : configApiUrl;
 
-  console.log('🚀 Enhanced Apollo Client with debugging (proxy connection) v3:', {
+  console.log('🚀 Enhanced Apollo Client with debugging (configured connection) v4:', {
+    configApiUrl,
     httpUrl,
+    isDevelopment: isDevelopment(),
     timestamp: new Date().toISOString()
   });
 

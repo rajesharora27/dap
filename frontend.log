@@ -3,8 +3,23 @@
 > vite
 
 
-  VITE v7.1.2  ready in 276 ms
+  VITE v7.1.2  ready in 266 ms
 
   ➜  Local:   http://localhost:5173/
   ➜  Network: http://172.22.156.32:5173/
-9:21:05 PM [vite] (client) hmr update /src/components/dialogs/ProductDialog.tsx
+12:15:02 PM [vite] (client) hmr update /src/components/ApolloClientProvider.tsx
+12:15:02 PM [vite] (client) hmr update /src/pages/App.tsx
+12:15:02 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+12:15:02 PM [vite] vite.config.ts changed, restarting server...
+12:15:03 PM [vite] (client) hmr update /src/components/telemetry/TelemetryConfiguration.tsx
+12:15:03 PM [vite] (client) hmr update /src/components/ApolloClientProvider.tsx
+12:15:03 PM [vite] .env.development changed, restarting server...
+12:15:03 PM [vite] (client) hmr update /src/components/dialogs/TaskDialog.tsx
+12:15:03 PM [vite] vite.config.ts changed, restarting server...
+12:15:03 PM [vite] (client) hmr update /src/components/telemetry/TelemetryConfiguration.tsx
+12:15:03 PM [vite] .env.development changed, restarting server...
+12:15:03 PM [vite] (client) hmr update /src/components/ApolloClientProvider.tsx
+12:15:03 PM [vite] (client) hmr update /src/pages/App.tsx
+12:15:05 PM [vite] server restarted.
+12:18:00 PM [vite] (client) hmr update /src/pages/App.tsx
+12:23:34 PM [vite] (client) hmr update /src/pages/App.tsx
