@@ -145,8 +145,8 @@ Verify the configuration system:
 # Test development environment
 ./dap start
 
-# Test with custom ports
-BACKEND_PORT=3000 FRONTEND_PORT=8080 ./dap start
+# Full clean restart with seeded sample data
+./dap clean-restart
 
 # Verify configuration loading
 cd backend && npm run build && node dist/server.js

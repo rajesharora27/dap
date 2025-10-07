@@ -250,12 +250,32 @@ const DELETE_PRODUCT = gql`
   }
 `;
 
+const EXPORT_PRODUCT_TO_EXCEL = gql`
+  query ExportProductToExcel($productName: String!) {
+    exportProductToExcel(productName: $productName) {
+      filename
+      content
+      mimeType
+      size
+      stats {
+        tasksExported
+        customAttributesExported
+        licensesExported
+        outcomesExported
+        releasesExported
+        telemetryAttributesExported
+      }
+    }
+  }
+`;
+
 interface ProductDetailPageProps {
   product: any;
   onBack: () => void;
 }
 
 export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
+  const client = useApolloClient();
   const [addOutcomeDialog, setAddOutcomeDialog] = useState(false);
   const [editOutcomeDialog, setEditOutcomeDialog] = useState(false);
   const [newOutcome, setNewOutcome] = useState({ name: '', description: '' });
@@ -1266,6 +1286,44 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
     }
   };
 
+  const handleExportProductToExcel = async () => {
+    try {
+      const { data } = await client.query({
+        query: EXPORT_PRODUCT_TO_EXCEL,
+        variables: { productName: product.name }
+      });
+
+      if (data?.exportProductToExcel) {
+        const result = data.exportProductToExcel;
+        
+        // Decode base64 content
+        const binaryString = atob(result.content);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Create blob and download
+        const blob = new Blob([bytes], { type: result.mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = result.filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        // Show success message with stats
+        const stats = result.stats;
+        alert(`Product exported successfully!\n\nExported:\n- ${stats.tasksExported} tasks\n- ${stats.customAttributesExported} custom attributes\n- ${stats.licensesExported} licenses\n- ${stats.outcomesExported} outcomes\n- ${stats.releasesExported} releases\n- ${stats.telemetryAttributesExported} telemetry attributes`);
+      }
+    } catch (error: any) {
+      console.error('Error exporting product:', error);
+      alert('Failed to export product: ' + (error?.message || 'Unknown error'));
+    }
+  };
+
   const handleExportProduct = () => {
     const exportData = {
       exportType: 'product',
@@ -1360,6 +1418,29 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
           <Button variant="contained" startIcon={<Add />} onClick={() => setAddProductDialog(true)}>
             Add Product
           </Button>
+          <Button
+            variant="contained"
+            startIcon={<EditIcon />}
+            onClick={() => handleEditProduct()}
+          >
+            Edit Product
+          </Button>
+          <Button 
+            variant="contained" 
+            color="success"
+            startIcon={<FileDownloadIcon />} 
+            onClick={handleExportProductToExcel}
+          >
+            Export All
+          </Button>
+          <Button 
+            variant="contained" 
+            color="primary"
+            startIcon={<FileUploadIcon />} 
+            onClick={handleImportProduct}
+          >
+            Import All
+          </Button>
           <Button variant="outlined" color="error" startIcon={<DeleteIcon />} onClick={() => handleDeleteProduct()}>
             Delete Product
           </Button>
@@ -1368,36 +1449,10 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
 
       {/* Product Overview Section */}
       <Paper sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ mb: 2 }}>
           <Typography variant="h6" gutterBottom>
             Product Information
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<FileUploadIcon />}
-              onClick={() => handleImportProduct()}
-            >
-              Import
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<FileDownloadIcon />}
-              onClick={() => handleExportProduct()}
-            >
-              Export
-            </Button>
-            <Button
-              variant="contained"
-              size="small"
-              startIcon={<EditIcon />}
-              onClick={() => handleEditProduct()}
-            >
-              Edit Product
-            </Button>
-          </Box>
         </Box>
 
         <Typography variant="body1" gutterBottom>
@@ -1424,28 +1479,12 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
       </Paper>
 
       {/* Outcomes Section */}
-      <Paper sx={{ p: 3 }}>
+      <Paper sx={{ p: 3, ml: 3, borderLeft: '4px solid #1976d2' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h6">
             Product Outcomes
           </Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<FileUploadIcon />}
-              onClick={() => handleImportOutcomes()}
-            >
-              Import
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<FileDownloadIcon />}
-              onClick={() => handleExportOutcomes()}
-            >
-              Export
-            </Button>
             <Button
               variant="contained"
               startIcon={<Add />}
@@ -1501,28 +1540,12 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
       </Paper>
 
       {/* Licenses Section */}
-      <Paper sx={{ p: 3, mt: 3 }}>
+      <Paper sx={{ p: 3, mt: 3, ml: 3, borderLeft: '4px solid #1976d2' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h6">
             Product Licenses
           </Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<FileUploadIcon />}
-              onClick={() => handleImportLicenses()}
-            >
-              Import
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<FileDownloadIcon />}
-              onClick={() => handleExportLicenses()}
-            >
-              Export
-            </Button>
             <Button
               variant="contained"
               startIcon={<Add />}
@@ -1601,21 +1624,12 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
       </Paper>
 
       {/* Releases Section */}
-      <Paper sx={{ p: 3, mt: 3 }}>
+      <Paper sx={{ p: 3, mt: 3, ml: 3, borderLeft: '4px solid #1976d2' }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h6">
             Product Releases
           </Typography>
           <Box sx={{ display: 'flex', gap: 1 }}>
-            <Button
-              variant="outlined"
-              startIcon={<FileDownloadIcon />}
-              size="small"
-              onClick={handleExportReleases}
-              disabled={releases.length === 0}
-            >
-              Export
-            </Button>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -1693,21 +1707,11 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
       </Paper>
 
       {/* Tasks Section */}
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+      <Paper elevation={3} sx={{ p: 3, mb: 3, ml: 3, borderLeft: '4px solid #1976d2' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
             Product Tasks
           </Typography>
-          <Box>
-            <Button
-              variant="outlined"
-              startIcon={<FileDownloadIcon />}
-              onClick={() => handleExportTasks()}
-              sx={{ mr: 1 }}
-            >
-              Export
-            </Button>
-          </Box>
         </Box>
 
         {tasksLoading ? (
@@ -1809,28 +1813,12 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
       </Paper>
 
       {/* Custom Attributes Section */}
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+      <Paper elevation={3} sx={{ p: 3, mb: 3, ml: 3, borderLeft: '4px solid #1976d2' }}>
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
           <Typography variant="h5" component="h2" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
             Custom Attributes
           </Typography>
           <Box>
-            <Button
-              variant="outlined"
-              startIcon={<FileUploadIcon />}
-              onClick={() => handleImportCustomAttributes()}
-              sx={{ mr: 1 }}
-            >
-              Import
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<FileDownloadIcon />}
-              onClick={() => handleExportCustomAttributes()}
-              sx={{ mr: 1 }}
-            >
-              Export
-            </Button>
             <Button variant="contained" onClick={() => handleEditCustomAttributes()}>
               Edit Attributes
             </Button>

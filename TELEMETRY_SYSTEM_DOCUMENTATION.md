@@ -549,8 +549,8 @@ The system is fully backward compatible:
 
 ## Version Information
 
-- **Version**: 1.0.0
-- **Last Updated**: October 2, 2025
+- **Version**: 1.1.0
+- **Last Updated**: October 7, 2025
 - **Compatibility**: Node.js 18+, PostgreSQL 12+, Prisma 6+
 
 ## Support & Contributing

@@ -1,8 +1,0 @@
-
-> dap-backend@0.1.0 dev
-> ts-node-dev --respawn --transpile-only src/server.ts
-
-[INFO] 12:07:21 ts-node-dev ver. 2.0.0 (using ts-node ver. 10.9.2, typescript ver. 5.9.2)
-API + WS ready at http://127.0.0.1:4000/graphql (health at /health)
-[INFO] 12:15:01 Restarting: /data/dap/backend/src/server.ts has been modified
-API + WS ready at http://127.0.0.1:4000/graphql (health at /health)

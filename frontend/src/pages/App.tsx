@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useState } from 'react';
+import ExcelJS from 'exceljs';
 import {
   Box,
   CssBaseline,
@@ -525,7 +526,7 @@ export function App() {
   const [selectedTask, setSelectedTask] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [detailProduct, setDetailProduct] = useState<any>(null);
-  const [selectedProductSubSection, setSelectedProductSubSection] = useState<'tasks' | 'main' | 'licenses' | 'releases' | 'outcomes' | 'customAttributes'>('main');
+  const [selectedProductSubSection, setSelectedProductSubSection] = useState<'main' | 'tasks' | 'licenses' | 'releases' | 'outcomes' | 'customAttributes'>('main');
   const [productsExpanded, setProductsExpanded] = useState(true);
 
   // Dialog states
@@ -812,50 +813,47 @@ export function App() {
   };
 
   // License handlers
-  const handleAddLicenseSave = async (licenseData: License) => {
-    const result = await licenseHandlers.createLicense({
-      ...licenseData,
-      productId: selectedProduct!
-    }, {
-      refetchProducts,
-      showAlert: true
-    });
+  // Consolidated License Save Handler (handles both add and edit)
+  const handleLicenseSave = async (licenseData: License, licenseId?: string) => {
+    const isEdit = !!licenseId || !!editingLicense?.id;
+    const idToUse = licenseId || editingLicense?.id;
 
-    if (result.success) {
-      setAddLicenseDialog(false);
-    }
-  };
-
-  const handleEditLicenseSave = async (licenseData: License) => {
-    if (!editingLicense?.id) {
+    if (isEdit && !idToUse) {
       alert('No license selected for editing');
       return;
     }
 
-    // Ensure productId is included for the update
-    const updateData: License = {
+    const dataWithProduct: License = {
       ...licenseData,
-      productId: selectedProduct || editingLicense.productId
+      productId: selectedProduct || (isEdit ? editingLicense?.productId : undefined)!
     };
 
-    if (!updateData.productId) {
-      alert('Product ID is required for license update');
+    if (!dataWithProduct.productId) {
+      alert('Product ID is required');
       return;
     }
 
-    const result = await licenseHandlers.updateLicense(
-      editingLicense.id,
-      updateData,
-      {
-        refetchProducts,
-        showAlert: true
-      }
-    );
+    const result = isEdit
+      ? await licenseHandlers.updateLicense(idToUse, dataWithProduct, { refetchProducts, showAlert: true })
+      : await licenseHandlers.createLicense(dataWithProduct, { refetchProducts, showAlert: true });
 
     if (result.success) {
-      setEditLicenseDialog(false);
-      setEditingLicense(null);
+      if (isEdit) {
+        setEditLicenseDialog(false);
+        setEditingLicense(null);
+      } else {
+        setAddLicenseDialog(false);
+      }
     }
+  };
+
+  // Wrapper for backward compatibility
+  const handleAddLicenseSave = async (licenseData: License) => {
+    await handleLicenseSave(licenseData);
+  };
+
+  const handleEditLicenseSave = async (licenseData: License) => {
+    await handleLicenseSave(licenseData, editingLicense?.id);
   };
 
   const handleDeleteLicense = async (licenseId: string) => {
@@ -866,50 +864,47 @@ export function App() {
   };
 
   // Release handlers for standalone release management
-  const handleAddReleaseSave = async (releaseData: { name: string; level: number; description?: string }) => {
-    const result = await releaseHandlers.createRelease({
-      ...releaseData,
-      productId: selectedProduct!
-    }, {
-      refetchProducts,
-      showAlert: true
-    });
+  // Consolidated Release Save Handler (handles both add and edit)
+  const handleReleaseSave = async (releaseData: { name: string; level: number; description?: string }, releaseId?: string) => {
+    const isEdit = !!releaseId || !!editingRelease?.id;
+    const idToUse = releaseId || editingRelease?.id;
 
-    if (result.success) {
-      setAddReleaseDialog(false);
-    }
-  };
-
-  const handleEditReleaseSave = async (releaseData: { name: string; level: number; description?: string }) => {
-    if (!editingRelease?.id) {
+    if (isEdit && !idToUse) {
       alert('No release selected for editing');
       return;
     }
 
-    // Ensure productId is included for the update
-    const updateData = {
+    const dataWithProduct = {
       ...releaseData,
-      productId: selectedProduct || editingRelease.productId
+      productId: selectedProduct || (isEdit ? editingRelease?.productId : undefined)!
     };
 
-    if (!updateData.productId) {
-      alert('Product ID is required for release update');
+    if (!dataWithProduct.productId) {
+      alert('Product ID is required');
       return;
     }
 
-    const result = await releaseHandlers.updateRelease(
-      editingRelease.id,
-      updateData,
-      {
-        refetchProducts,
-        showAlert: true
-      }
-    );
+    const result = isEdit
+      ? await releaseHandlers.updateRelease(idToUse, dataWithProduct, { refetchProducts, showAlert: true })
+      : await releaseHandlers.createRelease(dataWithProduct, { refetchProducts, showAlert: true });
 
     if (result.success) {
-      setEditReleaseDialog(false);
-      setEditingRelease(null);
+      if (isEdit) {
+        setEditReleaseDialog(false);
+        setEditingRelease(null);
+      } else {
+        setAddReleaseDialog(false);
+      }
     }
+  };
+
+  // Wrapper for backward compatibility
+  const handleAddReleaseSave = async (releaseData: { name: string; level: number; description?: string }) => {
+    await handleReleaseSave(releaseData);
+  };
+
+  const handleEditReleaseSave = async (releaseData: { name: string; level: number; description?: string }) => {
+    await handleReleaseSave(releaseData, editingRelease?.id);
   };
 
   const handleDeleteOutcome = async (outcomeId: string) => {
@@ -1091,50 +1086,47 @@ export function App() {
   };
 
   // Outcome handlers
-  const handleAddOutcomeSave = async (outcomeData: Outcome) => {
-    const result = await outcomeHandlers.createOutcome({
-      ...outcomeData,
-      productId: selectedProduct!
-    }, {
-      refetchProducts,
-      showAlert: true
-    });
+  // Consolidated Outcome Save Handler (handles both add and edit)
+  const handleOutcomeSave = async (outcomeData: Outcome, outcomeId?: string) => {
+    const isEdit = !!outcomeId || !!editingOutcome?.id;
+    const idToUse = outcomeId || editingOutcome?.id;
 
-    if (result.success) {
-      setAddOutcomeDialog(false);
-    }
-  };
-
-  const handleEditOutcomeSave = async (outcomeData: Outcome) => {
-    if (!editingOutcome?.id) {
+    if (isEdit && !idToUse) {
       alert('No outcome selected for editing');
       return;
     }
 
-    // Ensure productId is included for the update
-    const updateData: Outcome = {
+    const dataWithProduct: Outcome = {
       ...outcomeData,
-      productId: selectedProduct || editingOutcome.productId
+      productId: selectedProduct || (isEdit ? editingOutcome?.productId : undefined)!
     };
 
-    if (!updateData.productId) {
-      alert('Product ID is required for outcome update');
+    if (!dataWithProduct.productId) {
+      alert('Product ID is required');
       return;
     }
 
-    const result = await outcomeHandlers.updateOutcome(
-      editingOutcome.id,
-      updateData,
-      {
-        refetchProducts,
-        showAlert: true
-      }
-    );
+    const result = isEdit
+      ? await outcomeHandlers.updateOutcome(idToUse, dataWithProduct, { refetchProducts, showAlert: true })
+      : await outcomeHandlers.createOutcome(dataWithProduct, { refetchProducts, showAlert: true });
 
     if (result.success) {
-      setEditOutcomeDialog(false);
-      setEditingOutcome(null);
+      if (isEdit) {
+        setEditOutcomeDialog(false);
+        setEditingOutcome(null);
+      } else {
+        setAddOutcomeDialog(false);
+      }
     }
+  };
+
+  // Wrapper for backward compatibility
+  const handleAddOutcomeSave = async (outcomeData: Outcome) => {
+    await handleOutcomeSave(outcomeData);
+  };
+
+  const handleEditOutcomeSave = async (outcomeData: Outcome) => {
+    await handleOutcomeSave(outcomeData, editingOutcome?.id);
   };
 
   // Outcome export/import handlers
@@ -1393,17 +1385,28 @@ export function App() {
     }
   };
 
-  const handleEditTaskSave = async (taskData: any) => {
-    if (!editingTask?.id) return;
+  // Consolidated Task Save Handler (handles both add and edit)
+  const handleTaskSave = async (taskData: any, taskId?: string) => {
+    // Determine if this is an edit or add operation
+    const isEdit = !!taskId;
+    const taskIdToUse = taskId || editingTask?.id;
+
+    if (isEdit && !taskIdToUse) return;
+    if (!isEdit && !selectedProduct) return;
 
     try {
-      // Create input with only valid TaskUpdateInput fields
+      // Create input with task fields
       const input: any = {
         name: taskData.name,
         estMinutes: taskData.estMinutes,
         weight: taskData.weight,
         priority: taskData.priority
       };
+
+      // Add productId for new tasks only
+      if (!isEdit) {
+        input.productId = selectedProduct;
+      }
 
       // Only add optional fields if they have values
       if (taskData.description?.trim()) {
@@ -1427,113 +1430,179 @@ export function App() {
       if (taskData.releaseIds && taskData.releaseIds.length > 0) {
         input.releaseIds = taskData.releaseIds;
       }
-      // Note: productId is not part of TaskUpdateInput, it's inferred from the task being updated
 
-      // Save basic task fields
-      await client.mutate({
-        mutation: UPDATE_TASK,
-        variables: {
-          id: editingTask.id,
-          input
-        },
-        refetchQueries: ['TasksForProduct'],
-        awaitRefetchQueries: true
-      });
+      let finalTaskId: string;
 
-      // Handle telemetry attributes separately
-      if (taskData.telemetryAttributes) {
-        const existingAttributes = editingTask.telemetryAttributes || [];
-        const newAttributes = taskData.telemetryAttributes;
-
-        // Create arrays to track operations
-        const attributesToCreate: any[] = [];
-        const attributesToUpdate: any[] = [];
-        const attributesToDelete: string[] = [];
-
-        // Find attributes to delete (exist in old but not in new)
-        existingAttributes.forEach((existing: any) => {
-          const stillExists = newAttributes.find((attr: any) => attr.id === existing.id);
-          if (!stillExists) {
-            attributesToDelete.push(existing.id);
-          }
+      // Create or Update task
+      if (isEdit) {
+        // Update existing task
+        await client.mutate({
+          mutation: UPDATE_TASK,
+          variables: {
+            id: taskIdToUse,
+            input
+          },
+          refetchQueries: ['TasksForProduct'],
+          awaitRefetchQueries: true
         });
-
-        // Process new and updated attributes
-        for (const attr of newAttributes) {
-          if (attr.id) {
-            // Existing attribute - check if it needs updating
-            const existing = existingAttributes.find((e: any) => e.id === attr.id);
-            if (existing && (
-              existing.name !== attr.name ||
-              existing.description !== attr.description ||
-              existing.dataType !== attr.dataType ||
-              existing.isRequired !== attr.isRequired ||
-              JSON.stringify(existing.successCriteria) !== JSON.stringify(attr.successCriteria) ||
-              existing.order !== attr.order ||
-              existing.isActive !== attr.isActive
-            )) {
-              attributesToUpdate.push(attr);
+        finalTaskId = taskIdToUse;
+      } else {
+        // Create new task
+        const taskResult = await client.mutate({
+          mutation: gql`
+            mutation CreateTask($input: TaskInput!) {
+              createTask(input: $input) {
+                id
+                name
+                description
+                estMinutes
+                weight
+                sequenceNumber
+                licenseLevel
+                priority
+                notes
+                howToDoc
+                howToVideo
+                license {
+                  id
+                  name
+                  level
+                }
+                outcomes {
+                  id
+                  name
+                }
+                releases {
+                  id
+                  name
+                  level
+                }
+              }
             }
-          } else {
-            // New attribute
+          `,
+          variables: { input },
+          refetchQueries: ['TasksForProduct'],
+          awaitRefetchQueries: true
+        });
+        finalTaskId = taskResult.data.createTask.id;
+      }
+
+      // Handle telemetry attributes
+      if (taskData.telemetryAttributes) {
+        if (isEdit) {
+          // For edit: compare old and new attributes
+          const existingAttributes = editingTask?.telemetryAttributes || [];
+          const newAttributes = taskData.telemetryAttributes;
+
+          // Find attributes to delete
+          const attributesToDelete: string[] = [];
+          existingAttributes.forEach((existing: any) => {
+            const stillExists = newAttributes.find((attr: any) => attr.id === existing.id);
+            if (!stillExists) {
+              attributesToDelete.push(existing.id);
+            }
+          });
+
+          // Delete removed attributes
+          for (const attrId of attributesToDelete) {
+            await client.mutate({
+              mutation: DELETE_TELEMETRY_ATTRIBUTE,
+              variables: { id: attrId }
+            });
+          }
+
+          // Process new and updated attributes
+          for (const attr of newAttributes) {
+            if (attr.id) {
+              // Existing attribute - check if it needs updating
+              const existing = existingAttributes.find((e: any) => e.id === attr.id);
+              if (existing && (
+                existing.name !== attr.name ||
+                existing.description !== attr.description ||
+                existing.dataType !== attr.dataType ||
+                existing.isRequired !== attr.isRequired ||
+                JSON.stringify(existing.successCriteria) !== JSON.stringify(attr.successCriteria) ||
+                existing.order !== attr.order ||
+                existing.isActive !== attr.isActive
+              )) {
+                const updateInput: any = {
+                  name: attr.name.trim(),
+                  description: attr.description || '',
+                  dataType: attr.dataType,
+                  isRequired: attr.isRequired || false,
+                  successCriteria: JSON.stringify(attr.successCriteria || {}),
+                  order: attr.order || 0,
+                  isActive: attr.isActive !== false
+                };
+                await client.mutate({
+                  mutation: UPDATE_TELEMETRY_ATTRIBUTE,
+                  variables: { id: attr.id, input: updateInput }
+                });
+              }
+            } else {
+              // New attribute
+              if (attr.name && attr.name.trim()) {
+                await client.mutate({
+                  mutation: CREATE_TELEMETRY_ATTRIBUTE,
+                  variables: {
+                    input: {
+                      taskId: finalTaskId,
+                      name: attr.name.trim(),
+                      description: attr.description || '',
+                      dataType: attr.dataType,
+                      isRequired: attr.isRequired || false,
+                      successCriteria: JSON.stringify(attr.successCriteria || {}),
+                      order: attr.order || 0,
+                      isActive: attr.isActive !== false
+                    }
+                  }
+                });
+              }
+            }
+          }
+        } else {
+          // For add: create all new attributes
+          for (const attr of taskData.telemetryAttributes) {
             if (attr.name && attr.name.trim()) {
-              attributesToCreate.push({
-                taskId: editingTask.id,
-                name: attr.name.trim(),
-                description: attr.description || '',
-                dataType: attr.dataType,
-                isRequired: attr.isRequired || false,
-                successCriteria: JSON.stringify(attr.successCriteria || {}),
-                order: attr.order || 0,
-                isActive: attr.isActive !== false
+              await client.mutate({
+                mutation: CREATE_TELEMETRY_ATTRIBUTE,
+                variables: {
+                  input: {
+                    taskId: finalTaskId,
+                    name: attr.name.trim(),
+                    description: attr.description || '',
+                    dataType: attr.dataType,
+                    isRequired: attr.isRequired || false,
+                    successCriteria: JSON.stringify(attr.successCriteria || {}),
+                    order: attr.order || 0,
+                    isActive: attr.isActive !== false
+                  }
+                }
               });
             }
           }
         }
-
-        // Execute telemetry attribute operations
-        for (const attrId of attributesToDelete) {
-          await client.mutate({
-            mutation: DELETE_TELEMETRY_ATTRIBUTE,
-            variables: { id: attrId }
-          });
-        }
-
-        for (const attr of attributesToCreate) {
-          await client.mutate({
-            mutation: CREATE_TELEMETRY_ATTRIBUTE,
-            variables: { input: attr }
-          });
-        }
-
-        for (const attr of attributesToUpdate) {
-          const updateInput: any = {
-            name: attr.name.trim(),
-            description: attr.description || '',
-            dataType: attr.dataType,
-            isRequired: attr.isRequired || false,
-            successCriteria: JSON.stringify(attr.successCriteria || {}),
-            order: attr.order || 0,
-            isActive: attr.isActive !== false
-          };
-
-          await client.mutate({
-            mutation: UPDATE_TELEMETRY_ATTRIBUTE,
-            variables: { 
-              id: attr.id,
-              input: updateInput
-            }
-          });
-        }
       }
 
-      setEditTaskDialog(false);
-      setEditingTask(null);
+      // Close dialogs and refresh
+      if (isEdit) {
+        setEditTaskDialog(false);
+        setEditingTask(null);
+      } else {
+        setAddTaskDialog(false);
+      }
       await refetchTasks();
+      
+      console.log(`Task ${isEdit ? 'updated' : 'created'} successfully`);
     } catch (error: any) {
-      console.error('Error updating task:', error);
-      alert('Failed to update task: ' + (error?.message || 'Unknown error'));
+      console.error(`Error ${isEdit ? 'updating' : 'adding'} task:`, error);
+      alert(`Failed to ${isEdit ? 'update' : 'add'} task: ` + (error?.message || 'Unknown error'));
     }
+  };
+
+  // Wrapper for backward compatibility - Edit Task
+  const handleEditTaskSave = async (taskData: any) => {
+    await handleTaskSave(taskData, editingTask?.id);
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -1718,7 +1787,7 @@ export function App() {
               name: release.name,
               level: release.level,
               description: release.description || '',
-              productId: productId
+              productId: productId!
             }, {
               refetchProducts,
               showAlert: false
@@ -1735,7 +1804,7 @@ export function App() {
           name: "1.0",
           level: 1.0,
           description: "Initial release for " + data.name,
-          productId: productId
+          productId: productId!
         }, {
           refetchProducts,
           showAlert: false
@@ -1823,116 +1892,11 @@ export function App() {
     }
   };
 
+  // Wrapper for backward compatibility - Add Task
   const handleAddTaskSave = async (taskData: any) => {
     console.log('🚨🚨🚨 App.tsx handleAddTaskSave called!');
     console.log('🚨🚨🚨 TaskData received:', JSON.stringify(taskData, null, 2));
-    console.log('🚨🚨🚨 selectedProduct:', selectedProduct);
-    console.log('🚨🚨🚨 selectedProductSubSection:', selectedProductSubSection);
-    if (!selectedProduct) return;
-
-    try {
-      // Create input with only valid TaskInput fields
-      const input: any = {
-        productId: selectedProduct,
-        name: taskData.name,
-        estMinutes: taskData.estMinutes,
-        weight: taskData.weight,
-        priority: taskData.priority
-      };
-
-      // Only add optional fields if they have values
-      if (taskData.description?.trim()) {
-        input.description = taskData.description.trim();
-      }
-      if (taskData.notes?.trim()) {
-        input.notes = taskData.notes.trim();
-      }
-      if (taskData.howToDoc?.trim()) {
-        input.howToDoc = taskData.howToDoc.trim();
-      }
-      if (taskData.howToVideo?.trim()) {
-        input.howToVideo = taskData.howToVideo.trim();
-      }
-      if (taskData.licenseId) {
-        input.licenseId = taskData.licenseId;
-      }
-      if (taskData.outcomeIds && taskData.outcomeIds.length > 0) {
-        input.outcomeIds = taskData.outcomeIds;
-      }
-      if (taskData.releaseIds && taskData.releaseIds.length > 0) {
-        input.releaseIds = taskData.releaseIds;
-      }
-
-      // Create the task first
-      const taskResult = await client.mutate({
-        mutation: gql`
-          mutation CreateTask($input: TaskInput!) {
-            createTask(input: $input) {
-              id
-              name
-              description
-              estMinutes
-              weight
-              sequenceNumber
-              licenseLevel
-              priority
-              notes
-              howToDoc
-              howToVideo
-              license {
-                id
-                name
-                level
-              }
-              outcomes {
-                id
-                name
-              }
-              releases {
-                id
-                name
-                level
-              }
-            }
-          }
-        `,
-        variables: { input },
-        refetchQueries: ['TasksForProduct'],
-        awaitRefetchQueries: true
-      });
-
-      const newTaskId = taskResult.data.createTask.id;
-
-      // Handle telemetry attributes for new task
-      if (taskData.telemetryAttributes && taskData.telemetryAttributes.length > 0) {
-        for (const attr of taskData.telemetryAttributes) {
-          if (attr.name && attr.name.trim()) {
-            await client.mutate({
-              mutation: CREATE_TELEMETRY_ATTRIBUTE,
-              variables: {
-                input: {
-                  taskId: newTaskId,
-                  name: attr.name.trim(),
-                  description: attr.description || '',
-                  dataType: attr.dataType,
-                  isRequired: attr.isRequired || false,
-                  successCriteria: JSON.stringify(attr.successCriteria || {}),
-                  order: attr.order || 0,
-                  isActive: attr.isActive !== false
-                }
-              }
-            });
-          }
-        }
-      }
-
-      console.log('Task created successfully with telemetry attributes');
-      setAddTaskDialog(false);
-      await refetchTasks();
-    } catch (error: any) {
-      console.error('Error adding task:', error);
-      alert('Failed to add task: ' + (error?.message || 'Unknown error'));
-    }
+    await handleTaskSave(taskData); // No taskId means add operation
   };
 
   // Task export/import handlers
@@ -2172,7 +2136,7 @@ export function App() {
     input.click();
   };
 
-  // Other Product Attributes handlers
+  // Custom Attributes handlers
   const handleAddCustomAttributeSave = async (attributeData: any) => {
     try {
       if (!selectedProduct) {
@@ -2290,7 +2254,7 @@ export function App() {
     }
   };
 
-  // Other Product Attributes export/import handlers (JSON format)
+  // Custom Attributes export/import handlers (JSON format)
   const handleExportCustomAttributes = () => {
     const currentProduct = products.find((p: any) => p.id === selectedProduct);
     const customAttrs = currentProduct?.customAttrs || {};
@@ -2401,7 +2365,6 @@ export function App() {
             exportData = [{
               name: product.name,
               description: product.description,
-              statusPercent: product.statusPercent,
               customAttrs: product.customAttrs
             }];
             filename = `product-${product.name.replace(/\s+/g, '-').toLowerCase()}.json`;
@@ -2717,7 +2680,7 @@ export function App() {
     fileInput.click();
   };
 
-  // Export all product data (comprehensive export) - excludes tasks
+  // Export all product data (comprehensive export)
   const handleExportAllProductData = async () => {
     if (!selectedProduct) {
       alert('Please select a product first');
@@ -2731,75 +2694,326 @@ export function App() {
         return;
       }
 
-      // Get outcomes
-      const outcomeResults = await client.query({
+      // Get all licenses and releases (filtered by product)
+      const allLicenses = await client.query({
         query: gql`
-          query Outcomes($productId: ID!) {
-            outcomes(productId: $productId) {
-              id
-              name
-              description
-            }
-          }
-        `,
-        variables: { productId: selectedProduct },
-        fetchPolicy: 'network-only'
-      });
-
-      // Get licenses
-      const licenseResults = await client.query({
-        query: gql`
-          query Licenses($productId: ID!) {
-            licenses(productId: $productId) {
+          query AllLicenses {
+            licenses {
               id
               name
               description
               level
               isActive
+              product {
+                id
+              }
             }
           }
         `,
-        variables: { productId: selectedProduct },
         fetchPolicy: 'network-only'
       });
 
-      const exportData = {
-        product: {
-          name: product.name,
-          description: product.description,
-          statusPercent: product.statusPercent,
-          customAttrs: product.customAttrs
-        },
-        outcomes: outcomeResults.data.outcomes.map((outcome: any) => ({
-          name: outcome.name,
-          description: outcome.description
-        })),
-        licenses: licenseResults.data.licenses.map((license: any) => ({
-          name: license.name,
-          description: license.description,
-          level: license.level,
-          isActive: license.isActive
-        }))
+      const allReleases = await client.query({
+        query: gql`
+          query AllReleases {
+            releases {
+              id
+              name
+              description
+              level
+              isActive
+              product {
+                id
+              }
+            }
+          }
+        `,
+        fetchPolicy: 'network-only'
+      });
+
+      // Filter licenses and releases for the selected product
+      const productLicenses = allLicenses.data.licenses.filter((license: any) => 
+        license.product?.id === selectedProduct
+      );
+
+      const productReleases = allReleases.data.releases.filter((release: any) => 
+        release.product?.id === selectedProduct
+      );
+
+      const tasksResult = await client.query({
+        query: TASKS_FOR_PRODUCT,
+        variables: { productId: selectedProduct },
+        fetchPolicy: 'network-only'
+      });
+      const productTasks = (tasksResult.data?.tasks?.edges || []).map((edge: any) => edge.node);
+
+      // Create Excel workbook
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'DAP Application';
+      workbook.created = new Date();
+
+      // Add Instructions sheet as the first sheet
+      const instructionsSheet = workbook.addWorksheet('📋 Instructions');
+      instructionsSheet.columns = [
+        { header: '', key: 'content', width: 100 }
+      ];
+
+      // Add instructions content with styling
+      const instructions = [
+        { content: 'PRODUCT DATA IMPORT/EXPORT INSTRUCTIONS', style: 'title' },
+        { content: '', style: 'empty' },
+        { content: 'OVERVIEW', style: 'header' },
+        { content: `This Excel file contains all data for product: ${product.name}`, style: 'text' },
+        { content: 'Use this file to export, edit, and re-import product data.', style: 'text' },
+        { content: '', style: 'empty' },
+        { content: 'FILE STRUCTURE', style: 'header' },
+  { content: '• Sheet 1: Instructions (this sheet)', style: 'text' },
+  { content: '• Sheet 2: Simple Attributes - Core product fields like name and description', style: 'text' },
+  { content: '• Sheet 3: Outcomes - Product outcomes with name and description', style: 'text' },
+  { content: '• Sheet 4: Licenses - License tiers with level and active status', style: 'text' },
+  { content: '• Sheet 5: Releases - Product releases with version and active status', style: 'text' },
+  { content: '• Sheet 6: Tasks - Task list with sequencing, effort, relationships, and guidance links', style: 'text' },
+  { content: '• Sheet 7: Custom Attributes - Key-value pairs for custom product attributes', style: 'text' },
+        { content: '', style: 'empty' },
+        { content: 'HOW TO IMPORT (UPDATE EXISTING DATA)', style: 'header' },
+        { content: '1. Edit data in any sheet (modify descriptions, levels, status, etc.)', style: 'text' },
+        { content: '2. Keep the Name/Key unchanged for items you want to UPDATE', style: 'text' },
+        { content: '3. Save this Excel file', style: 'text' },
+        { content: '4. In the application, select the target product', style: 'text' },
+        { content: '5. Click Import button and select this file', style: 'text' },
+        { content: '6. System will UPDATE existing records (no duplicates created)', style: 'text' },
+        { content: '', style: 'empty' },
+        { content: 'HOW TO IMPORT (ADD NEW DATA)', style: 'header' },
+        { content: '1. Add new rows at the bottom of any sheet', style: 'text' },
+        { content: '2. Fill in Name (required) and other columns', style: 'text' },
+        { content: '3. Save this Excel file', style: 'text' },
+        { content: '4. In the application, select the target product', style: 'text' },
+        { content: '5. Click Import button and select this file', style: 'text' },
+        { content: '6. System will CREATE new records', style: 'text' },
+        { content: '', style: 'empty' },
+        { content: 'UPSERT LOGIC (SMART IMPORT)', style: 'header' },
+        { content: 'The import process uses intelligent matching:', style: 'text' },
+        { content: '• Outcomes: Matched by Name (case-insensitive)', style: 'text' },
+        { content: '• Licenses: Matched by Name (case-insensitive)', style: 'text' },
+        { content: '• Releases: Matched by Name (case-insensitive)', style: 'text' },
+  { content: '• Tasks: Matched by Name (case-insensitive)', style: 'text' },
+  { content: '• Custom Attributes: Matched by Key (case-insensitive)', style: 'text' },
+        { content: '', style: 'empty' },
+        { content: 'If a Name/Key exists → Record is UPDATED', style: 'text' },
+        { content: 'If a Name/Key is new → Record is CREATED', style: 'text' },
+        { content: 'Whitespace is automatically trimmed during matching', style: 'text' },
+        { content: '', style: 'empty' },
+  { content: 'PRIMARY KEY GUIDANCE', style: 'header' },
+  { content: '• The Name column is the primary key on every sheet (Outcomes, Licenses, Releases, Tasks).', style: 'text' },
+  { content: '• Do NOT change the Name unless you want to create a brand-new record.', style: 'text' },
+  { content: '• To update existing data, edit other columns while keeping the Name exactly the same.', style: 'text' },
+  { content: '', style: 'empty' },
+        { content: 'REQUIRED FIELDS', style: 'header' },
+  { content: '• Simple Attributes: Name (required), Description (optional)', style: 'text' },
+        { content: '• Outcomes: Name (required), Description (optional)', style: 'text' },
+        { content: '• Licenses: Name (required), Level (required), Description (optional), Active (Yes/No)', style: 'text' },
+        { content: '• Releases: Name (required), Level (required), Description (optional), Active (Yes/No)', style: 'text' },
+  { content: '• Custom Attributes: Key (required), Value (optional - supports JSON, numbers, booleans)', style: 'text' },
+  { content: '• Tasks: Name (required), Sequence (optional), Estimated Minutes (optional), Priority (optional)', style: 'text' },
+        { content: '', style: 'empty' },
+        { content: 'TIPS', style: 'header' },
+        { content: '✓ Always keep a backup before importing', style: 'text' },
+        { content: '✓ Test with small changes first', style: 'text' },
+        { content: '✓ Check the import summary after completion (Created/Updated/Errors)', style: 'text' },
+        { content: '✓ Active column accepts: Yes, No (case-insensitive)', style: 'text' },
+        { content: '✓ Level columns must be numbers', style: 'text' },
+  { content: '✓ License Name links tasks to licenses; license level is set automatically', style: 'text' },
+  { content: '✓ Do NOT modify column headers', style: 'text' },
+        { content: '', style: 'empty' },
+  { content: 'SCOPE NOTES', style: 'header' },
+  { content: '• Telemetry history and audit logs are not included', style: 'text' },
+  { content: '• Relationship lookups (e.g., linking to new outcomes) require the related items to exist', style: 'text' },
+        { content: '', style: 'empty' },
+        { content: `Export Date: ${new Date().toLocaleString()}`, style: 'text' },
+        { content: `Product: ${product.name}`, style: 'text' },
+        { content: `File: ${`product-complete-${product.name.replace(/\s+/g, '-').toLowerCase()}.xlsx`}`, style: 'text' },
+      ];
+
+      instructions.forEach((item, index) => {
+        const row = instructionsSheet.getRow(index + 1);
+        row.getCell(1).value = item.content;
+        
+        if (item.style === 'title') {
+          row.getCell(1).font = { bold: true, size: 16, color: { argb: 'FF1976D2' } };
+          row.getCell(1).alignment = { vertical: 'middle', horizontal: 'left' };
+          row.height = 30;
+        } else if (item.style === 'header') {
+          row.getCell(1).font = { bold: true, size: 12, color: { argb: 'FF1976D2' } };
+          row.height = 25;
+        } else if (item.style === 'text') {
+          row.getCell(1).font = { size: 11 };
+          row.getCell(1).alignment = { wrapText: true, vertical: 'top' };
+        }
+      });
+
+      // Freeze the first row
+      instructionsSheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+
+      // Add Simple Attributes sheet
+      const simpleAttributesSheet = workbook.addWorksheet('Simple Attributes');
+      simpleAttributesSheet.columns = [
+        { header: 'Attribute', key: 'attribute', width: 30 },
+        { header: 'Value', key: 'value', width: 60 }
+      ];
+      simpleAttributesSheet.addRows([
+        { attribute: 'Name', value: product.name },
+        { attribute: 'Description', value: product.description || '' }
+      ]);
+      simpleAttributesSheet.getRow(1).font = { bold: true };
+      simpleAttributesSheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
       };
 
-      const dataStr = JSON.stringify(exportData, null, 2);
-      const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-      const filename = `product-complete-${product.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+      // Add Outcomes sheet
+      const outcomesSheet = workbook.addWorksheet('Outcomes');
+      outcomesSheet.columns = [
+        { header: 'Name', key: 'name', width: 30 },
+        { header: 'Description', key: 'description', width: 60 }
+      ];
+      outcomesSheet.addRows(product.outcomes.map((outcome: any) => ({
+        name: outcome.name,
+        description: outcome.description || ''
+      })));
+      // Style the header row
+      outcomesSheet.getRow(1).font = { bold: true };
+      outcomesSheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
 
+      // Add Licenses sheet
+      const licensesSheet = workbook.addWorksheet('Licenses');
+      licensesSheet.columns = [
+        { header: 'Name', key: 'name', width: 30 },
+        { header: 'Description', key: 'description', width: 60 },
+        { header: 'Level', key: 'level', width: 10 },
+        { header: 'Active', key: 'isActive', width: 10 }
+      ];
+      licensesSheet.addRows(productLicenses.map((license: any) => ({
+        name: license.name,
+        description: license.description || '',
+        level: license.level,
+        isActive: license.isActive ? 'Yes' : 'No'
+      })));
+      licensesSheet.getRow(1).font = { bold: true };
+      licensesSheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
+      // Add Releases sheet
+      const releasesSheet = workbook.addWorksheet('Releases');
+      releasesSheet.columns = [
+        { header: 'Name', key: 'name', width: 30 },
+        { header: 'Description', key: 'description', width: 60 },
+        { header: 'Level', key: 'level', width: 10 },
+        { header: 'Active', key: 'isActive', width: 10 }
+      ];
+      releasesSheet.addRows(productReleases.map((release: any) => ({
+        name: release.name,
+        description: release.description || '',
+        level: release.level,
+        isActive: release.isActive ? 'Yes' : 'No'
+      })));
+      releasesSheet.getRow(1).font = { bold: true };
+      releasesSheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
+      // Add Tasks sheet
+      const tasksSheet = workbook.addWorksheet('Tasks');
+      tasksSheet.columns = [
+        { header: 'ID', key: 'id', width: 20 },
+        { header: 'Name', key: 'name', width: 30 },
+        { header: 'Description', key: 'description', width: 50 },
+        { header: 'Sequence Number', key: 'sequenceNumber', width: 18 },
+        { header: 'Estimated Minutes', key: 'estMinutes', width: 18 },
+        { header: 'Weight', key: 'weight', width: 12 },
+        { header: 'Priority', key: 'priority', width: 12 },
+        { header: 'License Name', key: 'licenseName', width: 24 },
+        { header: 'Outcome Names', key: 'outcomeNames', width: 30 },
+        { header: 'Release Names', key: 'releaseNames', width: 30 },
+        { header: 'Notes', key: 'notes', width: 40 },
+        { header: 'How To Doc', key: 'howToDoc', width: 30 },
+        { header: 'How To Video', key: 'howToVideo', width: 30 }
+      ];
+      tasksSheet.addRows(productTasks.map((task: any) => ({
+        id: task.id,
+        name: task.name,
+        description: task.description || '',
+        sequenceNumber: task.sequenceNumber ?? '',
+        estMinutes: task.estMinutes ?? '',
+        weight: task.weight ?? '',
+        priority: task.priority || '',
+        licenseName: task.license?.name || '',
+        outcomeNames: (task.outcomes || []).map((outcome: any) => outcome.name).filter(Boolean).join(', '),
+        releaseNames: (task.releases || []).map((release: any) => release.name).filter(Boolean).join(', '),
+        notes: task.notes || '',
+        howToDoc: task.howToDoc || '',
+        howToVideo: task.howToVideo || ''
+      })));
+      tasksSheet.getRow(1).font = { bold: true };
+      tasksSheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
+      // Add Custom Attributes sheet
+      const customAttrsSheet = workbook.addWorksheet('Custom Attributes');
+      customAttrsSheet.columns = [
+        { header: 'Key', key: 'key', width: 30 },
+        { header: 'Value', key: 'value', width: 60 }
+      ];
+      if (product.customAttrs && typeof product.customAttrs === 'object') {
+        const attrsArray = Object.entries(product.customAttrs).map(([key, value]) => ({
+          key,
+          value: String(value)
+        }));
+        customAttrsSheet.addRows(attrsArray);
+      }
+      customAttrsSheet.getRow(1).font = { bold: true };
+      customAttrsSheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
+      // Generate Excel file and download
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      const url = URL.createObjectURL(blob);
+      const filename = `product-complete-${product.name.replace(/\s+/g, '-').toLowerCase()}.xlsx`;
+      
       const linkElement = document.createElement('a');
-      linkElement.setAttribute('href', dataUri);
-      linkElement.setAttribute('download', filename);
+      linkElement.href = url;
+      linkElement.download = filename;
       linkElement.click();
+      
+      URL.revokeObjectURL(url);
 
-      console.log('Complete product data exported (excluding tasks):', exportData);
-      alert('Product data exported successfully (excluding tasks)');
+      console.log('Complete product data exported to Excel');
+  alert('Product data exported to Excel successfully!\nIncludes: Simple Attributes, Outcomes, Licenses, Releases, Tasks, and Custom Attributes');
     } catch (error) {
       console.error('Error exporting complete product data:', error);
-      alert('Failed to export complete product data');
+      alert(`Failed to export complete product data: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   };
 
-  // Import all product data (comprehensive import) - excludes tasks
+  // Import all product data (comprehensive import) with Excel support and upsert logic
   const handleImportAllProductData = () => {
     if (!selectedProduct) {
       alert('Please select a product first');
@@ -2808,47 +3022,246 @@ export function App() {
 
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
-    fileInput.accept = '.json';
+    fileInput.accept = '.xlsx';
     fileInput.onchange = async (e: any) => {
       const file = e.target.files[0];
       if (!file) return;
 
       try {
-        const text = await file.text();
-        const importData = JSON.parse(text);
+        const buffer = await file.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buffer);
 
-        if (!importData.product) {
-          alert('Invalid file format - missing product data');
+        const toPlainString = (cellValue: any): string => {
+          if (cellValue === null || cellValue === undefined) return '';
+          if (typeof cellValue === 'object') {
+            if (typeof cellValue.text === 'string') {
+              return cellValue.text;
+            }
+            if (Array.isArray(cellValue.richText)) {
+              return cellValue.richText.map((part: any) => part.text ?? '').join('');
+            }
+            if (typeof cellValue.result !== 'undefined') {
+              return toPlainString(cellValue.result);
+            }
+          }
+          return cellValue.toString();
+        };
+
+        const toNumberOrUndefined = (cellValue: any): number | undefined => {
+          if (cellValue === null || cellValue === undefined || cellValue === '') {
+            return undefined;
+          }
+          if (typeof cellValue === 'number') {
+            return Number.isNaN(cellValue) ? undefined : cellValue;
+          }
+          const text = toPlainString(cellValue).trim();
+          if (!text) return undefined;
+          const parsed = Number(text);
+          return Number.isNaN(parsed) ? undefined : parsed;
+        };
+
+        const parseDelimitedList = (cellValue: any): string[] => {
+          const text = toPlainString(cellValue).trim();
+          if (!text) return [];
+          return text
+            .split(/[,;\n]/)
+            .map((item: string) => item.trim())
+            .filter((item: string) => item.length > 0);
+        };
+
+        const product = products.find((p: any) => p.id === selectedProduct);
+        if (!product) {
+          alert('Selected product not found');
           return;
         }
 
-        let successCount = 0;
+        // Get current licenses and releases for upsert logic
+        const allLicensesResult = await client.query({
+          query: gql`
+            query AllLicenses {
+              licenses {
+                id
+                name
+                description
+                level
+                isActive
+                product {
+                  id
+                }
+              }
+            }
+          `,
+          fetchPolicy: 'network-only'
+        });
+
+        const allReleasesResult = await client.query({
+          query: gql`
+            query AllReleases {
+              releases {
+                id
+                name
+                description
+                level
+                isActive
+                product {
+                  id
+                }
+              }
+            }
+          `,
+          fetchPolicy: 'network-only'
+        });
+
+        const currentLicenses = allLicensesResult.data.licenses.filter((license: any) => 
+          license.product?.id === selectedProduct
+        );
+
+        const currentReleases = allReleasesResult.data.releases.filter((release: any) => 
+          release.product?.id === selectedProduct
+        );
+
+        const currentTasksResult = await client.query({
+          query: TASKS_FOR_PRODUCT,
+          variables: { productId: selectedProduct },
+          fetchPolicy: 'network-only'
+        });
+
+  const currentTasks = (currentTasksResult.data?.tasks?.edges || []).map((edge: any) => edge.node);
+
+  const licensesByName = new Map<string, any>(currentLicenses.map((license: any) => [license.name.toLowerCase().trim(), license]));
+  const releasesByName = new Map<string, any>(currentReleases.map((release: any) => [release.name.toLowerCase().trim(), release]));
+  const outcomeList: any[] = product.outcomes || [];
+  const outcomesByName = new Map<string, any>(outcomeList.map((outcome: any) => [outcome.name.toLowerCase().trim(), outcome]));
+
+        let createdCount = 0;
+        let updatedCount = 0;
         let errorCount = 0;
 
-        // Import outcomes if provided
-        if (importData.outcomes && Array.isArray(importData.outcomes)) {
-          for (const outcome of importData.outcomes) {
+        const productUpdatePayload: any = {
+          name: product.name,
+          description: product.description || '',
+          customAttrs: { ...(product.customAttrs || {}) }
+        };
+        let productNeedsUpdate = false;
+        let simpleAttributeChanges = 0;
+
+        // Import Simple Attributes (basic product fields)
+        const simpleAttributesSheet = workbook.getWorksheet('Simple Attributes');
+        if (simpleAttributesSheet) {
+          simpleAttributesSheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header
+            const attributeName = toPlainString(row.getCell(1).value).trim().toLowerCase();
+            const rawValue = row.getCell(2).value;
+            const valueString = toPlainString(rawValue).trim();
+
+            if (!attributeName) return;
+
+            switch (attributeName) {
+              case 'name':
+                if (valueString && valueString !== productUpdatePayload.name) {
+                  productUpdatePayload.name = valueString;
+                  simpleAttributeChanges++;
+                  productNeedsUpdate = true;
+                }
+                break;
+              case 'description':
+                if (valueString !== productUpdatePayload.description) {
+                  productUpdatePayload.description = valueString;
+                  simpleAttributeChanges++;
+                  productNeedsUpdate = true;
+                }
+                break;
+              case 'status percent':
+              case 'statuspercent':
+              case 'status %':
+                console.info('Status percent column is deprecated and will be ignored.');
+                break;
+              default:
+                console.warn(`Unknown simple attribute "${attributeName}" encountered during import. Skipping.`);
+                break;
+            }
+          });
+        }
+
+        if (simpleAttributeChanges > 0) {
+          updatedCount += simpleAttributeChanges;
+        }
+
+        // Import Outcomes with upsert logic
+        const outcomesSheet = workbook.getWorksheet('Outcomes');
+        if (outcomesSheet) {
+          const outcomes: any[] = [];
+          outcomesSheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header
+            const name = toPlainString(row.getCell(1).value).trim();
+            const description = toPlainString(row.getCell(2).value).trim() || '';
+            if (name) {
+              outcomes.push({ name, description });
+            }
+          });
+
+          for (const outcome of outcomes) {
             try {
-              if (!outcome.name) continue;
-              await client.mutate({
-                mutation: gql`
-                  mutation CreateOutcome($input: OutcomeInput!) {
-                    createOutcome(input: $input) {
-                      id
-                      name
-                      description
+              const outcomeKey = outcome.name.toLowerCase().trim();
+              const existingOutcome = outcomesByName.get(outcomeKey);
+
+              if (existingOutcome) {
+                // Update existing outcome
+                const updateResult = await client.mutate({
+                  mutation: gql`
+                    mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
+                      updateOutcome(id: $id, input: $input) {
+                        id
+                        name
+                        description
+                      }
+                    }
+                  `,
+                  variables: {
+                    id: existingOutcome.id,
+                    input: {
+                      name: outcome.name,
+                      description: outcome.description,
+                      productId: selectedProduct
                     }
                   }
-                `,
-                variables: {
-                  input: {
-                    name: outcome.name,
-                    description: outcome.description || '',
-                    productId: selectedProduct
-                  }
+                });
+                if (updateResult.data?.updateOutcome) {
+                  const updatedOutcome = updateResult.data.updateOutcome;
+                  const updatedKey = updatedOutcome.name.toLowerCase().trim();
+                  outcomesByName.delete(outcomeKey);
+                  outcomesByName.set(updatedKey, updatedOutcome);
                 }
-              });
-              successCount++;
+                updatedCount++;
+              } else {
+                // Create new outcome
+                const createResult = await client.mutate({
+                  mutation: gql`
+                    mutation CreateOutcome($input: OutcomeInput!) {
+                      createOutcome(input: $input) {
+                        id
+                        name
+                        description
+                      }
+                    }
+                  `,
+                  variables: {
+                    input: {
+                      name: outcome.name,
+                      description: outcome.description,
+                      productId: selectedProduct
+                    }
+                  }
+                });
+                if (createResult.data?.createOutcome) {
+                  const createdOutcome = createResult.data.createOutcome;
+                  const createdKey = createdOutcome.name.toLowerCase().trim();
+                  outcomeList.push(createdOutcome);
+                  outcomesByName.set(createdKey, createdOutcome);
+                }
+                createdCount++;
+              }
             } catch (error) {
               console.error('Error importing outcome:', outcome, error);
               errorCount++;
@@ -2856,24 +3269,70 @@ export function App() {
           }
         }
 
-        // Import licenses if provided
-        if (importData.licenses && Array.isArray(importData.licenses)) {
-          for (const license of importData.licenses) {
+        // Import Licenses with upsert logic
+        const licensesSheet = workbook.getWorksheet('Licenses');
+        if (licensesSheet) {
+          const licenses: any[] = [];
+          licensesSheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header
+            const name = toPlainString(row.getCell(1).value).trim();
+            const description = toPlainString(row.getCell(2).value).trim() || '';
+            const level = toNumberOrUndefined(row.getCell(3).value) ?? 1;
+            const isActive = toPlainString(row.getCell(4).value).toLowerCase().trim() !== 'no';
+            if (name) {
+              licenses.push({ name, description, level, isActive });
+            }
+          });
+
+          for (const license of licenses) {
             try {
-              if (!license.name || license.level === undefined) continue;
-              await client.mutate({
-                mutation: CREATE_LICENSE,
-                variables: {
-                  input: {
-                    name: license.name,
-                    description: license.description || '',
-                    level: parseInt(license.level) || 1,
-                    isActive: license.isActive !== false,
-                    productId: selectedProduct
+              const licenseKey = license.name.toLowerCase().trim();
+              const existingLicense = licensesByName.get(licenseKey);
+
+              if (existingLicense) {
+                // Update existing license
+                const updateResult = await client.mutate({
+                  mutation: UPDATE_LICENSE,
+                  variables: {
+                    id: existingLicense.id,
+                    input: {
+                      name: license.name,
+                      description: license.description,
+                      level: license.level,
+                      isActive: license.isActive,
+                      productId: selectedProduct
+                    }
                   }
+                });
+                if (updateResult.data?.updateLicense) {
+                  const updatedLicense = updateResult.data.updateLicense;
+                  const updatedKey = updatedLicense.name.toLowerCase().trim();
+                  licensesByName.delete(licenseKey);
+                  licensesByName.set(updatedKey, updatedLicense);
                 }
-              });
-              successCount++;
+                updatedCount++;
+              } else {
+                // Create new license
+                const createResult = await client.mutate({
+                  mutation: CREATE_LICENSE,
+                  variables: {
+                    input: {
+                      name: license.name,
+                      description: license.description,
+                      level: license.level,
+                      isActive: license.isActive,
+                      productId: selectedProduct
+                    }
+                  }
+                });
+                if (createResult.data?.createLicense) {
+                  const createdLicense = createResult.data.createLicense;
+                  const createdKey = createdLicense.name.toLowerCase().trim();
+                  currentLicenses.push(createdLicense);
+                  licensesByName.set(createdKey, createdLicense);
+                }
+                createdCount++;
+              }
             } catch (error) {
               console.error('Error importing license:', license, error);
               errorCount++;
@@ -2881,33 +3340,429 @@ export function App() {
           }
         }
 
-        // Update product attributes if provided
-        if (importData.product.customAttrs) {
+        // Import Releases with upsert logic
+        const releasesSheet = workbook.getWorksheet('Releases');
+        if (releasesSheet) {
+          const releases: any[] = [];
+          releasesSheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header
+            const name = toPlainString(row.getCell(1).value).trim();
+            const description = toPlainString(row.getCell(2).value).trim() || '';
+            const level = toNumberOrUndefined(row.getCell(3).value) ?? 1;
+            const isActive = toPlainString(row.getCell(4).value).toLowerCase().trim() !== 'no';
+            if (name) {
+              releases.push({ name, description, level, isActive });
+            }
+          });
+
+          for (const release of releases) {
+            try {
+              const releaseKey = release.name.toLowerCase().trim();
+              const existingRelease = releasesByName.get(releaseKey);
+
+              if (existingRelease) {
+                // Update existing release
+                const updateResult = await client.mutate({
+                  mutation: UPDATE_RELEASE,
+                  variables: {
+                    id: existingRelease.id,
+                    input: {
+                      name: release.name,
+                      description: release.description,
+                      level: release.level,
+                      isActive: release.isActive,
+                      productId: selectedProduct
+                    }
+                  }
+                });
+                if (updateResult.data?.updateRelease) {
+                  const updatedRelease = updateResult.data.updateRelease;
+                  const updatedKey = updatedRelease.name.toLowerCase().trim();
+                  releasesByName.delete(releaseKey);
+                  releasesByName.set(updatedKey, updatedRelease);
+                }
+                updatedCount++;
+              } else {
+                // Create new release
+                const createResult = await client.mutate({
+                  mutation: CREATE_RELEASE,
+                  variables: {
+                    input: {
+                      name: release.name,
+                      description: release.description,
+                      level: release.level,
+                      isActive: release.isActive,
+                      productId: selectedProduct
+                    }
+                  }
+                });
+                if (createResult.data?.createRelease) {
+                  const createdRelease = createResult.data.createRelease;
+                  const createdKey = createdRelease.name.toLowerCase().trim();
+                  currentReleases.push(createdRelease);
+                  releasesByName.set(createdKey, createdRelease);
+                }
+                createdCount++;
+              }
+            } catch (error) {
+              console.error('Error importing release:', release, error);
+              errorCount++;
+            }
+          }
+        }
+
+        // Import Tasks with upsert logic
+        const normalizeLicenseLevel = (level?: string | number): string | undefined => {
+          if (level === undefined || level === null) return undefined;
+          if (typeof level === 'number') {
+            if (level >= 2.5) return 'Signature';
+            if (level >= 1.5) return 'Advantage';
+            return 'Essential';
+          }
+          const normalized = level.trim().toLowerCase();
+          if (!normalized) return undefined;
+          if (normalized === 'essential') return 'Essential';
+          if (normalized === 'advantage') return 'Advantage';
+          if (normalized === 'signature') return 'Signature';
+          return undefined;
+        };
+
+        const normalizePriority = (value?: string): string | undefined => {
+          if (!value) return undefined;
+          const normalized = value.trim().toLowerCase();
+          if (!normalized) return undefined;
+          const priorityMap: Record<string, string> = {
+            'low': 'Low',
+            'medium': 'Medium',
+            'high': 'High',
+            'critical': 'Critical'
+          };
+          return priorityMap[normalized] || value.trim();
+        };
+
+        const tasksSheet = workbook.getWorksheet('Tasks');
+        if (tasksSheet) {
+          const tasksById = new Map<string, any>(currentTasks.map((task: any) => [task.id, task]));
+          const tasksByName = new Map<string, any>(currentTasks.map((task: any) => [task.name.toLowerCase().trim(), task]));
+
+          const headerAliases: Record<string, string[]> = {
+            id: ['id'],
+            name: ['name'],
+            description: ['description'],
+            sequenceNumber: ['sequence number', 'sequence'],
+            estMinutes: ['estimated minutes', 'est minutes', 'est. minutes'],
+            weight: ['weight'],
+            licenseLevel: ['license level'],
+            priority: ['priority'],
+            licenseName: ['license name'],
+            outcomeNames: ['outcome names', 'outcomes'],
+            releaseNames: ['release names', 'releases'],
+            notes: ['notes'],
+            howToDoc: ['how to doc', 'how-to doc', 'documentation link'],
+            howToVideo: ['how to video', 'how-to video', 'video link']
+          };
+
+          const headerIndices: Record<string, number> = {};
+          const headerRow = tasksSheet.getRow(1);
+          headerRow.eachCell((cell, colNumber) => {
+            const headerValue = toPlainString(cell.value).trim().toLowerCase();
+            if (!headerValue) return;
+            Object.entries(headerAliases).forEach(([key, aliases]) => {
+              if (!headerIndices[key] && aliases.includes(headerValue)) {
+                headerIndices[key] = colNumber;
+              }
+            });
+          });
+
+          const getCellValue = (row: any, key: string) => {
+            const index = headerIndices[key];
+            return index ? row.getCell(index).value : undefined;
+          };
+
+          const fallbackIndices: Record<string, number> = {
+            id: 1,
+            name: 2,
+            description: 3,
+            sequenceNumber: 4,
+            estMinutes: 5,
+            weight: 6,
+            priority: 7,
+            licenseName: 8,
+            outcomeNames: 9,
+            releaseNames: 10,
+            notes: 11,
+            howToDoc: 12,
+            howToVideo: 13
+          };
+
+          // Ensure essential headers have fallback indices for backward compatibility
+          Object.entries(fallbackIndices).forEach(([key, index]) => {
+            if (!headerIndices[key]) {
+              headerIndices[key] = index;
+            }
+          });
+
+          const tasksToProcess: any[] = [];
+          tasksSheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header
+            const id = toPlainString(getCellValue(row, 'id')).trim();
+            const name = toPlainString(getCellValue(row, 'name')).trim();
+            if (!name) return;
+
+            const rawPriority = toPlainString(getCellValue(row, 'priority')).trim();
+            const normalizedPriority = normalizePriority(rawPriority);
+            const rawLicenseLevel = toPlainString(getCellValue(row, 'licenseLevel')).trim();
+
+            tasksToProcess.push({
+              id,
+              name,
+              description: toPlainString(getCellValue(row, 'description')).trim(),
+              sequenceNumber: toNumberOrUndefined(getCellValue(row, 'sequenceNumber')),
+              estMinutes: toNumberOrUndefined(getCellValue(row, 'estMinutes')),
+              weight: toNumberOrUndefined(getCellValue(row, 'weight')),
+              priority: normalizedPriority,
+              licenseName: toPlainString(getCellValue(row, 'licenseName')).trim(),
+              outcomeNames: parseDelimitedList(getCellValue(row, 'outcomeNames')),
+              releaseNames: parseDelimitedList(getCellValue(row, 'releaseNames')),
+              notes: toPlainString(getCellValue(row, 'notes')),
+              howToDoc: toPlainString(getCellValue(row, 'howToDoc')),
+              howToVideo: toPlainString(getCellValue(row, 'howToVideo')),
+              licenseLevel: normalizeLicenseLevel(rawLicenseLevel)
+            });
+          });
+
+          for (const taskRow of tasksToProcess) {
+            try {
+              const idKey = taskRow.id;
+              const nameKey = taskRow.name.toLowerCase().trim();
+              const existingTask = (idKey && tasksById.get(idKey)) || tasksByName.get(nameKey);
+
+              const licenseMatch = taskRow.licenseName ? licensesByName.get(taskRow.licenseName.toLowerCase()) : undefined;
+              const licenseId = licenseMatch?.id;
+              if (taskRow.licenseName && !licenseId) {
+                console.warn(`License "${taskRow.licenseName}" not found for task "${taskRow.name}". Leaving license unset.`);
+              }
+
+              const outcomeIds = taskRow.outcomeNames
+                .map((outcomeName: string) => {
+                  const outcome = outcomesByName.get(outcomeName.toLowerCase());
+                  if (!outcome) {
+                    console.warn(`Outcome "${outcomeName}" not found for task "${taskRow.name}". It will be ignored.`);
+                  }
+                  return outcome?.id;
+                })
+                .filter((id: string | undefined): id is string => Boolean(id));
+
+              const releaseIds = taskRow.releaseNames
+                .map((releaseName: string) => {
+                  const release = releasesByName.get(releaseName.toLowerCase());
+                  if (!release) {
+                    console.warn(`Release "${releaseName}" not found for task "${taskRow.name}". It will be ignored.`);
+                  }
+                  return release?.id;
+                })
+                .filter((id: string | undefined): id is string => Boolean(id));
+
+              const buildCommonInput = (existing?: any) => {
+                const input: any = {
+                  name: taskRow.name
+                };
+
+                input.description = taskRow.description || '';
+
+                if (typeof taskRow.estMinutes === 'number') {
+                  input.estMinutes = taskRow.estMinutes;
+                } else if (!existing) {
+                  input.estMinutes = 0;
+                }
+                if (typeof taskRow.weight === 'number') {
+                  input.weight = taskRow.weight;
+                } else if (!existing) {
+                  input.weight = 0;
+                }
+                if (typeof taskRow.sequenceNumber === 'number') {
+                  input.sequenceNumber = taskRow.sequenceNumber;
+                }
+                const effectivePriority = normalizePriority(taskRow.priority) || normalizePriority(existing?.priority) || 'Medium';
+                input.priority = effectivePriority;
+
+                const licenseLevelFromExisting = normalizeLicenseLevel(existing?.licenseLevel);
+                const licenseLevelFromSheet = normalizeLicenseLevel(taskRow.licenseLevel);
+                const licenseLevelFromLicense = normalizeLicenseLevel(licenseMatch?.level);
+                const resolvedLicenseLevel = licenseLevelFromSheet || licenseLevelFromExisting || licenseLevelFromLicense || 'Essential';
+                input.licenseLevel = resolvedLicenseLevel;
+                if (licenseId) {
+                  input.licenseId = licenseId;
+                }
+                if (outcomeIds.length > 0) {
+                  input.outcomeIds = outcomeIds;
+                }
+                if (releaseIds.length > 0) {
+                  input.releaseIds = releaseIds;
+                }
+
+                input.notes = taskRow.notes || '';
+                input.howToDoc = taskRow.howToDoc || '';
+                input.howToVideo = taskRow.howToVideo || '';
+
+                return input;
+              };
+
+              if (existingTask) {
+                const updateInput = buildCommonInput(existingTask);
+
+                const updateResult = await client.mutate({
+                  mutation: UPDATE_TASK,
+                  variables: {
+                    id: existingTask.id,
+                    input: updateInput
+                  }
+                });
+
+                if (updateResult.data?.updateTask) {
+                  const updatedTask = updateResult.data.updateTask;
+                  tasksById.set(updatedTask.id, updatedTask);
+                  tasksByName.delete(existingTask.name.toLowerCase().trim());
+                  tasksByName.set(updatedTask.name.toLowerCase().trim(), updatedTask);
+                }
+
+                updatedCount++;
+              } else {
+                const createInput = buildCommonInput();
+                createInput.productId = selectedProduct;
+
+                const createResult = await client.mutate({
+                  mutation: gql`
+                    mutation CreateTask($input: TaskInput!) {
+                      createTask(input: $input) {
+                        id
+                        name
+                        description
+                        estMinutes
+                        weight
+                        sequenceNumber
+                        licenseLevel
+                        priority
+                        notes
+                        howToDoc
+                        howToVideo
+                        license {
+                          id
+                          name
+                          level
+                        }
+                        outcomes {
+                          id
+                          name
+                        }
+                        releases {
+                          id
+                          name
+                          level
+                        }
+                      }
+                    }
+                  `,
+                  variables: { input: createInput }
+                });
+
+                if (createResult.data?.createTask) {
+                  const createdTask = createResult.data.createTask;
+                  tasksById.set(createdTask.id, createdTask);
+                  tasksByName.set(createdTask.name.toLowerCase().trim(), createdTask);
+                  currentTasks.push(createdTask);
+                }
+
+                createdCount++;
+              }
+            } catch (error) {
+              console.error('Error importing task from Excel row:', taskRow, error);
+              errorCount++;
+            }
+          }
+        }
+
+        // Import Custom Attributes with merge logic
+        const customAttrsSheet = workbook.getWorksheet('Custom Attributes');
+        if (customAttrsSheet) {
+          const mergedAttrs: any = { ...(productUpdatePayload.customAttrs || {}) };
+          customAttrsSheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header
+            const key = toPlainString(row.getCell(1).value).trim();
+            const rawValue = row.getCell(2).value;
+            const valueString = toPlainString(rawValue).trim();
+
+            if (key) {
+              let parsedValue: any = valueString;
+
+              if (valueString === '') {
+                parsedValue = '';
+              } else if (/^(true|false)$/i.test(valueString)) {
+                parsedValue = valueString.toLowerCase() === 'true';
+              } else if (valueString.toLowerCase() === 'null') {
+                parsedValue = null;
+              } else if ((valueString.startsWith('{') && valueString.endsWith('}')) || (valueString.startsWith('[') && valueString.endsWith(']'))) {
+                try {
+                  parsedValue = JSON.parse(valueString);
+                } catch (jsonError) {
+                  console.warn(`Failed to parse JSON for custom attribute "${key}". Keeping raw string.`, jsonError);
+                  parsedValue = valueString;
+                }
+              } else if (!Number.isNaN(Number(valueString))) {
+                parsedValue = Number(valueString);
+              } else if (typeof rawValue === 'number') {
+                parsedValue = rawValue;
+              }
+
+              const existingValue = mergedAttrs.hasOwnProperty(key) ? mergedAttrs[key] : undefined;
+              const valueChanged = JSON.stringify(existingValue) !== JSON.stringify(parsedValue);
+
+              if (existingValue === undefined) {
+                createdCount++;
+              } else if (valueChanged) {
+                updatedCount++;
+              }
+
+              if (existingValue === undefined || valueChanged) {
+                mergedAttrs[key] = parsedValue;
+                productNeedsUpdate = true;
+              }
+            }
+          });
+
+          productUpdatePayload.customAttrs = mergedAttrs;
+        }
+
+        if (productNeedsUpdate) {
           try {
+            const productInput: any = {
+              name: productUpdatePayload.name,
+              description: productUpdatePayload.description,
+              customAttrs: productUpdatePayload.customAttrs
+            };
+
             await client.mutate({
               mutation: UPDATE_PRODUCT,
               variables: {
                 id: selectedProduct,
-                input: {
-                  customAttrs: importData.product.customAttrs
-                }
+                input: productInput
               }
             });
-            successCount++;
           } catch (error) {
-            console.error('Error updating product attributes:', error);
+            console.error('Error updating product details:', error);
             errorCount++;
           }
         }
 
         // Refresh data
         await refetchProducts();
+        await refetchTasks({ productId: selectedProduct });
 
-        alert(`Product data import completed (excluding tasks)!\nSuccessful: ${successCount}\nErrors: ${errorCount}`);
+        alert(`Excel import completed!\n\nCreated: ${createdCount}\nUpdated: ${updatedCount}\nErrors: ${errorCount}\n\nImported: Simple Attributes, Outcomes, Licenses, Releases, Tasks, Custom Attributes\nRemember: Keep Name columns unchanged to update existing records.`);
 
       } catch (error) {
-        console.error('Error importing complete product data:', error);
-        alert(`Failed to import complete product data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        console.error('Error importing Excel file:', error);
+        alert(`Failed to import Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
     };
 
@@ -2952,7 +3807,28 @@ export function App() {
             <Collapse in={productsExpanded && selectedSection === 'products'} timeout="auto" unmountOnExit>
               <List component="div" disablePadding>
                 <ListItemButton
-                  sx={{ pl: 4 }}
+                  sx={{ 
+                    pl: 6,
+                    position: 'relative',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '16px',
+                      top: 0,
+                      bottom: 0,
+                      width: '2px',
+                      backgroundColor: '#e0e0e0',
+                    },
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '16px',
+                      top: '50%',
+                      width: '12px',
+                      height: '2px',
+                      backgroundColor: '#e0e0e0',
+                    }
+                  }}
                   selected={selectedProductSubSection === 'main'}
                   onClick={() => handleProductSubSectionChange('main')}
                 >
@@ -2963,7 +3839,28 @@ export function App() {
                 </ListItemButton>
 
                 <ListItemButton
-                  sx={{ pl: 4 }}
+                  sx={{ 
+                    pl: 6,
+                    position: 'relative',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '16px',
+                      top: 0,
+                      bottom: 0,
+                      width: '2px',
+                      backgroundColor: '#e0e0e0',
+                    },
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '16px',
+                      top: '50%',
+                      width: '12px',
+                      height: '2px',
+                      backgroundColor: '#e0e0e0',
+                    }
+                  }}
                   selected={selectedProductSubSection === 'tasks'}
                   onClick={() => handleProductSubSectionChange('tasks')}
                 >
@@ -2974,7 +3871,28 @@ export function App() {
                 </ListItemButton>
 
                 <ListItemButton
-                  sx={{ pl: 4 }}
+                  sx={{ 
+                    pl: 6,
+                    position: 'relative',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '16px',
+                      top: 0,
+                      bottom: 0,
+                      width: '2px',
+                      backgroundColor: '#e0e0e0',
+                    },
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '16px',
+                      top: '50%',
+                      width: '12px',
+                      height: '2px',
+                      backgroundColor: '#e0e0e0',
+                    }
+                  }}
                   selected={selectedProductSubSection === 'licenses'}
                   onClick={() => handleProductSubSectionChange('licenses')}
                 >
@@ -2985,7 +3903,28 @@ export function App() {
                 </ListItemButton>
 
                 <ListItemButton
-                  sx={{ pl: 4 }}
+                  sx={{ 
+                    pl: 6,
+                    position: 'relative',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '16px',
+                      top: 0,
+                      bottom: 0,
+                      width: '2px',
+                      backgroundColor: '#e0e0e0',
+                    },
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '16px',
+                      top: '50%',
+                      width: '12px',
+                      height: '2px',
+                      backgroundColor: '#e0e0e0',
+                    }
+                  }}
                   selected={selectedProductSubSection === 'releases'}
                   onClick={() => handleProductSubSectionChange('releases')}
                 >
@@ -2996,7 +3935,28 @@ export function App() {
                 </ListItemButton>
 
                 <ListItemButton
-                  sx={{ pl: 4 }}
+                  sx={{ 
+                    pl: 6,
+                    position: 'relative',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '16px',
+                      top: 0,
+                      bottom: 0,
+                      width: '2px',
+                      backgroundColor: '#e0e0e0',
+                    },
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '16px',
+                      top: '50%',
+                      width: '12px',
+                      height: '2px',
+                      backgroundColor: '#e0e0e0',
+                    }
+                  }}
                   selected={selectedProductSubSection === 'outcomes'}
                   onClick={() => handleProductSubSectionChange('outcomes')}
                 >
@@ -3007,14 +3967,35 @@ export function App() {
                 </ListItemButton>
 
                 <ListItemButton
-                  sx={{ pl: 4 }}
+                  sx={{ 
+                    pl: 6,
+                    position: 'relative',
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '16px',
+                      top: 0,
+                      bottom: '50%',
+                      width: '2px',
+                      backgroundColor: '#e0e0e0',
+                    },
+                    '&::after': {
+                      content: '""',
+                      position: 'absolute',
+                      left: '16px',
+                      top: '50%',
+                      width: '12px',
+                      height: '2px',
+                      backgroundColor: '#e0e0e0',
+                    }
+                  }}
                   selected={selectedProductSubSection === 'customAttributes'}
                   onClick={() => handleProductSubSectionChange('customAttributes')}
                 >
                   <ListItemIcon>
                     <CustomAttributeIcon />
                   </ListItemIcon>
-                  <ListItemText primary="Other Product Attributes" />
+                  <ListItemText primary="Custom Attributes" />
                 </ListItemButton>
               </List>
             </Collapse>
@@ -3059,54 +4040,15 @@ export function App() {
             {/* Products Section */}
             {selectedSection === 'products' && (
               <Box>
-                {/* Header with Management Buttons */}
-                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                {/* Header */}
+                <Box sx={{ mb: 3 }}>
                   <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
-                    Main
+                    Products
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 2 }}>
-                    <Button
-                      variant="contained"
-                      startIcon={<Add />}
-                      onClick={() => setAddProductDialog(true)}
-                    >
-                      Add Product
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      startIcon={<Delete />}
-                      onClick={() => {
-                        if (selectedProduct) {
-                          const product = products.find((p: any) => p.id === selectedProduct);
-                          if (product && window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
-                            handleDeleteProduct(product.id);
-                          }
-                        }
-                      }}
-                      disabled={!selectedProduct}
-                    >
-                      Delete Product
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      startIcon={<Edit />}
-                      onClick={() => {
-                        if (selectedProduct) {
-                          const product = products.find((p: any) => p.id === selectedProduct);
-                          if (product) {
-                            setEditingProduct({ ...product });
-                            setEditProductDialog(true);
-                          }
-                        }
-                      }}
-                      disabled={!selectedProduct}
-                    >
-                      Edit Product
-                    </Button>
-                  </Box>
-                </Box>                {/* Product Selection for all sub-sections */}
-                <Paper sx={{ p: 2, mb: 2 }}>
+                </Box>
+
+                {/* Product Selection for all sub-sections */}
+                <Paper sx={{ p: 3, mb: 2 }}>
                   {/* Loading States */}
                   {productsLoading && (
                     <Box sx={{ mb: 2 }}>
@@ -3124,412 +4066,213 @@ export function App() {
                     </Typography>
                   )}
 
-                  {/* Products Dropdown */}
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Select Product</InputLabel>
-                    <Select
-                      value={selectedProduct}
-                      onChange={(e) => {
-                        setSelectedProduct(e.target.value);
-                        setSelectedProductSubSection('tasks');
-                      }}
-                      label="Select Product"
-                    >
-                      {products.map((product: any) => (
-                        <MenuItem key={product.id} value={product.id}>
-                          {product.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  {/* Product Selector and Actions Row */}
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    {/* Products Dropdown */}
+                    <FormControl sx={{ minWidth: 300, flex: '1 1 300px' }}>
+                      <InputLabel>Select Product</InputLabel>
+                      <Select
+                        value={selectedProduct}
+                        onChange={(e) => {
+                          setSelectedProduct(e.target.value);
+                          setSelectedProductSubSection('main');
+                        }}
+                        label="Select Product"
+                      >
+                        {products.map((product: any) => (
+                          <MenuItem key={product.id} value={product.id}>
+                            {product.name}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
 
-                  {/* Product Description */}
-                  {selectedProduct && (
-                    <Box sx={{ mt: 2, mb: 2 }}>
+                    {/* Product Action Buttons */}
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                      <Button 
+                        variant="contained" 
+                        startIcon={<Add />}
+                        onClick={() => setAddProductDialog(true)}
+                        size="medium"
+                      >
+                        Add
+                      </Button>
+                      {selectedProduct && (
+                        <>
+                          <Button 
+                            variant="contained" 
+                            startIcon={<Edit />}
+                            onClick={() => {
+                              const product = products.find((p: any) => p.id === selectedProduct);
+                              if (product) {
+                                setEditingProduct({ ...product });
+                                setEditProductDialog(true);
+                              }
+                            }}
+                            size="medium"
+                          >
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="contained" 
+                            color="success"
+                            startIcon={<FileDownload />}
+                            onClick={() => handleExportAllProductData()}
+                            size="medium"
+                          >
+                            Export
+                          </Button>
+                          <Button 
+                            variant="contained" 
+                            color="primary"
+                            startIcon={<FileUpload />}
+                            onClick={() => handleImportAllProductData()}
+                            size="medium"
+                          >
+                            Import
+                          </Button>
+                          <Button 
+                            variant="outlined" 
+                            color="error"
+                            startIcon={<Delete />}
+                            onClick={() => {
+                              const product = products.find((p: any) => p.id === selectedProduct);
+                              if (product && window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
+                                handleDeleteProduct(product.id);
+                              }
+                            }}
+                            size="medium"
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </Box>
+                  </Box>
+
+                </Paper>
+
+                {/* Main Sub-section - Summary Tiles */}
+                {selectedProductSubSection === 'main' && selectedProduct && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mb: 3 }}>
+                    <Paper sx={{ p: 4, backgroundColor: '#f8f9fa', border: '1px solid #e0e0e0' }}>
                       {(() => {
                         const currentProduct = products.find((p: any) => p.id === selectedProduct);
                         return currentProduct ? (
-                          <Box>
-                            <Typography variant="h6" gutterBottom>
-                              {currentProduct.name}
-                            </Typography>
-                            <Typography variant="body1" color="text.secondary" paragraph>
-                              {currentProduct.description || 'No description provided'}
-                            </Typography>
-                          </Box>
-                        ) : null;
+                          <Typography
+                            variant="body1"
+                            color="text.secondary"
+                            sx={{
+                              lineHeight: 1.9,
+                              fontSize: '1.05rem',
+                              whiteSpace: 'pre-line'
+                            }}
+                          >
+                            {currentProduct.description || 'No description provided'}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body1" color="text.secondary">
+                            No product selected
+                          </Typography>
+                        );
                       })()}
-                    </Box>
-                  )}
-                </Paper>
-
-                {/* Consolidated Product Details */}
-                {selectedProduct && selectedProductSubSection === 'main' && (
-                  <Paper elevation={0} sx={{ p: 0 }}>
-                    {/* Header */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, pb: 2, borderBottom: '1px solid #e0e0e0' }}>
-                      <Typography variant="h4" sx={{ fontWeight: 600, color: '#1976d2', fontSize: '2rem' }}>
-                        Product Overview
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button 
-                          variant="outlined" 
-                          onClick={() => handleExportAllProductData()}
-                          sx={{ 
-                            textTransform: 'none',
-                            borderColor: '#666',
-                            color: '#666',
-                            fontSize: '0.875rem',
-                            '&:hover': {
-                              backgroundColor: '#f5f5f5',
-                              borderColor: '#666'
-                            }
-                          }}
-                        >
-                          Export All
-                        </Button>
-                        <Button 
-                          variant="outlined" 
-                          onClick={() => handleImportAllProductData()}
-                          sx={{ 
-                            textTransform: 'none',
-                            borderColor: '#666',
-                            color: '#666',
-                            fontSize: '0.875rem',
-                            '&:hover': {
-                              backgroundColor: '#f5f5f5',
-                              borderColor: '#666'
-                            }
-                          }}
-                        >
-                          Import All
-                        </Button>
-                        <Button 
-                          variant="contained" 
-                          onClick={() => setEditProductDialog(true)}
-                          sx={{ 
-                            textTransform: 'none',
-                            backgroundColor: '#1976d2',
-                            fontSize: '0.875rem',
-                            '&:hover': {
-                              backgroundColor: '#1565c0'
-                            }
-                          }}
-                        >
-                          Edit Product
-                        </Button>
-                      </Box>
-                    </Box>
+                    </Paper>
 
                     {(() => {
                       const currentProduct = products.find((p: any) => p.id === selectedProduct);
-                      
                       if (!currentProduct) {
-                        return <Typography variant="body1">No product selected or product not found</Typography>;
+                        return null;
                       }
 
+                      const outcomeNames = (currentProduct.outcomes || []).map((item: any) => item.name).filter(Boolean);
+                      const licenseNames = (currentProduct.licenses || []).map((item: any) => item.name).filter(Boolean);
+                      const releaseNames = (currentProduct.releases || []).map((item: any) => item.name).filter(Boolean);
+                      const customAttrNames = Object.keys(currentProduct.customAttrs || {});
+
+                      const tileData = [
+                        { key: 'outcomes' as const, title: 'Outcomes', items: outcomeNames },
+                        { key: 'licenses' as const, title: 'Licenses', items: licenseNames },
+                        { key: 'releases' as const, title: 'Releases', items: releaseNames },
+                        { key: 'customAttributes' as const, title: 'Custom Attributes', items: customAttrNames }
+                      ];
+
+                      const NAME_DISPLAY_LIMIT = 12;
+
                       return (
-                        <Box>
-                          {/* Basic Product Information */}
-                          <Paper elevation={1} sx={{ p: 4, mb: 4, backgroundColor: '#ffffff', border: '1px solid #e0e0e0' }}>
-                            <Typography variant="h5" sx={{ fontWeight: 600, color: '#1976d2', mb: 3, fontSize: '1.5rem' }}>
-                              Basic Information
-                            </Typography>
-                            <Box sx={{ display: 'grid', gap: 2 }}>
-                              <Box>
-                                <Typography variant="subtitle2" sx={{ color: '#666', fontSize: '0.875rem', mb: 0.5 }}>
-                                  Product Name
-                                </Typography>
-                                <Typography variant="body1" sx={{ color: '#333', fontSize: '1rem' }}>
-                                  {currentProduct.name}
-                                </Typography>
-                              </Box>
-                              <Box>
-                                <Typography variant="subtitle2" sx={{ color: '#666', fontSize: '0.875rem', mb: 0.5 }}>
-                                  Description
-                                </Typography>
-                                <Typography variant="body1" sx={{ color: '#333', fontSize: '1rem' }}>
-                                  {currentProduct.description || 'No description provided'}
-                                </Typography>
-                              </Box>
-                            </Box>
-                          </Paper>
-
-                          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 3 }}>
-                            {/* Outcomes Section - First */}
-                            <Paper elevation={1} sx={{ p: 3, border: '1px solid #e0e0e0' }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                                <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2', fontSize: '1.25rem' }}>
-                                  Outcomes ({currentProduct.outcomes?.length || 0})
-                                </Typography>
-                                <Button 
-                                  size="small" 
-                                  variant="outlined"
-                                  sx={{ 
-                                    textTransform: 'none',
-                                    borderColor: '#1976d2',
-                                    color: '#1976d2',
-                                    fontSize: '0.875rem',
-                                    '&:hover': {
-                                      backgroundColor: '#f5f5f5',
-                                      borderColor: '#1976d2'
-                                    }
-                                  }}
-                                  onClick={() => handleProductSubSectionChange('outcomes')}
-                                >
-                                  View All
-                                </Button>
-                              </Box>
-                              {currentProduct.outcomes?.length > 0 ? (
-                                <List dense>
-                                  {currentProduct.outcomes.slice(0, 3).map((outcome: any) => (
-                                    <ListItem key={outcome.id} sx={{ px: 0, py: 1 }}>
-                                      <ListItemText
-                                        primary={
-                                          <Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>
-                                            {outcome.name}
-                                          </Typography>
-                                        }
-                                        secondary={
-                                          <Typography variant="caption" color="text.secondary">
-                                            {outcome.description || 'No description'}
-                                          </Typography>
-                                        }
-                                      />
-                                    </ListItem>
+                        <Box
+                          sx={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                            gap: 2
+                          }}
+                        >
+                          {tileData.map((tile) => (
+                            <Paper
+                              key={tile.key}
+                              elevation={1}
+                              onClick={() => handleProductSubSectionChange(tile.key)}
+                              sx={{
+                                p: 3,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                border: '1px solid #e0e0e0',
+                                '&:hover': {
+                                  boxShadow: 4,
+                                  borderColor: '#d0d0d0'
+                                }
+                              }}
+                            >
+                              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                                {tile.title}
+                              </Typography>
+                              {tile.items.length > 0 ? (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  {(tile.items.length <= NAME_DISPLAY_LIMIT ? tile.items : tile.items.slice(0, NAME_DISPLAY_LIMIT)).map((name: string) => (
+                                    <Typography
+                                      key={name}
+                                      variant="body2"
+                                      sx={{
+                                        color: '#424242',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                      }}
+                                    >
+                                      {name}
+                                    </Typography>
                                   ))}
-                                  {currentProduct.outcomes.length > 3 && (
-                                    <Typography variant="caption" sx={{ textAlign: 'center', display: 'block', mt: 1, color: '#666', fontSize: '0.75rem' }}>
-                                      +{currentProduct.outcomes.length - 3} more outcomes
+                                  {tile.items.length > NAME_DISPLAY_LIMIT && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      +{tile.items.length - NAME_DISPLAY_LIMIT} more
                                     </Typography>
                                   )}
-                                </List>
+                                </Box>
                               ) : (
-                                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                                  No outcomes defined. Click "View All" to add outcomes.
+                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                  No entries yet
                                 </Typography>
                               )}
                             </Paper>
-
-                            {/* Licenses Section - Second */}
-                            <Paper elevation={1} sx={{ p: 3, border: '1px solid #e0e0e0' }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                                <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2', fontSize: '1.25rem' }}>
-                                  Licenses ({currentProduct.licenses?.length || 0})
-                                </Typography>
-                                <Button 
-                                  size="small" 
-                                  variant="outlined"
-                                  sx={{ 
-                                    textTransform: 'none',
-                                    borderColor: '#1976d2',
-                                    color: '#1976d2',
-                                    fontSize: '0.875rem',
-                                    '&:hover': {
-                                      backgroundColor: '#f5f5f5',
-                                      borderColor: '#1976d2'
-                                    }
-                                  }}
-                                  onClick={() => handleProductSubSectionChange('licenses')}
-                                >
-                                  View All
-                                </Button>
-                              </Box>
-                              {currentProduct.licenses?.length > 0 ? (
-                                <List dense>
-                                  {currentProduct.licenses.slice(0, 3).map((license: any) => (
-                                    <ListItem key={license.id} sx={{ px: 0, py: 1 }}>
-                                      <ListItemText
-                                        primary={
-                                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>
-                                              {license.name}
-                                            </Typography>
-                                            <Typography variant="caption" sx={{ 
-                                              backgroundColor: '#f5f5f5', 
-                                              px: 1.5, 
-                                              py: 0.5, 
-                                              borderRadius: 1,
-                                              fontSize: '0.75rem',
-                                              color: '#666'
-                                            }}>
-                                              Level {license.level}
-                                            </Typography>
-                                          </Box>
-                                        }
-                                        secondary={
-                                          <Typography variant="caption" color="text.secondary">
-                                            {license.description || 'No description'} • {license.isActive ? 'Active' : 'Inactive'}
-                                          </Typography>
-                                        }
-                                      />
-                                    </ListItem>
-                                  ))}
-                                  {currentProduct.licenses.length > 3 && (
-                                    <Typography variant="caption" sx={{ textAlign: 'center', display: 'block', mt: 1, color: '#666', fontSize: '0.75rem' }}>
-                                      +{currentProduct.licenses.length - 3} more licenses
-                                    </Typography>
-                                  )}
-                                </List>
-                              ) : (
-                                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                                  No licenses defined. Click "View All" to add licenses.
-                                </Typography>
-                              )}
-                            </Paper>
-
-                            {/* Releases Section - Third */}
-                            <Paper elevation={1} sx={{ p: 3, border: '1px solid #e0e0e0' }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                                <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2', fontSize: '1.25rem' }}>
-                                  Releases ({currentProduct.releases?.length || 0})
-                                </Typography>
-                                <Button 
-                                  size="small" 
-                                  variant="outlined"
-                                  sx={{ 
-                                    textTransform: 'none',
-                                    borderColor: '#1976d2',
-                                    color: '#1976d2',
-                                    fontSize: '0.875rem',
-                                    '&:hover': {
-                                      backgroundColor: '#f5f5f5',
-                                      borderColor: '#1976d2'
-                                    }
-                                  }}
-                                  onClick={() => handleProductSubSectionChange('releases')}
-                                >
-                                  View All
-                                </Button>
-                              </Box>
-                              {currentProduct.releases?.length > 0 ? (
-                                <List dense>
-                                  {[...currentProduct.releases]
-                                    .sort((a: any, b: any) => a.level - b.level)
-                                    .slice(0, 3)
-                                    .map((release: any) => (
-                                      <ListItem key={release.id} sx={{ px: 0, py: 1 }}>
-                                        <ListItemText
-                                          primary={
-                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                              <Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>
-                                                {release.name}
-                                              </Typography>
-                                              <Typography variant="caption" sx={{ 
-                                                backgroundColor: '#f5f5f5', 
-                                                px: 1.5, 
-                                                py: 0.5, 
-                                                borderRadius: 1,
-                                                fontSize: '0.75rem',
-                                                color: '#666'
-                                              }}>
-                                                v{release.level}
-                                              </Typography>
-                                            </Box>
-                                          }
-                                          secondary={
-                                            <Typography variant="caption" color="text.secondary">
-                                              {release.description || 'No description'} • {release.isActive ? 'Active' : 'Inactive'}
-                                            </Typography>
-                                          }
-                                        />
-                                      </ListItem>
-                                    ))}
-                                  {currentProduct.releases.length > 3 && (
-                                    <Typography variant="caption" sx={{ textAlign: 'center', display: 'block', mt: 1, color: '#666', fontSize: '0.75rem' }}>
-                                      +{currentProduct.releases.length - 3} more releases
-                                    </Typography>
-                                  )}
-                                </List>
-                              ) : (
-                                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                                  No releases defined. Click "View All" to add releases.
-                                </Typography>
-                              )}
-                            </Paper>
-
-                            {/* Custom Attributes Section - Fourth */}
-                            <Paper elevation={1} sx={{ p: 3, border: '1px solid #e0e0e0' }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                                <Typography variant="h6" sx={{ fontWeight: 600, color: '#1976d2', fontSize: '1.25rem' }}>
-                                  Custom Attributes ({Object.keys(currentProduct.customAttrs || {}).length})
-                                </Typography>
-                                <Button 
-                                  size="small" 
-                                  variant="outlined"
-                                  sx={{ 
-                                    textTransform: 'none',
-                                    borderColor: '#1976d2',
-                                    color: '#1976d2',
-                                    fontSize: '0.875rem',
-                                    '&:hover': {
-                                      backgroundColor: '#f5f5f5',
-                                      borderColor: '#1976d2'
-                                    }
-                                  }}
-                                  onClick={() => handleProductSubSectionChange('customAttributes')}
-                                >
-                                  View All
-                                </Button>
-                              </Box>
-                              {(() => {
-                                const customAttrs = currentProduct.customAttrs || {};
-                                const attrEntries = Object.entries(customAttrs);
-
-                                return attrEntries.length > 0 ? (
-                                  <List dense>
-                                    {attrEntries.slice(0, 3).map(([key, value]: [string, any]) => (
-                                      <ListItem key={key} sx={{ px: 0, py: 1 }}>
-                                        <ListItemText
-                                          primary={
-                                            <Typography variant="body2" sx={{ fontWeight: 500, color: '#333', fontSize: '0.95rem' }}>
-                                              {key}
-                                            </Typography>
-                                          }
-                                          secondary={
-                                            <Typography variant="caption" color="text.secondary">
-                                              {typeof value === 'object' ? JSON.stringify(value).substring(0, 50) + '...' : String(value)}
-                                            </Typography>
-                                          }
-                                        />
-                                      </ListItem>
-                                    ))}
-                                    {attrEntries.length > 3 && (
-                                      <Typography variant="caption" sx={{ textAlign: 'center', display: 'block', mt: 1, color: '#666', fontSize: '0.75rem' }}>
-                                        +{attrEntries.length - 3} more attributes
-                                      </Typography>
-                                    )}
-                                  </List>
-                                ) : (
-                                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                                    No custom attributes defined. Click "View All" to add attributes.
-                                  </Typography>
-                                );
-                              })()}
-                            </Paper>
-                          </Box>
+                          ))}
                         </Box>
                       );
                     })()}
-                  </Paper>
+                  </Box>
                 )}
 
                 {/* Outcomes Sub-section */}
                 {selectedProductSubSection === 'outcomes' && selectedProduct && (
-                  <Paper sx={{ p: 2 }}>
+                  <Paper sx={{ p: 2, ml: 3, borderLeft: '4px solid #1976d2' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Typography variant="h6">
                         Outcomes for {products.find((p: any) => p.id === selectedProduct)?.name}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Double-click to edit
+                        </Typography>
                         <Button variant="contained" startIcon={<Add />} onClick={() => setAddOutcomeDialog(true)}>
                           Add Outcome
-                        </Button>
-                        <Button variant="outlined" startIcon={<FileDownload />} onClick={handleExportOutcomes}>
-                          Export
-                        </Button>
-                        <Button variant="outlined" startIcon={<FileUpload />} onClick={handleImportOutcomes}>
-                          Import
                         </Button>
                       </Box>
                     </Box>
@@ -3556,26 +4299,50 @@ export function App() {
                                 setEditOutcomeDialog(true);
                               }}
                             >
-                              <ListItemText
-                                primary={outcome.name}
-                                secondary={outcome.description}
-                              />
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                <IconButton size="small" onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingOutcome(outcome);
-                                  setEditOutcomeDialog(true);
-                                }}>
-                                  <Edit fontSize="small" />
-                                </IconButton>
-                                <IconButton size="small" color="error" onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (confirm('Are you sure you want to delete this outcome?')) {
-                                    handleDeleteOutcome(outcome.id);
-                                  }
-                                }}>
-                                  <Delete fontSize="small" />
-                                </IconButton>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
+                                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                  <Typography
+                                    variant="subtitle1"
+                                    sx={{
+                                      fontWeight: 600,
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis'
+                                    }}
+                                  >
+                                    {outcome.name}
+                                  </Typography>
+                                  {outcome.description && (
+                                    <Typography
+                                      variant="body2"
+                                      color="text.secondary"
+                                      sx={{
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                      }}
+                                    >
+                                      {outcome.description}
+                                    </Typography>
+                                  )}
+                                </Box>
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <IconButton size="small" onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingOutcome(outcome);
+                                    setEditOutcomeDialog(true);
+                                  }}>
+                                    <Edit fontSize="small" />
+                                  </IconButton>
+                                  <IconButton size="small" color="error" onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm('Are you sure you want to delete this outcome?')) {
+                                      handleDeleteOutcome(outcome.id);
+                                    }
+                                  }}>
+                                    <Delete fontSize="small" />
+                                  </IconButton>
+                                </Box>
                               </Box>
                             </ListItemButton>
                           ))}
@@ -3591,28 +4358,17 @@ export function App() {
 
                 {/* Licenses Sub-section */}
                 {selectedProductSubSection === 'licenses' && selectedProduct && (
-                  <Paper sx={{ p: 2 }}>
+                  <Paper sx={{ p: 2, ml: 3, borderLeft: '4px solid #1976d2' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Typography variant="h6">
                         Licenses for {products.find((p: any) => p.id === selectedProduct)?.name}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Double-click to edit
+                        </Typography>
                         <Button variant="contained" startIcon={<Add />} onClick={() => setAddLicenseDialog(true)}>
                           Add License
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          startIcon={<FileDownload />}
-                          onClick={handleExportLicenses}
-                        >
-                          Export
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          startIcon={<FileUpload />}
-                          onClick={handleImportLicenses}
-                        >
-                          Import
                         </Button>
                       </Box>
                     </Box>
@@ -3641,43 +4397,64 @@ export function App() {
                                   setEditLicenseDialog(true);
                                 }}
                               >
-                                <ListItemText
-                                  primary={
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <Typography variant="body1" fontWeight="medium">
-                                        {license.name}
+                                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
+                                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                    <Typography
+                                      variant="subtitle1"
+                                      sx={{
+                                        fontWeight: 600,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                      }}
+                                    >
+                                      {license.name}
+                                    </Typography>
+                                    {license.description && (
+                                      <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                        sx={{
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis'
+                                        }}
+                                      >
+                                        {license.description}
                                       </Typography>
-                                      <Chip
-                                        label={`Level ${license.level}`}
-                                        size="small"
-                                        color="primary"
-                                        variant="outlined"
-                                      />
-                                      {license.isActive ? (
-                                        <Chip label="Active" size="small" color="success" variant="outlined" />
-                                      ) : (
-                                        <Chip label="Inactive" size="small" color="error" variant="outlined" />
-                                      )}
-                                    </Box>
-                                  }
-                                  secondary={license.description}
-                                />
-                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                  <IconButton size="small" onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingLicense(license);
-                                    setEditLicenseDialog(true);
-                                  }}>
-                                    <Edit fontSize="small" />
-                                  </IconButton>
-                                  <IconButton size="small" color="error" onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (confirm('Are you sure you want to delete this license? This may affect tasks that reference it.')) {
-                                      handleDeleteLicense(license.id);
-                                    }
-                                  }}>
-                                    <Delete fontSize="small" />
-                                  </IconButton>
+                                    )}
+                                  </Box>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'nowrap' }}>
+                                    <Chip
+                                      label={`Level ${license.level}`}
+                                      size="small"
+                                      color="primary"
+                                      variant="outlined"
+                                      sx={{ flexShrink: 0 }}
+                                    />
+                                    {license.isActive ? (
+                                      <Chip label="Active" size="small" color="success" variant="outlined" sx={{ flexShrink: 0 }} />
+                                    ) : (
+                                      <Chip label="Inactive" size="small" color="error" variant="outlined" sx={{ flexShrink: 0 }} />
+                                    )}
+                                  </Box>
+                                  <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <IconButton size="small" onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingLicense(license);
+                                      setEditLicenseDialog(true);
+                                    }}>
+                                      <Edit fontSize="small" />
+                                    </IconButton>
+                                    <IconButton size="small" color="error" onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (confirm('Are you sure you want to delete this license? This may affect tasks that reference it.')) {
+                                        handleDeleteLicense(license.id);
+                                      }
+                                    }}>
+                                      <Delete fontSize="small" />
+                                    </IconButton>
+                                  </Box>
                                 </Box>
                               </ListItemButton>
                             ))}
@@ -3693,21 +4470,17 @@ export function App() {
 
                 {/* Releases Sub-section */}
                 {selectedProductSubSection === 'releases' && selectedProduct && (
-                  <Paper sx={{ p: 2 }}>
+                  <Paper sx={{ p: 2, ml: 3, borderLeft: '4px solid #1976d2' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Typography variant="h6">
                         Releases for {products.find((p: any) => p.id === selectedProduct)?.name}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Double-click to edit
+                        </Typography>
                         <Button variant="contained" startIcon={<Add />} onClick={() => setAddReleaseDialog(true)}>
                           Add Release
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          startIcon={<FileDownload />}
-                          onClick={handleExportReleases}
-                        >
-                          Export
                         </Button>
                       </Box>
                     </Box>
@@ -3736,43 +4509,64 @@ export function App() {
                                   setEditReleaseDialog(true);
                                 }}
                               >
-                                <ListItemText
-                                  primary={
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                      <Typography variant="body1" fontWeight="medium">
-                                        {release.name}
+                                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
+                                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                    <Typography
+                                      variant="subtitle1"
+                                      sx={{
+                                        fontWeight: 600,
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                      }}
+                                    >
+                                      {release.name}
+                                    </Typography>
+                                    {release.description && (
+                                      <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                        sx={{
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis'
+                                        }}
+                                      >
+                                        {release.description}
                                       </Typography>
-                                      <Chip
-                                        label={`v${release.level}`}
-                                        size="small"
-                                        color="primary"
-                                        variant="outlined"
-                                      />
-                                      {release.isActive ? (
-                                        <Chip label="Active" size="small" color="success" variant="outlined" />
-                                      ) : (
-                                        <Chip label="Inactive" size="small" color="error" variant="outlined" />
-                                      )}
-                                    </Box>
-                                  }
-                                  secondary={release.description}
-                                />
-                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                  <IconButton size="small" onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingRelease(release);
-                                    setEditReleaseDialog(true);
-                                  }}>
-                                    <Edit fontSize="small" />
-                                  </IconButton>
-                                  <IconButton size="small" color="error" onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (confirm('Are you sure you want to delete this release? This may affect tasks that reference it.')) {
-                                      handleDeleteRelease(release.id);
-                                    }
-                                  }}>
-                                    <Delete fontSize="small" />
-                                  </IconButton>
+                                    )}
+                                  </Box>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'nowrap' }}>
+                                    <Chip
+                                      label={`v${release.level}`}
+                                      size="small"
+                                      color="primary"
+                                      variant="outlined"
+                                      sx={{ flexShrink: 0 }}
+                                    />
+                                    {release.isActive ? (
+                                      <Chip label="Active" size="small" color="success" variant="outlined" sx={{ flexShrink: 0 }} />
+                                    ) : (
+                                      <Chip label="Inactive" size="small" color="error" variant="outlined" sx={{ flexShrink: 0 }} />
+                                    )}
+                                  </Box>
+                                  <Box sx={{ display: 'flex', gap: 1 }}>
+                                    <IconButton size="small" onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingRelease(release);
+                                      setEditReleaseDialog(true);
+                                    }}>
+                                      <Edit fontSize="small" />
+                                    </IconButton>
+                                    <IconButton size="small" color="error" onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (confirm('Are you sure you want to delete this release? This may affect tasks that reference it.')) {
+                                        handleDeleteRelease(release.id);
+                                      }
+                                    }}>
+                                      <Delete fontSize="small" />
+                                    </IconButton>
+                                  </Box>
                                 </Box>
                               </ListItemButton>
                             ))}
@@ -3791,25 +4585,14 @@ export function App() {
                   <Paper sx={{ p: 2 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Typography variant="h6">
-                        Other Product Attributes for {products.find((p: any) => p.id === selectedProduct)?.name}
+                        Custom Attributes for {products.find((p: any) => p.id === selectedProduct)?.name}
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Double-click to edit
+                        </Typography>
                         <Button variant="contained" startIcon={<Add />} onClick={() => setAddCustomAttributeDialog(true)}>
                           Add Attribute
-                        </Button>
-                        <Button variant="outlined" startIcon={<Edit />} onClick={() => {
-                          const currentProduct = products.find((p: any) => p.id === selectedProduct);
-                          if (currentProduct) {
-                            handleEditProduct(currentProduct);
-                          }
-                        }}>
-                          Edit All
-                        </Button>
-                        <Button variant="outlined" startIcon={<FileDownload />} onClick={handleExportCustomAttributes}>
-                          Export
-                        </Button>
-                        <Button variant="outlined" startIcon={<FileUpload />} onClick={handleImportCustomAttributes}>
-                          Import
                         </Button>
                       </Box>
                     </Box>
@@ -3844,33 +4627,55 @@ export function App() {
                                 setEditCustomAttributeDialog(true);
                               }}
                             >
-                              <ListItemText
-                                primary={key}
-                                secondary={typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                              />
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                <IconButton size="small" onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingCustomAttribute({
-                                    key,
-                                    value,
-                                    type: Array.isArray(value) ? 'array' :
-                                      typeof value === 'object' && value !== null ? 'object' :
-                                        typeof value === 'number' ? 'number' :
-                                          typeof value === 'boolean' ? 'boolean' : 'string'
-                                  });
-                                  setEditCustomAttributeDialog(true);
-                                }}>
-                                  <Edit fontSize="small" />
-                                </IconButton>
-                                <IconButton size="small" color="error" onClick={(e) => {
-                                  e.stopPropagation();
-                                  if (confirm(`Are you sure you want to delete the attribute "${key}"?`)) {
-                                    handleDeleteCustomAttribute(key);
-                                  }
-                                }}>
-                                  <Delete fontSize="small" />
-                                </IconButton>
+                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
+                                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
+                                  <Typography
+                                    variant="subtitle1"
+                                    sx={{
+                                      fontWeight: 600,
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis'
+                                    }}
+                                  >
+                                    {key}
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{
+                                      whiteSpace: 'nowrap',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis'
+                                    }}
+                                  >
+                                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                  </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <IconButton size="small" onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingCustomAttribute({
+                                      key,
+                                      value,
+                                      type: Array.isArray(value) ? 'array' :
+                                        typeof value === 'object' && value !== null ? 'object' :
+                                          typeof value === 'number' ? 'number' :
+                                            typeof value === 'boolean' ? 'boolean' : 'string'
+                                    });
+                                    setEditCustomAttributeDialog(true);
+                                  }}>
+                                    <Edit fontSize="small" />
+                                  </IconButton>
+                                  <IconButton size="small" color="error" onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm(`Are you sure you want to delete the attribute "${key}"?`)) {
+                                      handleDeleteCustomAttribute(key);
+                                    }
+                                  }}>
+                                    <Delete fontSize="small" />
+                                  </IconButton>
+                                </Box>
                               </Box>
                             </ListItemButton>
                           ))}
@@ -3886,7 +4691,7 @@ export function App() {
 
                 {/* Tasks Sub-section */}
                 {selectedProductSubSection === 'tasks' && selectedProduct && (
-                  <Paper sx={{ p: 2 }}>
+                  <Paper sx={{ p: 2, ml: 3, borderLeft: '4px solid #1976d2' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Typography variant="h6">
                         Tasks for {products.find((p: any) => p.id === selectedProduct)?.name}
@@ -3901,12 +4706,6 @@ export function App() {
                           onClick={() => setAddTaskDialog(true)}
                         >
                           Add Task
-                        </Button>
-                        <Button variant="outlined" startIcon={<FileDownload />} onClick={handleExportTasks}>
-                          Export
-                        </Button>
-                        <Button variant="outlined" startIcon={<FileUpload />} onClick={handleImportTasks}>
-                          Import
                         </Button>
                       </Box>
                     </Box>
@@ -3966,10 +4765,10 @@ export function App() {
                     <Typography variant="h6" color="text.secondary">
                       Select a product to view {
                         selectedProductSubSection === 'tasks' ? 'tasks' :
-                          selectedProductSubSection === 'main' ? 'overview' :
                             selectedProductSubSection === 'licenses' ? 'licenses' :
                               selectedProductSubSection === 'outcomes' ? 'outcomes' :
-                                selectedProductSubSection === 'customAttributes' ? 'custom attributes' : 'details'
+                                selectedProductSubSection === 'customAttributes' ? 'custom attributes' :
+                                  selectedProductSubSection === 'releases' ? 'releases' : 'details'
                       }
                     </Typography>
                   </Paper>
@@ -4166,7 +4965,7 @@ export function App() {
               outcome={editingOutcome}
             />
 
-            {/* Add Other Product Attributes Dialog */}
+            {/* Add Custom Attributes Dialog */}
             <CustomAttributeDialog
               open={addCustomAttributeDialog}
               onClose={() => setAddCustomAttributeDialog(false)}

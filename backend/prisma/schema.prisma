@@ -45,19 +45,20 @@ model LockedEntity {
 }
 
 model Product {
-  id          String            @id @default(cuid())
-  name        String
-  description String?
-  customAttrs Json?
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  deletedAt   DateTime?
-  customers   CustomerProduct[]
-  licenses    License[]
-  solutions   SolutionProduct[]
-  tasks       Task[]
-  outcomes    Outcome[]
-  releases    Release[]
+  id               String            @id @default(cuid())
+  name             String            @unique
+  description      String?
+  customAttrs      Json?             // Legacy - will be replaced by CustomAttribute model
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deletedAt        DateTime?
+  customers        CustomerProduct[]
+  licenses         License[]
+  solutions        SolutionProduct[]
+  tasks            Task[]
+  outcomes         Outcome[]
+  releases         Release[]
+  customAttributes CustomAttribute[] // New structured custom attributes
 }
 
 model Solution {
@@ -261,6 +262,34 @@ enum TelemetryDataType {
   STRING
   TIMESTAMP
   JSON
+}
+
+enum CustomAttributeDataType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  JSON
+}
+
+model CustomAttribute {
+  id             String                  @id @default(cuid())
+  productId      String
+  product        Product                 @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  attributeName  String                  @db.VarChar(255)
+  attributeValue String?                 @db.Text
+  dataType       CustomAttributeDataType @default(TEXT)
+  description    String?                 @db.VarChar(500)
+  isRequired     Boolean                 @default(false)
+  displayOrder   Int?
+  
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  
+  @@unique([productId, attributeName])
+  @@unique([productId, displayOrder])
+  @@index([productId])
 }
 
 model Outcome {

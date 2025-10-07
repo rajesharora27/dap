@@ -2,7 +2,26 @@
 
 All notable changes to the DAP (Demo Application Platform) project are documented in this file.
 
-## [2.0.0] - 2025-09-27
+## [1.1.0] - 2025-10-07
+
+### Documentation & Release Packaging
+
+- 🧹 Removed 70+ legacy ad-hoc testing scripts, archived shell utilities, and exported spreadsheet artifacts
+- 🗂️ Deleted committed build outputs (`backend/dist`, `frontend/dist`) and expanded `.gitignore` to block regenerated assets
+- 📄 Pruned stale documentation in favor of a concise documentation index in `README.md`
+- 🧭 Updated `DAP-MANAGEMENT.md` to reflect the single `./dap` entrypoint
+- 📝 Refreshed README project structure section with current layout and documentation links
+- 📘 Added `ARCHITECTURE.md` capturing tier responsibilities, data flows, and schema snapshot
+- 🏷️ Bumped frontend and backend package versions to `1.1.0`
+
+## [1.0.0] - 2025-09-27
+
+### Release Highlights
+
+- 🎯 Completed the TestStudio sunset and refocused navigation around core task workflows
+- 🪪 Introduced the three-tier licensing model with updated validations and sample data
+- 🪟 Adopted dedicated dialogs for license and outcome management to streamline editing
+- � Expanded developer documentation and migration guidance for the new architecture
 
 ### Major Changes
 
@@ -102,20 +121,30 @@ All notable changes to the DAP (Demo Application Platform) project are documente
 
 ## Migration Guide
 
-### Upgrading from 1.x.x to 2.0.0
+### Upgrading from 1.0.0 to 1.1.0
+
+1. **Clean Local Artifacts**: Remove deleted scripts, spreadsheets, and generated `dist` folders from local clones to match the repository cleanup.
+2. **Adopt Unified Entrypoint**: Update internal runbooks and automation to use the consolidated `./dap` command documented in `DAP-MANAGEMENT.md`.
+3. **Refresh Tooling**: Reinstall dependencies if you pin package versions so tooling captures the `1.1.0` metadata bump.
+
+#### Compatibility Notes for 1.1.0
+- No database schema, GraphQL API, or environment variable changes were introduced.
+- Runtime behavior remains unchanged; the release focuses on documentation and repository hygiene.
+
+### Upgrading from pre-1.0 to 1.0.0
 
 1. **License Levels**: If you have custom code referencing license levels 4-5, update to use levels 1-3
 2. **TestStudio**: Remove any external references to TestStudio components or endpoints
 3. **Navigation**: Update any hardcoded navigation logic expecting 'main' as default to use 'tasks'
 4. **Dialogs**: If extending ProductDialog, note the new separate dialog architecture
 
-### Breaking Changes
+### Breaking Changes in 1.0.0
 - TestStudio components and routes no longer available
 - License levels 4 and 5 no longer supported in validation
 - Default product submenu changed from 'main' to 'tasks'
 - ProductDialog no longer includes inline license/outcome forms
 
-### Non-Breaking Changes  
+### Non-Breaking Changes in 1.0.0
 - All GraphQL APIs remain compatible
 - Database schemas unchanged
 - Existing data remains valid

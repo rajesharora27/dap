@@ -1,15 +1,18 @@
 # 📚 DAP (Data Application Platform) - Technical Documentation
 
+> Prefer a high-level architectural map first? See [ARCHITECTURE.md](ARCHITECTURE.md) for the layered diagram, request flows, and schema summary. This document drills into rationale, trade-offs, and subsystem details that complement that overview.
+
 ## 🏗️ **System Overview**
 
 DAP is a full-stack Product and Task Management System built with modern technologies to manage products, tasks, licenses, and outcomes with comprehensive validation and audit capabilities.
 
-### **Tech Stack**
-- **Frontend**: React 19.1.1 + TypeScript + Material-UI
-- **Backend**: Node.js + GraphQL + Apollo Server
+### **Tech Stack & Integrations**
+- **Frontend**: React 19.1.1 + TypeScript + Material-UI + Vite + Apollo Client
+- **Backend**: Node.js + GraphQL + Apollo Server + Express 5
 - **Database**: PostgreSQL with Prisma ORM
-- **Authentication**: JWT-based (optional)
-- **Real-time**: GraphQL Subscriptions
+- **Authentication**: Token header (admin/user) with future JWT expansion points
+- **Real-time**: GraphQL Subscriptions (graphql-ws)
+- **Excel Services**: ExcelJS-powered multi-sheet import/export (8-tab workbook)
 
 ## 🎯 **Architecture Assessment**
 
