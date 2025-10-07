@@ -1,13 +1,56 @@
 # 🚀 DAP Release Notes
 
-## Version 0.1.0 - First Minor Release
-**Release Date**: September 27, 2025  
-**Tag**: `v0.1.0`  
+## Version 1.1.0 - Documentation Refresh & Repository Cleanup
+**Release Date**: October 7, 2025  
+**Tag**: `v1.1.0`  
 **Status**: Production Ready ✅
 
 ### 🎯 Release Highlights
 
-This marks the **first minor release** of the DAP (Data Application Platform) - a complete, production-ready task and product management system with exceptional architecture quality.
+- 🧹 Removed 70+ legacy test harnesses, archived utilities, and exported spreadsheets to streamline the repository
+- 🗂️ Expanded `.gitignore` and deleted committed build outputs to keep generated assets out of version control
+- 📚 Published a refreshed documentation suite with a new `ARCHITECTURE.md` and reorganized `README.md`
+- 🏷️ Promoted both backend and frontend packages to version `1.1.0` for dependency managers and deployment tooling
+
+### 🗂️ Documentation Refresh
+
+- `README.md`: Introduced a documentation index, updated project structure diagrams, and clarified CSV workflows
+- `QUICK_START.md`: Consolidated setup instructions around the `./dap` entrypoint and modernized onboarding steps
+- `DAP-MANAGEMENT.md`: Simplified operational commands to the single `./dap` wrapper for tasks, seeds, and maintenance
+- `CONFIG_SYSTEM_GUIDE.md` & `DEPLOYMENT_GUIDE.md`: Synchronized environment variable guidance and container orchestration notes
+- `ARCHITECTURE.md`: Captures tier responsibilities, GraphQL/data flows, and the current Prisma schema snapshot
+
+### 🧰 Developer Experience
+
+- Unified automation through the `./dap` helper script, reducing command drift between documents
+- Eliminated redundant assets so fresh clones compile without manual cleanup
+- Recorded release metadata in `CHANGELOG.md` and `RELEASE_NOTES.md` for easier audit trails
+
+### 🔄 Upgrade Notes
+
+- Remove any locally cached scripts or generated `dist` folders that were deleted upstream
+- Update internal runbooks to reference the centralized documentation and `./dap` workflow
+- Reinstall dependencies if local tooling relies on package manifests for version detection
+- No database, GraphQL, or runtime changes—application behavior remains identical to 1.0.0
+
+### 📚 Documentation Quick Links
+
+- `README.md`
+- `ARCHITECTURE.md`
+- `TECHNICAL-DOCUMENTATION.md`
+- `QUICK_START.md`
+- `DAP-MANAGEMENT.md`
+
+---
+
+## Version 1.0.0 - Initial GA Release
+**Release Date**: September 27, 2025  
+**Tag**: `v1.0.0`  
+**Status**: Production Ready ✅
+
+### 🎯 Release Highlights
+
+This marks the **first general availability release** of the DAP (Data Application Platform) - a complete, production-ready task and product management system with exceptional architecture quality.
 
 ### ✨ Key Features
 
@@ -103,7 +146,7 @@ This stable foundation enables focus on:
 
 - **README.md**: Updated with architecture quality assessment
 - **TECHNICAL-DOCUMENTATION.md**: Enhanced with comprehensive analysis
-- **ARCHITECTURE_ANALYSIS.md**: New detailed architecture evaluation (NEW)
+- **TECHNICAL-DOCUMENTATION.md**: Detailed architecture evaluation
 
 ---
 

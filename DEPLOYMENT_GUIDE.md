@@ -83,9 +83,9 @@ VITE_GRAPHQL_WS_ENDPOINT=ws://host:port/graphql
 ./dap reset-sample
 ```
 
-#### Complete Database Reset (destructive)
+#### Full Clean Restart (drops all data then seeds sample set)
 ```bash
-./dap db-reset
+./dap clean-restart
 ```
 
 ### Verification
@@ -107,8 +107,7 @@ After deployment, verify the application:
 
 #### Service Issues
 ```bash
-./dap status    # Check service status
-./dap logs      # View service logs
+./dap status    # Check service status and record counts
 ./dap restart   # Restart all services
 ```
 

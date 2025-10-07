@@ -12,20 +12,25 @@ cd /data/dap
 # Stop all services  
 ./dap stop
 
-# Restart all services
+# Restart all services (keeps current data)
 ./dap restart
 
-# View service logs
-./dap logs
+# Full refresh with clean sample data
+./dap clean-restart
 
-# Reset database with sample data
-./dap reset
+# Sample data lifecycle
+./dap add-sample
+./dap reset-sample
+
+# Health & validation
+./dap status
+./dap test
 ```
 
 ### Manual Service Management
 ```bash
 # Start individual services
-docker compose up -d postgres      # Database only
+docker compose up -d db            # Database only
 docker compose up -d backend       # Backend API only  
 docker compose up -d frontend      # Frontend only
 
@@ -54,12 +59,12 @@ curl -X POST http://localhost:4000/graphql -H "Content-Type: application/json" -
 
 ## Sample Data
 
-The application includes comprehensive sample data:
+The enhanced dataset provides:
 - **5 Enterprise Products**: E-Commerce, FinTech, Healthcare, Logistics, EdTech
-- **40 Tasks**: Distributed across products with realistic attributes
+- **20 Fully Populated Tasks**: Four per product with telemetry, docs, releases, outcomes
 - **License Levels**: Essential (Level 1), Advantage (Level 2), Signature (Level 3)
-- **Outcomes**: Business outcomes linked to products and tasks
-- **Custom Attributes**: Rich metadata for products and tasks
+- **Outcomes & Releases**: Linked to every task for traceability
+- **Custom Attributes**: Rich metadata attached to products
 
 ## Authentication
 

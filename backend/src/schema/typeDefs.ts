@@ -202,6 +202,59 @@ export const typeDefs = gql`
     telemetryValuesByBatch(batchId: String!): [TelemetryValue!]!
     
     taskDependencies(taskId: ID!): [TaskDependencyEdge!]!
+    
+    # Excel Export
+    exportProductToExcel(productName: String!): ExcelExportResult!
+  }
+
+  type ExcelExportResult {
+    filename: String!
+    content: String!
+    mimeType: String!
+    size: Int!
+    stats: ExcelExportStats!
+  }
+
+  type ExcelExportStats {
+    tasksExported: Int!
+    customAttributesExported: Int!
+    licensesExported: Int!
+    outcomesExported: Int!
+    releasesExported: Int!
+    telemetryAttributesExported: Int!
+  }
+
+  enum ImportMode {
+    CREATE_NEW
+    UPDATE_EXISTING
+    CREATE_OR_UPDATE
+  }
+
+  type ImportResult {
+    success: Boolean!
+    productId: String
+    productName: String!
+    stats: ImportStats!
+    errors: [ValidationError!]!
+    warnings: [ValidationError!]!
+  }
+
+  type ImportStats {
+    tasksImported: Int!
+    outcomesImported: Int!
+    releasesImported: Int!
+    licensesImported: Int!
+    customAttributesImported: Int!
+    telemetryAttributesImported: Int!
+  }
+
+  type ValidationError {
+    sheet: String!
+    row: Int
+    column: String
+    field: String
+    message: String!
+    severity: String!
   }
 
   input ProductInput { 
@@ -362,6 +415,9 @@ export const typeDefs = gql`
   
   queueTaskSoftDelete(id: ID!): Boolean!
   processDeletionQueue(limit: Int = 50): Int!
+  
+  # Excel Import/Export mutations
+  importProductFromExcel(content: String!, mode: ImportMode!): ImportResult!
   }
 
   union SearchResult = Product | Task | Solution | Customer

@@ -1,6 +1,7 @@
 import { GraphQLScalarType, Kind } from 'graphql';
 import { ConnectionArguments, connectionFromArraySlice, cursorToOffset } from 'graphql-relay';
 import { prisma, fallbackActive } from '../../context';
+import { ExcelExportService, ExcelImportService, ImportMode } from '../../services/excel';
 // (removed earlier simpler import replaced by extended import below)
 import { updateProduct as fbUpdateProduct, softDeleteProduct as fbDeleteProduct, createProduct as fbCreateProduct, createTask as fbCreateTask, updateTask as fbUpdateTask, softDeleteTask as fbSoftDeleteTask, createSolution as fbCreateSolution, updateSolution as fbUpdateSolution, softDeleteSolution as fbDeleteSolution, createCustomer as fbCreateCustomer, updateCustomer as fbUpdateCustomer, softDeleteCustomer as fbDeleteCustomer, listCustomers as fbListCustomers, listLicenses, createLicense as fbCreateLicense, updateLicense as fbUpdateLicense, softDeleteLicense as fbDeleteLicense, createOutcome as fbCreateOutcome, updateOutcome as fbUpdateOutcome, softDeleteOutcome as fbSoftDeleteOutcome, listOutcomes as fbListOutcomes, listOutcomesForProduct as fbListOutcomesForProduct, getOutcomesForTask as fbGetOutcomesForTask, addProductToSolution as fbAddProductToSolution, removeProductFromSolution as fbRemoveProductFromSolution, addProductToCustomer as fbAddProductToCustomer, removeProductFromCustomer as fbRemoveProductFromCustomer, addSolutionToCustomer as fbAddSolutionToCustomer, removeSolutionFromCustomer as fbRemoveSolutionFromCustomer, reorderTasks as fbReorderTasks, fallbackConnections } from '../../lib/fallbackStore';
 import { acquireLock, releaseLock } from '../../lib/lock';
@@ -453,6 +454,20 @@ export const resolvers = {
     , telemetryValuesByBatch: TelemetryQueryResolvers.telemetryValuesByBatch
     
     , taskDependencies: async (_: any, { taskId }: any) => prisma.taskDependency.findMany({ where: { taskId }, orderBy: { createdAt: 'asc' } })
+    
+    // Excel Export
+    , exportProductToExcel: async (_: any, { productName }: any) => {
+      const excelService = new ExcelExportService();
+      const result = await excelService.exportProduct(productName);
+      
+      return {
+        filename: result.filename,
+        content: result.buffer.toString('base64'),
+        mimeType: result.mimeType,
+        size: result.size,
+        stats: result.stats
+      };
+    }
   },
   Mutation: {
     signup: async (_: any, { email, username, password, role, name }: any) => {
@@ -1709,6 +1724,64 @@ export const resolvers = {
 
       await logAudit('PROCESS_DELETE_QUEUE', 'Task', undefined, { count: deletedCount });
       return deletedCount;
+    },
+
+    // Excel Import
+    importProductFromExcel: async (_: any, { content, mode }: any, ctx: any) => {
+      ensureRole(ctx, 'ADMIN');
+      
+      try {
+        const buffer = Buffer.from(content, 'base64');
+        const excelService = new ExcelImportService();
+        
+        // Map string mode to enum
+        let importMode: ImportMode;
+        switch (mode) {
+          case 'CREATE_NEW':
+            importMode = ImportMode.CREATE_NEW;
+            break;
+          case 'UPDATE_EXISTING':
+            importMode = ImportMode.UPDATE_EXISTING;
+            break;
+          case 'CREATE_OR_UPDATE':
+          default:
+            importMode = ImportMode.CREATE_OR_UPDATE;
+            break;
+        }
+        
+        const result = await excelService.importProduct(buffer, importMode);
+        
+        await logAudit('IMPORT_PRODUCT', 'Product', result.productId, {
+          productName: result.productName,
+          mode: mode,
+          success: result.success,
+          stats: result.stats
+        });
+        
+        return result;
+      } catch (error: any) {
+        console.error('Import failed:', error);
+        return {
+          success: false,
+          productName: 'Unknown',
+          stats: {
+            tasksImported: 0,
+            outcomesImported: 0,
+            releasesImported: 0,
+            licensesImported: 0,
+            customAttributesImported: 0,
+            telemetryAttributesImported: 0
+          },
+          errors: [
+            {
+              sheet: 'Import',
+              message: error.message || 'Unknown error occurred during import',
+              severity: 'error'
+            }
+          ],
+          warnings: []
+        };
+      }
     }
   },
   Subscription: {
