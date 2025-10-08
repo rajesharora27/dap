@@ -43,41 +43,81 @@ async function main() {
     // Create multiple sample products with comprehensive attributes
     const productData = [
       {
-        id: 'sample-product-1',
-        name: 'E-Commerce Platform',
-        description: 'A modern e-commerce platform with advanced features',
+        id: 'retail-app-001',
+        name: 'Retail Management App',
+        description: 'Comprehensive retail management system with POS, inventory, and customer analytics',
         customAttrs: { 
           priority: 'high', 
-          category: 'web-application',
-          technology: 'React/Node.js',
-          businessValue: 'revenue-generating',
+          category: 'retail-application',
+          technology: 'React/Node.js/PostgreSQL',
+          businessValue: 'revenue-optimization',
           complexity: 'high',
-          timeline: '6-months'
+          timeline: '9-months',
+          targetMarket: 'small-to-medium-retail',
+          deployment: 'cloud-hybrid'
         }
       },
       {
-        id: 'sample-product-2', 
-        name: 'Mobile Banking App',
-        description: 'Secure mobile banking application with biometric authentication',
+        id: 'financial-app-001', 
+        name: 'Financial Services App',
+        description: 'Enterprise financial management platform with trading, portfolio management, and compliance',
         customAttrs: {
           priority: 'critical',
-          category: 'mobile-application', 
-          technology: 'React Native',
-          businessValue: 'customer-retention',
-          compliance: 'PCI-DSS',
-          complexity: 'very-high'
+          category: 'fintech-application', 
+          technology: 'React/Java/Kafka',
+          businessValue: 'regulatory-compliance',
+          compliance: 'SOX, PCI-DSS, GDPR',
+          complexity: 'very-high',
+          timeline: '12-months',
+          security: 'enterprise-grade',
+          deployment: 'private-cloud'
         }
       },
       {
-        id: 'sample-product-3',
-        name: 'Analytics Dashboard',
-        description: 'Real-time business analytics and reporting dashboard',
+        id: 'it-app-001',
+        name: 'IT Operations App',
+        description: 'Unified IT operations and monitoring platform with incident management and automation',
         customAttrs: {
-          priority: 'medium',
-          category: 'data-visualization',
-          technology: 'Vue.js/Python',
-          businessValue: 'operational-efficiency',
-          complexity: 'medium'
+          priority: 'high',
+          category: 'enterprise-it',
+          technology: 'Angular/Python/Kubernetes',
+          businessValue: 'operational-excellence',
+          complexity: 'high',
+          timeline: '8-months',
+          integration: 'ServiceNow, Splunk, Jira',
+          deployment: 'on-premise-cloud-hybrid'
+        }
+      },
+      {
+        id: 'ai-app-001',
+        name: 'AI-Powered Analytics App',
+        description: 'Machine learning platform with predictive analytics, NLP, and computer vision capabilities',
+        customAttrs: {
+          priority: 'strategic',
+          category: 'ai-ml-platform',
+          technology: 'Python/TensorFlow/PyTorch/FastAPI',
+          businessValue: 'competitive-advantage',
+          complexity: 'very-high',
+          timeline: '18-months',
+          aiCapabilities: 'NLP, Computer Vision, Predictive Analytics',
+          deployment: 'cloud-native',
+          infrastructure: 'GPU-accelerated'
+        }
+      },
+      {
+        id: 'networking-app-001',
+        name: 'Network Management App',
+        description: 'Enterprise network monitoring and management system with SD-WAN and security integration',
+        customAttrs: {
+          priority: 'critical',
+          category: 'network-infrastructure',
+          technology: 'React/Go/gRPC/TimescaleDB',
+          businessValue: 'infrastructure-reliability',
+          complexity: 'very-high',
+          timeline: '10-months',
+          protocols: 'SNMP, NetFlow, BGP, OSPF',
+          security: 'zero-trust-architecture',
+          deployment: 'distributed-hybrid'
         }
       }
     ];
@@ -95,23 +135,40 @@ async function main() {
 
     // Create sample outcomes for each product
     const outcomesByProduct = {
-      'sample-product-1': [
-        { name: 'User Authentication', description: 'Secure user login and registration system with OAuth integration' },
-        { name: 'Payment Processing', description: 'Integrated payment gateway with multiple payment methods' },
-        { name: 'Inventory Management', description: 'Real-time inventory tracking and management system' },
-        { name: 'Order Fulfillment', description: 'Automated order processing and shipping management' }
+      'retail-app-001': [
+        { name: 'POS System', description: 'Cloud-based point-of-sale system with offline mode and receipt printing' },
+        { name: 'Inventory Management', description: 'Real-time inventory tracking with automated reordering and barcode scanning' },
+        { name: 'Customer Loyalty', description: 'Customer loyalty program with rewards, points, and personalized offers' },
+        { name: 'Sales Analytics', description: 'Comprehensive sales reporting with trends, forecasting, and performance metrics' },
+        { name: 'Multi-Store Management', description: 'Centralized management for multiple retail locations with consolidated reporting' }
       ],
-      'sample-product-2': [
-        { name: 'Biometric Security', description: 'Fingerprint and face recognition authentication' },
-        { name: 'Transaction History', description: 'Comprehensive transaction tracking and categorization' },
-        { name: 'Account Management', description: 'Multi-account support with balance tracking' },
-        { name: 'Push Notifications', description: 'Real-time transaction and security alerts' }
+      'financial-app-001': [
+        { name: 'Portfolio Management', description: 'Real-time portfolio tracking with risk analytics and rebalancing recommendations' },
+        { name: 'Trading Execution', description: 'High-frequency trading system with smart order routing and execution algorithms' },
+        { name: 'Compliance Reporting', description: 'Automated regulatory reporting for SOX, PCI-DSS, and GDPR compliance' },
+        { name: 'Risk Assessment', description: 'Advanced risk modeling with VaR, stress testing, and scenario analysis' },
+        { name: 'Client Portal', description: 'Secure client portal with account access, document sharing, and communication tools' }
       ],
-      'sample-product-3': [
-        { name: 'Data Visualization', description: 'Interactive charts and graphs for business metrics' },
-        { name: 'Report Generation', description: 'Automated report creation and scheduling' },
-        { name: 'Performance Metrics', description: 'KPI tracking and performance monitoring' },
-        { name: 'Data Export', description: 'Export capabilities for various data formats' }
+      'it-app-001': [
+        { name: 'Infrastructure Monitoring', description: 'Real-time monitoring of servers, networks, and applications with alerting' },
+        { name: 'Incident Management', description: 'ITIL-compliant incident tracking with SLA management and escalation workflows' },
+        { name: 'Automation Engine', description: 'Workflow automation for routine tasks, deployments, and remediation' },
+        { name: 'Asset Management', description: 'Comprehensive IT asset tracking with lifecycle management and compliance' },
+        { name: 'Service Catalog', description: 'Self-service portal for IT requests with approval workflows and fulfillment' }
+      ],
+      'ai-app-001': [
+        { name: 'Predictive Analytics', description: 'Machine learning models for forecasting, trend analysis, and anomaly detection' },
+        { name: 'Natural Language Processing', description: 'NLP capabilities for sentiment analysis, entity extraction, and text classification' },
+        { name: 'Computer Vision', description: 'Image recognition, object detection, and facial recognition systems' },
+        { name: 'Recommendation Engine', description: 'Personalized recommendation system using collaborative and content-based filtering' },
+        { name: 'Model Management', description: 'MLOps platform for model training, versioning, deployment, and monitoring' }
+      ],
+      'networking-app-001': [
+        { name: 'Network Discovery', description: 'Automated network topology discovery with device fingerprinting and mapping' },
+        { name: 'Performance Monitoring', description: 'Real-time monitoring of bandwidth, latency, packet loss, and throughput' },
+        { name: 'Security Management', description: 'Firewall management, intrusion detection, and threat intelligence integration' },
+        { name: 'Configuration Management', description: 'Automated configuration backup, change tracking, and compliance auditing' },
+        { name: 'SD-WAN Orchestration', description: 'Software-defined WAN management with policy-based routing and optimization' }
       ]
     };
 
@@ -140,20 +197,30 @@ async function main() {
 
     // Create comprehensive licenses for each product
     const licensesByProduct = {
-      'sample-product-1': [
-        { name: 'Basic Commerce', level: 1, description: 'Essential e-commerce features including product catalog and basic checkout' },
-        { name: 'Professional Commerce', level: 2, description: 'Advanced features including analytics, marketing tools, and multi-currency support' },
-        { name: 'Enterprise Commerce', level: 3, description: 'Full enterprise features including API access, custom integrations, and dedicated support' }
+      'retail-app-001': [
+        { name: 'Retail Starter', level: 1, description: 'Single-location POS system with basic inventory and sales reporting' },
+        { name: 'Retail Professional', level: 2, description: 'Multi-location support with advanced inventory, loyalty programs, and analytics' },
+        { name: 'Retail Enterprise', level: 3, description: 'Unlimited locations with API access, custom integrations, and 24/7 support' }
       ],
-      'sample-product-2': [
-        { name: 'Standard Banking', level: 1, description: 'Basic banking operations including balance inquiry and transaction history' },
-        { name: 'Premium Banking', level: 2, description: 'Enhanced features including bill pay, money transfers, and investment tracking' },
-        { name: 'Private Banking', level: 3, description: 'Exclusive features including wealth management, premium support, and advanced security' }
+      'financial-app-001': [
+        { name: 'Financial Basic', level: 1, description: 'Core portfolio management and basic trading capabilities for up to 100 clients' },
+        { name: 'Financial Professional', level: 2, description: 'Advanced trading, risk analytics, and compliance reporting for up to 1000 clients' },
+        { name: 'Financial Enterprise', level: 3, description: 'Unlimited clients with algorithmic trading, real-time data feeds, and white-label options' }
       ],
-      'sample-product-3': [
-        { name: 'Basic Analytics', level: 1, description: 'Standard reporting and basic dashboard views' },
-        { name: 'Advanced Analytics', level: 2, description: 'Custom dashboards, advanced filtering, and scheduled reports' },
-        { name: 'Enterprise Analytics', level: 3, description: 'AI-powered insights, predictive analytics, and unlimited data sources' }
+      'it-app-001': [
+        { name: 'IT Essential', level: 1, description: 'Monitor up to 50 devices with basic incident management and ticketing' },
+        { name: 'IT Advanced', level: 2, description: 'Monitor up to 500 devices with automation, asset management, and integrations' },
+        { name: 'IT Enterprise', level: 3, description: 'Unlimited devices with AI-powered automation, custom workflows, and premium support' }
+      ],
+      'ai-app-001': [
+        { name: 'AI Starter', level: 1, description: 'Pre-built models for basic predictions and classifications with 10k API calls/month' },
+        { name: 'AI Professional', level: 2, description: 'Custom model training, NLP/CV capabilities with 100k API calls/month' },
+        { name: 'AI Enterprise', level: 3, description: 'Unlimited models, GPU clusters, MLOps platform with unlimited API calls' }
+      ],
+      'networking-app-001': [
+        { name: 'Network Monitor', level: 1, description: 'Monitor up to 25 network devices with basic performance metrics' },
+        { name: 'Network Professional', level: 2, description: 'Monitor up to 250 devices with security management and SD-WAN support' },
+        { name: 'Network Enterprise', level: 3, description: 'Unlimited devices with advanced automation, multi-tenancy, and API access' }
       ]
     };
 
@@ -184,26 +251,40 @@ async function main() {
 
     // Create comprehensive releases for each product
     const releasesByProduct = {
-      'sample-product-1': [
-        { name: 'MVP Release', level: 1.0, description: 'Minimum viable product with core e-commerce functionality' },
-        { name: 'Feature Release', level: 1.5, description: 'Enhanced features including advanced search and recommendations' },
-        { name: 'Performance Release', level: 2.0, description: 'Optimized performance and scalability improvements' },
-        { name: 'Mobile Release', level: 2.5, description: 'Mobile-first responsive design and PWA support' },
-        { name: 'Enterprise Release', level: 3.0, description: 'Full enterprise features and integrations' }
+      'retail-app-001': [
+        { name: 'Alpha - Core POS', level: 1.0, description: 'Basic POS functionality with cash register and receipt printing' },
+        { name: 'Beta - Inventory Added', level: 1.5, description: 'Inventory management with barcode scanning and stock alerts' },
+        { name: 'v2.0 - Multi-Store', level: 2.0, description: 'Multi-location support with centralized management' },
+        { name: 'v2.5 - Analytics', level: 2.5, description: 'Advanced sales analytics and customer insights' },
+        { name: 'v3.0 - Enterprise', level: 3.0, description: 'API access, custom integrations, and enterprise features' }
       ],
-      'sample-product-2': [
-        { name: 'Beta Launch', level: 1.0, description: 'Initial beta version with core banking features' },
-        { name: 'Security Update', level: 1.2, description: 'Enhanced security features and biometric authentication' },
-        { name: 'Feature Expansion', level: 2.0, description: 'Additional banking services and investment tracking' },
-        { name: 'AI Integration', level: 2.5, description: 'AI-powered financial insights and recommendations' },
-        { name: 'Global Launch', level: 3.0, description: 'Multi-currency support and international compliance' }
+      'financial-app-001': [
+        { name: 'v1.0 - Trading Core', level: 1.0, description: 'Basic trading execution and portfolio tracking' },
+        { name: 'v1.5 - Risk Module', level: 1.5, description: 'Risk assessment and compliance reporting added' },
+        { name: 'v2.0 - Algorithmic', level: 2.0, description: 'Algorithmic trading and smart order routing' },
+        { name: 'v2.5 - Real-time Data', level: 2.5, description: 'Real-time market data feeds and streaming' },
+        { name: 'v3.0 - AI Trading', level: 3.0, description: 'AI-powered trading strategies and predictions' }
       ],
-      'sample-product-3': [
-        { name: 'Core Dashboard', level: 1.0, description: 'Basic dashboard with essential metrics and charts' },
-        { name: 'Advanced Visualizations', level: 1.5, description: 'Enhanced chart types and interactive visualizations' },
-        { name: 'Real-time Analytics', level: 2.0, description: 'Real-time data processing and live dashboard updates' },
-        { name: 'AI Insights', level: 2.5, description: 'Machine learning-powered insights and anomaly detection' },
-        { name: 'Enterprise Suite', level: 3.0, description: 'Full enterprise analytics with custom integrations' }
+      'it-app-001': [
+        { name: 'v1.0 - Monitoring', level: 1.0, description: 'Basic infrastructure monitoring and alerting' },
+        { name: 'v1.5 - ITSM Integration', level: 1.5, description: 'ServiceNow and Jira integration for ticketing' },
+        { name: 'v2.0 - Automation', level: 2.0, description: 'Workflow automation and runbook execution' },
+        { name: 'v2.5 - AI Insights', level: 2.5, description: 'AI-powered anomaly detection and root cause analysis' },
+        { name: 'v3.0 - AIOps Platform', level: 3.0, description: 'Full AIOps platform with predictive capabilities' }
+      ],
+      'ai-app-001': [
+        { name: 'v1.0 - ML Core', level: 1.0, description: 'Basic ML model training and inference APIs' },
+        { name: 'v1.5 - NLP Added', level: 1.5, description: 'Natural language processing capabilities' },
+        { name: 'v2.0 - Computer Vision', level: 2.0, description: 'Image recognition and object detection models' },
+        { name: 'v2.5 - MLOps', level: 2.5, description: 'Model versioning, deployment, and monitoring pipeline' },
+        { name: 'v3.0 - AutoML', level: 3.0, description: 'Automated machine learning with neural architecture search' }
+      ],
+      'networking-app-001': [
+        { name: 'v1.0 - Discovery', level: 1.0, description: 'Network discovery and topology mapping' },
+        { name: 'v1.5 - Monitoring', level: 1.5, description: 'Performance monitoring with SNMP and NetFlow' },
+        { name: 'v2.0 - Security', level: 2.0, description: 'Firewall management and security analytics' },
+        { name: 'v2.5 - SD-WAN', level: 2.5, description: 'Software-defined WAN orchestration and optimization' },
+        { name: 'v3.0 - Zero Trust', level: 3.0, description: 'Zero-trust network architecture with micro-segmentation' }
       ]
     };
 
@@ -234,207 +315,343 @@ async function main() {
 
     // Create comprehensive tasks for each product with HowToDoc and HowToVideo
     const tasksByProduct = {
-      'sample-product-1': [
+      'retail-app-001': [
         {
-          name: 'Setup Authentication System',
-          description: 'Implement secure user authentication with JWT tokens and OAuth integration',
-          estMinutes: 240,
-          weight: 20,
-          priority: 'High',
-          notes: 'Include multi-factor authentication and social login options',
-          howToDoc: 'https://docs.example.com/authentication-setup',
-          howToVideo: 'https://youtube.com/watch?v=auth-tutorial',
-          licenseLevel: 'ESSENTIAL' as const
-        },
-        {
-          name: 'Build Product Catalog',
-          description: 'Create dynamic product catalog with search, filtering, and categorization',
-          estMinutes: 180,
-          weight: 15,
-          priority: 'High',
-          notes: 'Implement elasticsearch for advanced search capabilities',
-          howToDoc: 'https://docs.example.com/product-catalog',
-          howToVideo: 'https://youtube.com/watch?v=catalog-guide',
-          licenseLevel: 'ESSENTIAL' as const
-        },
-        {
-          name: 'Implement Payment Gateway',
-          description: 'Integrate multiple payment processors including Stripe, PayPal, and Apple Pay',
-          estMinutes: 300,
-          weight: 25,
+          name: 'Build Cloud POS System',
+          description: 'Develop cloud-based point-of-sale with offline mode, receipt printing, and payment terminal integration',
+          estMinutes: 480,
+          weight: 22.50,
           priority: 'Critical',
-          notes: 'Ensure PCI compliance and handle international currencies',
-          howToDoc: 'https://docs.example.com/payment-integration',
-          howToVideo: 'https://youtube.com/watch?v=payment-setup',
+          notes: 'Support multiple payment methods including cash, card, mobile wallets with EMV certification',
+          howToDoc: ['https://docs.retail.com/pos-setup', 'https://docs.retail.com/payment-terminals'],
+          howToVideo: ['https://youtube.com/watch?v=cloud-pos-tutorial', 'https://youtube.com/watch?v=offline-mode'],
+          licenseLevel: 'ESSENTIAL' as const
+        },
+        {
+          name: 'Implement Inventory Management',
+          description: 'Real-time inventory tracking with barcode scanning, automated reordering, and multi-location support',
+          estMinutes: 420,
+          weight: 18.75,
+          priority: 'High',
+          notes: 'Include low-stock alerts, supplier management, and warehouse integration',
+          howToDoc: ['https://docs.retail.com/inventory-system'],
+          howToVideo: ['https://youtube.com/watch?v=inventory-guide'],
+          licenseLevel: 'ESSENTIAL' as const
+        },
+        {
+          name: 'Customer Loyalty Program',
+          description: 'Build loyalty system with points, rewards, tiers, and personalized promotions',
+          estMinutes: 360,
+          weight: 15.25,
+          priority: 'High',
+          notes: 'SMS/email marketing integration, birthday rewards, and referral program',
+          howToDoc: ['https://docs.retail.com/loyalty-program', 'https://docs.retail.com/rewards-engine'],
+          howToVideo: ['https://youtube.com/watch?v=loyalty-setup'],
           licenseLevel: 'ADVANTAGE' as const
         },
         {
-          name: 'Setup Order Management',
-          description: 'Build comprehensive order processing and tracking system',
-          estMinutes: 200,
-          weight: 18,
-          priority: 'Medium',
-          notes: 'Include inventory updates, shipping integration, and email notifications',
-          howToDoc: 'https://docs.example.com/order-management',
-          howToVideo: 'https://youtube.com/watch?v=order-system',
-          licenseLevel: 'ADVANTAGE' as const
-        },
-        {
-          name: 'Analytics Dashboard',
-          description: 'Create admin dashboard with sales analytics and performance metrics',
-          estMinutes: 160,
-          weight: 12,
-          priority: 'Low',
-          notes: 'Real-time charts using Chart.js and data visualization',
-          howToDoc: 'https://docs.example.com/analytics-dashboard',
-          howToVideo: 'https://youtube.com/watch?v=dashboard-tutorial',
-          licenseLevel: 'SIGNATURE' as const
-        },
-        {
-          name: 'Mobile Optimization',
-          description: 'Optimize for mobile devices and implement Progressive Web App features',
-          estMinutes: 140,
-          weight: 10,
-          priority: 'Medium',
-          notes: 'PWA features including offline mode and push notifications',
-          howToDoc: 'https://docs.example.com/mobile-optimization',
-          howToVideo: 'https://youtube.com/watch?v=pwa-guide',
-          licenseLevel: 'SIGNATURE' as const
-        }
-      ],
-      'sample-product-2': [
-        {
-          name: 'Biometric Authentication',
-          description: 'Implement fingerprint and facial recognition for secure app access',
+          name: 'Sales Analytics Dashboard',
+          description: 'Comprehensive reporting with sales trends, product performance, and employee metrics',
           estMinutes: 320,
-          weight: 25,
-          priority: 'Critical',
-          notes: 'Support for TouchID, FaceID, and Android biometrics',
-          howToDoc: 'https://docs.example.com/biometric-auth',
-          howToVideo: 'https://youtube.com/watch?v=biometric-setup',
-          licenseLevel: 'ESSENTIAL' as const
+          weight: 13.50,
+          priority: 'Medium',
+          notes: 'Real-time dashboards, custom reports, forecasting, and export capabilities',
+          howToDoc: ['https://docs.retail.com/analytics'],
+          howToVideo: ['https://youtube.com/watch?v=retail-analytics'],
+          licenseLevel: 'ADVANTAGE' as const
         },
         {
-          name: 'Account Balance Display',
-          description: 'Real-time account balance with transaction categorization',
-          estMinutes: 180,
-          weight: 15,
-          priority: 'High',
-          notes: 'Multi-account support with real-time updates via WebSocket',
-          howToDoc: 'https://docs.example.com/balance-display',
-          howToVideo: 'https://youtube.com/watch?v=balance-tutorial',
-          licenseLevel: 'ESSENTIAL' as const
+          name: 'Multi-Store Management',
+          description: 'Centralized management for multiple locations with consolidated inventory and reporting',
+          estMinutes: 380,
+          weight: 16.50,
+          priority: 'Medium',
+          notes: 'Store transfers, location-based pricing, role-based access per store',
+          howToDoc: ['https://docs.retail.com/multi-store'],
+          howToVideo: ['https://youtube.com/watch?v=multi-location'],
+          licenseLevel: 'SIGNATURE' as const
         },
         {
-          name: 'Money Transfer System',
-          description: 'P2P transfers, bill payments, and international wire transfers',
+          name: 'E-Commerce Integration',
+          description: 'Integrate with online store platforms for unified inventory and order management',
           estMinutes: 280,
-          weight: 22,
-          priority: 'High',
-          notes: 'Compliance with banking regulations and fraud detection',
-          howToDoc: 'https://docs.example.com/money-transfers',
-          howToVideo: 'https://youtube.com/watch?v=transfer-guide',
-          licenseLevel: 'ADVANTAGE' as const
-        },
-        {
-          name: 'Investment Portfolio',
-          description: 'Stock trading, portfolio tracking, and investment recommendations',
-          estMinutes: 240,
-          weight: 18,
-          priority: 'Medium',
-          notes: 'Integration with stock market APIs and real-time pricing',
-          howToDoc: 'https://docs.example.com/investment-portfolio',
-          howToVideo: 'https://youtube.com/watch?v=portfolio-setup',
-          licenseLevel: 'ADVANTAGE' as const
-        },
-        {
-          name: 'AI Financial Advisor',
-          description: 'Machine learning-powered financial insights and spending analysis',
-          estMinutes: 200,
-          weight: 12,
+          weight: 13.50,
           priority: 'Low',
-          notes: 'Personalized recommendations based on spending patterns',
-          howToDoc: 'https://docs.example.com/ai-advisor',
-          howToVideo: 'https://youtube.com/watch?v=ai-finance',
-          licenseLevel: 'SIGNATURE' as const
-        },
-        {
-          name: 'Security Monitoring',
-          description: 'Advanced fraud detection and security monitoring system',
-          estMinutes: 160,
-          weight: 8,
-          priority: 'Medium',
-          notes: 'Real-time fraud detection with machine learning algorithms',
-          howToDoc: 'https://docs.example.com/security-monitoring',
-          howToVideo: 'https://youtube.com/watch?v=fraud-detection',
+          notes: 'Shopify, WooCommerce, Magento integration with real-time sync',
+          howToDoc: ['https://docs.retail.com/ecommerce-integration'],
+          howToVideo: ['https://youtube.com/watch?v=omnichannel-retail'],
           licenseLevel: 'SIGNATURE' as const
         }
       ],
-      'sample-product-3': [
+      'financial-app-001': [
         {
-          name: 'Data Visualization Engine',
-          description: 'Interactive charts, graphs, and data visualization components',
-          estMinutes: 200,
-          weight: 20,
-          priority: 'High',
-          notes: 'Support for D3.js, Chart.js, and custom visualization libraries',
-          howToDoc: 'https://docs.example.com/data-visualization',
-          howToVideo: 'https://youtube.com/watch?v=chart-tutorial',
+          name: 'Build Trading Execution Engine',
+          description: 'High-frequency trading system with smart order routing, execution algorithms, and real-time market data',
+          estMinutes: 720,
+          weight: 25.00,
+          priority: 'Critical',
+          notes: 'FIX protocol integration, latency optimization, order types (market, limit, stop, trailing)',
+          howToDoc: ['https://docs.fintech.com/trading-engine', 'https://docs.fintech.com/fix-protocol'],
+          howToVideo: ['https://youtube.com/watch?v=trading-systems', 'https://youtube.com/watch?v=order-routing'],
           licenseLevel: 'ESSENTIAL' as const
         },
         {
-          name: 'Real-time Data Pipeline',
-          description: 'Stream processing for real-time analytics and dashboard updates',
-          estMinutes: 240,
-          weight: 22,
+          name: 'Portfolio Management System',
+          description: 'Real-time portfolio tracking with asset allocation, rebalancing, and performance analytics',
+          estMinutes: 540,
+          weight: 20.50,
           priority: 'High',
-          notes: 'Apache Kafka integration for high-throughput data streaming',
-          howToDoc: 'https://docs.example.com/realtime-pipeline',
-          howToVideo: 'https://youtube.com/watch?v=kafka-setup',
+          notes: 'Multi-asset class support (stocks, bonds, ETFs, options, crypto), tax-loss harvesting',
+          howToDoc: ['https://docs.fintech.com/portfolio-mgmt'],
+          howToVideo: ['https://youtube.com/watch?v=portfolio-tracking'],
           licenseLevel: 'ESSENTIAL' as const
         },
         {
-          name: 'Custom Report Builder',
-          description: 'Drag-and-drop report builder with scheduling and automation',
-          estMinutes: 180,
-          weight: 18,
-          priority: 'Medium',
-          notes: 'Export to PDF, Excel, and other formats with email scheduling',
-          howToDoc: 'https://docs.example.com/report-builder',
-          howToVideo: 'https://youtube.com/watch?v=report-tutorial',
+          name: 'Risk Assessment Engine',
+          description: 'Advanced risk modeling with VaR, stress testing, scenario analysis, and Monte Carlo simulations',
+          estMinutes: 600,
+          weight: 18.75,
+          priority: 'High',
+          notes: 'Market risk, credit risk, operational risk assessment with regulatory reporting',
+          howToDoc: ['https://docs.fintech.com/risk-assessment', 'https://docs.fintech.com/var-calculation'],
+          howToVideo: ['https://youtube.com/watch?v=risk-modeling'],
           licenseLevel: 'ADVANTAGE' as const
         },
         {
-          name: 'Machine Learning Insights',
-          description: 'AI-powered predictive analytics and anomaly detection',
-          estMinutes: 320,
-          weight: 25,
-          priority: 'Medium',
-          notes: 'TensorFlow integration for predictive modeling and forecasting',
-          howToDoc: 'https://docs.example.com/ml-insights',
-          howToVideo: 'https://youtube.com/watch?v=ml-analytics',
+          name: 'Compliance & Reporting',
+          description: 'Automated regulatory compliance reporting for SOX, PCI-DSS, GDPR with audit trails',
+          estMinutes: 480,
+          weight: 15.25,
+          priority: 'Critical',
+          notes: 'KYC/AML verification, transaction monitoring, suspicious activity reporting (SAR)',
+          howToDoc: ['https://docs.fintech.com/compliance', 'https://docs.fintech.com/kyc-aml'],
+          howToVideo: ['https://youtube.com/watch?v=financial-compliance'],
           licenseLevel: 'ADVANTAGE' as const
         },
         {
-          name: 'API Integration Hub',
-          description: 'Connectors for popular business tools and data sources',
-          estMinutes: 160,
-          weight: 10,
-          priority: 'Low',
-          notes: 'Pre-built connectors for Salesforce, HubSpot, Google Analytics, etc.',
-          howToDoc: 'https://docs.example.com/api-integrations',
-          howToVideo: 'https://youtube.com/watch?v=api-connectors',
+          name: 'AI Trading Algorithms',
+          description: 'Machine learning-powered trading strategies with backtesting and performance optimization',
+          estMinutes: 660,
+          weight: 12.50,
+          priority: 'Medium',
+          notes: 'Sentiment analysis, pattern recognition, predictive modeling, algorithmic execution',
+          howToDoc: ['https://docs.fintech.com/ai-trading'],
+          howToVideo: ['https://youtube.com/watch?v=algo-trading'],
           licenseLevel: 'SIGNATURE' as const
         },
         {
-          name: 'Performance Optimization',
-          description: 'Database query optimization and caching strategies',
-          estMinutes: 120,
-          weight: 5,
+          name: 'Client Portal & Reporting',
+          description: 'Secure client portal with real-time access, document management, and custom reporting',
+          estMinutes: 420,
+          weight: 8.00,
+          priority: 'Medium',
+          notes: 'White-label capabilities, mobile app, secure messaging, e-signature integration',
+          howToDoc: ['https://docs.fintech.com/client-portal'],
+          howToVideo: ['https://youtube.com/watch?v=client-access'],
+          licenseLevel: 'SIGNATURE' as const
+        }
+      ],
+      'it-app-001': [
+        {
+          name: 'Infrastructure Monitoring System',
+          description: 'Real-time monitoring of servers, networks, applications with SNMP, WMI, and agent-based collection',
+          estMinutes: 540,
+          weight: 21.25,
+          priority: 'Critical',
+          notes: 'Multi-protocol support, threshold-based alerting, auto-discovery, health dashboards',
+          howToDoc: ['https://docs.itops.com/monitoring-setup', 'https://docs.itops.com/snmp-config'],
+          howToVideo: ['https://youtube.com/watch?v=infra-monitoring', 'https://youtube.com/watch?v=alerting-setup'],
+          licenseLevel: 'ESSENTIAL' as const
+        },
+        {
+          name: 'ITSM Incident Management',
+          description: 'ITIL-compliant incident, problem, and change management with SLA tracking and escalation',
+          estMinutes: 480,
+          weight: 19.50,
+          priority: 'High',
+          notes: 'ServiceNow/Jira integration, automated ticket routing, knowledge base, approval workflows',
+          howToDoc: ['https://docs.itops.com/itsm-setup', 'https://docs.itops.com/sla-management'],
+          howToVideo: ['https://youtube.com/watch?v=itsm-platform'],
+          licenseLevel: 'ESSENTIAL' as const
+        },
+        {
+          name: 'Automation & Orchestration',
+          description: 'Workflow automation engine with runbook execution, remediation scripts, and CI/CD integration',
+          estMinutes: 600,
+          weight: 18.75,
+          priority: 'High',
+          notes: 'Ansible/Terraform integration, scheduled jobs, event-driven automation, webhook triggers',
+          howToDoc: ['https://docs.itops.com/automation', 'https://docs.itops.com/runbooks'],
+          howToVideo: ['https://youtube.com/watch?v=it-automation'],
+          licenseLevel: 'ADVANTAGE' as const
+        },
+        {
+          name: 'Asset & Configuration Management',
+          description: 'IT asset tracking with CMDB, software license management, and compliance auditing',
+          estMinutes: 420,
+          weight: 16.00,
+          priority: 'Medium',
+          notes: 'Auto-discovery, asset lifecycle tracking, vendor management, cost allocation',
+          howToDoc: ['https://docs.itops.com/asset-mgmt', 'https://docs.itops.com/cmdb'],
+          howToVideo: ['https://youtube.com/watch?v=asset-tracking'],
+          licenseLevel: 'ADVANTAGE' as const
+        },
+        {
+          name: 'AIOps Anomaly Detection',
+          description: 'AI-powered anomaly detection, root cause analysis, and predictive failure prevention',
+          estMinutes: 660,
+          weight: 15.50,
+          priority: 'Medium',
+          notes: 'Machine learning models for pattern recognition, correlation engine, noise reduction',
+          howToDoc: ['https://docs.itops.com/aiops'],
+          howToVideo: ['https://youtube.com/watch?v=aiops-platform'],
+          licenseLevel: 'SIGNATURE' as const
+        },
+        {
+          name: 'Service Catalog & Portal',
+          description: 'Self-service portal for IT requests with catalog management, approvals, and fulfillment automation',
+          estMinutes: 380,
+          weight: 9.00,
           priority: 'Low',
-          notes: 'Redis caching, query optimization, and performance monitoring',
-          howToDoc: 'https://docs.example.com/performance-optimization',
-          howToVideo: 'https://youtube.com/watch?v=performance-guide',
+          notes: 'Request templates, multi-level approvals, provisioning workflows, user portal',
+          howToDoc: ['https://docs.itops.com/service-catalog'],
+          howToVideo: ['https://youtube.com/watch?v=self-service-it'],
+          licenseLevel: 'SIGNATURE' as const
+        }
+      ],
+      'ai-app-001': [
+        {
+          name: 'ML Model Training Pipeline',
+          description: 'Distributed training infrastructure with GPU clusters, hyperparameter tuning, and experiment tracking',
+          estMinutes: 840,
+          weight: 23.75,
+          priority: 'Critical',
+          notes: 'TensorFlow/PyTorch support, distributed training, model versioning, experiment management',
+          howToDoc: ['https://docs.ai-platform.com/model-training', 'https://docs.ai-platform.com/gpu-setup'],
+          howToVideo: ['https://youtube.com/watch?v=ml-training', 'https://youtube.com/watch?v=distributed-training'],
+          licenseLevel: 'ESSENTIAL' as const
+        },
+        {
+          name: 'NLP Processing Engine',
+          description: 'Natural language processing with sentiment analysis, entity extraction, text classification, and translation',
+          estMinutes: 720,
+          weight: 20.50,
+          priority: 'High',
+          notes: 'BERT/GPT integration, multilingual support, named entity recognition, topic modeling',
+          howToDoc: ['https://docs.ai-platform.com/nlp-engine', 'https://docs.ai-platform.com/transformers'],
+          howToVideo: ['https://youtube.com/watch?v=nlp-tutorial'],
+          licenseLevel: 'ESSENTIAL' as const
+        },
+        {
+          name: 'Computer Vision System',
+          description: 'Image recognition, object detection, facial recognition, and video analytics capabilities',
+          estMinutes: 780,
+          weight: 19.25,
+          priority: 'High',
+          notes: 'YOLO/ResNet models, real-time inference, custom model training, edge deployment',
+          howToDoc: ['https://docs.ai-platform.com/computer-vision', 'https://docs.ai-platform.com/object-detection'],
+          howToVideo: ['https://youtube.com/watch?v=cv-systems'],
+          licenseLevel: 'ADVANTAGE' as const
+        },
+        {
+          name: 'Recommendation Engine',
+          description: 'Personalized recommendation system using collaborative filtering, content-based, and hybrid approaches',
+          estMinutes: 540,
+          weight: 14.50,
+          priority: 'Medium',
+          notes: 'Real-time recommendations, A/B testing, cold-start handling, explainability features',
+          howToDoc: ['https://docs.ai-platform.com/recommendations'],
+          howToVideo: ['https://youtube.com/watch?v=recommendation-systems'],
+          licenseLevel: 'ADVANTAGE' as const
+        },
+        {
+          name: 'MLOps Platform',
+          description: 'End-to-end MLOps with model registry, deployment pipelines, monitoring, and governance',
+          estMinutes: 660,
+          weight: 13.00,
+          priority: 'High',
+          notes: 'CI/CD for ML, feature store, model serving, drift detection, A/B testing framework',
+          howToDoc: ['https://docs.ai-platform.com/mlops', 'https://docs.ai-platform.com/model-serving'],
+          howToVideo: ['https://youtube.com/watch?v=mlops-pipeline'],
+          licenseLevel: 'SIGNATURE' as const
+        },
+        {
+          name: 'AutoML Platform',
+          description: 'Automated machine learning with neural architecture search, automated feature engineering, and model selection',
+          estMinutes: 900,
+          weight: 9.00,
+          priority: 'Low',
+          notes: 'No-code ML, auto feature engineering, ensemble methods, explainable AI',
+          howToDoc: ['https://docs.ai-platform.com/automl'],
+          howToVideo: ['https://youtube.com/watch?v=automl-tutorial'],
+          licenseLevel: 'SIGNATURE' as const
+        }
+      ],
+      'networking-app-001': [
+        {
+          name: 'Network Discovery & Topology',
+          description: 'Automated network discovery with SNMP, CDP, LLDP, device fingerprinting, and dynamic topology mapping',
+          estMinutes: 600,
+          weight: 22.00,
+          priority: 'Critical',
+          notes: 'Multi-vendor support (Cisco, Juniper, Arista), layer 2/3 discovery, dependency mapping',
+          howToDoc: ['https://docs.netops.com/discovery', 'https://docs.netops.com/topology-mapping'],
+          howToVideo: ['https://youtube.com/watch?v=network-discovery', 'https://youtube.com/watch?v=topology-viz'],
+          licenseLevel: 'ESSENTIAL' as const
+        },
+        {
+          name: 'Performance Monitoring',
+          description: 'Real-time monitoring of bandwidth utilization, latency, packet loss, jitter with NetFlow/sFlow analysis',
+          estMinutes: 540,
+          weight: 19.75,
+          priority: 'High',
+          notes: 'Interface monitoring, QoS analysis, baseline anomaly detection, capacity planning',
+          howToDoc: ['https://docs.netops.com/performance-monitoring', 'https://docs.netops.com/netflow'],
+          howToVideo: ['https://youtube.com/watch?v=network-perf-monitoring'],
+          licenseLevel: 'ESSENTIAL' as const
+        },
+        {
+          name: 'Security & Firewall Management',
+          description: 'Unified firewall management, IDS/IPS integration, threat intelligence, and security policy enforcement',
+          estMinutes: 720,
+          weight: 20.50,
+          priority: 'Critical',
+          notes: 'Multi-firewall orchestration, rule optimization, compliance auditing, threat feeds integration',
+          howToDoc: ['https://docs.netops.com/security-mgmt', 'https://docs.netops.com/firewall-orchestration'],
+          howToVideo: ['https://youtube.com/watch?v=network-security'],
+          licenseLevel: 'ADVANTAGE' as const
+        },
+        {
+          name: 'Configuration Management',
+          description: 'Automated config backup, change tracking, compliance auditing, and rollback capabilities',
+          estMinutes: 480,
+          weight: 15.25,
+          priority: 'High',
+          notes: 'Version control, config templates, scheduled backups, drift detection, bulk changes',
+          howToDoc: ['https://docs.netops.com/config-mgmt', 'https://docs.netops.com/change-tracking'],
+          howToVideo: ['https://youtube.com/watch?v=config-automation'],
+          licenseLevel: 'ADVANTAGE' as const
+        },
+        {
+          name: 'SD-WAN Orchestration',
+          description: 'Software-defined WAN management with policy-based routing, path optimization, and application steering',
+          estMinutes: 780,
+          weight: 16.50,
+          priority: 'Medium',
+          notes: 'Multi-link aggregation, dynamic path selection, application-aware routing, zero-touch provisioning',
+          howToDoc: ['https://docs.netops.com/sd-wan', 'https://docs.netops.com/path-optimization'],
+          howToVideo: ['https://youtube.com/watch?v=sdwan-setup'],
+          licenseLevel: 'SIGNATURE' as const
+        },
+        {
+          name: 'Zero Trust Architecture',
+          description: 'Implement zero-trust network security with micro-segmentation, identity-based access, and continuous verification',
+          estMinutes: 840,
+          weight: 6.00,
+          priority: 'Medium',
+          notes: 'Micro-segmentation policies, least-privilege access, device trust scoring, continuous authentication',
+          howToDoc: ['https://docs.netops.com/zero-trust'],
+          howToVideo: ['https://youtube.com/watch?v=zero-trust-network'],
           licenseLevel: 'SIGNATURE' as const
         }
       ]
@@ -465,8 +682,8 @@ async function main() {
               sequenceNumber: sequenceNumber,
               priority: taskInfo.priority,
               notes: taskInfo.notes,
-              howToDoc: taskInfo.howToDoc ? [taskInfo.howToDoc] : [],
-              howToVideo: taskInfo.howToVideo ? [taskInfo.howToVideo] : [],
+              howToDoc: taskInfo.howToDoc || [],
+              howToVideo: taskInfo.howToVideo || [],
               licenseLevel: taskInfo.licenseLevel
             }
           });

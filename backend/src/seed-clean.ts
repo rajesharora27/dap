@@ -40,42 +40,77 @@ async function main() {
     // Create comprehensive products with rich attributes
     const products = [
       {
-        id: 'sample-product-2',
-        name: 'Mobile Banking App',
-        description: 'Secure mobile banking application with biometric authentication',
+        id: 'retail-app-001',
+        name: 'Retail Management App',
+        description: 'Comprehensive retail management system with POS, inventory, and customer analytics',
         customAttrs: {
-          priority: 'Critical',
-          category: 'Mobile Application',
-          technology: 'React Native, Node.js, PostgreSQL',
-          businessValue: 'Critical - Customer Engagement',
-          compliance: 'PCI-DSS, SOX, GDPR',
-          complexity: 'High'
+          priority: 'High',
+          category: 'Retail Application',
+          technology: 'React, Node.js, PostgreSQL',
+          businessValue: 'High - Revenue Optimization',
+          compliance: 'PCI-DSS',
+          complexity: 'High',
+          targetMarket: 'Small-to-medium retail',
+          deployment: 'Cloud-hybrid'
         }
       },
       {
-        id: 'sample-product-3',
-        name: 'Analytics Dashboard',
-        description: 'Real-time business analytics and reporting dashboard',
+        id: 'financial-app-001',
+        name: 'Financial Services App',
+        description: 'Enterprise financial management platform with trading, portfolio management, and compliance',
         customAttrs: {
-          priority: 'Medium',
-          category: 'Data Analytics',
-          technology: 'React, D3.js, TensorFlow, Node.js',
-          businessValue: 'Medium - Business Intelligence',
-          compliance: 'SOC2, GDPR',
-          complexity: 'Medium'
+          priority: 'Critical',
+          category: 'Fintech Application',
+          technology: 'React, Java, Kafka',
+          businessValue: 'Critical - Regulatory Compliance',
+          compliance: 'SOX, PCI-DSS, GDPR',
+          complexity: 'Very High',
+          security: 'Enterprise-grade',
+          deployment: 'Private cloud'
         }
       },
       {
-        id: 'sample-product-4',
-        name: 'Healthcare Management System',
-        description: 'Comprehensive patient and medical records management platform',
+        id: 'it-app-001',
+        name: 'IT Operations App',
+        description: 'Unified IT operations and monitoring platform with incident management and automation',
+        customAttrs: {
+          priority: 'High',
+          category: 'Enterprise IT',
+          technology: 'Angular, Python, Kubernetes',
+          businessValue: 'High - Operational Excellence',
+          complexity: 'High',
+          integration: 'ServiceNow, Splunk, Jira',
+          deployment: 'On-premise/cloud hybrid'
+        }
+      },
+      {
+        id: 'ai-app-001',
+        name: 'AI-Powered Analytics App',
+        description: 'Machine learning platform with predictive analytics, NLP, and computer vision capabilities',
+        customAttrs: {
+          priority: 'Strategic',
+          category: 'AI/ML Platform',
+          technology: 'Python, TensorFlow, PyTorch, FastAPI',
+          businessValue: 'Strategic - Competitive Advantage',
+          complexity: 'Very High',
+          aiCapabilities: 'NLP, Computer Vision, Predictive Analytics',
+          deployment: 'Cloud-native',
+          infrastructure: 'GPU-accelerated'
+        }
+      },
+      {
+        id: 'networking-app-001',
+        name: 'Network Management App',
+        description: 'Enterprise network monitoring and management system with SD-WAN and security integration',
         customAttrs: {
           priority: 'Critical',
-          category: 'Healthcare Application',
-          technology: 'React, Node.js, MongoDB, FHIR',
-          businessValue: 'Critical - Patient Care',
-          compliance: 'HIPAA, SOC2, GDPR',
-          complexity: 'High'
+          category: 'Network Infrastructure',
+          technology: 'React, Go, gRPC, TimescaleDB',
+          businessValue: 'Critical - Infrastructure Reliability',
+          complexity: 'Very High',
+          protocols: 'SNMP, NetFlow, BGP, OSPF',
+          security: 'Zero-trust architecture',
+          deployment: 'Distributed hybrid'
         }
       }
     ];
@@ -100,20 +135,30 @@ async function main() {
         { name: 'Payment Processing', description: 'Handle secure payment transactions' },
         { name: 'Product Catalog', description: 'Display and manage product inventory' },
       ],
-      'sample-product-2': [
-        { name: 'Biometric Security', description: 'Fingerprint and facial recognition login' },
-        { name: 'Account Management', description: 'View account balances and transaction history' },
-        { name: 'Money Transfer', description: 'Send and receive money transfers' },
+      'retail-app-001': [
+        { name: 'POS System', description: 'Cloud-based point-of-sale with offline mode' },
+        { name: 'Inventory Management', description: 'Real-time inventory tracking and reordering' },
+        { name: 'Customer Loyalty', description: 'Rewards and personalized promotions' },
       ],
-      'sample-product-3': [
-        { name: 'Data Visualization', description: 'Interactive charts and graphs' },
-        { name: 'Report Generation', description: 'Automated report creation and scheduling' },
-        { name: 'Real-time Analytics', description: 'Live data processing and insights' },
+      'financial-app-001': [
+        { name: 'Portfolio Management', description: 'Real-time portfolio tracking and analytics' },
+        { name: 'Trading Execution', description: 'High-frequency trading with smart routing' },
+        { name: 'Compliance Reporting', description: 'Automated regulatory compliance' },
       ],
-      'sample-product-4': [
-        { name: 'Patient Records', description: 'Secure electronic health records management' },
-        { name: 'Appointment Scheduling', description: 'Medical appointment booking and management' },
-        { name: 'Clinical Decision Support', description: 'AI-powered clinical recommendations and alerts' },
+      'it-app-001': [
+        { name: 'Infrastructure Monitoring', description: 'Real-time IT infrastructure monitoring' },
+        { name: 'Incident Management', description: 'ITIL-compliant incident tracking' },
+        { name: 'Automation Engine', description: 'Workflow automation and remediation' },
+      ],
+      'ai-app-001': [
+        { name: 'Predictive Analytics', description: 'ML forecasting and anomaly detection' },
+        { name: 'Natural Language Processing', description: 'NLP for text analysis' },
+        { name: 'Computer Vision', description: 'Image recognition and object detection' },
+      ],
+      'networking-app-001': [
+        { name: 'Network Discovery', description: 'Automated topology discovery' },
+        { name: 'Performance Monitoring', description: 'Bandwidth and latency monitoring' },
+        { name: 'Security Management', description: 'Firewall and threat intelligence' },
       ]
     };
 
@@ -147,20 +192,30 @@ async function main() {
         { name: 'Professional Commerce', level: 2, description: 'Advanced marketing and analytics tools' },
         { name: 'Enterprise Commerce', level: 3, description: 'Full-featured enterprise solution' }
       ],
-      'sample-product-2': [
-        { name: 'Standard Banking', level: 1, description: 'Basic banking operations and transfers' },
-        { name: 'Premium Banking', level: 2, description: 'Investment tools and advanced security' },
-        { name: 'Private Banking', level: 3, description: 'Wealth management and personalized services' }
+      'retail-app-001': [
+        { name: 'Retail Starter', level: 1, description: 'Single-location POS with basic inventory' },
+        { name: 'Retail Professional', level: 2, description: 'Multi-location with loyalty programs' },
+        { name: 'Retail Enterprise', level: 3, description: 'Unlimited locations with API access' }
       ],
-      'sample-product-3': [
-        { name: 'Basic Analytics', level: 1, description: 'Standard reports and basic visualizations' },
-        { name: 'Advanced Analytics', level: 2, description: 'Custom dashboards and advanced filtering' },
-        { name: 'Enterprise Analytics', level: 3, description: 'AI-powered insights and unlimited data sources' }
+      'financial-app-001': [
+        { name: 'Financial Basic', level: 1, description: 'Core portfolio management for up to 100 clients' },
+        { name: 'Financial Professional', level: 2, description: 'Advanced trading for up to 1000 clients' },
+        { name: 'Financial Enterprise', level: 3, description: 'Unlimited with algorithmic trading' }
       ],
-      'sample-product-4': [
-        { name: 'Clinic License', level: 1, description: 'Basic patient management for small clinics' },
-        { name: 'Hospital License', level: 2, description: 'Full hospital management with departments' },
-        { name: 'Health System License', level: 3, description: 'Multi-facility healthcare network management' }
+      'it-app-001': [
+        { name: 'IT Essential', level: 1, description: 'Monitor up to 50 devices' },
+        { name: 'IT Advanced', level: 2, description: 'Monitor up to 500 devices with automation' },
+        { name: 'IT Enterprise', level: 3, description: 'Unlimited devices with AIOps' }
+      ],
+      'ai-app-001': [
+        { name: 'AI Starter', level: 1, description: 'Pre-built models with 10k API calls/month' },
+        { name: 'AI Professional', level: 2, description: 'Custom training with 100k API calls/month' },
+        { name: 'AI Enterprise', level: 3, description: 'Unlimited models and API calls' }
+      ],
+      'networking-app-001': [
+        { name: 'Network Monitor', level: 1, description: 'Monitor up to 25 devices' },
+        { name: 'Network Professional', level: 2, description: 'Monitor up to 250 devices with SD-WAN' },
+        { name: 'Network Enterprise', level: 3, description: 'Unlimited devices with automation' }
       ]
     };
 
@@ -195,86 +250,120 @@ async function main() {
         {
           name: 'Setup Authentication System',
           licenseLevel: 'ESSENTIAL' as const,
-          howToDoc: 'https://docs.example.com/authentication-setup',
-          howToVideo: 'https://youtube.com/watch?v=auth-tutorial'
+          howToDoc: ['https://docs.example.com/authentication-setup'],
+          howToVideo: ['https://youtube.com/watch?v=auth-tutorial']
         },
         {
           name: 'Build Product Catalog',
           licenseLevel: 'ESSENTIAL' as const,
-          howToDoc: 'https://docs.example.com/product-catalog',
-          howToVideo: 'https://youtube.com/watch?v=catalog-guide'
+          howToDoc: ['https://docs.example.com/product-catalog'],
+          howToVideo: ['https://youtube.com/watch?v=catalog-guide']
         },
         {
           name: 'Implement Payment Gateway',
           licenseLevel: 'ADVANTAGE' as const,
-          howToDoc: 'https://docs.example.com/payment-integration',
-          howToVideo: 'https://youtube.com/watch?v=payment-setup'
+          howToDoc: ['https://docs.example.com/payment-integration'],
+          howToVideo: ['https://youtube.com/watch?v=payment-setup']
         }
       ],
-      'sample-product-2': [
+      'retail-app-001': [
         {
-          name: 'Biometric Authentication',
+          name: 'Build Cloud POS System',
           licenseLevel: 'ESSENTIAL' as const,
-          howToDoc: 'https://docs.example.com/biometric-auth',
-          howToVideo: 'https://youtube.com/watch?v=biometric-setup'
+          howToDoc: ['https://docs.retail.com/pos-setup', 'https://docs.retail.com/payment-terminals'],
+          howToVideo: ['https://youtube.com/watch?v=cloud-pos-tutorial']
         },
         {
-          name: 'Account Balance Display',
+          name: 'Implement Inventory Management',
           licenseLevel: 'ESSENTIAL' as const,
-          howToDoc: 'https://docs.example.com/balance-display',
-          howToVideo: 'https://youtube.com/watch?v=balance-tutorial'
+          howToDoc: ['https://docs.retail.com/inventory-system'],
+          howToVideo: ['https://youtube.com/watch?v=inventory-guide']
         },
         {
-          name: 'Money Transfer System',
+          name: 'Customer Loyalty Program',
           licenseLevel: 'ADVANTAGE' as const,
-          howToDoc: 'https://docs.example.com/money-transfers',
-          howToVideo: 'https://youtube.com/watch?v=transfer-guide'
+          howToDoc: ['https://docs.retail.com/loyalty-program'],
+          howToVideo: ['https://youtube.com/watch?v=loyalty-setup']
         }
       ],
-      'sample-product-3': [
+      'financial-app-001': [
         {
-          name: 'Data Visualization Engine',
+          name: 'Build Trading Execution Engine',
           licenseLevel: 'ESSENTIAL' as const,
-          howToDoc: 'https://docs.example.com/data-visualization',
-          howToVideo: 'https://youtube.com/watch?v=chart-tutorial'
+          howToDoc: ['https://docs.fintech.com/trading-engine', 'https://docs.fintech.com/fix-protocol'],
+          howToVideo: ['https://youtube.com/watch?v=trading-systems']
         },
         {
-          name: 'Real-time Data Pipeline',
+          name: 'Portfolio Management System',
           licenseLevel: 'ESSENTIAL' as const,
-          howToDoc: 'https://docs.example.com/realtime-pipeline',
-          howToVideo: 'https://youtube.com/watch?v=kafka-setup'
+          howToDoc: ['https://docs.fintech.com/portfolio-mgmt'],
+          howToVideo: ['https://youtube.com/watch?v=portfolio-tracking']
         },
         {
-          name: 'Machine Learning Insights',
-          licenseLevel: 'SIGNATURE' as const,
-          howToDoc: 'https://docs.example.com/ml-insights',
-          howToVideo: 'https://youtube.com/watch?v=ml-analytics'
-        }
-      ],
-      'sample-product-4': [
-        {
-          name: 'Patient Registration System',
-          licenseLevel: 'ESSENTIAL' as const,
-          howToDoc: 'https://docs.example.com/patient-registration',
-          howToVideo: 'https://youtube.com/watch?v=patient-system'
-        },
-        {
-          name: 'Electronic Health Records',
+          name: 'Risk Assessment Engine',
           licenseLevel: 'ADVANTAGE' as const,
-          howToDoc: 'https://docs.example.com/ehr-implementation',
-          howToVideo: 'https://youtube.com/watch?v=ehr-tutorial'
+          howToDoc: ['https://docs.fintech.com/risk-assessment'],
+          howToVideo: ['https://youtube.com/watch?v=risk-modeling']
+        }
+      ],
+      'it-app-001': [
+        {
+          name: 'Infrastructure Monitoring System',
+          licenseLevel: 'ESSENTIAL' as const,
+          howToDoc: ['https://docs.itops.com/monitoring-setup'],
+          howToVideo: ['https://youtube.com/watch?v=infra-monitoring']
         },
         {
-          name: 'Clinical Decision Support',
-          licenseLevel: 'SIGNATURE' as const,
-          howToDoc: 'https://docs.example.com/clinical-ai',
-          howToVideo: 'https://youtube.com/watch?v=clinical-ai-guide'
+          name: 'ITSM Incident Management',
+          licenseLevel: 'ESSENTIAL' as const,
+          howToDoc: ['https://docs.itops.com/itsm-setup'],
+          howToVideo: ['https://youtube.com/watch?v=itsm-platform']
         },
         {
-          name: 'Medical Imaging Integration',
-          licenseLevel: 'SIGNATURE' as const,
-          howToDoc: 'https://docs.example.com/dicom-integration',
-          howToVideo: 'https://youtube.com/watch?v=medical-imaging'
+          name: 'Automation & Orchestration',
+          licenseLevel: 'ADVANTAGE' as const,
+          howToDoc: ['https://docs.itops.com/automation'],
+          howToVideo: ['https://youtube.com/watch?v=it-automation']
+        }
+      ],
+      'ai-app-001': [
+        {
+          name: 'ML Model Training Pipeline',
+          licenseLevel: 'ESSENTIAL' as const,
+          howToDoc: ['https://docs.ai-platform.com/model-training'],
+          howToVideo: ['https://youtube.com/watch?v=ml-training']
+        },
+        {
+          name: 'NLP Processing Engine',
+          licenseLevel: 'ESSENTIAL' as const,
+          howToDoc: ['https://docs.ai-platform.com/nlp-engine'],
+          howToVideo: ['https://youtube.com/watch?v=nlp-tutorial']
+        },
+        {
+          name: 'Computer Vision System',
+          licenseLevel: 'ADVANTAGE' as const,
+          howToDoc: ['https://docs.ai-platform.com/computer-vision'],
+          howToVideo: ['https://youtube.com/watch?v=cv-systems']
+        }
+      ],
+      'networking-app-001': [
+        {
+          name: 'Network Discovery & Topology',
+          licenseLevel: 'ESSENTIAL' as const,
+          howToDoc: ['https://docs.netops.com/discovery'],
+          howToVideo: ['https://youtube.com/watch?v=network-discovery']
+        },
+        {
+          name: 'Performance Monitoring',
+          licenseLevel: 'ESSENTIAL' as const,
+          howToDoc: ['https://docs.netops.com/performance-monitoring'],
+          howToVideo: ['https://youtube.com/watch?v=network-perf-monitoring']
+        },
+        {
+          name: 'Security & Firewall Management',
+          licenseLevel: 'ADVANTAGE' as const,
+          howToDoc: ['https://docs.netops.com/security-mgmt'],
+          howToVideo: ['https://youtube.com/watch?v=network-security']
         }
       ]
     };
@@ -299,8 +388,8 @@ async function main() {
               estMinutes: 120, // Minimal required field
               weight: 33, // Minimal required field
               licenseLevel: taskInfo.licenseLevel,
-              howToDoc: taskInfo.howToDoc ? [taskInfo.howToDoc] : [],
-              howToVideo: taskInfo.howToVideo ? [taskInfo.howToVideo] : [],
+              howToDoc: taskInfo.howToDoc || [],
+              howToVideo: taskInfo.howToVideo || [],
               sequenceNumber: i + 1
             }
           });
