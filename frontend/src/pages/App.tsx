@@ -37,6 +37,7 @@ import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
 import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
 import { LicenseHandlers, ReleaseHandlers, OutcomeHandlers, ProductHandlers } from '../utils/sharedHandlers';
+import { resolveImportTarget, type ResolveImportAbortReason } from '../utils/excelImportTarget';
 import { License, Outcome } from '../types/shared';
 import {
   Inventory2 as ProductIcon,
@@ -62,7 +63,7 @@ import { AuthBar } from '../components/AuthBar';
 import { ProductDetailPage } from '../components/ProductDetailPage';
 import { TaskDetailDialog } from '../components/TaskDetailDialog';
 import { useAuth } from '../components/AuthContext';
-import { gql, useQuery, useApolloClient } from '@apollo/client';
+import { gql, useQuery, useApolloClient, ApolloError } from '@apollo/client';
 import {
   DndContext,
   closestCenter,
@@ -3015,17 +3016,53 @@ export function App() {
 
   // Import all product data (comprehensive import) with Excel support and upsert logic
   const handleImportAllProductData = () => {
-    if (!selectedProduct) {
-      alert('Please select a product first');
-      return;
-    }
-
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = '.xlsx';
     fileInput.onchange = async (e: any) => {
       const file = e.target.files[0];
       if (!file) return;
+
+      const formatUserMessage = (context: string, error: unknown) => {
+        if (error instanceof ApolloError) {
+          const graphMessages = error.graphQLErrors.map((gqlError) => gqlError.message).filter(Boolean);
+          const networkMessage = error.networkError && 'message' in error.networkError
+            ? (error.networkError as { message: string }).message
+            : undefined;
+          const parts = [...graphMessages, error.message, networkMessage].filter(Boolean);
+          const detail = parts.length > 0 ? parts.join(' ') : 'Please try again.';
+          return `${context}. ${detail}`;
+        }
+        if (error instanceof Error) {
+          return `${context}. ${error.message}`;
+        }
+        return `${context}. An unexpected error occurred. Please try again.`;
+      };
+
+      const collectedErrors: string[] = [];
+      const appendError = (message: string) => {
+        if (!collectedErrors.includes(message)) {
+          collectedErrors.push(message);
+        }
+      };
+
+      const recordError = (context: string, error: unknown) => {
+        const message = formatUserMessage(context, error);
+        console.error(context, error);
+        appendError(message);
+      };
+
+      const noteIssue = (message: string) => {
+        console.warn(message);
+        appendError(message);
+      };
+
+      const alertFriendlyError = (context: string, error: unknown) => {
+        const message = formatUserMessage(context, error);
+        console.error(context, error);
+        appendError(message);
+        alert(message);
+      };
 
       try {
         const buffer = await file.arrayBuffer();
@@ -3070,64 +3107,174 @@ export function App() {
             .filter((item: string) => item.length > 0);
         };
 
-        const product = products.find((p: any) => p.id === selectedProduct);
-        if (!product) {
-          alert('Selected product not found');
+        const simpleAttributesSheet = workbook.getWorksheet('Simple Attributes');
+        const simpleAttributes: Record<string, string> = {};
+        if (simpleAttributesSheet) {
+          simpleAttributesSheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header
+            const attributeName = toPlainString(row.getCell(1).value).trim().toLowerCase();
+            const valueString = toPlainString(row.getCell(2).value).trim();
+            if (attributeName) {
+              simpleAttributes[attributeName] = valueString;
+            }
+          });
+        }
+
+        const importedProductName = (simpleAttributes['name'] || '').trim();
+        const importedProductDescription = simpleAttributes['description'] || '';
+
+        let productForImport = products.find((p: any) => p.id === selectedProduct) || null;
+        let importTargetProductId = productForImport?.id || '';
+
+        const resolution = resolveImportTarget({
+          selectedProduct: productForImport ? { id: productForImport.id, name: productForImport.name } : null,
+          importedName: importedProductName,
+          existingProducts: products.map((p: any) => ({ id: p.id, name: p.name }))
+        });
+
+        if (resolution.status === 'abort') {
+          const reasonMessages: Record<ResolveImportAbortReason, string> = {
+            'missing-name': 'Please select a product or include a Name in the Simple Attributes tab before importing.'
+          };
+          alert(reasonMessages[resolution.reason]);
           return;
         }
 
+        if (resolution.status === 'use-existing') {
+          const existingFull = products.find((p: any) => p.id === resolution.product.id);
+          if (!existingFull) {
+            alert('Unable to locate the product referenced in Excel. Please refresh and try again.');
+            return;
+          }
+          productForImport = existingFull;
+          importTargetProductId = existingFull.id;
+          setSelectedProduct(existingFull.id);
+        } else if (resolution.status === 'create-new') {
+          const newProductName = resolution.name.trim();
+          if (!newProductName) {
+            alert('The Excel file is missing a product name in the Simple Attributes tab. Please add a Name value to create a new product or select an existing product to update.');
+            return;
+          }
+
+          try {
+            const createResult = await client.mutate({
+              mutation: gql`
+                mutation CreateProduct($input: ProductInput!) {
+                  createProduct(input: $input) {
+                    id
+                    name
+                    description
+                  }
+                }
+              `,
+              variables: {
+                input: {
+                  name: newProductName,
+                  description: importedProductDescription,
+                  customAttrs: {}
+                }
+              }
+            });
+
+            const createdProduct = createResult.data?.createProduct;
+            if (!createdProduct) {
+              throw new Error('The product was not created successfully. Please try again or contact support if the problem persists.');
+            }
+
+            productForImport = {
+              ...createdProduct,
+              customAttrs: {},
+              outcomes: [],
+              licenses: [],
+              releases: []
+            };
+            importTargetProductId = productForImport.id;
+            setSelectedProduct(productForImport.id);
+          } catch (error) {
+            alertFriendlyError(`Simple Attributes tab: We couldn't create the product "${newProductName}"`, error);
+            return;
+          }
+        }
+
+        if (!productForImport) {
+          alert('Could not determine which product to import. Please select a product or include a Name in the Simple Attributes tab.');
+          return;
+        }
+
+        const product = productForImport;
+        const productIdForImport = importTargetProductId || product.id;
+
         // Get current licenses and releases for upsert logic
-        const allLicensesResult = await client.query({
-          query: gql`
-            query AllLicenses {
-              licenses {
-                id
-                name
-                description
-                level
-                isActive
-                product {
+        let currentLicenses: any[] = [];
+        let currentReleases: any[] = [];
+        let currentTasks: any[] = [];
+
+        try {
+          const allLicensesResult = await client.query({
+            query: gql`
+              query AllLicenses {
+                licenses {
                   id
+                  name
+                  description
+                  level
+                  isActive
+                  product {
+                    id
+                  }
                 }
               }
-            }
-          `,
-          fetchPolicy: 'network-only'
-        });
+            `,
+            fetchPolicy: 'network-only'
+          });
 
-        const allReleasesResult = await client.query({
-          query: gql`
-            query AllReleases {
-              releases {
-                id
-                name
-                description
-                level
-                isActive
-                product {
+          currentLicenses = allLicensesResult.data.licenses.filter((license: any) => 
+            license.product?.id === productIdForImport
+          );
+        } catch (error) {
+          alertFriendlyError('Unable to retrieve existing licenses from the server. Please check your connection and try again', error);
+          return;
+        }
+
+        try {
+          const allReleasesResult = await client.query({
+            query: gql`
+              query AllReleases {
+                releases {
                   id
+                  name
+                  description
+                  level
+                  isActive
+                  product {
+                    id
+                  }
                 }
               }
-            }
-          `,
-          fetchPolicy: 'network-only'
-        });
+            `,
+            fetchPolicy: 'network-only'
+          });
 
-        const currentLicenses = allLicensesResult.data.licenses.filter((license: any) => 
-          license.product?.id === selectedProduct
-        );
+          currentReleases = allReleasesResult.data.releases.filter((release: any) => 
+            release.product?.id === productIdForImport
+          );
+        } catch (error) {
+          alertFriendlyError('Unable to retrieve existing releases from the server. Please check your connection and try again', error);
+          return;
+        }
 
-        const currentReleases = allReleasesResult.data.releases.filter((release: any) => 
-          release.product?.id === selectedProduct
-        );
+        try {
+          const currentTasksResult = await client.query({
+            query: TASKS_FOR_PRODUCT,
+            variables: { productId: productIdForImport },
+            fetchPolicy: 'network-only'
+          });
 
-        const currentTasksResult = await client.query({
-          query: TASKS_FOR_PRODUCT,
-          variables: { productId: selectedProduct },
-          fetchPolicy: 'network-only'
-        });
-
-  const currentTasks = (currentTasksResult.data?.tasks?.edges || []).map((edge: any) => edge.node);
+          currentTasks = (currentTasksResult.data?.tasks?.edges || []).map((edge: any) => edge.node);
+        } catch (error) {
+          alertFriendlyError('Unable to retrieve existing tasks from the server. Please check your connection and try again', error);
+          return;
+        }
 
   const licensesByName = new Map<string, any>(currentLicenses.map((license: any) => [license.name.toLowerCase().trim(), license]));
   const releasesByName = new Map<string, any>(currentReleases.map((release: any) => [release.name.toLowerCase().trim(), release]));
@@ -3147,7 +3294,6 @@ export function App() {
         let simpleAttributeChanges = 0;
 
         // Import Simple Attributes (basic product fields)
-        const simpleAttributesSheet = workbook.getWorksheet('Simple Attributes');
         if (simpleAttributesSheet) {
           simpleAttributesSheet.eachRow((row, rowNumber) => {
             if (rowNumber === 1) return; // Skip header
@@ -3197,7 +3343,7 @@ export function App() {
             const name = toPlainString(row.getCell(1).value).trim();
             const description = toPlainString(row.getCell(2).value).trim() || '';
             if (name) {
-              outcomes.push({ name, description });
+              outcomes.push({ rowNumber, name, description });
             }
           });
 
@@ -3208,25 +3354,25 @@ export function App() {
 
               if (existingOutcome) {
                 // Update existing outcome
-                const updateResult = await client.mutate({
-                  mutation: gql`
-                    mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
-                      updateOutcome(id: $id, input: $input) {
-                        id
-                        name
-                        description
-                      }
-                    }
-                  `,
-                  variables: {
-                    id: existingOutcome.id,
-                    input: {
-                      name: outcome.name,
-                      description: outcome.description,
-                      productId: selectedProduct
-                    }
-                  }
-                });
+                        const updateResult = await client.mutate({
+                          mutation: gql`
+                            mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
+                              updateOutcome(id: $id, input: $input) {
+                                id
+                                name
+                                description
+                              }
+                            }
+                          `,
+                          variables: {
+                            id: existingOutcome.id,
+                            input: {
+                              name: outcome.name,
+                              description: outcome.description,
+                              productId: productIdForImport
+                            }
+                          }
+                        });
                 if (updateResult.data?.updateOutcome) {
                   const updatedOutcome = updateResult.data.updateOutcome;
                   const updatedKey = updatedOutcome.name.toLowerCase().trim();
@@ -3250,7 +3396,7 @@ export function App() {
                     input: {
                       name: outcome.name,
                       description: outcome.description,
-                      productId: selectedProduct
+                      productId: productIdForImport
                     }
                   }
                 });
@@ -3263,7 +3409,7 @@ export function App() {
                 createdCount++;
               }
             } catch (error) {
-              console.error('Error importing outcome:', outcome, error);
+              recordError(`Outcomes tab (row ${outcome.rowNumber}): Outcome "${outcome.name}" couldn't be saved`, error);
               errorCount++;
             }
           }
@@ -3280,7 +3426,7 @@ export function App() {
             const level = toNumberOrUndefined(row.getCell(3).value) ?? 1;
             const isActive = toPlainString(row.getCell(4).value).toLowerCase().trim() !== 'no';
             if (name) {
-              licenses.push({ name, description, level, isActive });
+              licenses.push({ rowNumber, name, description, level, isActive });
             }
           });
 
@@ -3300,7 +3446,7 @@ export function App() {
                       description: license.description,
                       level: license.level,
                       isActive: license.isActive,
-                      productId: selectedProduct
+                      productId: productIdForImport
                     }
                   }
                 });
@@ -3321,7 +3467,7 @@ export function App() {
                       description: license.description,
                       level: license.level,
                       isActive: license.isActive,
-                      productId: selectedProduct
+                      productId: productIdForImport
                     }
                   }
                 });
@@ -3334,7 +3480,7 @@ export function App() {
                 createdCount++;
               }
             } catch (error) {
-              console.error('Error importing license:', license, error);
+              recordError(`Licenses tab (row ${license.rowNumber}): License "${license.name}" couldn't be saved`, error);
               errorCount++;
             }
           }
@@ -3351,7 +3497,7 @@ export function App() {
             const level = toNumberOrUndefined(row.getCell(3).value) ?? 1;
             const isActive = toPlainString(row.getCell(4).value).toLowerCase().trim() !== 'no';
             if (name) {
-              releases.push({ name, description, level, isActive });
+              releases.push({ rowNumber, name, description, level, isActive });
             }
           });
 
@@ -3371,7 +3517,7 @@ export function App() {
                       description: release.description,
                       level: release.level,
                       isActive: release.isActive,
-                      productId: selectedProduct
+                      productId: productIdForImport
                     }
                   }
                 });
@@ -3392,7 +3538,7 @@ export function App() {
                       description: release.description,
                       level: release.level,
                       isActive: release.isActive,
-                      productId: selectedProduct
+                      productId: productIdForImport
                     }
                   }
                 });
@@ -3405,7 +3551,7 @@ export function App() {
                 createdCount++;
               }
             } catch (error) {
-              console.error('Error importing release:', release, error);
+              recordError(`Releases tab (row ${release.rowNumber}): Release "${release.name}" couldn't be saved`, error);
               errorCount++;
             }
           }
@@ -3514,6 +3660,7 @@ export function App() {
             const rawLicenseLevel = toPlainString(getCellValue(row, 'licenseLevel')).trim();
 
             tasksToProcess.push({
+              rowNumber,
               id,
               name,
               description: toPlainString(getCellValue(row, 'description')).trim(),
@@ -3533,6 +3680,7 @@ export function App() {
 
           for (const taskRow of tasksToProcess) {
             try {
+              const rowLabel = `Tasks tab (row ${taskRow.rowNumber})`;
               const idKey = taskRow.id;
               const nameKey = taskRow.name.toLowerCase().trim();
               const existingTask = (idKey && tasksById.get(idKey)) || tasksByName.get(nameKey);
@@ -3540,14 +3688,14 @@ export function App() {
               const licenseMatch = taskRow.licenseName ? licensesByName.get(taskRow.licenseName.toLowerCase()) : undefined;
               const licenseId = licenseMatch?.id;
               if (taskRow.licenseName && !licenseId) {
-                console.warn(`License "${taskRow.licenseName}" not found for task "${taskRow.name}". Leaving license unset.`);
+                noteIssue(`${rowLabel}: License "${taskRow.licenseName}" not found in Licenses tab. Update the License Name column to match an existing license.`);
               }
 
               const outcomeIds = taskRow.outcomeNames
                 .map((outcomeName: string) => {
                   const outcome = outcomesByName.get(outcomeName.toLowerCase());
                   if (!outcome) {
-                    console.warn(`Outcome "${outcomeName}" not found for task "${taskRow.name}". It will be ignored.`);
+                    noteIssue(`${rowLabel}: Outcome "${outcomeName}" not found in Outcomes tab. Confirm the Outcome Names column uses exact names from the Outcomes tab.`);
                   }
                   return outcome?.id;
                 })
@@ -3557,7 +3705,7 @@ export function App() {
                 .map((releaseName: string) => {
                   const release = releasesByName.get(releaseName.toLowerCase());
                   if (!release) {
-                    console.warn(`Release "${releaseName}" not found for task "${taskRow.name}". It will be ignored.`);
+                    noteIssue(`${rowLabel}: Release "${releaseName}" not found in Releases tab. Verify the Release Names column.`);
                   }
                   return release?.id;
                 })
@@ -3629,7 +3777,7 @@ export function App() {
                 updatedCount++;
               } else {
                 const createInput = buildCommonInput();
-                createInput.productId = selectedProduct;
+                createInput.productId = productIdForImport;
 
                 const createResult = await client.mutate({
                   mutation: gql`
@@ -3676,7 +3824,7 @@ export function App() {
                 createdCount++;
               }
             } catch (error) {
-              console.error('Error importing task from Excel row:', taskRow, error);
+              recordError(`Tasks tab (row ${taskRow.rowNumber}): Task "${taskRow.name || taskRow.id || 'Unknown'}" couldn't be saved`, error);
               errorCount++;
             }
           }
@@ -3705,7 +3853,7 @@ export function App() {
                 try {
                   parsedValue = JSON.parse(valueString);
                 } catch (jsonError) {
-                  console.warn(`Failed to parse JSON for custom attribute "${key}". Keeping raw string.`, jsonError);
+                  noteIssue(`Custom Attributes tab (row ${rowNumber}): Value for "${key}" is not valid JSON. Stored as text instead.`);
                   parsedValue = valueString;
                 }
               } else if (!Number.isNaN(Number(valueString))) {
@@ -3744,25 +3892,33 @@ export function App() {
             await client.mutate({
               mutation: UPDATE_PRODUCT,
               variables: {
-                id: selectedProduct,
+                id: productIdForImport,
                 input: productInput
               }
             });
           } catch (error) {
-            console.error('Error updating product details:', error);
+            recordError(`Simple Attributes tab: Product "${productUpdatePayload.name}" couldn't be updated`, error);
             errorCount++;
           }
         }
 
         // Refresh data
-        await refetchProducts();
-        await refetchTasks({ productId: selectedProduct });
+        try {
+          await refetchProducts();
+          await refetchTasks({ productId: productIdForImport });
+        } catch (error) {
+          console.warn('Failed to refresh data after import:', error);
+          noteIssue('Import completed, but the display may not reflect the latest changes. Please refresh the page to see all updates.');
+        }
 
-        alert(`Excel import completed!\n\nCreated: ${createdCount}\nUpdated: ${updatedCount}\nErrors: ${errorCount}\n\nImported: Simple Attributes, Outcomes, Licenses, Releases, Tasks, Custom Attributes\nRemember: Keep Name columns unchanged to update existing records.`);
+        const errorSummary = collectedErrors.length > 0
+          ? `\n\nIssues detected:\n- ${collectedErrors.join('\n- ')}`
+          : '';
+
+        alert(`Excel import completed!\n\nCreated: ${createdCount}\nUpdated: ${updatedCount}\nErrors: ${errorCount}${errorSummary}\n\nImported: Simple Attributes, Outcomes, Licenses, Releases, Tasks, Custom Attributes\nRemember: Keep Name columns unchanged to update existing records.`);
 
       } catch (error) {
-        console.error('Error importing Excel file:', error);
-        alert(`Failed to import Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        alertFriendlyError('We were unable to process the Excel file', error);
       }
     };
 

@@ -522,6 +522,7 @@ export const resolvers = {
       // Extract license IDs from input and handle relationship
       const { licenseIds, ...productData } = input;
 
+      // Create a new product
       const product = await prisma.product.create({
         data: {
           name: productData.name,
@@ -592,7 +593,47 @@ export const resolvers = {
       pubsub.publish(PUBSUB_EVENTS.PRODUCT_UPDATED, { productUpdated: updated });
       return updated;
     },
-    deleteProduct: async (_: any, { id }: any, ctx: any) => { if (!fallbackActive) ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbDeleteProduct(id); await logAudit('DELETE_PRODUCT', 'Product', id, {}); return true; } try { await prisma.product.update({ where: { id }, data: { deletedAt: new Date() } }); await logAudit('DELETE_PRODUCT', 'Product', id, {}); } catch { } return true; },
+    deleteProduct: async (_: any, { id }: any, ctx: any) => {
+      if (!fallbackActive) ensureRole(ctx, 'ADMIN');
+      if (fallbackActive) {
+        fbDeleteProduct(id);
+        await logAudit('DELETE_PRODUCT', 'Product', id, {});
+        return true;
+      }
+      
+      try {
+        // Hard delete: Remove all related entities first, then delete the product
+        // This ensures cascading deletes work properly and no orphaned data remains
+        
+        // Delete related tasks
+        await prisma.task.deleteMany({ where: { productId: id } });
+        
+        // Delete related outcomes
+        await prisma.outcome.deleteMany({ where: { productId: id } });
+        
+        // Delete related licenses
+        await prisma.license.deleteMany({ where: { productId: id } });
+        
+        // Delete related releases
+        await prisma.release.deleteMany({ where: { productId: id } });
+        
+        // Delete product-solution relationships
+        await prisma.solutionProduct.deleteMany({ where: { productId: id } });
+        
+        // Delete product-customer relationships
+        await prisma.customerProduct.deleteMany({ where: { productId: id } });
+        
+        // Finally, delete the product itself
+        await prisma.product.delete({ where: { id } });
+        
+        await logAudit('DELETE_PRODUCT', 'Product', id, {});
+      } catch (error) {
+        console.error('Error deleting product:', error);
+        throw new Error(`Failed to delete product: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+      
+      return true;
+    },
     createSolution: async (_: any, { input }: any, ctx: any) => { if (!fallbackActive) ensureRole(ctx, 'ADMIN'); if (fallbackActive) { const solution = fbCreateSolution(input); await logAudit('CREATE_SOLUTION', 'Solution', solution.id, { input }, ctx.user?.id); return solution; } const solution = await prisma.solution.create({ data: { name: input.name, description: input.description, customAttrs: input.customAttrs } }); await logAudit('CREATE_SOLUTION', 'Solution', solution.id, { input }, ctx.user?.id); return solution; },
     updateSolution: async (_: any, { id, input }: any, ctx: any) => { if (!fallbackActive) ensureRole(ctx, 'ADMIN'); if (fallbackActive) { const before = fbUpdateSolution(id, {}); const updated = fbUpdateSolution(id, input); await logAudit('UPDATE_SOLUTION', 'Solution', id, { before, after: updated }, ctx.user?.id); return updated; } const before = await prisma.solution.findUnique({ where: { id } }); const updated = await prisma.solution.update({ where: { id }, data: { ...input } }); if (before) { const cs = await createChangeSet(ctx.user?.id); await recordChange(cs.id, 'Solution', id, before, updated); } await logAudit('UPDATE_SOLUTION', 'Solution', id, { before, after: updated }, ctx.user?.id); return updated; },
     deleteSolution: async (_: any, { id }: any, ctx: any) => { if (!fallbackActive) ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbDeleteSolution(id); await logAudit('DELETE_SOLUTION', 'Solution', id, {}, ctx.user?.id); return true; } try { await prisma.solution.update({ where: { id }, data: { deletedAt: new Date() } }); } catch { } await logAudit('DELETE_SOLUTION', 'Solution', id, {}, ctx.user?.id); return true; },

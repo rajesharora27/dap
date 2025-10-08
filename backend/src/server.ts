@@ -41,7 +41,6 @@ export async function createApp() {
 }
 
 // Runtime start when executed directly (supports both ESM & CJS test environments)
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 const isDirectRun = typeof require !== 'undefined' && require.main === module;
 if (isDirectRun) {
@@ -59,13 +58,11 @@ if (isDirectRun) {
           await prisma.lockedEntity.deleteMany({ where: { expiresAt: { lt: new Date() } } });
         }
       } catch (e) {
-        // eslint-disable-next-line no-console
         console.error('maintenance job failed', (e as any).message);
       }
     }, 60 * 1000);
     httpServer.listen(Number(port), host, () => {
       const displayHost = host === '0.0.0.0' ? 'localhost' : host;
-      // eslint-disable-next-line no-console
       console.log(`API + WS ready at http://${displayHost}:${port}/graphql (health at /health)`);
     });
   });
