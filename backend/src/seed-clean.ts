@@ -299,8 +299,8 @@ async function main() {
               estMinutes: 120, // Minimal required field
               weight: 33, // Minimal required field
               licenseLevel: taskInfo.licenseLevel,
-              howToDoc: taskInfo.howToDoc,
-              howToVideo: taskInfo.howToVideo,
+              howToDoc: taskInfo.howToDoc ? [taskInfo.howToDoc] : [],
+              howToVideo: taskInfo.howToVideo ? [taskInfo.howToVideo] : [],
               sequenceNumber: i + 1
             }
           });

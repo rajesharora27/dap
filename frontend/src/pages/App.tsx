@@ -28,7 +28,8 @@ import {
   TextField,
   Chip,
   Fab,
-  Collapse
+  Collapse,
+  Menu
 } from '@mui/material';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
 import { ProductDialog } from '../components/dialogs/ProductDialog';
@@ -383,6 +384,9 @@ const DELETE_TELEMETRY_ATTRIBUTE = gql`
 
 // Sortable Task Item Component
 function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick }: any) {
+  const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
+  const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
+  
   const {
     attributes,
     listeners,
@@ -419,19 +423,23 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick }: any) {
           <DragIndicator sx={{ color: 'text.secondary' }} />
         </ListItemIcon>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          {/* Primary content - more compact layout */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
-            {/* Left side: Sequence number and task name */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
+          {/* Primary content - structured grid layout */}
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+            {/* Sequence number - fixed width */}
+            <Box sx={{ minWidth: '56px', flexShrink: 0 }}>
               {task.sequenceNumber && (
                 <Chip
                   size="small"
                   label={`#${task.sequenceNumber}`}
                   color="secondary"
                   variant="outlined"
-                  sx={{ fontWeight: 'bold', minWidth: '48px' }}
+                  sx={{ fontWeight: 'bold' }}
                 />
               )}
+            </Box>
+            
+            {/* Task name - flexible width */}
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography variant="subtitle1" component="div" sx={{ 
                 overflow: 'hidden', 
                 textOverflow: 'ellipsis', 
@@ -441,58 +449,72 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick }: any) {
               </Typography>
             </Box>
             
-            {/* Right side: Weight and How-to links in a horizontal layout */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-              {/* Weight */}
+            {/* Weight - fixed width */}
+            <Box sx={{ minWidth: '80px', flexShrink: 0 }}>
               <Chip
                 size="small"
                 label={`${task.weight}%`}
                 color="primary"
                 variant="outlined"
-                sx={{ fontWeight: 'bold' }}
+                sx={{ fontWeight: 'bold', width: '80px' }}
               />
+            </Box>
+            
+            {/* How-to links container - fixed width */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '120px', flexShrink: 0, justifyContent: 'flex-end' }}>
+              {/* How-to documentation links */}
+              <Box sx={{ minWidth: '50px' }}>
+                {task.howToDoc && task.howToDoc.length > 0 && (
+                  <Chip
+                    size="small"
+                    label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
+                    color="primary"
+                    variant="outlined"
+                    sx={{ 
+                      fontSize: '0.7rem', 
+                      height: '24px',
+                      cursor: 'pointer',
+                      '&:hover': { backgroundColor: 'primary.light' }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (task.howToDoc.length === 1) {
+                        window.open(task.howToDoc[0], '_blank');
+                      } else {
+                        setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
+                      }
+                    }}
+                    title={task.howToDoc.length === 1 ? "How-to Documentation" : `${task.howToDoc.length} Documentation Links - Click to choose`}
+                  />
+                )}
+              </Box>
               
-              {/* How-to links - compact horizontal layout */}
-              {task.howToDoc && (
-                <Chip
-                  size="small"
-                  label="📖"
-                  color="primary"
-                  variant="outlined"
-                  sx={{ 
-                    fontSize: '0.7rem', 
-                    height: '24px', 
-                    minWidth: '32px',
-                    cursor: 'pointer',
-                    '&:hover': { backgroundColor: 'primary.light' }
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(task.howToDoc, '_blank');
-                  }}
-                  title="How-to Documentation"
-                />
-              )}
-              {task.howToVideo && (
-                <Chip
-                  size="small"
-                  label="🎥"
-                  color="primary"
-                  variant="outlined"
-                  sx={{ 
-                    fontSize: '0.7rem', 
-                    height: '24px', 
-                    minWidth: '32px',
-                    cursor: 'pointer',
-                    '&:hover': { backgroundColor: 'primary.light' }
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(task.howToVideo, '_blank');
-                  }}
-                  title="How-to Video"
-                />
-              )}
+              {/* How-to video links */}
+              <Box sx={{ minWidth: '50px' }}>
+                {task.howToVideo && task.howToVideo.length > 0 && (
+                  <Chip
+                    size="small"
+                    label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
+                    color="primary"
+                    variant="outlined"
+                    sx={{ 
+                      fontSize: '0.7rem', 
+                      height: '24px',
+                      cursor: 'pointer',
+                      '&:hover': { backgroundColor: 'primary.light' }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (task.howToVideo.length === 1) {
+                        window.open(task.howToVideo[0], '_blank');
+                      } else {
+                        setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
+                      }
+                    }}
+                    title={task.howToVideo.length === 1 ? "How-to Video" : `${task.howToVideo.length} Video Links - Click to choose`}
+                  />
+                )}
+              </Box>
             </Box>
           </Box>
         </Box>
@@ -505,6 +527,86 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick }: any) {
           </IconButton>
         </Box>
       </ListItemButton>
+
+      {/* Documentation Links Menu */}
+      <Menu
+        anchorEl={docMenuAnchor?.el}
+        open={Boolean(docMenuAnchor)}
+        onClose={() => setDocMenuAnchor(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+      >
+        <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
+          Documentation Links:
+        </MenuItem>
+        {docMenuAnchor?.links.map((link, index) => (
+          <MenuItem
+            key={index}
+            onClick={() => {
+              window.open(link, '_blank');
+              setDocMenuAnchor(null);
+            }}
+            sx={{ fontSize: '0.875rem' }}
+          >
+            {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+          </MenuItem>
+        ))}
+        <MenuItem
+          onClick={() => {
+            docMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
+            setDocMenuAnchor(null);
+          }}
+          sx={{ fontSize: '0.875rem', fontWeight: 'bold', borderTop: '1px solid #ddd' }}
+        >
+          Open All ({docMenuAnchor?.links.length})
+        </MenuItem>
+      </Menu>
+
+      {/* Video Links Menu */}
+      <Menu
+        anchorEl={videoMenuAnchor?.el}
+        open={Boolean(videoMenuAnchor)}
+        onClose={() => setVideoMenuAnchor(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+      >
+        <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
+          Video Links:
+        </MenuItem>
+        {videoMenuAnchor?.links.map((link, index) => (
+          <MenuItem
+            key={index}
+            onClick={() => {
+              window.open(link, '_blank');
+              setVideoMenuAnchor(null);
+            }}
+            sx={{ fontSize: '0.875rem' }}
+          >
+            {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+          </MenuItem>
+        ))}
+        <MenuItem
+          onClick={() => {
+            videoMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
+            setVideoMenuAnchor(null);
+          }}
+          sx={{ fontSize: '0.875rem', fontWeight: 'bold', borderTop: '1px solid #ddd' }}
+        >
+          Open All ({videoMenuAnchor?.links.length})
+        </MenuItem>
+      </Menu>
     </Box>
   );
 }
@@ -555,6 +657,12 @@ export function App() {
   const [addCustomAttributeDialog, setAddCustomAttributeDialog] = useState(false);
   const [editCustomAttributeDialog, setEditCustomAttributeDialog] = useState(false);
   const [editingCustomAttribute, setEditingCustomAttribute] = useState<any>(null);
+  const [importProgressDialog, setImportProgressDialog] = useState(false);
+  const [importProgressMessage, setImportProgressMessage] = useState('Processing...');
+  
+  // Menu anchors for howto links
+  const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
+  const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -1416,11 +1524,11 @@ export function App() {
       if (taskData.notes?.trim()) {
         input.notes = taskData.notes.trim();
       }
-      if (taskData.howToDoc?.trim()) {
-        input.howToDoc = taskData.howToDoc.trim();
+      if (taskData.howToDoc && Array.isArray(taskData.howToDoc) && taskData.howToDoc.length > 0) {
+        input.howToDoc = taskData.howToDoc;
       }
-      if (taskData.howToVideo?.trim()) {
-        input.howToVideo = taskData.howToVideo.trim();
+      if (taskData.howToVideo && Array.isArray(taskData.howToVideo) && taskData.howToVideo.length > 0) {
+        input.howToVideo = taskData.howToVideo;
       }
       if (taskData.licenseId) {
         input.licenseId = taskData.licenseId;
@@ -1934,8 +2042,8 @@ export function App() {
         escapeCsv(task.licenseLevel),
         escapeCsv(task.priority),
         escapeCsv(task.notes),
-        escapeCsv(task.howToDoc),
-        escapeCsv(task.howToVideo)
+        escapeCsv(Array.isArray(task.howToDoc) ? task.howToDoc.join(', ') : (task.howToDoc || '')),
+        escapeCsv(Array.isArray(task.howToVideo) ? task.howToVideo.join(', ') : (task.howToVideo || ''))
       ].join(',');
     }).join('\n');
 
@@ -2961,8 +3069,8 @@ export function App() {
         outcomeNames: (task.outcomes || []).map((outcome: any) => outcome.name).filter(Boolean).join(', '),
         releaseNames: (task.releases || []).map((release: any) => release.name).filter(Boolean).join(', '),
         notes: task.notes || '',
-        howToDoc: task.howToDoc || '',
-        howToVideo: task.howToVideo || ''
+        howToDoc: Array.isArray(task.howToDoc) ? task.howToDoc.join(', ') : (task.howToDoc || ''),
+        howToVideo: Array.isArray(task.howToVideo) ? task.howToVideo.join(', ') : (task.howToVideo || '')
       })));
       tasksSheet.getRow(1).font = { bold: true };
       tasksSheet.getRow(1).fill = {
@@ -3022,6 +3130,10 @@ export function App() {
     fileInput.onchange = async (e: any) => {
       const file = e.target.files[0];
       if (!file) return;
+
+      // Show progress dialog
+      setImportProgressMessage('Reading Excel file...');
+      setImportProgressDialog(true);
 
       const formatUserMessage = (context: string, error: unknown) => {
         if (error instanceof ApolloError) {
@@ -3136,13 +3248,17 @@ export function App() {
           const reasonMessages: Record<ResolveImportAbortReason, string> = {
             'missing-name': 'Please select a product or include a Name in the Simple Attributes tab before importing.'
           };
+          setImportProgressDialog(false);
           alert(reasonMessages[resolution.reason]);
           return;
         }
 
+        setImportProgressMessage('Processing product information...');
+
         if (resolution.status === 'use-existing') {
           const existingFull = products.find((p: any) => p.id === resolution.product.id);
           if (!existingFull) {
+            setImportProgressDialog(false);
             alert('Unable to locate the product referenced in Excel. Please refresh and try again.');
             return;
           }
@@ -3152,9 +3268,12 @@ export function App() {
         } else if (resolution.status === 'create-new') {
           const newProductName = resolution.name.trim();
           if (!newProductName) {
+            setImportProgressDialog(false);
             alert('The Excel file is missing a product name in the Simple Attributes tab. Please add a Name value to create a new product or select an existing product to update.');
             return;
           }
+
+          setImportProgressMessage(`Creating new product "${newProductName}"...`);
 
           try {
             const createResult = await client.mutate({
@@ -3192,17 +3311,21 @@ export function App() {
             setSelectedProduct(productForImport.id);
           } catch (error) {
             alertFriendlyError(`Simple Attributes tab: We couldn't create the product "${newProductName}"`, error);
+            setImportProgressDialog(false);
             return;
           }
         }
 
         if (!productForImport) {
+          setImportProgressDialog(false);
           alert('Could not determine which product to import. Please select a product or include a Name in the Simple Attributes tab.');
           return;
         }
 
         const product = productForImport;
         const productIdForImport = importTargetProductId || product.id;
+
+        setImportProgressMessage('Loading existing data...');
 
         // Get current licenses and releases for upsert logic
         let currentLicenses: any[] = [];
@@ -3233,6 +3356,7 @@ export function App() {
           );
         } catch (error) {
           alertFriendlyError('Unable to retrieve existing licenses from the server. Please check your connection and try again', error);
+          setImportProgressDialog(false);
           return;
         }
 
@@ -3334,6 +3458,8 @@ export function App() {
           updatedCount += simpleAttributeChanges;
         }
 
+        setImportProgressMessage('Importing outcomes...');
+
         // Import Outcomes with upsert logic
         const outcomesSheet = workbook.getWorksheet('Outcomes');
         if (outcomesSheet) {
@@ -3415,6 +3541,8 @@ export function App() {
           }
         }
 
+        setImportProgressMessage('Importing licenses...');
+
         // Import Licenses with upsert logic
         const licensesSheet = workbook.getWorksheet('Licenses');
         if (licensesSheet) {
@@ -3486,6 +3614,8 @@ export function App() {
           }
         }
 
+        setImportProgressMessage('Importing releases...');
+
         // Import Releases with upsert logic
         const releasesSheet = workbook.getWorksheet('Releases');
         if (releasesSheet) {
@@ -3556,6 +3686,8 @@ export function App() {
             }
           }
         }
+
+        setImportProgressMessage('Importing tasks...');
 
         // Import Tasks with upsert logic
         const normalizeLicenseLevel = (level?: string | number): string | undefined => {
@@ -3672,8 +3804,8 @@ export function App() {
               outcomeNames: parseDelimitedList(getCellValue(row, 'outcomeNames')),
               releaseNames: parseDelimitedList(getCellValue(row, 'releaseNames')),
               notes: toPlainString(getCellValue(row, 'notes')),
-              howToDoc: toPlainString(getCellValue(row, 'howToDoc')),
-              howToVideo: toPlainString(getCellValue(row, 'howToVideo')),
+              howToDoc: parseDelimitedList(getCellValue(row, 'howToDoc')),
+              howToVideo: parseDelimitedList(getCellValue(row, 'howToVideo')),
               licenseLevel: normalizeLicenseLevel(rawLicenseLevel)
             });
           });
@@ -3830,6 +3962,8 @@ export function App() {
           }
         }
 
+        setImportProgressMessage('Importing custom attributes...');
+
         // Import Custom Attributes with merge logic
         const customAttrsSheet = workbook.getWorksheet('Custom Attributes');
         if (customAttrsSheet) {
@@ -3902,6 +4036,8 @@ export function App() {
           }
         }
 
+        setImportProgressMessage('Finalizing import...');
+
         // Refresh data
         try {
           await refetchProducts();
@@ -3911,6 +4047,9 @@ export function App() {
           noteIssue('Import completed, but the display may not reflect the latest changes. Please refresh the page to see all updates.');
         }
 
+        // Close progress dialog
+        setImportProgressDialog(false);
+
         const errorSummary = collectedErrors.length > 0
           ? `\n\nIssues detected:\n- ${collectedErrors.join('\n- ')}`
           : '';
@@ -3918,6 +4057,7 @@ export function App() {
         alert(`Excel import completed!\n\nCreated: ${createdCount}\nUpdated: ${updatedCount}\nErrors: ${errorCount}${errorSummary}\n\nImported: Simple Attributes, Outcomes, Licenses, Releases, Tasks, Custom Attributes\nRemember: Keep Name columns unchanged to update existing records.`);
 
       } catch (error) {
+        setImportProgressDialog(false);
         alertFriendlyError('We were unable to process the Excel file', error);
       }
     };
@@ -5141,6 +5281,124 @@ export function App() {
               attribute={editingCustomAttribute}
               existingKeys={Object.keys(products.find((p: any) => p.id === selectedProduct)?.customAttrs || {})}
             />
+
+            {/* Import Progress Dialog */}
+            <Dialog 
+              open={importProgressDialog}
+              disableEscapeKeyDown
+              onClose={(event, reason) => {
+                if (reason !== 'backdropClick') {
+                  return;
+                }
+              }}
+            >
+              <DialogTitle>Importing Product Data</DialogTitle>
+              <DialogContent>
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 2, minWidth: 300 }}>
+                  <Typography>{importProgressMessage}</Typography>
+                  <Box sx={{ width: '100%' }}>
+                    <Box sx={{ 
+                      width: '100%', 
+                      height: 4, 
+                      backgroundColor: 'rgba(0, 0, 0, 0.1)',
+                      borderRadius: 2,
+                      overflow: 'hidden'
+                    }}>
+                      <Box sx={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        backgroundColor: 'primary.main',
+                        animation: 'progress-bar 1.5s ease-in-out infinite',
+                        '@keyframes progress-bar': {
+                          '0%': { transform: 'translateX(-100%)' },
+                          '100%': { transform: 'translateX(100%)' }
+                        }
+                      }} />
+                    </Box>
+                  </Box>
+                </Box>
+              </DialogContent>
+            </Dialog>
+
+            {/* Documentation Links Menu */}
+            <Menu
+              anchorEl={docMenuAnchor?.el}
+              open={Boolean(docMenuAnchor)}
+              onClose={() => setDocMenuAnchor(null)}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'left',
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'left',
+              }}
+            >
+              <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
+                Documentation Links:
+              </MenuItem>
+              {docMenuAnchor?.links.map((link, index) => (
+                <MenuItem
+                  key={index}
+                  onClick={() => {
+                    window.open(link, '_blank');
+                    setDocMenuAnchor(null);
+                  }}
+                  sx={{ fontSize: '0.875rem' }}
+                >
+                  {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                </MenuItem>
+              ))}
+              <MenuItem
+                onClick={() => {
+                  docMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
+                  setDocMenuAnchor(null);
+                }}
+                sx={{ fontSize: '0.875rem', fontWeight: 'bold', borderTop: '1px solid #ddd' }}
+              >
+                Open All ({docMenuAnchor?.links.length})
+              </MenuItem>
+            </Menu>
+
+            {/* Video Links Menu */}
+            <Menu
+              anchorEl={videoMenuAnchor?.el}
+              open={Boolean(videoMenuAnchor)}
+              onClose={() => setVideoMenuAnchor(null)}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'left',
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'left',
+              }}
+            >
+              <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
+                Video Links:
+              </MenuItem>
+              {videoMenuAnchor?.links.map((link, index) => (
+                <MenuItem
+                  key={index}
+                  onClick={() => {
+                    window.open(link, '_blank');
+                    setVideoMenuAnchor(null);
+                  }}
+                  sx={{ fontSize: '0.875rem' }}
+                >
+                  {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                </MenuItem>
+              ))}
+              <MenuItem
+                onClick={() => {
+                  videoMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
+                  setVideoMenuAnchor(null);
+                }}
+                sx={{ fontSize: '0.875rem', fontWeight: 'bold', borderTop: '1px solid #ddd' }}
+              >
+                Open All ({videoMenuAnchor?.links.length})
+              </MenuItem>
+            </Menu>
           </>
         )}
       </Box>

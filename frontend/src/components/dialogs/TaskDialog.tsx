@@ -34,8 +34,8 @@ interface Task {
   licenseLevel?: string;
   requiredLicenseLevel?: number;
   licenseId?: string;
-  howToDoc?: string;
-  howToVideo?: string;
+  howToDoc?: string[];
+  howToVideo?: string[];
   outcomes?: Array<{ id: string; name: string }>;
   releases?: Array<{ id: string; name: string; level: number }>;
   releaseIds?: string[];
@@ -81,8 +81,8 @@ interface Props {
     licenseId?: string;
     outcomeIds?: string[];
     releaseIds?: string[];
-    howToDoc?: string;
-    howToVideo?: string;
+    howToDoc?: string[];
+    howToVideo?: string[];
     telemetryAttributes?: TelemetryAttribute[];
   }) => Promise<void>;
   task?: Task | null;
@@ -116,8 +116,8 @@ export const TaskDialog: React.FC<Props> = ({
   const [weight, setWeight] = useState(1);
   const [notes, setNotes] = useState('');
   const [priority, setPriority] = useState('Medium');
-  const [howToDoc, setHowToDoc] = useState('');
-  const [howToVideo, setHowToVideo] = useState('');
+  const [howToDoc, setHowToDoc] = useState<string[]>([]);
+  const [howToVideo, setHowToVideo] = useState<string[]>([]);
   const [selectedLicense, setSelectedLicense] = useState<string>('');
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([]);
   const [selectedReleases, setSelectedReleases] = useState<string[]>([]);
@@ -130,7 +130,7 @@ export const TaskDialog: React.FC<Props> = ({
   const otherTasks = existingTasks.filter(t => t.id !== task?.id);
   const totalUsedWeight = otherTasks.reduce((sum, t) => sum + (t.weight || 0), 0);
   const remainingWeight = Math.max(0, 100 - totalUsedWeight);
-  const maxAllowedWeight = Math.max(1, remainingWeight + (task?.weight || 0));
+  const maxAllowedWeight = Math.max(0.01, remainingWeight + (task?.weight || 0));
 
   useEffect(() => {
     if (task) {
@@ -140,8 +140,8 @@ export const TaskDialog: React.FC<Props> = ({
       setWeight(task.weight || 1);
       setNotes(task.notes || '');
       setPriority(task.priority || 'Medium');
-      setHowToDoc(task.howToDoc || '');
-      setHowToVideo(task.howToVideo || '');
+      setHowToDoc(task.howToDoc || []);
+      setHowToVideo(task.howToVideo || []);
       setSelectedLicense(task.licenseId || '');
       setSelectedOutcomes(task.outcomes?.map(o => o.id) || []);
       setSelectedReleases(task.releases?.map(r => r.id) || task.releaseIds || []);
@@ -150,11 +150,11 @@ export const TaskDialog: React.FC<Props> = ({
       setName('');
       setDescription('');
       setEstMinutes(60);
-      setWeight(Math.min(maxAllowedWeight, Math.max(1, remainingWeight)));
+      setWeight(Math.min(maxAllowedWeight, Math.max(0.01, remainingWeight)));
       setNotes('');
       setPriority('Medium');
-      setHowToDoc('');
-      setHowToVideo('');
+      setHowToDoc([]);
+      setHowToVideo([]);
       setSelectedLicense('');
       setSelectedOutcomes([]);
       setSelectedReleases([]);
@@ -173,8 +173,8 @@ export const TaskDialog: React.FC<Props> = ({
     // Validate weight against remaining weight
     const maxAllowedWeightForValidation = remainingWeight + (task?.weight || 0);
 
-    if (weight <= 0 || weight > maxAllowedWeightForValidation) {
-      setError(`Weight must be between 1 and ${maxAllowedWeightForValidation} (remaining weight in product)`);
+    if (weight < 0.01 || weight > maxAllowedWeightForValidation) {
+      setError(`Weight must be between 0.01 and ${maxAllowedWeightForValidation.toFixed(2)} (remaining weight in product)`);
       return;
     }
 
@@ -194,8 +194,8 @@ export const TaskDialog: React.FC<Props> = ({
         weight: weight,
         notes: notes.trim() || undefined,
         priority: priority,
-        howToDoc: howToDoc.trim() || undefined,
-        howToVideo: howToVideo.trim() || undefined,
+        howToDoc: howToDoc.filter(link => link.trim()).length > 0 ? howToDoc.filter(link => link.trim()) : undefined,
+        howToVideo: howToVideo.filter(link => link.trim()).length > 0 ? howToVideo.filter(link => link.trim()) : undefined,
         licenseId: selectedLicense || undefined,
         outcomeIds: selectedOutcomes.length > 0 ? selectedOutcomes : undefined,
         releaseIds: selectedReleases.length > 0 ? selectedReleases : undefined,
@@ -286,15 +286,16 @@ export const TaskDialog: React.FC<Props> = ({
                 type="number"
                 value={weight}
                 onChange={(e) => {
-                  const value = Math.min(maxAllowedWeight, Math.max(1, parseInt(e.target.value) || 1));
-                  setWeight(value);
+                  const value = parseFloat(e.target.value) || 0.01;
+                  setWeight(Math.min(maxAllowedWeight, Math.max(0.01, value)));
                 }}
                 margin="normal"
                 inputProps={{ 
-                  min: 1, 
-                  max: maxAllowedWeight
+                  min: 0.01, 
+                  max: maxAllowedWeight,
+                  step: 0.01
                 }}
-                helperText={`Remaining weight: ${remainingWeight + (task?.weight || 0)}% • Max allowed: ${maxAllowedWeight}%`}
+                helperText={`Remaining weight: ${(remainingWeight + (task?.weight || 0)).toFixed(2)}% • Max allowed: ${maxAllowedWeight.toFixed(2)}%`}
               />
             </Box>
             <Box sx={{ flex: '1 1 200px' }}>
@@ -337,35 +338,33 @@ export const TaskDialog: React.FC<Props> = ({
             </Box>
           )}
 
-          {outcomes.length > 0 && (
-            <Box sx={{ mt: 2 }}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Expected Outcomes</InputLabel>
-                <Select
-                  multiple
-                  value={selectedOutcomes}
-                  onChange={(e) => setSelectedOutcomes(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
-                  input={<OutlinedInput label="Expected Outcomes" />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map((value) => {
-                        const outcome = outcomes.find(o => o.id === value);
-                        return (
-                          <Chip key={value} label={outcome?.name || value} size="small" />
-                        );
-                      })}
-                    </Box>
-                  )}
-                >
-                  {outcomes.map((outcome) => (
-                    <MenuItem key={outcome.id} value={outcome.id}>
-                      {outcome.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-          )}
+          <Box sx={{ mt: 2 }}>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Expected Outcomes</InputLabel>
+              <Select
+                multiple
+                value={selectedOutcomes}
+                onChange={(e) => setSelectedOutcomes(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                input={<OutlinedInput label="Expected Outcomes" />}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => {
+                      const outcome = outcomes.find(o => o.id === value);
+                      return (
+                        <Chip key={value} label={outcome?.name || value} size="small" />
+                      );
+                    })}
+                  </Box>
+                )}
+              >
+                {outcomes.map((outcome) => (
+                  <MenuItem key={outcome.id} value={outcome.id}>
+                    {outcome.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
 
           {/* Releases Selection */}
           <FormControl fullWidth margin="normal">
@@ -418,25 +417,85 @@ export const TaskDialog: React.FC<Props> = ({
             placeholder="Additional notes, comments, or requirements..."
           />
 
-          <TextField
-            fullWidth
-            label="How To Documentation"
-            value={howToDoc}
-            onChange={(e) => setHowToDoc(e.target.value)}
-            margin="normal"
-            multiline
-            rows={3}
-            placeholder="Documentation on how to complete this task..."
-          />
+          {/* How To Documentation Links */}
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              How To Documentation Links
+            </Typography>
+            {howToDoc.map((link, index) => (
+              <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                <TextField
+                  fullWidth
+                  value={link}
+                  onChange={(e) => {
+                    const newLinks = [...howToDoc];
+                    newLinks[index] = e.target.value;
+                    setHowToDoc(newLinks);
+                  }}
+                  placeholder="https://example.com/documentation"
+                  size="small"
+                />
+                <Button
+                  onClick={() => {
+                    setHowToDoc(howToDoc.filter((_, i) => i !== index));
+                  }}
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                >
+                  Remove
+                </Button>
+              </Box>
+            ))}
+            <Button
+              onClick={() => setHowToDoc([...howToDoc, ''])}
+              variant="outlined"
+              size="small"
+              sx={{ mt: 1 }}
+            >
+              + Add Documentation Link
+            </Button>
+          </Box>
 
-          <TextField
-            fullWidth
-            label="How To Video"
-            value={howToVideo}
-            onChange={(e) => setHowToVideo(e.target.value)}
-            margin="normal"
-            placeholder="URL or reference to video instructions..."
-          />
+          {/* How To Video Links */}
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              How To Video Links
+            </Typography>
+            {howToVideo.map((link, index) => (
+              <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                <TextField
+                  fullWidth
+                  value={link}
+                  onChange={(e) => {
+                    const newLinks = [...howToVideo];
+                    newLinks[index] = e.target.value;
+                    setHowToVideo(newLinks);
+                  }}
+                  placeholder="https://example.com/video"
+                  size="small"
+                />
+                <Button
+                  onClick={() => {
+                    setHowToVideo(howToVideo.filter((_, i) => i !== index));
+                  }}
+                  variant="outlined"
+                  color="error"
+                  size="small"
+                >
+                  Remove
+                </Button>
+              </Box>
+            ))}
+            <Button
+              onClick={() => setHowToVideo([...howToVideo, ''])}
+              variant="outlined"
+              size="small"
+              sx={{ mt: 1 }}
+            >
+              + Add Video Link
+            </Button>
+          </Box>
 
           {totalUsedWeight > 90 && (
             <Alert severity="warning" sx={{ mt: 2 }}>

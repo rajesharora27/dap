@@ -452,8 +452,8 @@ export class ExcelImportService {
               sequenceNumber: task.sequenceNumber || 1,
               licenseLevel,
               priority: task.priority || 'Medium',
-              howToDoc: task.howToDoc || '',
-              howToVideo: task.howToVideo || '',
+              howToDoc: task.howToDoc ? task.howToDoc.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+              howToVideo: task.howToVideo ? task.howToVideo.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
               productId,
               outcomes: {
                 create: outcomeIds.map((id: string) => ({ outcomeId: id }))
@@ -498,8 +498,8 @@ export class ExcelImportService {
                 sequenceNumber: task.sequenceNumber || 1,
                 licenseLevel,
                 priority: task.priority || 'Medium',
-                howToDoc: task.howToDoc || '',
-                howToVideo: task.howToVideo || ''
+                howToDoc: task.howToDoc ? task.howToDoc.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
+                howToVideo: task.howToVideo ? task.howToVideo.split(',').map((s: string) => s.trim()).filter(Boolean) : []
               }
             });
 

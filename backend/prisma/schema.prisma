@@ -126,12 +126,12 @@ model Task {
   description         String?
   estMinutes          Int
   notes               String?
-  weight              Float            @default(0)
+  weight              Decimal          @default(0) @db.Decimal(5, 2)
   sequenceNumber      Int
   licenseLevel        LicenseLevel     @default(ESSENTIAL)
   priority            String?          // Priority level (Low, Medium, High, Critical)
-  howToDoc            String?          // HTTP link explaining how to implement the task
-  howToVideo          String?          // Link to video explaining how to implement the task
+  howToDoc            String[]         // HTTP links explaining how to implement the task
+  howToVideo          String[]         // Links to videos explaining how to implement the task
   rawTelemetryMapping String?
   completedAt         DateTime?
   completedReason     String?
