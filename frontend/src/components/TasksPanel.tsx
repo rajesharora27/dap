@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState } from 'react';
 import { gql, useQuery, useSubscription, useMutation } from '@apollo/client';
-import { List, ListItemButton, ListItemText, Box, Button, Typography, Stack, IconButton, Chip, Alert } from '@mui/material';
+import { List, ListItemButton, ListItemText, Box, Button, Typography, Stack, IconButton, Chip, Alert, Menu, MenuItem } from '@mui/material';
 import { Add, Edit, DragIndicator } from '@mui/icons-material';
 import { TaskDialog } from './dialogs/TaskDialog';
 
@@ -12,6 +12,7 @@ const TASKS = gql`query Tasks($productId:ID,$solutionId:ID,$first:Int,$after:Str
       node { 
         id 
         name 
+        weight
         licenseLevel
         howToDoc
         howToVideo
@@ -58,6 +59,9 @@ interface Props {
 }
 export const TasksPanel: React.FC<Props> = ({ productId, solutionId, onSelect }) => {
   const [args, setArgs] = useState<{ first?: number; after?: string | null; last?: number; before?: string | null }>({ first: 50 });
+  const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
+  const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
+  
   const { data, refetch } = useQuery(TASKS, {
     variables: { productId, solutionId, ...args },
     skip: !productId && !solutionId
@@ -350,21 +354,24 @@ export const TasksPanel: React.FC<Props> = ({ productId, solutionId, onSelect })
           />
           <ListItemText
             primary={
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-                {/* Left side: Sequence number and task name */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                {/* Sequence number - fixed width */}
+                <Box sx={{ minWidth: '56px', flexShrink: 0 }}>
                   {task.sequenceNumber && (
                     <Chip
                       size="small"
                       label={`#${task.sequenceNumber}`}
                       color="secondary"
                       variant="outlined"
-                      sx={{ fontWeight: 'bold', minWidth: '48px' }}
+                      sx={{ fontWeight: 'bold' }}
                     />
                   )}
+                </Box>
+                
+                {/* Task name - flexible width */}
+                <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Typography variant="body2" sx={{ 
-                    fontWeight: 'medium', 
-                    flex: 1,
+                    fontWeight: 'medium',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
@@ -373,60 +380,76 @@ export const TasksPanel: React.FC<Props> = ({ productId, solutionId, onSelect })
                   </Typography>
                 </Box>
                 
-                {/* Right side: Weight and How-to links */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexShrink: 0 }}>
-                  {/* Weight */}
+                {/* Weight - fixed width */}
+                <Box sx={{ minWidth: '80px', flexShrink: 0 }}>
                   <Chip
                     size="small"
-                    label={`${task.weight}%`}
+                    label={`${Number(task.weight).toFixed(2)}%`}
                     color="primary"
                     variant="outlined"
-                    sx={{ fontWeight: 'bold' }}
+                    sx={{ fontWeight: 'bold', width: '80px' }}
                   />
+                </Box>
+                
+                {/* How-to links container - fixed width */}
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '120px', flexShrink: 0, justifyContent: 'flex-end' }}>
+                  {/* How-to documentation links */}
+                  <Box sx={{ minWidth: '50px' }}>
+                    {task.howToDoc && task.howToDoc.length > 0 && (
+                      <Chip
+                        size="small"
+                        label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
+                        color="primary"
+                        variant="outlined"
+                        sx={{ 
+                          fontSize: '0.7rem', 
+                          height: '24px',
+                          cursor: 'pointer',
+                          '&:hover': { backgroundColor: 'primary.light' }
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (task.howToDoc.length === 1) {
+                            window.open(task.howToDoc[0], '_blank');
+                          } else {
+                            setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
+                          }
+                        }}
+                        title={task.howToDoc.length === 1 ? "How-to Documentation" : `${task.howToDoc.length} Documentation Links - Click to choose`}
+                      />
+                    )}
+                  </Box>
                   
-                  {/* How-to links - compact */}
-                  {task.howToDoc && (
-                    <Chip
-                      size="small"
-                      label="�"
-                      color="primary"
-                      variant="outlined"
-                      sx={{ 
-                        fontSize: '0.7rem', 
-                        height: '24px', 
-                        minWidth: '32px',
-                        cursor: 'pointer',
-                        '&:hover': { backgroundColor: 'primary.light' }
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(task.howToDoc, '_blank');
-                      }}
-                      title="How-to Documentation"
-                    />
-                  )}
-                  {task.howToVideo && (
-                    <Chip
-                      size="small"
-                      label="🎥"
-                      color="primary"
-                      variant="outlined"
-                      sx={{ 
-                        fontSize: '0.7rem', 
-                        height: '24px', 
-                        minWidth: '32px',
-                        cursor: 'pointer',
-                        '&:hover': { backgroundColor: 'primary.light' }
-                      }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(task.howToVideo, '_blank');
-                      }}
-                      title="How-to Video"
-                    />
-                  )}
-                  
-                  {/* Edit button */}
+                  {/* How-to video links */}
+                  <Box sx={{ minWidth: '50px' }}>
+                    {task.howToVideo && task.howToVideo.length > 0 && (
+                      <Chip
+                        size="small"
+                        label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
+                        color="primary"
+                        variant="outlined"
+                        sx={{ 
+                          fontSize: '0.7rem', 
+                          height: '24px',
+                          cursor: 'pointer',
+                          '&:hover': { backgroundColor: 'primary.light' }
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (task.howToVideo.length === 1) {
+                            window.open(task.howToVideo[0], '_blank');
+                          } else {
+                            setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
+                          }
+                        }}
+                        title={task.howToVideo.length === 1 ? "How-to Video" : `${task.howToVideo.length} Video Links - Click to choose`}
+                      />
+                    )}
+                  </Box>
+                </Box>
+                
+                {/* Edit button */}
+                <Box sx={{ minWidth: '40px', flexShrink: 0 }}>
                   <IconButton
                     size="small"
                     onClick={(ev) => { ev.stopPropagation(); openEditDialog(task); }}
@@ -457,5 +480,85 @@ export const TasksPanel: React.FC<Props> = ({ productId, solutionId, onSelect })
       existingTasks={tasks}
       outcomes={outcomes}
     />
+
+    {/* Documentation Links Menu */}
+    <Menu
+      anchorEl={docMenuAnchor?.el}
+      open={Boolean(docMenuAnchor)}
+      onClose={() => setDocMenuAnchor(null)}
+      anchorOrigin={{
+        vertical: 'bottom',
+        horizontal: 'left',
+      }}
+      transformOrigin={{
+        vertical: 'top',
+        horizontal: 'left',
+      }}
+    >
+      <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
+        Documentation Links:
+      </MenuItem>
+      {docMenuAnchor?.links.map((link, index) => (
+        <MenuItem
+          key={index}
+          onClick={() => {
+            window.open(link, '_blank');
+            setDocMenuAnchor(null);
+          }}
+          sx={{ fontSize: '0.875rem' }}
+        >
+          {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+        </MenuItem>
+      ))}
+      <MenuItem
+        onClick={() => {
+          docMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
+          setDocMenuAnchor(null);
+        }}
+        sx={{ fontSize: '0.875rem', fontWeight: 'bold', borderTop: '1px solid #ddd' }}
+      >
+        Open All ({docMenuAnchor?.links.length})
+      </MenuItem>
+    </Menu>
+
+    {/* Video Links Menu */}
+    <Menu
+      anchorEl={videoMenuAnchor?.el}
+      open={Boolean(videoMenuAnchor)}
+      onClose={() => setVideoMenuAnchor(null)}
+      anchorOrigin={{
+        vertical: 'bottom',
+        horizontal: 'left',
+      }}
+      transformOrigin={{
+        vertical: 'top',
+        horizontal: 'left',
+      }}
+    >
+      <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
+        Video Links:
+      </MenuItem>
+      {videoMenuAnchor?.links.map((link, index) => (
+        <MenuItem
+          key={index}
+          onClick={() => {
+            window.open(link, '_blank');
+            setVideoMenuAnchor(null);
+          }}
+          sx={{ fontSize: '0.875rem' }}
+        >
+          {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+        </MenuItem>
+      ))}
+      <MenuItem
+        onClick={() => {
+          videoMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
+          setVideoMenuAnchor(null);
+        }}
+        sx={{ fontSize: '0.875rem', fontWeight: 'bold', borderTop: '1px solid #ddd' }}
+      >
+        Open All ({videoMenuAnchor?.links.length})
+      </MenuItem>
+    </Menu>
   </Box>;
 };

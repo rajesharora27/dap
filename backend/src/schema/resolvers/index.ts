@@ -94,8 +94,14 @@ export const resolvers = {
       }
       const tasks = await prisma.task.findMany({ where: { productId: parent.id, deletedAt: null } });
       if (!tasks.length) return 0;
-      const totalWeight = tasks.reduce((a: number, t: any) => a + t.weight, 0) || 1;
-      const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => a + t.weight, 0);
+      const totalWeight = tasks.reduce((a: number, t: any) => {
+        const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : t.weight;
+        return a + weight;
+      }, 0) || 1;
+      const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => {
+        const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : t.weight;
+        return a + weight;
+      }, 0);
       return Math.round((completed / totalWeight) * 100);
     },
     outcomes: async (parent: any) => {
@@ -145,8 +151,14 @@ export const resolvers = {
       }
       const tasks = await prisma.task.findMany({ where: { solutionId: parent.id, deletedAt: null } });
       if (!tasks.length) return 0;
-      const totalWeight = tasks.reduce((a: number, t: any) => a + t.weight, 0) || 1;
-      const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => a + t.weight, 0);
+      const totalWeight = tasks.reduce((a: number, t: any) => {
+        const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : t.weight;
+        return a + weight;
+      }, 0) || 1;
+      const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => {
+        const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : t.weight;
+        return a + weight;
+      }, 0);
       return Math.round((completed / totalWeight) * 100);
     },
     releases: async (parent: any) => {
@@ -171,6 +183,21 @@ export const resolvers = {
     }
   },
   Task: {
+    weight: (parent: any) => {
+      // Convert Prisma Decimal to Float
+      if (parent.weight && typeof parent.weight === 'object' && 'toNumber' in parent.weight) {
+        return parent.weight.toNumber();
+      }
+      return parent.weight || 0;
+    },
+    howToDoc: (parent: any) => {
+      // Ensure it's always an array
+      return parent.howToDoc || [];
+    },
+    howToVideo: (parent: any) => {
+      // Ensure it's always an array
+      return parent.howToVideo || [];
+    },
     product: (parent: any) => {
       if (fallbackActive) {
         const { products } = require('../../lib/fallbackStore');
@@ -927,9 +954,12 @@ export const resolvers = {
         }
       });
 
-      const currentWeightSum = existingTasks.reduce((sum: number, task: any) => sum + (task.weight || 0), 0);
+      const currentWeightSum = existingTasks.reduce((sum: number, task: any) => {
+        const weight = typeof task.weight === 'object' && 'toNumber' in task.weight ? task.weight.toNumber() : (task.weight || 0);
+        return sum + weight;
+      }, 0);
       if (currentWeightSum + (input.weight || 0) > 100) {
-        throw new Error(`Total weight of tasks cannot exceed 100% for this ${input.productId ? 'product' : 'solution'}. Current: ${currentWeightSum}%, Trying to add: ${input.weight || 0}%`);
+        throw new Error(`Total weight of tasks cannot exceed 100% for this ${input.productId ? 'product' : 'solution'}. Current: ${currentWeightSum.toFixed(2)}%, Trying to add: ${input.weight || 0}%`);
       }
 
       // Extract fields that need special handling
@@ -1039,10 +1069,7 @@ export const resolvers = {
           task = await prisma.task.create({
             data: {
               ...taskData,
-              licenseLevel: prismaLicenseLevel,
-              // EXPLICIT FIX: Always include howToDoc and howToVideo even if undefined in input
-              howToDoc: input.howToDoc || null,
-              howToVideo: input.howToVideo || null
+              licenseLevel: prismaLicenseLevel
             }
           });
 
@@ -1166,7 +1193,8 @@ export const resolvers = {
       }
 
       // If weight is being updated, validate total doesn't exceed 100
-      if (input.weight !== undefined && input.weight !== before.weight) {
+      const beforeWeight = typeof before.weight === 'object' && 'toNumber' in before.weight ? before.weight.toNumber() : before.weight;
+      if (input.weight !== undefined && input.weight !== beforeWeight) {
         const existingTasks = await prisma.task.findMany({
           where: {
             id: { not: id },
@@ -1175,9 +1203,12 @@ export const resolvers = {
           }
         });
 
-        const currentWeightSum = existingTasks.reduce((sum: number, task: any) => sum + (task.weight || 0), 0);
+        const currentWeightSum = existingTasks.reduce((sum: number, task: any) => {
+          const weight = typeof task.weight === 'object' && 'toNumber' in task.weight ? task.weight.toNumber() : (task.weight || 0);
+          return sum + weight;
+        }, 0);
         if (currentWeightSum + (input.weight || 0) > 100) {
-          throw new Error(`Total weight of tasks cannot exceed 100% for this ${before.productId ? 'product' : 'solution'}. Current (excluding this task): ${currentWeightSum}%, Trying to set: ${input.weight || 0}%`);
+          throw new Error(`Total weight of tasks cannot exceed 100% for this ${before.productId ? 'product' : 'solution'}. Current (excluding this task): ${currentWeightSum.toFixed(2)}%, Trying to set: ${input.weight || 0}%`);
         }
       }
 

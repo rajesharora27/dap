@@ -465,8 +465,8 @@ async function main() {
               sequenceNumber: sequenceNumber,
               priority: taskInfo.priority,
               notes: taskInfo.notes,
-              howToDoc: taskInfo.howToDoc,
-              howToVideo: taskInfo.howToVideo,
+              howToDoc: taskInfo.howToDoc ? [taskInfo.howToDoc] : [],
+              howToVideo: taskInfo.howToVideo ? [taskInfo.howToVideo] : [],
               licenseLevel: taskInfo.licenseLevel
             }
           });

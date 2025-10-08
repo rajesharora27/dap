@@ -209,10 +209,10 @@ export class ExcelExportService {
         sequenceNumber: task.sequenceNumber,
         licenseLevel: task.licenseLevel,
         priority: task.priority || '',
-        weight: task.weight,
+        weight: typeof task.weight === 'object' && 'toNumber' in task.weight ? task.weight.toNumber() : task.weight,
         estMinutes: task.estMinutes,
-        howToDoc: task.howToDoc || '',
-        howToVideo: task.howToVideo || '',
+        howToDoc: Array.isArray(task.howToDoc) ? task.howToDoc.join(', ') : (task.howToDoc || ''),
+        howToVideo: Array.isArray(task.howToVideo) ? task.howToVideo.join(', ') : (task.howToVideo || ''),
         notes: task.notes || '',
         outcomes: task.outcomes.map((to: any) => to.outcome.name).join(', '),
         releases: task.releases.map((tr: any) => tr.release.name).join(', ')

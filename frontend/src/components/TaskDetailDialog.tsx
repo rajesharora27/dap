@@ -331,35 +331,33 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
             </Select>
           </FormControl>
 
-          {outcomes.length > 0 && (
-            <Box sx={{ mt: 2 }}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Expected Outcomes</InputLabel>
-                <Select
-                  multiple
-                  value={selectedOutcomes}
-                  onChange={(e) => setSelectedOutcomes(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
-                  input={<OutlinedInput label="Expected Outcomes" />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map((value) => {
-                        const outcome = outcomes.find((o: any) => o.id === value);
-                        return (
-                          <Chip key={value} label={outcome?.name || value} size="small" />
-                        );
-                      })}
-                    </Box>
-                  )}
-                >
-                  {outcomes.map((outcome: any) => (
-                    <MenuItem key={outcome.id} value={outcome.id}>
-                      {outcome.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-          )}
+          <Box sx={{ mt: 2 }}>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Expected Outcomes</InputLabel>
+              <Select
+                multiple
+                value={selectedOutcomes}
+                onChange={(e) => setSelectedOutcomes(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                input={<OutlinedInput label="Expected Outcomes" />}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => {
+                      const outcome = outcomes.find((o: any) => o.id === value);
+                      return (
+                        <Chip key={value} label={outcome?.name || value} size="small" />
+                      );
+                    })}
+                  </Box>
+                )}
+              >
+                {outcomes.map((outcome: any) => (
+                  <MenuItem key={outcome.id} value={outcome.id}>
+                    {outcome.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
 
           {/* Releases Section */}
           <FormControl fullWidth margin="normal">
