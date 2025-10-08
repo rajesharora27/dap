@@ -9,7 +9,6 @@ beforeAll(async () => {
     app = await createApp();
     await prisma.taskStatus.upsert({ where: { code: 'TODO' }, update: {}, create: { code: 'TODO', label: 'Todo' } });
   } catch (e) {
-    // eslint-disable-next-line no-console
     console.warn('Skipping DB tests (unavailable):', (e as any).message);
     dbAvailable = false;
   }

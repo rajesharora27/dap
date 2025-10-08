@@ -215,12 +215,49 @@ export class ExcelExportService {
         howToVideo: task.howToVideo || '',
         notes: task.notes || '',
         outcomes: task.outcomes.map((to: any) => to.outcome.name).join(', '),
-        releases: task.releases.map((tr: any) => tr.release.level).join(', ')
+        releases: task.releases.map((tr: any) => tr.release.name).join(', ')
       });
     });
 
     // Freeze header row
     sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+    sheet.getCell('D1').note = 'Validated against license levels defined in the Licenses tab.';
+    sheet.getCell('K1').note = 'Use comma-separated outcome names from the Outcomes tab (validation enforced).';
+    sheet.getCell('L1').note = 'Use comma-separated release names from the Releases tab (validation enforced).';
+
+    const maxRows = Math.max(sheet.rowCount, 500);
+
+    const buildMultiSelectFormula = (cellAddress: string, lookupRange: string) =>
+      `IF(TRIM(${cellAddress})="",TRUE,SUMPRODUCT(--ISNUMBER(MATCH(TRIM(MID(SUBSTITUTE(${cellAddress},",",REPT(" ",255)),(ROW(INDIRECT("1:"&(LEN(${cellAddress})-LEN(SUBSTITUTE(${cellAddress},",",""))+1)))-1)*255+1,255)),${lookupRange},0)))=(LEN(${cellAddress})-LEN(SUBSTITUTE(${cellAddress},",",""))+1))`;
+
+    for (let row = 2; row <= maxRows; row++) {
+      sheet.getCell(`D${row}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [`Licenses!$B$2:$B$1048576`],
+        showErrorMessage: true,
+        errorTitle: 'Invalid License Level',
+        error: 'Select a license level from the Licenses tab.'
+      };
+
+      sheet.getCell(`K${row}`).dataValidation = {
+        type: 'custom',
+        allowBlank: true,
+        formulae: [buildMultiSelectFormula(`K${row}`, "'Outcomes'!$A:$A")],
+        showErrorMessage: true,
+        errorTitle: 'Invalid Outcome',
+        error: 'Provide comma-separated outcome names from the Outcomes tab.'
+      };
+
+      sheet.getCell(`L${row}`).dataValidation = {
+        type: 'custom',
+        allowBlank: true,
+        formulae: [buildMultiSelectFormula(`L${row}`, "'Releases'!$A:$A")],
+        showErrorMessage: true,
+        errorTitle: 'Invalid Release',
+        error: 'Provide comma-separated release names from the Releases tab.'
+      };
+    }
   }
 
   /**

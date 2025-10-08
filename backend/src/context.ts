@@ -16,7 +16,6 @@ const prismaStub: any = {
 };
 
 // Use real Prisma only if not in fallback mode
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const prisma: any = fallbackActive ? prismaStub : new PrismaClient();
 export const logger = pino({ transport: { target: 'pino-pretty' } });
 
@@ -26,7 +25,6 @@ const fallbackUsers = [
 ];
 
 export interface Context {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   prisma: any;
   user?: any | null;
   sessionId?: string;

@@ -1,7 +1,19 @@
 import ExcelJS from 'exceljs';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, LicenseLevel } from '@prisma/client';
 
 const prisma = new PrismaClient();
+
+const LICENSE_LEVEL_NAME_TO_NUMBER: Record<string, number> = {
+  ESSENTIAL: 1,
+  ADVANTAGE: 2,
+  SIGNATURE: 3
+};
+
+const LICENSE_LEVEL_NUMBER_TO_NAME: Record<number, LicenseLevel> = {
+  1: 'ESSENTIAL',
+  2: 'ADVANTAGE',
+  3: 'SIGNATURE'
+};
 
 /**
  * Import modes for handling Excel imports
@@ -128,6 +140,15 @@ export class ExcelImportService {
         customAttributes: true
       }
     });
+
+    this.validateTaskReferences(
+      tasksData,
+      licensesData,
+      outcomesData,
+      releasesData,
+      existingProduct,
+      validationErrors
+    );
 
     // Validate mode
     if (mode === ImportMode.CREATE_NEW && existingProduct) {
@@ -309,6 +330,9 @@ export class ExcelImportService {
             }
           });
           releaseMap.set(release.name, created.id);
+          if (release.level !== undefined && release.level !== null) {
+            releaseMap.set(release.level.toString(), created.id);
+          }
         }
 
         for (const release of preview.changes.releases.toUpdate) {
@@ -325,6 +349,9 @@ export class ExcelImportService {
               }
             });
             releaseMap.set(release.name, existing.id);
+            if (release.level !== undefined && release.level !== null) {
+              releaseMap.set(release.level.toString(), existing.id);
+            }
           }
         }
 
@@ -332,7 +359,12 @@ export class ExcelImportService {
         const existingReleases = await tx.release.findMany({
           where: { productId }
         });
-        existingReleases.forEach(r => releaseMap.set(r.name, r.id));
+        existingReleases.forEach(r => {
+          releaseMap.set(r.name, r.id);
+          if (r.level !== undefined && r.level !== null) {
+            releaseMap.set(r.level.toString(), r.id);
+          }
+        });
 
         // Import licenses
         const licenseMap = new Map<string, string>();
@@ -372,121 +404,6 @@ export class ExcelImportService {
         });
         existingLicenses.forEach(l => licenseMap.set(l.name, l.id));
 
-        // Import tasks
-        for (const task of preview.changes.tasks.toCreate) {
-          const outcomeIds = task.outcomes
-            ? task.outcomes.map((name: string) => outcomeMap.get(name)).filter(Boolean)
-            : [];
-          const releaseIds = task.releases
-            ? task.releases.map((name: string) => releaseMap.get(name)).filter(Boolean)
-            : [];
-
-          const created = await tx.task.create({
-            data: {
-              name: task.name,
-              description: task.description || '',
-              estMinutes: task.estMinutes || 60,
-              weight: task.weight || 1,
-              sequenceNumber: task.sequenceNumber || 1,
-              licenseLevel: task.licenseLevel || 'ESSENTIAL',
-              priority: task.priority || 'Medium',
-              howToDoc: task.howToDoc || '',
-              howToVideo: task.howToVideo || '',
-              productId,
-              outcomes: {
-                create: outcomeIds.map((id: string) => ({ outcomeId: id }))
-              },
-              releases: {
-                create: releaseIds.map((id: string) => ({ releaseId: id }))
-              }
-            }
-          });
-
-          // Import telemetry attributes for this task
-          const telemetryAttrs = preview.changes.telemetryAttributes.toCreate.filter(
-            (attr: any) => attr.taskName === task.name
-          );
-          for (const attr of telemetryAttrs) {
-            await tx.telemetryAttribute.create({
-              data: {
-                name: attr.attributeName,
-                description: attr.description || '',
-                dataType: attr.dataType || 'STRING',
-                successCriteria: attr.successCriteria || {},
-                taskId: created.id
-              }
-            });
-          }
-        }
-
-        for (const task of preview.changes.tasks.toUpdate) {
-          const existing = await tx.task.findFirst({
-            where: { name: task.name, productId }
-          });
-          if (existing) {
-            const outcomeIds = task.outcomes
-              ? task.outcomes.map((name: string) => outcomeMap.get(name)).filter(Boolean)
-              : [];
-            const releaseIds = task.releases
-              ? task.releases.map((name: string) => releaseMap.get(name)).filter(Boolean)
-              : [];
-
-            await tx.task.update({
-              where: { id: existing.id },
-              data: {
-                description: task.description || '',
-                estMinutes: task.estMinutes || 60,
-                weight: task.weight || 1,
-                sequenceNumber: task.sequenceNumber || 1,
-                licenseLevel: task.licenseLevel || 'ESSENTIAL',
-                priority: task.priority || 'Medium',
-                howToDoc: task.howToDoc || '',
-                howToVideo: task.howToVideo || ''
-              }
-            });
-
-            // Update task outcomes
-            await tx.taskOutcome.deleteMany({
-              where: { taskId: existing.id }
-            });
-            for (const outcomeId of outcomeIds) {
-              await tx.taskOutcome.create({
-                data: { taskId: existing.id, outcomeId }
-              });
-            }
-
-            // Update task releases
-            await tx.taskRelease.deleteMany({
-              where: { taskId: existing.id }
-            });
-            for (const releaseId of releaseIds) {
-              await tx.taskRelease.create({
-                data: { taskId: existing.id, releaseId }
-              });
-            }
-
-            // Update telemetry attributes
-            await tx.telemetryAttribute.deleteMany({
-              where: { taskId: existing.id }
-            });
-
-            const telemetryAttrs = preview.changes.telemetryAttributes.toCreate.filter(
-              (attr: any) => attr.taskName === task.name
-            );
-            for (const attr of telemetryAttrs) {
-              await tx.telemetryAttribute.create({
-                data: {
-                  name: attr.attributeName,
-                  description: attr.description || '',
-                  dataType: attr.dataType || 'STRING',
-                  successCriteria: attr.successCriteria || {},
-                  taskId: existing.id
-                }
-              });
-            }
-          }
-        }
-
         // Import custom attributes
         for (const attr of preview.changes.customAttributes.toCreate) {
           await tx.customAttribute.create({
@@ -517,6 +434,111 @@ export class ExcelImportService {
                 displayOrder: attr.displayOrder || 0
               }
             });
+          }
+        }
+
+        // Import tasks last to ensure dependencies exist
+        for (const task of preview.changes.tasks.toCreate) {
+          const outcomeIds = this.resolveTaskEntityIds(task.outcomes, outcomeMap);
+          const releaseIds = this.resolveTaskEntityIds(task.releases, releaseMap);
+          const licenseLevel = this.normalizeTaskLicenseLevel(task.licenseLevel);
+
+          const created = await tx.task.create({
+            data: {
+              name: task.name,
+              description: task.description || '',
+              estMinutes: task.estMinutes || 60,
+              weight: task.weight || 1,
+              sequenceNumber: task.sequenceNumber || 1,
+              licenseLevel,
+              priority: task.priority || 'Medium',
+              howToDoc: task.howToDoc || '',
+              howToVideo: task.howToVideo || '',
+              productId,
+              outcomes: {
+                create: outcomeIds.map((id: string) => ({ outcomeId: id }))
+              },
+              releases: {
+                create: releaseIds.map((id: string) => ({ releaseId: id }))
+              }
+            }
+          });
+
+          const telemetryAttrs = preview.changes.telemetryAttributes.toCreate.filter(
+            (attr: any) => attr.taskName === task.name
+          );
+          for (const attr of telemetryAttrs) {
+            await tx.telemetryAttribute.create({
+              data: {
+                name: attr.attributeName,
+                description: attr.description || '',
+                dataType: attr.dataType || 'STRING',
+                successCriteria: attr.successCriteria || {},
+                taskId: created.id
+              }
+            });
+          }
+        }
+
+        for (const task of preview.changes.tasks.toUpdate) {
+          const existing = await tx.task.findFirst({
+            where: { name: task.name, productId }
+          });
+          if (existing) {
+            const outcomeIds = this.resolveTaskEntityIds(task.outcomes, outcomeMap);
+            const releaseIds = this.resolveTaskEntityIds(task.releases, releaseMap);
+            const licenseLevel = this.normalizeTaskLicenseLevel(task.licenseLevel);
+
+            await tx.task.update({
+              where: { id: existing.id },
+              data: {
+                description: task.description || '',
+                estMinutes: task.estMinutes || 60,
+                weight: task.weight || 1,
+                sequenceNumber: task.sequenceNumber || 1,
+                licenseLevel,
+                priority: task.priority || 'Medium',
+                howToDoc: task.howToDoc || '',
+                howToVideo: task.howToVideo || ''
+              }
+            });
+
+            await tx.taskOutcome.deleteMany({
+              where: { taskId: existing.id }
+            });
+            for (const outcomeId of outcomeIds) {
+              await tx.taskOutcome.create({
+                data: { taskId: existing.id, outcomeId }
+              });
+            }
+
+            await tx.taskRelease.deleteMany({
+              where: { taskId: existing.id }
+            });
+            for (const releaseId of releaseIds) {
+              await tx.taskRelease.create({
+                data: { taskId: existing.id, releaseId }
+              });
+            }
+
+            await tx.telemetryAttribute.deleteMany({
+              where: { taskId: existing.id }
+            });
+
+            const telemetryAttrs = preview.changes.telemetryAttributes.toCreate.filter(
+              (attr: any) => attr.taskName === task.name
+            );
+            for (const attr of telemetryAttrs) {
+              await tx.telemetryAttribute.create({
+                data: {
+                  name: attr.attributeName,
+                  description: attr.description || '',
+                  dataType: attr.dataType || 'STRING',
+                  successCriteria: attr.successCriteria || {},
+                  taskId: existing.id
+                }
+              });
+            }
           }
         }
 
@@ -632,7 +654,7 @@ export class ExcelImportService {
           headers[colNumber] = cell.value?.toString().trim() || '';
         });
       } else {
-        const task: any = {};
+        const task: any = { __rowNumber: rowNumber };
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           const value = cell.value?.toString().trim();
@@ -647,11 +669,14 @@ export class ExcelImportService {
           else if (header === 'Priority') task.priority = value;
           else if (header === 'How-To Doc') task.howToDoc = value;
           else if (header === 'How-To Video') task.howToVideo = value;
-          else if (header === 'Outcomes') task.outcomes = value ? value.split(',').map((s: string) => s.trim()) : [];
-          else if (header === 'Releases') task.releases = value ? value.split(',').map((s: string) => s.trim()) : [];
+          else if (header === 'Outcomes') task.outcomes = value ? value.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+          else if (header === 'Releases') task.releases = value ? value.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
         });
         
         if (task.name) {
+          if (task.licenseLevel) {
+            task.licenseLevel = this.normalizeTaskLicenseLevel(task.licenseLevel);
+          }
           tasks.push(task);
         }
       }
@@ -686,14 +711,27 @@ export class ExcelImportService {
           headers[colNumber] = cell.value?.toString().trim() || '';
         });
       } else {
-        const license: any = {};
+        const license: any = { __rowNumber: rowNumber };
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           const value = cell.value?.toString().trim();
           
           if (header === 'License Name') license.name = value;
           else if (header === 'Description') license.description = value;
-          else if (header === 'Level') license.level = parseInt(value || '1');
+          else if (header === 'Level') {
+            const normalized = this.normalizeLicenseLevelInput(value);
+            license.level = normalized.level;
+            license.levelName = normalized.label;
+            if (!normalized.isValid) {
+              errors.push({
+                sheet: 'Licenses',
+                row: rowNumber,
+                field: 'Level',
+                message: `Invalid license level "${value}" for license "${license.name || 'Unnamed'}"`,
+                severity: 'error'
+              });
+            }
+          }
           else if (header === 'Is Active') license.isActive = value?.toLowerCase() === 'true' || value === '1';
         });
         
@@ -732,7 +770,7 @@ export class ExcelImportService {
           headers[colNumber] = cell.value?.toString().trim() || '';
         });
       } else {
-        const outcome: any = {};
+  const outcome: any = { __rowNumber: rowNumber };
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           const value = cell.value?.toString().trim();
@@ -776,7 +814,7 @@ export class ExcelImportService {
           headers[colNumber] = cell.value?.toString().trim() || '';
         });
       } else {
-        const release: any = {};
+  const release: any = { __rowNumber: rowNumber };
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           const value = cell.value?.toString().trim();
@@ -897,6 +935,252 @@ export class ExcelImportService {
     const toDelete = existing.filter(item => !incomingMap.has(item[keyField]));
 
     return { toCreate, toUpdate, toDelete };
+  }
+
+  private normalizeLicenseLevelInput(value: any): { level: number | null; label: string | null; isValid: boolean } {
+    if (value === undefined || value === null || value === '') {
+      return { level: 1, label: 'ESSENTIAL', isValid: true };
+    }
+
+    if (typeof value === 'number' && !Number.isNaN(value)) {
+      const levelNumber = value;
+      const label = LICENSE_LEVEL_NUMBER_TO_NAME[levelNumber] || `LEVEL_${levelNumber}`;
+      return { level: levelNumber, label, isValid: Boolean(LICENSE_LEVEL_NUMBER_TO_NAME[levelNumber]) };
+    }
+
+    const text = value.toString().trim();
+    if (text === '') {
+      return { level: 1, label: 'ESSENTIAL', isValid: true };
+    }
+
+    const numericValue = Number(text);
+    if (!Number.isNaN(numericValue)) {
+      const label = LICENSE_LEVEL_NUMBER_TO_NAME[numericValue] || `LEVEL_${numericValue}`;
+      return { level: numericValue, label, isValid: Boolean(LICENSE_LEVEL_NUMBER_TO_NAME[numericValue]) };
+    }
+
+    const upper = text.toUpperCase();
+    const mapped = LICENSE_LEVEL_NAME_TO_NUMBER[upper];
+    if (mapped !== undefined) {
+      return { level: mapped, label: upper, isValid: true };
+    }
+
+    return { level: null, label: upper || null, isValid: false };
+  }
+
+  private normalizeTaskLicenseLevel(value: any): LicenseLevel {
+    if (value === undefined || value === null || value === '') {
+      return 'ESSENTIAL';
+    }
+
+    if (typeof value === 'number' && !Number.isNaN(value)) {
+      return LICENSE_LEVEL_NUMBER_TO_NAME[value] ?? 'ESSENTIAL';
+    }
+
+    const text = value.toString().trim();
+    if (text === '') {
+      return 'ESSENTIAL';
+    }
+
+    const numericValue = Number(text);
+    if (!Number.isNaN(numericValue) && LICENSE_LEVEL_NUMBER_TO_NAME[numericValue]) {
+      return LICENSE_LEVEL_NUMBER_TO_NAME[numericValue];
+    }
+
+    const upper = text.toUpperCase();
+    if (LICENSE_LEVEL_NAME_TO_NUMBER[upper] !== undefined) {
+      return upper as LicenseLevel;
+    }
+
+    return 'ESSENTIAL';
+  }
+
+  private resolveTaskEntityIds(values: string[] | undefined, entityMap: Map<string, string>): string[] {
+    if (!values || values.length === 0) {
+      return [];
+    }
+
+    const ids = new Set<string>();
+    for (const raw of values) {
+      if (!raw) continue;
+      const trimmed = raw.trim();
+      const numeric = Number(trimmed);
+
+      const candidates = [trimmed];
+      if (!Number.isNaN(numeric)) {
+        candidates.push(numeric.toString());
+      }
+
+      for (const candidate of candidates) {
+        const id = entityMap.get(candidate);
+        if (id) {
+          ids.add(id);
+          break;
+        }
+      }
+    }
+
+    return Array.from(ids);
+  }
+
+  private extractLicenseLevelLabel(license: any): LicenseLevel | null {
+    if (!license) return null;
+    if (license.levelName) {
+      return this.normalizeTaskLicenseLevel(license.levelName);
+    }
+    if (license.level !== undefined && license.level !== null) {
+      return this.normalizeTaskLicenseLevel(license.level);
+    }
+    return null;
+  }
+
+  private validateTaskReferences(
+    tasks: any[],
+    licensesData: any[],
+    outcomesData: any[],
+    releasesData: any[],
+    existingProduct: any,
+    errors: ValidationError[]
+  ) {
+  const licenseNames = new Set<string>();
+  const licenseLevels = new Set<LicenseLevel>();
+
+    const registerLicense = (license: any) => {
+      if (!license) return;
+      const name = license.name?.toString().trim();
+      if (name) {
+        licenseNames.add(name);
+      }
+      const levelLabel = this.extractLicenseLevelLabel(license);
+      if (levelLabel) {
+        licenseLevels.add(levelLabel);
+      }
+    };
+
+    licensesData.forEach(registerLicense);
+    if (existingProduct?.licenses) {
+      existingProduct.licenses.forEach((license: any) => registerLicense({
+        name: license.name,
+        level: license.level
+      }));
+    }
+
+    const outcomeNames = new Set<string>();
+    outcomesData.forEach((outcome: any) => {
+      const name = outcome?.name?.toString().trim();
+      if (name) {
+        outcomeNames.add(name);
+      }
+    });
+    if (existingProduct?.outcomes) {
+      existingProduct.outcomes.forEach((outcome: any) => {
+        const name = outcome?.name?.toString().trim();
+        if (name) {
+          outcomeNames.add(name);
+        }
+      });
+    }
+
+    const releaseNames = new Set<string>();
+    const releaseLevels = new Set<string>();
+    const registerRelease = (release: any) => {
+      if (!release) return;
+      const name = release.name?.toString().trim();
+      if (name) {
+        releaseNames.add(name);
+      }
+      const levelValue = release.level;
+      if (levelValue !== undefined && levelValue !== null && levelValue !== '') {
+        const numeric = Number(levelValue);
+        if (!Number.isNaN(numeric)) {
+          releaseLevels.add(numeric.toString());
+        } else if (typeof levelValue === 'string') {
+          const trimmed = levelValue.trim();
+          if (trimmed) {
+            releaseLevels.add(trimmed);
+          }
+        }
+      }
+    };
+
+    releasesData.forEach(registerRelease);
+    if (existingProduct?.releases) {
+      existingProduct.releases.forEach((release: any) => registerRelease({
+        name: release.name,
+        level: release.level
+      }));
+    }
+
+    const allowedLicenseDisplay = Array.from(licenseLevels).sort().join(', ') || 'No licenses defined';
+    const allowedOutcomeDisplay = Array.from(outcomeNames).sort().join(', ') || 'No outcomes defined';
+    const allowedReleaseTokens = new Set<string>([...releaseNames, ...releaseLevels]);
+    const allowedReleaseDisplay = Array.from(new Set([...releaseNames, ...releaseLevels])).sort().join(', ') || 'No releases defined';
+
+    for (const task of tasks) {
+      const row = task.__rowNumber;
+      const taskName = task.name || 'Unnamed Task';
+
+      if (task.licenseLevel) {
+        const normalizedLicense = this.normalizeTaskLicenseLevel(task.licenseLevel);
+        if (licenseLevels.size > 0 && !licenseLevels.has(normalizedLicense)) {
+          errors.push({
+            sheet: 'Tasks',
+            row,
+            field: 'License Level',
+            message: `Task "${taskName}" references license level "${task.licenseLevel}" that is not defined. Allowed values: ${allowedLicenseDisplay}.`,
+            severity: 'error'
+          });
+        } else {
+          task.licenseLevel = normalizedLicense;
+        }
+      }
+
+      if (task.licenseName) {
+        const name = task.licenseName.trim();
+        if (licenseNames.size > 0 && !licenseNames.has(name)) {
+          errors.push({
+            sheet: 'Tasks',
+            row,
+            field: 'License Name',
+            message: `Task "${taskName}" references license "${task.licenseName}" that is not defined for this product.`,
+            severity: 'error'
+          });
+        }
+      }
+
+      if (task.outcomes && task.outcomes.length > 0) {
+        for (const outcomeName of task.outcomes) {
+          if (!outcomeName) continue;
+          if (outcomeNames.size > 0 && !outcomeNames.has(outcomeName)) {
+            errors.push({
+              sheet: 'Tasks',
+              row,
+              field: 'Outcomes',
+              message: `Task "${taskName}" references outcome "${outcomeName}" that is not defined. Allowed values: ${allowedOutcomeDisplay}.`,
+              severity: 'error'
+            });
+          }
+        }
+      }
+
+      if (task.releases && task.releases.length > 0) {
+        for (const releaseName of task.releases) {
+          if (!releaseName) continue;
+          const trimmed = releaseName.trim();
+          const numeric = Number(trimmed);
+          const normalizedToken = Number.isNaN(numeric) ? trimmed : numeric.toString();
+          if (allowedReleaseTokens.size > 0 && !allowedReleaseTokens.has(trimmed) && !allowedReleaseTokens.has(normalizedToken)) {
+            errors.push({
+              sheet: 'Tasks',
+              row,
+              field: 'Releases',
+              message: `Task "${taskName}" references release "${releaseName}" that is not defined. Allowed values: ${allowedReleaseDisplay}.`,
+              severity: 'error'
+            });
+          }
+        }
+      }
+    }
   }
 
   /**
