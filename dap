@@ -522,7 +522,8 @@ clean_restart() {
 
 # Add sample data without affecting user-created data
 add_sample_data() {
-    log_info "Adding sample data to existing database..."
+    log_header "ADDING COMPREHENSIVE SAMPLE DATA"
+    log_info "This will add sample data WITHOUT removing existing user data"
     
     # Check if database container is running
     if [ -z "$DB_CONTAINER" ]; then
@@ -535,21 +536,64 @@ add_sample_data() {
         exit 1
     fi
     
-    # Execute the enhanced sample data script
-    log_info "📝 Executing enhanced sample data creation..."
-    if docker exec -i "$DB_CONTAINER" psql -U postgres -d dap < "$PROJECT_DIR/create-enhanced-sample-data.sql"; then
-        log_success "✅ Sample data added successfully!"
-        log_info "Sample data includes:"
-        log_info "  • 5 comprehensive products (ecommerce, fintech, healthcare, logistics, edtech)"
-        log_info "  • Associated licenses, outcomes, and releases"
-        log_info "  • Tasks with howToDoc and howToVideo fields"
-        log_info "  • Complete data relationships and constraints"
-    else
-        log_error "❌ Failed to add sample data"
+    # Check if backend directory exists
+    if [ ! -d "$BACKEND_DIR" ]; then
+        log_error "Backend directory not found at $BACKEND_DIR"
         exit 1
     fi
     
-    log_info "🔄 Refresh your browser to see the new sample data!"
+    # Navigate to backend directory
+    cd "$BACKEND_DIR"
+    
+    # Check if node_modules exists
+    if [ ! -d "node_modules" ]; then
+        log_info "Installing backend dependencies..."
+        npm install
+    fi
+    
+    # Run the seed script (non-destructive)
+    log_info "📝 Adding comprehensive sample data via TypeScript seed script..."
+    log_info "   This uses upsert logic to preserve existing data"
+    
+    if npm run seed 2>&1 | tee /tmp/dap_seed.log; then
+        echo ""
+        log_success "✅ Sample data added successfully!"
+        
+        # Count what was created
+        local products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Product\";" 2>/dev/null | tr -d ' ')
+        local tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\";" 2>/dev/null | tr -d ' ')
+        local licenses=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"License\";" 2>/dev/null | tr -d ' ')
+        local outcomes=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Outcome\";" 2>/dev/null | tr -d ' ')
+        
+        echo ""
+        log_info "📊 Current database contains:"
+        log_info "  📦 $products Products"
+        log_info "  📋 $tasks Tasks"
+        log_info "  🏷️ $licenses Licenses"
+        log_info "  🎯 $outcomes Outcomes"
+        echo ""
+        log_info "Sample products added (if not already present):"
+        log_info "  • Retail Management App (15 tasks)"
+        log_info "  • Financial Services App (14 tasks)"
+        log_info "  • IT Operations App (expanding to 12+ tasks)"
+        log_info "  • AI-Powered Analytics App (expanding to 12+ tasks)"
+        log_info "  • Network Management App (expanding to 12+ tasks)"
+        echo ""
+        log_info "Each product includes:"
+        log_info "  ✓ 3 license tiers (Essential, Advantage, Signature)"
+        log_info "  ✓ 5 outcomes with success metrics"
+        log_info "  ✓ 5 progressive releases"
+        log_info "  ✓ Comprehensive tasks with multiple documentation links"
+        log_info "  ✓ All fields populated (howToDoc, howToVideo arrays)"
+    else
+        echo ""
+        log_error "❌ Failed to add sample data"
+        log_info "Check /tmp/dap_seed.log for error details"
+        exit 1
+    fi
+    
+    echo ""
+    log_info "🔄 Refresh your browser (Ctrl+Shift+R) to see the sample data!"
 }
 
 # Remove sample data while preserving user-created data
@@ -576,12 +620,27 @@ reset_sample_data() {
     # Execute the sample data removal script
     log_info "🗑️ Removing sample data (preserving user data)..."
     if docker exec -i "$DB_CONTAINER" psql -U postgres -d dap < "$PROJECT_DIR/remove-sample-data.sql"; then
+        echo ""
         log_success "✅ Sample data removed successfully!"
-        log_info "Removed data:"
-        log_info "  • Sample products (prod-ecommerce-advanced, prod-fintech-suite, etc.)"
-        log_info "  • Associated tasks, licenses, outcomes, and releases"
-        log_info "  • Sample customers and relationships"
-        log_info "  • User-created data has been preserved"
+        
+        # Show remaining data
+        local products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Product\" WHERE \"deletedAt\" IS NULL;" 2>/dev/null | tr -d ' ')
+        local tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\" WHERE \"deletedAt\" IS NULL;" 2>/dev/null | tr -d ' ')
+        
+        echo ""
+        log_info "📊 Removed sample products:"
+        log_info "  • retail-app-001 (Retail Management App)"
+        log_info "  • financial-app-001 (Financial Services App)"
+        log_info "  • it-app-001 (IT Operations App)"
+        log_info "  • ai-app-001 (AI-Powered Analytics App)"
+        log_info "  • networking-app-001 (Network Management App)"
+        log_info "  • test-product-1 (Test E-Commerce Platform)"
+        echo ""
+        log_info "📊 Remaining database contains:"
+        log_info "  📦 $products Products (user-created)"
+        log_info "  📋 $tasks Tasks (user-created)"
+        echo ""
+        log_info "✅ User-created data has been preserved"
     else
         log_error "❌ Failed to remove sample data"
         exit 1
