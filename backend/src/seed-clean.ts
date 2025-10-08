@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -386,7 +386,7 @@ async function main() {
               name: taskInfo.name,
               productId: product.id,
               estMinutes: 120, // Minimal required field
-              weight: 33, // Minimal required field
+              weight: new Prisma.Decimal(33), // Minimal required field
               licenseLevel: taskInfo.licenseLevel,
               howToDoc: taskInfo.howToDoc || [],
               howToVideo: taskInfo.howToVideo || [],

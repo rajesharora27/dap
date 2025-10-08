@@ -1,4 +1,5 @@
 import { prisma } from './context';
+import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 async function main() {
@@ -865,7 +866,7 @@ async function main() {
               description: taskInfo.description,
               productId: product.id,
               estMinutes: taskInfo.estMinutes,
-              weight: taskInfo.weight,
+              weight: new Prisma.Decimal(taskInfo.weight),
               sequenceNumber: sequenceNumber,
               priority: taskInfo.priority,
               notes: taskInfo.notes,
@@ -922,12 +923,27 @@ async function main() {
       }
     }
 
-    // Create comprehensive telemetry sample data
+    // Create comprehensive telemetry sample data for ALL sample product tasks
     console.log('[seed] Creating telemetry sample data...');
     
+    // Get all tasks for sample products only (not user-created tasks)
+    const sampleProductIds = [
+      'retail-app-001',
+      'financial-app-001', 
+      'it-app-001',
+      'ai-app-001',
+      'networking-app-001'
+    ];
+    
     const allTasks = await prisma.task.findMany({ 
-      where: { deletedAt: null },
-      take: 10 // Limit to first 10 tasks for sample data
+      where: { 
+        deletedAt: null,
+        productId: { in: sampleProductIds }
+      },
+      orderBy: [
+        { productId: 'asc' },
+        { sequenceNumber: 'asc' }
+      ]
     });
 
     for (const task of allTasks) {
@@ -1131,7 +1147,13 @@ async function main() {
       }
     }
     
-    console.log('[seed] Completed telemetry sample data creation');
+    console.log(`[seed] Completed telemetry sample data creation for ${allTasks.length} tasks`);
+    console.log('[seed] Each task has 5 telemetry attributes:');
+    console.log('[seed]   1. Deployment Status (BOOLEAN) - with 3 historical values');
+    console.log('[seed]   2. Performance Score (NUMBER) - with 3 historical values');
+    console.log('[seed]   3. Code Quality (STRING) - with 3 historical values');
+    console.log('[seed]   4. Last Updated (TIMESTAMP) - with 3 historical values');
+    console.log('[seed]   5. Composite Health Check (BOOLEAN) - with 3 historical values');
   } else {
     console.log('[seed] Skipping sample data');
   }
