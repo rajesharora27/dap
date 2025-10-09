@@ -4,6 +4,26 @@
     <meta charset="UTF-8" />
     <title>DAP</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      /* Always show spinner controls on number inputs */
+      input[type="number"].weight-input-spinner::-webkit-inner-spin-button,
+      input[type="number"].weight-input-spinner::-webkit-outer-spin-button {
+        opacity: 1;
+        margin-left: 4px;
+      }
+      
+      /* For Firefox */
+      input[type="number"].weight-input-spinner {
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
+      
+      input[type="number"].weight-input-spinner:hover,
+      input[type="number"].weight-input-spinner:focus {
+        -moz-appearance: number-input;
+        appearance: auto;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
