@@ -142,7 +142,7 @@ export const TaskDialog: React.FC<Props> = ({
       setPriority(task.priority || 'Medium');
       setHowToDoc(task.howToDoc || []);
       setHowToVideo(task.howToVideo || []);
-      setSelectedLicense(task.licenseId || '');
+      setSelectedLicense(task.license?.id || task.licenseId || '');
       setSelectedOutcomes(task.outcomes?.map(o => o.id) || []);
       setSelectedReleases(task.releases?.map(r => r.id) || task.releaseIds || []);
       setTelemetryAttributes(task.telemetryAttributes || []);
@@ -324,6 +324,17 @@ export const TaskDialog: React.FC<Props> = ({
                   value={selectedLicense}
                   onChange={(e) => setSelectedLicense(e.target.value)}
                   label="Required License"
+                  renderValue={(selected) => {
+                    if (!selected) return <em>No license required</em>;
+                    const license = availableLicenses.find(l => l.id === selected);
+                    return (
+                      <Chip 
+                        label={license ? `${license.name} (Level ${license.level})` : 'Unknown'}
+                        color="primary"
+                        size="small"
+                      />
+                    );
+                  }}
                 >
                   <MenuItem value="">
                     <em>No license required</em>

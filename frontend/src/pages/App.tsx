@@ -383,7 +383,7 @@ const DELETE_TELEMETRY_ATTRIBUTE = gql`
 `;
 
 // Sortable Task Item Component
-function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick }: any) {
+function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChange }: any) {
   const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
   const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
   
@@ -449,14 +449,58 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick }: any) {
               </Typography>
             </Box>
             
-            {/* Weight - fixed width */}
-            <Box sx={{ minWidth: '80px', flexShrink: 0 }}>
-              <Chip
-                size="small"
-                label={`${task.weight}%`}
-                color="primary"
-                variant="outlined"
-                sx={{ fontWeight: 'bold', width: '80px' }}
+            {/* Weight - fixed width, editable */}
+            <Box sx={{ minWidth: '105px', flexShrink: 0 }}>
+              <input
+                key={`weight-${task.id}-${task.weight}`}
+                type="number"
+                defaultValue={task.weight || 0}
+                onBlur={(e) => {
+                  e.stopPropagation();
+                  const newWeight = parseFloat(e.target.value) || 0;
+                  if (newWeight >= 0 && newWeight <= 100) {
+                    // Only update if weight changed
+                    if (Math.abs(newWeight - task.weight) > 0.001) {
+                      if (onWeightChange) {
+                        onWeightChange(task.id, task.name, newWeight);
+                      }
+                    }
+                  } else {
+                    // Reset to original value if invalid
+                    e.target.value = task.weight.toString();
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.currentTarget.blur(); // Trigger save on Enter
+                  }
+                  if (e.key === 'Escape') {
+                    e.currentTarget.value = task.weight.toString(); // Reset on Escape
+                    e.currentTarget.blur();
+                  }
+                }}
+                onClick={(e) => e.stopPropagation()}
+                onFocus={(e) => {
+                  e.stopPropagation();
+                  e.target.select();
+                }}
+                step="0.01"
+                min="0"
+                max="100"
+                className="weight-input-spinner"
+                style={{
+                  width: '85px',
+                  padding: '4px 8px',
+                  border: '1px solid #1976d2',
+                  borderRadius: '16px',
+                  textAlign: 'center',
+                  fontSize: '0.8125rem',
+                  fontWeight: 'bold',
+                  color: '#1976d2',
+                  backgroundColor: 'transparent',
+                  cursor: 'text'
+                }}
+                title="Click to edit weight (0-100), press Enter to save"
               />
             </Box>
             
@@ -1791,6 +1835,28 @@ export function App() {
     // Use the same edit dialog that has telemetry support
     setEditingTask(task);
     setEditTaskDialog(true);
+  };
+
+  const handleTaskWeightChange = async (taskId: string, taskName: string, newWeight: number) => {
+    try {
+      await client.mutate({
+        mutation: UPDATE_TASK,
+        variables: {
+          id: taskId,
+          input: {
+            name: taskName,
+            weight: newWeight
+          }
+        },
+        refetchQueries: ['TasksForProduct'],
+        awaitRefetchQueries: true
+      });
+      console.log(`✅ Weight updated for task ${taskName}: → ${newWeight}`);
+      await refetchTasks();
+    } catch (error: any) {
+      console.error('❌ Failed to update weight:', error);
+      alert('Failed to update task weight: ' + (error?.message || 'Unknown error'));
+    }
   };
 
   const handleTaskDetailSave = async () => {
@@ -5025,28 +5091,77 @@ export function App() {
 
                     {/* Tasks List */}
                     {!tasksLoading && !tasksError && tasks.length > 0 ? (
-                      <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleDragEnd}
-                      >
-                        <SortableContext
-                          items={tasks.filter((task: any) => !task.deletedAt).map((task: any) => task.id)}
-                          strategy={verticalListSortingStrategy}
+                      <>
+                        {/* Column Headers - Using ListItemButton for perfect alignment */}
+                        <ListItemButton
+                          sx={{
+                            border: '1px solid #e0e0e0',
+                            borderRadius: 1,
+                            backgroundColor: '#f5f5f5',
+                            mb: 1,
+                            cursor: 'default',
+                            '&:hover': {
+                              backgroundColor: '#f5f5f5'
+                            }
+                          }}
+                          disableRipple
                         >
-                          <Box>
-                            {tasks.filter((task: any) => !task.deletedAt).map((task: any, index: number) => (
-                              <SortableTaskItem
-                                key={task.id}
-                                task={task}
-                                onEdit={handleEditTask}
-                                onDelete={handleDeleteTask}
-                                onDoubleClick={handleTaskDoubleClick}
-                              />
-                            ))}
+                          <ListItemIcon sx={{ minWidth: '32px' }}>
+                            {/* Empty space for drag handle */}
+                          </ListItemIcon>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
+                              {/* Sequence number */}
+                              <Box sx={{ minWidth: '56px', flexShrink: 0 }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.secondary">#</Typography>
+                              </Box>
+                              
+                              {/* Task name */}
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.secondary">Task Name</Typography>
+                              </Box>
+                              
+                              {/* Weight */}
+                              <Box sx={{ minWidth: '105px', flexShrink: 0 }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.secondary">Weight (%)</Typography>
+                              </Box>
+                              
+                              {/* How-to links - matching task structure with gap: 1 between internal boxes */}
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '120px', flexShrink: 0, justifyContent: 'flex-end' }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.secondary">How-To</Typography>
+                              </Box>
+                            </Box>
                           </Box>
-                        </SortableContext>
-                      </DndContext>
+                          {/* Spacer for Edit and Delete buttons - matching task row structure */}
+                          <Box sx={{ display: 'flex', gap: 1, width: '80px', justifyContent: 'flex-end' }}>
+                            {/* Empty space to align with Edit/Delete buttons */}
+                          </Box>
+                        </ListItemButton>
+
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <SortableContext
+                            items={tasks.filter((task: any) => !task.deletedAt).map((task: any) => task.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <Box>
+                              {tasks.filter((task: any) => !task.deletedAt).map((task: any, index: number) => (
+                                <SortableTaskItem
+                                  key={task.id}
+                                  task={task}
+                                  onEdit={handleEditTask}
+                                  onDelete={handleDeleteTask}
+                                  onDoubleClick={handleTaskDoubleClick}
+                                  onWeightChange={handleTaskWeightChange}
+                                />
+                              ))}
+                            </Box>
+                          </SortableContext>
+                        </DndContext>
+                      </>
                     ) : !tasksLoading && !tasksError ? (
                       <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
                         No tasks found for this product. Click "Add Task" to create one.

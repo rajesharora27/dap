@@ -292,6 +292,56 @@ export const TasksPanel: React.FC<Props> = ({ productId, solutionId, onSelect })
       )}
     </Stack>
 
+    {/* Column Headers - Using ListItemButton for perfect alignment */}
+    {tasks.length > 0 && (
+      <ListItemButton
+        sx={{
+          border: '1px solid #e0e0e0',
+          borderRadius: 1,
+          backgroundColor: '#f5f5f5',
+          mb: 1,
+          cursor: 'default',
+          '&:hover': {
+            backgroundColor: '#f5f5f5'
+          }
+        }}
+        disableRipple
+      >
+        <Box sx={{ minWidth: '32px', mr: 1 }}>
+          {/* Empty space for drag handle */}
+        </Box>
+        
+        <ListItemText
+          primary={
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {/* Sequence number */}
+              <Box sx={{ minWidth: '56px', flexShrink: 0 }}>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary">#</Typography>
+              </Box>
+              
+              {/* Task name */}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary">Task Name</Typography>
+              </Box>
+              
+              {/* Weight */}
+              <Box sx={{ minWidth: '105px', flexShrink: 0 }}>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary">Weight (%)</Typography>
+              </Box>
+              
+              {/* How-to links */}
+              <Box sx={{ minWidth: '120px', flexShrink: 0, display: 'flex', justifyContent: 'flex-end' }}>
+                <Typography variant="caption" fontWeight="bold" color="text.secondary">How-To</Typography>
+              </Box>
+              
+              {/* Edit button space */}
+              <Box sx={{ minWidth: '40px' }}></Box>
+            </Box>
+          }
+        />
+      </ListItemButton>
+    )}
+
     <List dense>
       {tasks.map((task: any) => (
         <ListItemButton
@@ -380,14 +430,68 @@ export const TasksPanel: React.FC<Props> = ({ productId, solutionId, onSelect })
                   </Typography>
                 </Box>
                 
-                {/* Weight - fixed width */}
-                <Box sx={{ minWidth: '80px', flexShrink: 0 }}>
-                  <Chip
-                    size="small"
-                    label={`${Number(task.weight).toFixed(2)}%`}
-                    color="primary"
-                    variant="outlined"
-                    sx={{ fontWeight: 'bold', width: '80px' }}
+                {/* Weight - fixed width, editable */}
+                <Box sx={{ minWidth: '105px', flexShrink: 0 }}>
+                  <input
+                    key={`weight-${task.id}-${task.weight}`}
+                    type="number"
+                    defaultValue={task.weight || 0}
+                    onBlur={(e) => {
+                      e.stopPropagation();
+                      const newWeight = parseFloat(e.target.value) || 0;
+                      if (newWeight >= 0 && newWeight <= 100) {
+                        // Only update if weight changed
+                        if (Math.abs(newWeight - task.weight) > 0.001) {
+                          updateTask({
+                            variables: {
+                              id: task.id,
+                              input: {
+                                name: task.name,
+                                weight: newWeight
+                              }
+                            }
+                          }).then(() => {
+                            console.log(`✅ Weight updated for task ${task.name}: ${task.weight} → ${newWeight}`);
+                          }).catch((err) => {
+                            console.error('❌ Failed to update weight:', err);
+                          });
+                        }
+                      } else {
+                        // Reset to original value if invalid
+                        e.target.value = task.weight.toString();
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.currentTarget.blur(); // Trigger save on Enter
+                      }
+                      if (e.key === 'Escape') {
+                        e.currentTarget.value = task.weight.toString(); // Reset on Escape
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    onFocus={(e) => {
+                      e.stopPropagation();
+                      e.target.select();
+                    }}
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    className="weight-input-spinner"
+                    style={{
+                      width: '85px',
+                      padding: '4px 8px',
+                      border: '1px solid #1976d2',
+                      borderRadius: '16px',
+                      textAlign: 'center',
+                      fontSize: '0.8125rem',
+                      fontWeight: 'bold',
+                      color: '#1976d2',
+                      backgroundColor: 'transparent',
+                      cursor: 'text'
+                    }}
+                    title="Click to edit weight (0-100), press Enter to save"
                   />
                 </Box>
                 
