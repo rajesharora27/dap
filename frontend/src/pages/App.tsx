@@ -566,25 +566,17 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
           <IconButton size="small" onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
             <Edit fontSize="small" />
           </IconButton>
-          <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}>
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} color="error">
             <Delete fontSize="small" />
           </IconButton>
         </Box>
       </ListItemButton>
 
-      {/* Documentation Links Menu */}
+      {/* Menu for multiple documentation links */}
       <Menu
         anchorEl={docMenuAnchor?.el}
         open={Boolean(docMenuAnchor)}
         onClose={() => setDocMenuAnchor(null)}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'left',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'left',
-        }}
       >
         <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
           Documentation Links:
@@ -612,19 +604,11 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
         </MenuItem>
       </Menu>
 
-      {/* Video Links Menu */}
+      {/* Menu for multiple video links */}
       <Menu
         anchorEl={videoMenuAnchor?.el}
         open={Boolean(videoMenuAnchor)}
         onClose={() => setVideoMenuAnchor(null)}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'left',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'left',
-        }}
       >
         <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
           Video Links:
@@ -4402,117 +4386,121 @@ export function App() {
             {/* Products Section */}
             {selectedSection === 'products' && (
               <Box>
-                {/* Header */}
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
-                    Products
-                  </Typography>
-                </Box>
-
-                {/* Product Selection for all sub-sections */}
-                <Paper sx={{ p: 3, mb: 2 }}>
-                  {/* Loading States */}
-                  {productsLoading && (
-                    <Box sx={{ mb: 2 }}>
-                      <LinearProgress />
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        Loading products...
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {/* Error States */}
-                  {productsError && (
-                    <Typography variant="body2" color="error" sx={{ mb: 2 }}>
-                      Error loading products: {productsError.message}
+                {/* Header - Only show on 'main' submenu */}
+                {selectedProductSubSection === 'main' && (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
+                      Products
                     </Typography>
-                  )}
-
-                  {/* Product Selector and Actions Row */}
-                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                    {/* Products Dropdown */}
-                    <FormControl sx={{ minWidth: 300, flex: '1 1 300px' }}>
-                      <InputLabel>Select Product</InputLabel>
-                      <Select
-                        value={selectedProduct}
-                        onChange={(e) => {
-                          setSelectedProduct(e.target.value);
-                          setSelectedProductSubSection('main');
-                        }}
-                        label="Select Product"
-                      >
-                        {products.map((product: any) => (
-                          <MenuItem key={product.id} value={product.id}>
-                            {product.name}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-
-                    {/* Product Action Buttons */}
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <Button 
-                        variant="contained" 
-                        startIcon={<Add />}
-                        onClick={() => setAddProductDialog(true)}
-                        size="medium"
-                      >
-                        Add
-                      </Button>
-                      {selectedProduct && (
-                        <>
-                          <Button 
-                            variant="contained" 
-                            startIcon={<Edit />}
-                            onClick={() => {
-                              const product = products.find((p: any) => p.id === selectedProduct);
-                              if (product) {
-                                setEditingProduct({ ...product });
-                                setEditProductDialog(true);
-                              }
-                            }}
-                            size="medium"
-                          >
-                            Edit
-                          </Button>
-                          <Button 
-                            variant="contained" 
-                            color="success"
-                            startIcon={<FileDownload />}
-                            onClick={() => handleExportAllProductData()}
-                            size="medium"
-                          >
-                            Export
-                          </Button>
-                          <Button 
-                            variant="contained" 
-                            color="primary"
-                            startIcon={<FileUpload />}
-                            onClick={() => handleImportAllProductData()}
-                            size="medium"
-                          >
-                            Import
-                          </Button>
-                          <Button 
-                            variant="outlined" 
-                            color="error"
-                            startIcon={<Delete />}
-                            onClick={() => {
-                              const product = products.find((p: any) => p.id === selectedProduct);
-                              if (product && window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
-                                handleDeleteProduct(product.id);
-                              }
-                            }}
-                            size="medium"
-                          >
-                            Delete
-                          </Button>
-                        </>
-                      )}
-                    </Box>
                   </Box>
+                )}
 
-                </Paper>
+                {/* Product Selection - Only show on 'main' submenu */}
+                {selectedProductSubSection === 'main' && (
+                  <Paper sx={{ p: 3, mb: 2 }}>
+                    {/* Loading States */}
+                    {productsLoading && (
+                      <Box sx={{ mb: 2 }}>
+                        <LinearProgress />
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          Loading products...
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {/* Error States */}
+                    {productsError && (
+                      <Typography variant="body2" color="error" sx={{ mb: 2 }}>
+                        Error loading products: {productsError.message}
+                      </Typography>
+                    )}
+
+                    {/* Product Selector and Actions Row */}
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      {/* Products Dropdown */}
+                      <FormControl sx={{ minWidth: 300, flex: '1 1 300px' }}>
+                        <InputLabel>Select Product</InputLabel>
+                        <Select
+                          value={selectedProduct}
+                          onChange={(e) => {
+                            setSelectedProduct(e.target.value);
+                            setSelectedProductSubSection('main');
+                          }}
+                          label="Select Product"
+                        >
+                          {products.map((product: any) => (
+                            <MenuItem key={product.id} value={product.id}>
+                              {product.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      {/* Product Action Buttons */}
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <Button 
+                          variant="contained" 
+                          startIcon={<Add />}
+                          onClick={() => setAddProductDialog(true)}
+                          size="medium"
+                        >
+                          Add
+                        </Button>
+                        {selectedProduct && (
+                          <>
+                            <Button 
+                              variant="contained" 
+                              startIcon={<Edit />}
+                              onClick={() => {
+                                const product = products.find((p: any) => p.id === selectedProduct);
+                                if (product) {
+                                  setEditingProduct({ ...product });
+                                  setEditProductDialog(true);
+                                }
+                              }}
+                              size="medium"
+                            >
+                              Edit
+                            </Button>
+                            <Button 
+                              variant="contained" 
+                              color="success"
+                              startIcon={<FileDownload />}
+                              onClick={() => handleExportAllProductData()}
+                              size="medium"
+                            >
+                              Export
+                            </Button>
+                            <Button 
+                              variant="contained" 
+                              color="primary"
+                              startIcon={<FileUpload />}
+                              onClick={() => handleImportAllProductData()}
+                              size="medium"
+                            >
+                              Import
+                            </Button>
+                            <Button 
+                              variant="outlined" 
+                              color="error"
+                              startIcon={<Delete />}
+                              onClick={() => {
+                                const product = products.find((p: any) => p.id === selectedProduct);
+                                if (product && window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
+                                  handleDeleteProduct(product.id);
+                                }
+                              }}
+                              size="medium"
+                            >
+                              Delete
+                            </Button>
+                          </>
+                        )}
+                      </Box>
+                    </Box>
+
+                  </Paper>
+                )}
 
                 {/* Main Sub-section - Summary Tiles */}
                 {selectedProductSubSection === 'main' && selectedProduct && (
