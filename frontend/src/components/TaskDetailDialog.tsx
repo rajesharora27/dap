@@ -15,7 +15,9 @@ import {
   Typography,
   Chip,
   OutlinedInput,
-  Slider
+  Slider,
+  Checkbox,
+  ListItemText
 } from '@mui/material';
 import { gql, useQuery, useMutation } from '@apollo/client';
 
@@ -344,17 +346,52 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
                     {selected.map((value) => {
                       const outcome = outcomes.find((o: any) => o.id === value);
                       return (
-                        <Chip key={value} label={outcome?.name || value} size="small" />
+                        <Chip 
+                          key={value} 
+                          label={outcome?.name || value} 
+                          size="small"
+                          color="success"
+                          sx={{ fontWeight: 600 }}
+                        />
                       );
                     })}
                   </Box>
                 )}
               >
-                {outcomes.map((outcome: any) => (
-                  <MenuItem key={outcome.id} value={outcome.id}>
-                    {outcome.name}
-                  </MenuItem>
-                ))}
+                {outcomes.map((outcome: any) => {
+                  const isSelected = selectedOutcomes.includes(outcome.id);
+                  return (
+                    <MenuItem 
+                      key={outcome.id} 
+                      value={outcome.id}
+                      sx={{
+                        backgroundColor: isSelected ? '#e8f5e9' : 'transparent',
+                        '&:hover': {
+                          backgroundColor: isSelected ? '#c8e6c9' : '#f5f5f5'
+                        }
+                      }}
+                    >
+                      <Checkbox 
+                        checked={isSelected}
+                        sx={{
+                          color: isSelected ? 'success.main' : 'default',
+                          '&.Mui-checked': {
+                            color: 'success.main',
+                          }
+                        }}
+                      />
+                      <ListItemText 
+                        primary={outcome.name}
+                        sx={{
+                          '& .MuiListItemText-primary': {
+                            fontWeight: isSelected ? 600 : 400,
+                            color: isSelected ? 'success.main' : 'text.primary'
+                          }
+                        }}
+                      />
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
           </Box>
@@ -372,7 +409,13 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
                   {selected.map((value) => {
                     const release = availableReleases.find(r => r.id === value);
                     return (
-                      <Chip key={value} label={release ? `${release.name} (v${release.level})` : value} size="small" />
+                      <Chip 
+                        key={value} 
+                        label={release ? `${release.name} (v${release.level})` : value} 
+                        size="small"
+                        color="primary"
+                        sx={{ fontWeight: 600 }}
+                      />
                     );
                   })}
                 </Box>
@@ -382,11 +425,40 @@ export function TaskDetailDialog({ open, task, productId, availableLicenses = []
               {availableReleases?.length > 0 ? (
                 [...availableReleases]
                   .sort((a, b) => a.level - b.level)
-                  .map((release) => (
-                    <MenuItem key={release.id} value={release.id}>
-                      {release.name} (v{release.level})
-                    </MenuItem>
-                  ))
+                  .map((release) => {
+                    const isSelected = selectedReleases.includes(release.id);
+                    return (
+                      <MenuItem 
+                        key={release.id} 
+                        value={release.id}
+                        sx={{
+                          backgroundColor: isSelected ? '#e3f2fd' : 'transparent',
+                          '&:hover': {
+                            backgroundColor: isSelected ? '#bbdefb' : '#f5f5f5'
+                          }
+                        }}
+                      >
+                        <Checkbox 
+                          checked={isSelected}
+                          sx={{
+                            color: isSelected ? 'primary.main' : 'default',
+                            '&.Mui-checked': {
+                              color: 'primary.main',
+                            }
+                          }}
+                        />
+                        <ListItemText 
+                          primary={`${release.name} (v${release.level})`}
+                          sx={{
+                            '& .MuiListItemText-primary': {
+                              fontWeight: isSelected ? 600 : 400,
+                              color: isSelected ? 'primary.main' : 'text.primary'
+                            }
+                          }}
+                        />
+                      </MenuItem>
+                    );
+                  })
               ) : (
                 <MenuItem disabled>No releases available for this product</MenuItem>
               )}

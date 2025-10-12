@@ -17,7 +17,9 @@ import {
   Chip,
   OutlinedInput,
   Tabs,
-  Tab
+  Tab,
+  Checkbox,
+  ListItemText
 } from '@mui/material';
 import { Release } from '../../types/shared';
 import TelemetryConfiguration from '../telemetry/TelemetryConfiguration';
@@ -142,7 +144,7 @@ export const TaskDialog: React.FC<Props> = ({
       setPriority(task.priority || 'Medium');
       setHowToDoc(task.howToDoc || []);
       setHowToVideo(task.howToVideo || []);
-      setSelectedLicense(task.license?.id || task.licenseId || '');
+      setSelectedLicense(task.licenseId || '');
       setSelectedOutcomes(task.outcomes?.map(o => o.id) || []);
       setSelectedReleases(task.releases?.map(r => r.id) || task.releaseIds || []);
       setTelemetryAttributes(task.telemetryAttributes || []);
@@ -362,17 +364,52 @@ export const TaskDialog: React.FC<Props> = ({
                     {selected.map((value) => {
                       const outcome = outcomes.find(o => o.id === value);
                       return (
-                        <Chip key={value} label={outcome?.name || value} size="small" />
+                        <Chip 
+                          key={value} 
+                          label={outcome?.name || value} 
+                          size="small"
+                          color="success"
+                          sx={{ fontWeight: 600 }}
+                        />
                       );
                     })}
                   </Box>
                 )}
               >
-                {outcomes.map((outcome) => (
-                  <MenuItem key={outcome.id} value={outcome.id}>
-                    {outcome.name}
-                  </MenuItem>
-                ))}
+                {outcomes.map((outcome) => {
+                  const isSelected = selectedOutcomes.includes(outcome.id);
+                  return (
+                    <MenuItem 
+                      key={outcome.id} 
+                      value={outcome.id}
+                      sx={{
+                        backgroundColor: isSelected ? '#e8f5e9' : 'transparent',
+                        '&:hover': {
+                          backgroundColor: isSelected ? '#c8e6c9' : '#f5f5f5'
+                        }
+                      }}
+                    >
+                      <Checkbox 
+                        checked={isSelected}
+                        sx={{
+                          color: isSelected ? 'success.main' : 'default',
+                          '&.Mui-checked': {
+                            color: 'success.main',
+                          }
+                        }}
+                      />
+                      <ListItemText 
+                        primary={outcome.name}
+                        sx={{
+                          '& .MuiListItemText-primary': {
+                            fontWeight: isSelected ? 600 : 400,
+                            color: isSelected ? 'success.main' : 'text.primary'
+                          }
+                        }}
+                      />
+                    </MenuItem>
+                  );
+                })}
               </Select>
             </FormControl>
           </Box>
@@ -390,7 +427,13 @@ export const TaskDialog: React.FC<Props> = ({
                   {selected.map((value) => {
                     const release = availableReleases.find(r => r.id === value);
                     return (
-                      <Chip key={value} label={release ? `${release.name} (v${release.level})` : value} size="small" />
+                      <Chip 
+                        key={value} 
+                        label={release ? `${release.name} (v${release.level})` : value} 
+                        size="small"
+                        color="primary"
+                        sx={{ fontWeight: 600 }}
+                      />
                     );
                   })}
                 </Box>
@@ -400,11 +443,40 @@ export const TaskDialog: React.FC<Props> = ({
               {availableReleases?.length > 0 ? (
                 [...availableReleases]
                   .sort((a, b) => a.level - b.level)
-                  .map((release) => (
-                    <MenuItem key={release.id} value={release.id}>
-                      {release.name} (v{release.level})
-                    </MenuItem>
-                  ))
+                  .map((release) => {
+                    const isSelected = release.id ? selectedReleases.includes(release.id) : false;
+                    return (
+                      <MenuItem 
+                        key={release.id} 
+                        value={release.id}
+                        sx={{
+                          backgroundColor: isSelected ? '#e3f2fd' : 'transparent',
+                          '&:hover': {
+                            backgroundColor: isSelected ? '#bbdefb' : '#f5f5f5'
+                          }
+                        }}
+                      >
+                        <Checkbox 
+                          checked={isSelected}
+                          sx={{
+                            color: isSelected ? 'primary.main' : 'default',
+                            '&.Mui-checked': {
+                              color: 'primary.main',
+                            }
+                          }}
+                        />
+                        <ListItemText 
+                          primary={`${release.name} (v${release.level})`}
+                          sx={{
+                            '& .MuiListItemText-primary': {
+                              fontWeight: isSelected ? 600 : 400,
+                              color: isSelected ? 'primary.main' : 'text.primary'
+                            }
+                          }}
+                        />
+                      </MenuItem>
+                    );
+                  })
               ) : (
                 <MenuItem disabled>No releases available for this product</MenuItem>
               )}
