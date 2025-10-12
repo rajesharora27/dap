@@ -4536,14 +4536,15 @@ export function App() {
 
                       const outcomeNames = (currentProduct.outcomes || []).map((item: any) => item.name).filter(Boolean);
                       const licenseNames = (currentProduct.licenses || []).map((item: any) => item.name).filter(Boolean);
-                      const releaseNames = (currentProduct.releases || []).map((item: any) => item.name).filter(Boolean);
-                      const customAttrNames = Object.keys(currentProduct.customAttrs || {});
+                      const releases = (currentProduct.releases || []).map((item: any) => ({ name: item.name, level: item.level })).filter((r: any) => r.name);
+                      const customAttrs = currentProduct.customAttrs || {};
+                      const customAttrEntries = Object.entries(customAttrs);
 
                       const tileData = [
-                        { key: 'outcomes' as const, title: 'Outcomes', items: outcomeNames },
-                        { key: 'licenses' as const, title: 'Licenses', items: licenseNames },
-                        { key: 'releases' as const, title: 'Releases', items: releaseNames },
-                        { key: 'customAttributes' as const, title: 'Custom Attributes', items: customAttrNames }
+                        { key: 'outcomes' as const, title: 'Outcomes', items: outcomeNames, type: 'list' },
+                        { key: 'licenses' as const, title: 'Licenses', items: licenseNames, type: 'list' },
+                        { key: 'releases' as const, title: 'Releases', items: releases, type: 'releaseWithLevel' },
+                        { key: 'customAttributes' as const, title: 'Custom Attributes', items: customAttrEntries, type: 'keyValue' }
                       ];
 
                       const NAME_DISPLAY_LIMIT = 12;
@@ -4577,24 +4578,75 @@ export function App() {
                               </Typography>
                               {tile.items.length > 0 ? (
                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                  {(tile.items.length <= NAME_DISPLAY_LIMIT ? tile.items : tile.items.slice(0, NAME_DISPLAY_LIMIT)).map((name: string) => (
-                                    <Typography
-                                      key={name}
-                                      variant="body2"
-                                      sx={{
-                                        color: '#424242',
-                                        whiteSpace: 'nowrap',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis'
-                                      }}
-                                    >
-                                      {name}
-                                    </Typography>
-                                  ))}
-                                  {tile.items.length > NAME_DISPLAY_LIMIT && (
-                                    <Typography variant="caption" color="text.secondary">
-                                      +{tile.items.length - NAME_DISPLAY_LIMIT} more
-                                    </Typography>
+                                  {tile.type === 'keyValue' ? (
+                                    // For custom attributes, show key: value
+                                    <>
+                                      {(tile.items.length <= NAME_DISPLAY_LIMIT ? tile.items : tile.items.slice(0, NAME_DISPLAY_LIMIT)).map(([key, value]: [string, any]) => (
+                                        <Typography
+                                          key={key}
+                                          variant="body2"
+                                          sx={{
+                                            color: '#424242',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis'
+                                          }}
+                                        >
+                                          <strong>{key}:</strong> {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                        </Typography>
+                                      ))}
+                                      {tile.items.length > NAME_DISPLAY_LIMIT && (
+                                        <Typography variant="caption" color="text.secondary">
+                                          +{tile.items.length - NAME_DISPLAY_LIMIT} more
+                                        </Typography>
+                                      )}
+                                    </>
+                                  ) : tile.type === 'releaseWithLevel' ? (
+                                    // For releases, show name with level
+                                    <>
+                                      {(tile.items.length <= NAME_DISPLAY_LIMIT ? tile.items : tile.items.slice(0, NAME_DISPLAY_LIMIT)).map((release: any) => (
+                                        <Typography
+                                          key={release.name}
+                                          variant="body2"
+                                          sx={{
+                                            color: '#424242',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis'
+                                          }}
+                                        >
+                                          {release.name} <strong>(v{release.level})</strong>
+                                        </Typography>
+                                      ))}
+                                      {tile.items.length > NAME_DISPLAY_LIMIT && (
+                                        <Typography variant="caption" color="text.secondary">
+                                          +{tile.items.length - NAME_DISPLAY_LIMIT} more
+                                        </Typography>
+                                      )}
+                                    </>
+                                  ) : (
+                                    // For other items, show just the name
+                                    <>
+                                      {(tile.items.length <= NAME_DISPLAY_LIMIT ? tile.items : tile.items.slice(0, NAME_DISPLAY_LIMIT)).map((name: string) => (
+                                        <Typography
+                                          key={name}
+                                          variant="body2"
+                                          sx={{
+                                            color: '#424242',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis'
+                                          }}
+                                        >
+                                          {name}
+                                        </Typography>
+                                      ))}
+                                      {tile.items.length > NAME_DISPLAY_LIMIT && (
+                                        <Typography variant="caption" color="text.secondary">
+                                          +{tile.items.length - NAME_DISPLAY_LIMIT} more
+                                        </Typography>
+                                      )}
+                                    </>
                                   )}
                                 </Box>
                               ) : (
