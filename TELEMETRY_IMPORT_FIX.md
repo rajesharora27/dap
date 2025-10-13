@@ -86,28 +86,32 @@ To test the fix:
 - Result: GUI showed criteria as "configured" but couldn't display the values
 
 **The Fix:**
-Added JSON parsing when tasks are loaded from GraphQL query (App.tsx, line 772-788):
+Added JSON parsing when tasks are loaded from GraphQL query (App.tsx, line 772-791):
 
 ```typescript
 const tasks = [...(tasksData?.tasks?.edges?.map((edge: any) => {
   const node = edge.node;
   // Parse successCriteria from JSON string to object for each telemetry attribute
+  // Create new objects to avoid mutating Apollo cache (prevents infinite render loop)
   if (node.telemetryAttributes && Array.isArray(node.telemetryAttributes)) {
-    node.telemetryAttributes = node.telemetryAttributes.map((attr: any) => {
+    const parsedAttributes = node.telemetryAttributes.map((attr: any) => {
       if (attr.successCriteria && typeof attr.successCriteria === 'string' && attr.successCriteria.trim()) {
         try {
-          attr.successCriteria = JSON.parse(attr.successCriteria);
+          return { ...attr, successCriteria: JSON.parse(attr.successCriteria) };
         } catch (e) {
           console.error(`Failed to parse successCriteria for attribute "${attr.name}":`, e);
-          // Leave as string if parsing fails
+          return attr; // Return original if parsing fails
         }
       }
       return attr;
     });
+    return { ...node, telemetryAttributes: parsedAttributes };
   }
   return node;
 }) || [])]
 ```
+
+**CRITICAL:** The code creates NEW objects instead of mutating the original node from Apollo's cache. Mutating Apollo cache data causes infinite render loops!
 
 Now the frontend correctly:
 1. Receives JSON string from GraphQL
