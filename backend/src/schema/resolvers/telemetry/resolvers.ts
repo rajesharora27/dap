@@ -173,13 +173,28 @@ export const TelemetryMutationResolvers = {
   createTelemetryAttribute: async (_: any, { input }: any, ctx: any) => {
     requireUser(ctx);
     try {
+      console.log(`[Backend] Creating telemetry attribute "${input.name}"`);
+      console.log(`[Backend] Raw successCriteria input:`, input.successCriteria);
+      console.log(`[Backend] successCriteria type:`, typeof input.successCriteria);
+      
+      let parsedCriteria = undefined;
+      if (input.successCriteria) {
+        try {
+          parsedCriteria = JSON.parse(input.successCriteria);
+          console.log(`[Backend] Parsed successCriteria:`, JSON.stringify(parsedCriteria, null, 2));
+          console.log(`[Backend] Parsed keys:`, Object.keys(parsedCriteria));
+        } catch (e) {
+          console.error(`[Backend] Failed to parse successCriteria:`, e);
+        }
+      }
+      
       return await TelemetryService.createAttribute(
         input.taskId,
         {
           name: input.name,
           description: input.description,
           dataType: input.dataType,
-          successCriteria: input.successCriteria ? JSON.parse(input.successCriteria) : undefined,
+          successCriteria: parsedCriteria,
           order: input.order,
           isRequired: input.isRequired
         },
@@ -194,13 +209,28 @@ export const TelemetryMutationResolvers = {
   updateTelemetryAttribute: async (_: any, { id, input }: any, ctx: any) => {
     requireUser(ctx);
     try {
+      console.log(`[Backend] Updating telemetry attribute ID ${id}, name "${input.name}"`);
+      console.log(`[Backend] Raw successCriteria input:`, input.successCriteria);
+      console.log(`[Backend] successCriteria type:`, typeof input.successCriteria);
+      
+      let parsedCriteria = undefined;
+      if (input.successCriteria) {
+        try {
+          parsedCriteria = JSON.parse(input.successCriteria);
+          console.log(`[Backend] Parsed successCriteria:`, JSON.stringify(parsedCriteria, null, 2));
+          console.log(`[Backend] Parsed keys:`, Object.keys(parsedCriteria));
+        } catch (e) {
+          console.error(`[Backend] Failed to parse successCriteria:`, e);
+        }
+      }
+      
       return await TelemetryService.updateAttribute(
         id,
         {
           name: input.name,
           description: input.description,
           dataType: input.dataType,
-          successCriteria: input.successCriteria ? JSON.parse(input.successCriteria) : undefined,
+          successCriteria: parsedCriteria,
           order: input.order,
           isRequired: input.isRequired
         },

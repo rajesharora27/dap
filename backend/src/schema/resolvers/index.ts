@@ -69,52 +69,68 @@ export const resolvers = {
       return fetchTasksPaginated(parent.id, args);
     },
     statusPercent: async (parent: any) => {
-      if (fallbackActive) {
-        const { tasks: allTasks } = require('../../lib/fallbackStore');
-        const tasks = allTasks.filter((t: any) => t.productId === parent.id);
+      try {
+        if (fallbackActive) {
+          const { tasks: allTasks } = require('../../lib/fallbackStore');
+          const tasks = allTasks.filter((t: any) => t.productId === parent.id);
+          if (!tasks.length) return 0;
+          const totalWeight = tasks.reduce((a: number, t: any) => {
+            const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : (t.weight || 0);
+            return a + weight;
+          }, 0) || 1;
+          const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => {
+            const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : (t.weight || 0);
+            return a + weight;
+          }, 0);
+          return Math.round((completed / totalWeight) * 100);
+        }
+        const tasks = await prisma.task.findMany({ where: { productId: parent.id, deletedAt: null } });
         if (!tasks.length) return 0;
         const totalWeight = tasks.reduce((a: number, t: any) => {
-          const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : (t.weight || 0);
-          return a + weight;
+          const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : Number(t.weight || 0);
+          const safeWeight = (isNaN(weight) || weight == null) ? 0 : weight;
+          return a + safeWeight;
         }, 0) || 1;
         const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => {
-          const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : (t.weight || 0);
-          return a + weight;
+          const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : Number(t.weight || 0);
+          const safeWeight = (isNaN(weight) || weight == null) ? 0 : weight;
+          return a + safeWeight;
         }, 0);
-        return Math.round((completed / totalWeight) * 100);
+        const result = Math.round((completed / totalWeight) * 100);
+        return (isNaN(result) || !isFinite(result)) ? 0 : result;
+      } catch (error) {
+        console.error('Error calculating statusPercent:', error);
+        return 0;
       }
-      const tasks = await prisma.task.findMany({ where: { productId: parent.id, deletedAt: null } });
-      if (!tasks.length) return 0;
-      const totalWeight = tasks.reduce((a: number, t: any) => {
-        const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : (t.weight || 0);
-        return a + weight;
-      }, 0) || 1;
-      const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => {
-        const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : (t.weight || 0);
-        return a + weight;
-      }, 0);
-      return Math.round((completed / totalWeight) * 100);
     },
     completionPercentage: async (parent: any) => {
-      if (fallbackActive) {
-        const { tasks: allTasks } = require('../../lib/fallbackStore');
-        const tasks = allTasks.filter((t: any) => t.productId === parent.id);
+      try {
+        if (fallbackActive) {
+          const { tasks: allTasks } = require('../../lib/fallbackStore');
+          const tasks = allTasks.filter((t: any) => t.productId === parent.id);
+          if (!tasks.length) return 0;
+          const totalWeight = tasks.reduce((a: number, t: any) => a + t.weight, 0) || 1;
+          const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => a + t.weight, 0);
+          return Math.round((completed / totalWeight) * 100);
+        }
+        const tasks = await prisma.task.findMany({ where: { productId: parent.id, deletedAt: null } });
         if (!tasks.length) return 0;
-        const totalWeight = tasks.reduce((a: number, t: any) => a + t.weight, 0) || 1;
-        const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => a + t.weight, 0);
-        return Math.round((completed / totalWeight) * 100);
+        const totalWeight = tasks.reduce((a: number, t: any) => {
+          const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : Number(t.weight || 0);
+          const safeWeight = (isNaN(weight) || weight == null) ? 0 : weight;
+          return a + safeWeight;
+        }, 0) || 1;
+        const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => {
+          const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : Number(t.weight || 0);
+          const safeWeight = (isNaN(weight) || weight == null) ? 0 : weight;
+          return a + safeWeight;
+        }, 0);
+        const result = Math.round((completed / totalWeight) * 100);
+        return (isNaN(result) || !isFinite(result)) ? 0 : result;
+      } catch (error) {
+        console.error('Error calculating completionPercentage:', error);
+        return 0;
       }
-      const tasks = await prisma.task.findMany({ where: { productId: parent.id, deletedAt: null } });
-      if (!tasks.length) return 0;
-      const totalWeight = tasks.reduce((a: number, t: any) => {
-        const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : t.weight;
-        return a + weight;
-      }, 0) || 1;
-      const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => {
-        const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : t.weight;
-        return a + weight;
-      }, 0);
-      return Math.round((completed / totalWeight) * 100);
     },
     outcomes: async (parent: any) => {
       if (fallbackActive) {
