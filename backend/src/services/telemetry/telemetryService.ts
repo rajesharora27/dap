@@ -71,13 +71,17 @@ export class TelemetryService {
       }
 
       // Create the attribute
+      console.log(`[Service] Creating attribute "${attributeData.name}" with criteria:`, attributeData.successCriteria);
+      const criteriaToStore = attributeData.successCriteria ? JSON.stringify(attributeData.successCriteria) : null;
+      console.log(`[Service] Stringified for DB:`, criteriaToStore);
+      
       const attribute = await prisma.telemetryAttribute.create({
         data: {
           taskId,
           name: attributeData.name,
           description: attributeData.description,
           dataType: attributeData.dataType,
-          successCriteria: attributeData.successCriteria ? JSON.stringify(attributeData.successCriteria) : null,
+          successCriteria: criteriaToStore,
           order,
           isRequired: attributeData.isRequired ?? false
         },
@@ -89,6 +93,8 @@ export class TelemetryService {
           }
         }
       });
+      
+      console.log(`[Service] Created attribute with successCriteria:`, attribute.successCriteria);
 
       // Log audit trail
       if (userId) {
@@ -136,7 +142,10 @@ export class TelemetryService {
       if (updateData.description !== undefined) updatePayload.description = updateData.description;
       if (updateData.dataType !== undefined) updatePayload.dataType = updateData.dataType;
       if (updateData.successCriteria !== undefined) {
-        updatePayload.successCriteria = updateData.successCriteria ? JSON.stringify(updateData.successCriteria) : null;
+        console.log(`[Service] Updating attribute ${attributeId} with criteria:`, updateData.successCriteria);
+        const criteriaToStore = updateData.successCriteria ? JSON.stringify(updateData.successCriteria) : null;
+        console.log(`[Service] Stringified for DB:`, criteriaToStore);
+        updatePayload.successCriteria = criteriaToStore;
       }
       if (updateData.order !== undefined) updatePayload.order = updateData.order;
       if (updateData.isRequired !== undefined) updatePayload.isRequired = updateData.isRequired;
@@ -153,6 +162,8 @@ export class TelemetryService {
           }
         }
       });
+      
+      console.log(`[Service] Updated attribute successCriteria in DB:`, updatedAttribute.successCriteria);
 
       // Log audit trail
       if (userId) {

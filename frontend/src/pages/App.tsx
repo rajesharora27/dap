@@ -769,7 +769,26 @@ export function App() {
   }) || [];
   const solutions = solutionsData?.solutions?.edges?.map((edge: any) => edge.node) || [];
   const customers = customersData?.customers || [];
-  const tasks = [...(tasksData?.tasks?.edges?.map((edge: any) => edge.node) || [])]
+  const tasks = [...(tasksData?.tasks?.edges?.map((edge: any) => {
+    const node = edge.node;
+    // Parse successCriteria from JSON string to object for each telemetry attribute
+    // Create new objects to avoid mutating Apollo cache
+    if (node.telemetryAttributes && Array.isArray(node.telemetryAttributes)) {
+      const parsedAttributes = node.telemetryAttributes.map((attr: any) => {
+        if (attr.successCriteria && typeof attr.successCriteria === 'string' && attr.successCriteria.trim()) {
+          try {
+            return { ...attr, successCriteria: JSON.parse(attr.successCriteria) };
+          } catch (e) {
+            console.error(`Failed to parse successCriteria for attribute "${attr.name}":`, e);
+            return attr; // Return original if parsing fails
+          }
+        }
+        return attr;
+      });
+      return { ...node, telemetryAttributes: parsedAttributes };
+    }
+    return node;
+  }) || [])]
     .sort((a: any, b: any) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
   const outcomes = outcomesData?.outcomes || [];
 
@@ -1667,7 +1686,7 @@ export function App() {
                   description: attr.description || '',
                   dataType: attr.dataType,
                   isRequired: attr.isRequired || false,
-                  successCriteria: JSON.stringify(attr.successCriteria || {}),
+                  successCriteria: attr.successCriteria ? JSON.stringify(attr.successCriteria) : '',
                   order: attr.order || 0,
                   isActive: attr.isActive !== false
                 };
@@ -1688,7 +1707,7 @@ export function App() {
                       description: attr.description || '',
                       dataType: attr.dataType,
                       isRequired: attr.isRequired || false,
-                      successCriteria: JSON.stringify(attr.successCriteria || {}),
+                      successCriteria: attr.successCriteria ? JSON.stringify(attr.successCriteria) : '',
                       order: attr.order || 0,
                       isActive: attr.isActive !== false
                     }
@@ -1710,7 +1729,7 @@ export function App() {
                     description: attr.description || '',
                     dataType: attr.dataType,
                     isRequired: attr.isRequired || false,
-                    successCriteria: JSON.stringify(attr.successCriteria || {}),
+                    successCriteria: attr.successCriteria ? JSON.stringify(attr.successCriteria) : '',
                     order: attr.order || 0,
                     isActive: attr.isActive !== false
                   }
@@ -3104,8 +3123,9 @@ export function App() {
         { header: 'Outcome Names', key: 'outcomeNames', width: 30 },
         { header: 'Release Names', key: 'releaseNames', width: 30 },
         { header: 'Notes', key: 'notes', width: 40 },
-        { header: 'How To Doc', key: 'howToDoc', width: 30 },
-        { header: 'How To Video', key: 'howToVideo', width: 30 }
+        { header: 'How To Doc', key: 'howToDoc', width: 50 },
+        { header: 'How To Video', key: 'howToVideo', width: 50 },
+        { header: 'Telemetry Attributes', key: 'telemetryAttributes', width: 60 }
       ];
       tasksSheet.addRows(productTasks.map((task: any) => ({
         id: task.id,
@@ -3119,8 +3139,18 @@ export function App() {
         outcomeNames: (task.outcomes || []).map((outcome: any) => outcome.name).filter(Boolean).join(', '),
         releaseNames: (task.releases || []).map((release: any) => release.name).filter(Boolean).join(', '),
         notes: task.notes || '',
-        howToDoc: Array.isArray(task.howToDoc) ? task.howToDoc.join(', ') : (task.howToDoc || ''),
-        howToVideo: Array.isArray(task.howToVideo) ? task.howToVideo.join(', ') : (task.howToVideo || '')
+        howToDoc: Array.isArray(task.howToDoc) ? task.howToDoc.join('; ') : (task.howToDoc || ''),
+        howToVideo: Array.isArray(task.howToVideo) ? task.howToVideo.join('; ') : (task.howToVideo || ''),
+        telemetryAttributes: (task.telemetryAttributes || [])
+          .filter((attr: any) => attr.isActive)
+          .map((attr: any) => {
+            const parts = [`${attr.name} (${attr.dataType}${attr.isRequired ? ', required' : ''})`];
+            if (attr.successCriteria) {
+              parts.push(`Success: ${attr.successCriteria}`);
+            }
+            return parts.join(' | ');
+          })
+          .join('; ') || ''
       })));
       tasksSheet.getRow(1).font = { bold: true };
       tasksSheet.getRow(1).fill = {
@@ -3149,6 +3179,63 @@ export function App() {
         fgColor: { argb: 'FFE0E0E0' }
       };
 
+      // Add Telemetry Attributes sheet
+      const telemetrySheet = workbook.addWorksheet('Telemetry Attributes');
+      telemetrySheet.columns = [
+        { header: 'Task Name', key: 'taskName', width: 30 },
+        { header: 'Attribute Name', key: 'attributeName', width: 30 },
+        { header: 'Description', key: 'description', width: 50 },
+        { header: 'Data Type', key: 'dataType', width: 15 },
+        { header: 'Is Required', key: 'isRequired', width: 12 },
+        { header: 'Success Criteria', key: 'successCriteria', width: 40 },
+        { header: 'Order', key: 'order', width: 10 },
+        { header: 'Is Active', key: 'isActive', width: 12 }
+      ];
+      const telemetryRows: any[] = [];
+      productTasks.forEach((task: any) => {
+        if (task.telemetryAttributes && task.telemetryAttributes.length > 0) {
+          task.telemetryAttributes.forEach((attr: any) => {
+            // Export successCriteria as JSON string for reliable import
+            let successCriteriaStr = '';
+            if (attr.successCriteria) {
+              console.log(`[Export] Attribute "${attr.name}" successCriteria type:`, typeof attr.successCriteria);
+              console.log(`[Export] Attribute "${attr.name}" successCriteria RAW:`, JSON.stringify(attr.successCriteria, null, 2));
+              console.log(`[Export] Attribute "${attr.name}" successCriteria keys:`, Object.keys(attr.successCriteria || {}));
+              // If it's already a string (from DB), use it
+              if (typeof attr.successCriteria === 'string') {
+                successCriteriaStr = attr.successCriteria;
+                console.log(`[Export] String length:`, successCriteriaStr.length);
+              } else {
+                // If it's an object, stringify it
+                successCriteriaStr = JSON.stringify(attr.successCriteria);
+                console.log(`[Export] Stringified length:`, successCriteriaStr.length);
+              }
+              console.log(`[Export] Attribute "${attr.name}" FINAL exported string:`, successCriteriaStr);
+            } else {
+              console.log(`[Export] Attribute "${attr.name}" has NO successCriteria (null/undefined/empty)`);
+            }
+            
+            telemetryRows.push({
+              taskName: task.name,
+              attributeName: attr.name,
+              description: attr.description || '',
+              dataType: attr.dataType,
+              isRequired: attr.isRequired ? 'Yes' : 'No',
+              successCriteria: successCriteriaStr,
+              order: attr.order ?? '',
+              isActive: attr.isActive ? 'Yes' : 'No'
+            });
+          });
+        }
+      });
+      telemetrySheet.addRows(telemetryRows);
+      telemetrySheet.getRow(1).font = { bold: true };
+      telemetrySheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+
       // Generate Excel file and download
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { 
@@ -3165,7 +3252,7 @@ export function App() {
       URL.revokeObjectURL(url);
 
       console.log('Complete product data exported to Excel');
-  alert('Product data exported to Excel successfully!\nIncludes: Simple Attributes, Outcomes, Licenses, Releases, Tasks, and Custom Attributes');
+  alert('Product data exported to Excel successfully!\nIncludes: Simple Attributes, Outcomes, Licenses, Releases, Tasks, Custom Attributes, and Telemetry Attributes');
     } catch (error) {
       console.error('Error exporting complete product data:', error);
       alert(`Failed to export complete product data: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -3454,6 +3541,10 @@ export function App() {
   const releasesByName = new Map<string, any>(currentReleases.map((release: any) => [release.name.toLowerCase().trim(), release]));
   const outcomeList: any[] = product.outcomes || [];
   const outcomesByName = new Map<string, any>(outcomeList.map((outcome: any) => [outcome.name.toLowerCase().trim(), outcome]));
+  
+  // Initialize task maps that will be used by both Tasks and Telemetry sections
+  const tasksById = new Map<string, any>(currentTasks.map((task: any) => [task.id, task]));
+  const tasksByName = new Map<string, any>(currentTasks.map((task: any) => [task.name.toLowerCase().trim(), task]));
 
         let createdCount = 0;
         let updatedCount = 0;
@@ -3770,9 +3861,8 @@ export function App() {
 
         const tasksSheet = workbook.getWorksheet('Tasks');
         if (tasksSheet) {
-          const tasksById = new Map<string, any>(currentTasks.map((task: any) => [task.id, task]));
-          const tasksByName = new Map<string, any>(currentTasks.map((task: any) => [task.name.toLowerCase().trim(), task]));
-
+          // tasksById and tasksByName are already defined at the beginning of import
+          
           const headerAliases: Record<string, string[]> = {
             id: ['id'],
             name: ['name'],
@@ -4086,6 +4176,171 @@ export function App() {
           }
         }
 
+        // Process Telemetry Attributes sheet
+        setImportProgressMessage('Processing telemetry attributes...');
+        const telemetrySheet = workbook.getWorksheet('Telemetry Attributes');
+        if (telemetrySheet) {
+          const headerIndices: { [key: string]: number } = {};
+          telemetrySheet.getRow(1).eachCell((cell, colNumber) => {
+            const key = toPlainString(cell.value).trim().toLowerCase().replace(/\s+/g, '');
+            if (key) {
+              headerIndices[key] = colNumber;
+            }
+          });
+
+          const getCellValue = (row: any, key: string): any => {
+            const colIndex = headerIndices[key.toLowerCase().replace(/\s+/g, '')];
+            return colIndex ? row.getCell(colIndex).value : undefined;
+          };
+
+          // tasksByName is already built and maintained during task import - no need to rebuild
+
+          // Build a map of existing telemetry attributes by task name and attribute name
+          const existingTelemetryMap = new Map<string, Map<string, any>>();
+          currentTasks.forEach((task: any) => {
+            const taskKey = task.name.toLowerCase().trim();
+            const attrMap = new Map<string, any>();
+            (task.telemetryAttributes || []).forEach((attr: any) => {
+              attrMap.set(attr.name.toLowerCase().trim(), attr);
+            });
+            existingTelemetryMap.set(taskKey, attrMap);
+          });
+
+          const telemetryAttributesToProcess: any[] = [];
+          telemetrySheet.eachRow((row, rowNumber) => {
+            if (rowNumber === 1) return; // Skip header
+            const taskName = toPlainString(getCellValue(row, 'taskname')).trim();
+            const attributeName = toPlainString(getCellValue(row, 'attributename')).trim();
+            
+            if (!taskName || !attributeName) return;
+
+            const dataType = toPlainString(getCellValue(row, 'datatype')).trim();
+            const isRequiredStr = toPlainString(getCellValue(row, 'isrequired')).trim().toLowerCase();
+            const isActiveStr = toPlainString(getCellValue(row, 'isactive')).trim().toLowerCase();
+
+            telemetryAttributesToProcess.push({
+              rowNumber,
+              taskName,
+              attributeName,
+              description: toPlainString(getCellValue(row, 'description')).trim(),
+              dataType: dataType || 'string',
+              isRequired: isRequiredStr === 'yes' || isRequiredStr === 'true',
+              successCriteria: toPlainString(getCellValue(row, 'successcriteria')).trim(),
+              order: toNumberOrUndefined(getCellValue(row, 'order')),
+              isActive: isActiveStr !== 'no' && isActiveStr !== 'false' // Default to true
+            });
+          });
+
+          for (const telemetryRow of telemetryAttributesToProcess) {
+            try {
+              const rowLabel = `Telemetry Attributes tab (row ${telemetryRow.rowNumber})`;
+              const taskKey = telemetryRow.taskName.toLowerCase().trim();
+              const task = tasksByName.get(taskKey);
+
+              if (!task) {
+                noteIssue(`${rowLabel}: Task "${telemetryRow.taskName}" not found. Ensure the Task Name matches an existing task from the Tasks tab.`);
+                continue;
+              }
+
+              const attrKey = telemetryRow.attributeName.toLowerCase().trim();
+              const taskAttrMap = existingTelemetryMap.get(taskKey);
+              const existingAttr = taskAttrMap?.get(attrKey);
+
+              // Process successCriteria - it should be a JSON string for the backend
+              let successCriteriaForBackend: string | undefined = undefined;
+              if (telemetryRow.successCriteria) {
+                const criteriaStr = telemetryRow.successCriteria.trim();
+                console.log(`[Import] ========== Processing "${telemetryRow.attributeName}" ==========`);
+                console.log(`[Import] Raw from Excel (length ${criteriaStr.length}):`, criteriaStr);
+                if (criteriaStr) {
+                  // Check if it's already valid JSON
+                  try {
+                    const parsed = JSON.parse(criteriaStr);
+                    console.log(`[Import] Successfully parsed JSON!`);
+                    console.log(`[Import] Parsed object:`, JSON.stringify(parsed, null, 2));
+                    console.log(`[Import] Parsed keys:`, Object.keys(parsed));
+                    console.log(`[Import] Has type?`, parsed.type);
+                    console.log(`[Import] Has operator?`, parsed.operator);
+                    console.log(`[Import] Has threshold?`, parsed.threshold);
+                    console.log(`[Import] Has pattern?`, parsed.pattern);
+                    // It's valid JSON, use as-is
+                    successCriteriaForBackend = criteriaStr;
+                  } catch (e) {
+                    // Not valid JSON - skip it
+                    console.error(`[Import] ❌ Invalid JSON for success criteria:`, e);
+                    console.error(`[Import] String was:`, criteriaStr);
+                  }
+                }
+              } else {
+                console.log(`[Import] ⚠️ No success criteria in Excel for "${telemetryRow.attributeName}"`);
+              }
+
+              const input: any = {
+                taskId: task.id,
+                name: telemetryRow.attributeName,
+                description: telemetryRow.description || '',
+                dataType: telemetryRow.dataType,
+                isRequired: telemetryRow.isRequired,
+                successCriteria: successCriteriaForBackend || '',  // Send empty string if no valid JSON
+                order: telemetryRow.order ?? 0,
+                isActive: telemetryRow.isActive
+              };
+
+              if (existingAttr) {
+                // Check if anything changed
+                // Normalize successCriteria for comparison (both should be strings)
+                const existingCriteria = existingAttr.successCriteria || '';
+                const newCriteria = input.successCriteria || '';
+                
+                console.log(`[Import] 🔍 Comparing existing vs new for "${telemetryRow.attributeName}"`);
+                console.log(`[Import] Existing criteria (type: ${typeof existingCriteria}, length: ${existingCriteria.length}):`, existingCriteria);
+                console.log(`[Import] New criteria (type: ${typeof newCriteria}, length: ${newCriteria.length}):`, newCriteria);
+                console.log(`[Import] Criteria equal?`, existingCriteria === newCriteria);
+                
+                const changed = 
+                  existingAttr.description !== input.description ||
+                  existingAttr.dataType !== input.dataType ||
+                  existingAttr.isRequired !== input.isRequired ||
+                  existingCriteria !== newCriteria ||
+                  existingAttr.order !== input.order ||
+                  existingAttr.isActive !== input.isActive;
+
+                if (changed) {
+                  console.log(`[Import] ✅ Changes detected! Updating telemetry attribute "${telemetryRow.attributeName}" for task "${telemetryRow.taskName}"`);
+                  console.log('[Import] Mutation input:', JSON.stringify(input, null, 2));
+                  await client.mutate({
+                    mutation: UPDATE_TELEMETRY_ATTRIBUTE,
+                    variables: {
+                      id: existingAttr.id,
+                      input: input
+                    }
+                  });
+                  updatedCount++;
+                  console.log(`[Import] ✅ Update mutation completed for "${telemetryRow.attributeName}"`);
+                } else {
+                  console.log(`[Import] ⚠️ No changes detected for "${telemetryRow.attributeName}" - skipping update`);
+                }
+              } else {
+                // Create new telemetry attribute
+                console.log(`[Import] ✨ Creating NEW telemetry attribute "${telemetryRow.attributeName}" for task "${telemetryRow.taskName}"`);
+                console.log('[Import] Success criteria to create:', input.successCriteria);
+                console.log('[Import] Mutation input:', JSON.stringify(input, null, 2));
+                await client.mutate({
+                  mutation: CREATE_TELEMETRY_ATTRIBUTE,
+                  variables: {
+                    input: input
+                  }
+                });
+                createdCount++;
+                console.log(`[Import] ✅ Create mutation completed for "${telemetryRow.attributeName}"`);
+              }
+            } catch (error) {
+              recordError(`Telemetry Attributes tab (row ${telemetryRow.rowNumber}): Failed to process telemetry attribute "${telemetryRow.attributeName}" for task "${telemetryRow.taskName}"`, error);
+              errorCount++;
+            }
+          }
+        }
+
         setImportProgressMessage('Finalizing import...');
 
         // Refresh data
@@ -4104,7 +4359,7 @@ export function App() {
           ? `\n\nIssues detected:\n- ${collectedErrors.join('\n- ')}`
           : '';
 
-        alert(`Excel import completed!\n\nCreated: ${createdCount}\nUpdated: ${updatedCount}\nErrors: ${errorCount}${errorSummary}\n\nImported: Simple Attributes, Outcomes, Licenses, Releases, Tasks, Custom Attributes\nRemember: Keep Name columns unchanged to update existing records.`);
+        alert(`Excel import completed!\n\nCreated: ${createdCount}\nUpdated: ${updatedCount}\nErrors: ${errorCount}${errorSummary}\n\nImported: Simple Attributes, Outcomes, Licenses, Releases, Tasks, Custom Attributes, Telemetry Attributes\nRemember: Keep Name columns unchanged to update existing records.`);
 
       } catch (error) {
         setImportProgressDialog(false);

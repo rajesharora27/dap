@@ -111,21 +111,37 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
           description: `Task succeeds when value is ${operator || 'greater_than_or_equal'} ${value}`
         };
       case 'STRING':
-        return {
-          type: 'string_match',
-          mode: 'exact',
-          pattern: value,
-          caseSensitive: false,
-          description: `Task succeeds when value matches "${value}"`
-        };
+        if (operator === 'not_null') {
+          return {
+            type: 'string_not_null',
+            description: 'Task succeeds when value is not null/empty'
+          };
+        } else {
+          return {
+            type: 'string_match',
+            mode: operator || 'exact',
+            pattern: value,
+            caseSensitive: false,
+            description: operator === 'exact' 
+              ? `Task succeeds when value exactly matches "${value}"` 
+              : `Task succeeds when value contains "${value}"`
+          };
+        }
       case 'TIMESTAMP':
-        return {
-          type: 'timestamp_comparison',
-          mode: 'within_days',
-          referenceTime: 'now',
-          withinDays: parseInt(value) || 7,
-          description: `Task succeeds when timestamp is within ${value} days`
-        };
+        if (operator === 'not_null') {
+          return {
+            type: 'timestamp_not_null',
+            description: 'Task succeeds when timestamp is not null'
+          };
+        } else {
+          return {
+            type: 'timestamp_comparison',
+            mode: 'within_days',
+            referenceTime: 'now',
+            withinDays: parseInt(value) || 7,
+            description: `Task succeeds when timestamp is within ${value} days of now`
+          };
+        }
       default:
         return null;
     }
@@ -140,8 +156,49 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
     index: number; 
     onSave: () => void;
   }) => {
-    const [operator, setOperator] = useState('greater_than_or_equal');
-    const [value, setValue] = useState('');
+    // Initialize from existing criteria if present
+    const getInitialOperator = () => {
+      if (!attribute.successCriteria) {
+        return attribute.dataType === 'NUMBER' ? 'greater_than_or_equal' :
+               attribute.dataType === 'STRING' ? 'exact' :
+               attribute.dataType === 'TIMESTAMP' ? 'within_days' : '';
+      }
+      const criteria = attribute.successCriteria;
+      if (criteria.type === 'string_not_null' || criteria.type === 'timestamp_not_null') {
+        return 'not_null';
+      }
+      if (criteria.type === 'number_threshold') {
+        return criteria.operator || 'greater_than_or_equal';
+      }
+      if (criteria.type === 'string_match') {
+        return criteria.mode || 'exact';
+      }
+      if (criteria.type === 'timestamp_comparison') {
+        return 'within_days';
+      }
+      return '';
+    };
+
+    const getInitialValue = () => {
+      if (!attribute.successCriteria) return '';
+      const criteria = attribute.successCriteria;
+      if (criteria.type === 'boolean_flag') {
+        return String(criteria.expectedValue);
+      }
+      if (criteria.type === 'number_threshold') {
+        return String(criteria.threshold || '');
+      }
+      if (criteria.type === 'string_match') {
+        return criteria.pattern || '';
+      }
+      if (criteria.type === 'timestamp_comparison') {
+        return String(criteria.withinDays || '');
+      }
+      return '';
+    };
+
+    const [operator, setOperator] = useState(getInitialOperator());
+    const [value, setValue] = useState(getInitialValue());
 
     const getOperatorOptions = () => {
       switch (attribute.dataType) {
@@ -160,11 +217,13 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
           ];
         case 'STRING':
           return [
+            { value: 'not_null', label: 'Not null/empty' },
             { value: 'exact', label: 'Exact match' },
             { value: 'contains', label: 'Contains' }
           ];
         case 'TIMESTAMP':
           return [
+            { value: 'not_null', label: 'Not null' },
             { value: 'within_days', label: 'Within N days of now' }
           ];
         default:
@@ -173,6 +232,12 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
     };
 
     const handleSave = () => {
+      // Validate that value is provided when needed
+      if (operator !== 'not_null' && attribute.dataType !== 'BOOLEAN' && !value.trim()) {
+        alert('Please provide a value for the success criteria');
+        return;
+      }
+      
       const criteria = buildSimpleCriteria(attribute.dataType, operator, value);
       if (criteria) {
         updateAttribute(index, { successCriteria: criteria });
@@ -215,22 +280,52 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
             />
           </Box>
         ) : attribute.dataType === 'STRING' ? (
-          <TextField
-            fullWidth
-            label="Expected Text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="e.g., PASSED, SUCCESS, completed"
-          />
+          <Box>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Validation Type</InputLabel>
+              <Select value={operator} onChange={(e) => setOperator(e.target.value)}>
+                {getOperatorOptions().map(option => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {operator !== 'not_null' && (
+              <TextField
+                fullWidth
+                label="Expected Text"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="e.g., PASSED, SUCCESS, completed"
+                margin="normal"
+              />
+            )}
+          </Box>
         ) : attribute.dataType === 'TIMESTAMP' ? (
-          <TextField
-            fullWidth
-            label="Days (for freshness check)"
-            type="number"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder="e.g., 7 (must be updated within 7 days)"
-          />
+          <Box>
+            <FormControl fullWidth margin="normal">
+              <InputLabel>Validation Type</InputLabel>
+              <Select value={operator} onChange={(e) => setOperator(e.target.value)}>
+                {getOperatorOptions().map(option => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            {operator !== 'not_null' && (
+              <TextField
+                fullWidth
+                label="Days (for freshness check)"
+                type="number"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="e.g., 7 (must be updated within 7 days)"
+                margin="normal"
+              />
+            )}
+          </Box>
         ) : null}
 
         <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
