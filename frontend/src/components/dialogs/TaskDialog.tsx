@@ -36,6 +36,7 @@ interface Task {
   licenseLevel?: string;
   requiredLicenseLevel?: number;
   licenseId?: string;
+  license?: { id: string; name: string; level: number };
   howToDoc?: string[];
   howToVideo?: string[];
   outcomes?: Array<{ id: string; name: string }>;
@@ -144,7 +145,8 @@ export const TaskDialog: React.FC<Props> = ({
       setPriority(task.priority || 'Medium');
       setHowToDoc(task.howToDoc || []);
       setHowToVideo(task.howToVideo || []);
-      setSelectedLicense(task.licenseId || '');
+      // Fix: task.license is an object, need to access task.license.id
+      setSelectedLicense((task as any).license?.id || task.licenseId || '');
       setSelectedOutcomes(task.outcomes?.map(o => o.id) || []);
       setSelectedReleases(task.releases?.map(r => r.id) || task.releaseIds || []);
       setTelemetryAttributes(task.telemetryAttributes || []);

@@ -528,7 +528,10 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
                         setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
                       }
                     }}
-                    title={task.howToDoc.length === 1 ? "How-to Documentation" : `${task.howToDoc.length} Documentation Links - Click to choose`}
+                    title={task.howToDoc.length === 1 
+                      ? `Documentation: ${task.howToDoc[0]}`
+                      : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
+                    }
                   />
                 )}
               </Box>
@@ -555,7 +558,10 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
                         setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
                       }
                     }}
-                    title={task.howToVideo.length === 1 ? "How-to Video" : `${task.howToVideo.length} Video Links - Click to choose`}
+                    title={task.howToVideo.length === 1 
+                      ? `Video: ${task.howToVideo[0]}`
+                      : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
+                    }
                   />
                 )}
               </Box>
@@ -4022,8 +4028,9 @@ export function App() {
                 }
 
                 input.notes = taskRow.notes || '';
-                input.howToDoc = taskRow.howToDoc || '';
-                input.howToVideo = taskRow.howToVideo || '';
+                // howToDoc and howToVideo should be arrays, not strings
+                input.howToDoc = Array.isArray(taskRow.howToDoc) ? taskRow.howToDoc : [];
+                input.howToVideo = Array.isArray(taskRow.howToVideo) ? taskRow.howToVideo : [];
 
                 return input;
               };
