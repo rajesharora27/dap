@@ -530,6 +530,7 @@ export const resolvers = {
     , adoptionPlansForCustomer: CustomerAdoptionQueryResolvers.adoptionPlansForCustomer
     , customerTask: CustomerAdoptionQueryResolvers.customerTask
     , customerTasksForPlan: CustomerAdoptionQueryResolvers.customerTasksForPlan
+    , customerTelemetryDatabase: CustomerAdoptionQueryResolvers.customerTelemetryDatabase
     
     // Excel Export
     , exportProductToExcel: async (_: any, { productName }: any) => {
@@ -1859,6 +1860,8 @@ export const resolvers = {
     bulkAddCustomerTelemetryValues: CustomerAdoptionMutationResolvers.bulkAddCustomerTelemetryValues,
     evaluateTaskTelemetry: CustomerAdoptionMutationResolvers.evaluateTaskTelemetry,
     evaluateAllTasksTelemetry: CustomerAdoptionMutationResolvers.evaluateAllTasksTelemetry,
+    exportCustomerAdoptionToExcel: CustomerAdoptionMutationResolvers.exportCustomerAdoptionToExcel,
+    importCustomerAdoptionFromExcel: CustomerAdoptionMutationResolvers.importCustomerAdoptionFromExcel,
 
     // Excel Import
     importProductFromExcel: async (_: any, { content, mode }: any, ctx: any) => {

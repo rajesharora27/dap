@@ -210,6 +210,7 @@ export const typeDefs = gql`
     adoptionPlansForCustomer(customerId: ID!): [AdoptionPlan!]!
     customerTask(id: ID!): CustomerTask
     customerTasksForPlan(adoptionPlanId: ID!, status: CustomerTaskStatus): [CustomerTask!]!
+    customerTelemetryDatabase(customerId: ID, customerProductId: ID): [CustomerTelemetryRecord!]!
     
     # Excel Export
     exportProductToExcel(productName: String!): ExcelExportResult!
@@ -254,6 +255,45 @@ export const typeDefs = gql`
     licensesImported: Int!
     customAttributesImported: Int!
     telemetryAttributesImported: Int!
+  }
+
+  type CustomerAdoptionImportResult {
+    success: Boolean!
+    customerId: String!
+    customerName: String!
+    customerProductId: String!
+    productName: String!
+    stats: CustomerAdoptionImportStats!
+    errors: [ValidationError!]!
+    warnings: [ValidationError!]!
+  }
+
+  type CustomerAdoptionImportStats {
+    telemetryValuesImported: Int!
+    taskStatusesUpdated: Int!
+    attributesCreated: Int!
+  }
+
+  type CustomerTelemetryRecord {
+    customerId: ID!
+    customerName: String!
+    customerProductId: ID!
+    productId: ID!
+    productName: String!
+    licenseLevel: String!
+    adoptionPlanId: ID!
+    taskId: ID!
+    taskName: String!
+    taskSequenceNumber: Int!
+    attributeId: ID!
+    attributeName: String!
+    attributeType: String!
+    attributeRequired: Boolean!
+    attributeCriteria: JSON
+    latestValue: JSON
+    latestValueDate: DateTime
+    criteriaMet: Boolean
+    taskStatus: String!
   }
 
   type ValidationError {
@@ -426,6 +466,8 @@ export const typeDefs = gql`
   
   # Excel Import/Export mutations
   importProductFromExcel(content: String!, mode: ImportMode!): ImportResult!
+  exportCustomerAdoptionToExcel(customerId: ID!, customerProductId: ID!): ExcelExportResult!
+  importCustomerAdoptionFromExcel(content: String!): CustomerAdoptionImportResult!
   
   # Customer Adoption mutations
   assignProductToCustomer(input: AssignProductToCustomerInput!): CustomerProductWithPlan!

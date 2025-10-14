@@ -277,6 +277,81 @@ export const CustomerAdoptionQueryResolvers = {
     });
     return tasks;
   },
+
+  customerTelemetryDatabase: async (_: any, { customerId, customerProductId }: any, ctx: any) => {
+    const where: any = {};
+    
+    if (customerProductId) {
+      where.customerProductId = customerProductId;
+    } else if (customerId) {
+      where.customerId = customerId;
+    }
+
+    const customerProducts = await prisma.customerProduct.findMany({
+      where,
+      include: {
+        customer: true,
+        product: true,
+        adoptionPlans: {
+          include: {
+            tasks: {
+              include: {
+                telemetryAttributes: {
+                  where: { isActive: true },
+                  include: {
+                    values: {
+                      orderBy: { createdAt: 'desc' },
+                      take: 1,
+                    },
+                  },
+                },
+              },
+              orderBy: { sequenceNumber: 'asc' },
+            },
+          },
+        },
+      },
+    });
+
+    const records: any[] = [];
+
+    for (const cp of customerProducts) {
+      for (const plan of cp.adoptionPlans) {
+        for (const task of plan.tasks) {
+          for (const attr of task.telemetryAttributes) {
+            const latestValue = attr.values[0];
+            const criteriaMet = latestValue && attr.successCriteria
+              ? evaluateCriteria(attr.successCriteria, latestValue.value)
+              : null;
+
+            records.push({
+              customerId: cp.customer.id,
+              customerName: cp.customer.name,
+              customerProductId: cp.id,
+              productId: cp.product.id,
+              productName: cp.product.name,
+              licenseLevel: cp.licenseLevel,
+              adoptionPlanId: plan.id,
+              taskId: task.id,
+              taskName: task.name,
+              taskSequenceNumber: task.sequenceNumber,
+              attributeId: attr.id,
+              attributeName: attr.name,
+              attributeType: attr.attributeType,
+              attributeRequired: attr.isRequired,
+              attributeCriteria: attr.successCriteria,
+              latestValue: latestValue?.value || null,
+              latestValueDate: latestValue?.createdAt || null,
+              criteriaMet,
+              taskStatus: task.status,
+            });
+          }
+        }
+      }
+    }
+
+    return records;
+  },
 };
 
 export const CustomerAdoptionMutationResolvers = {
@@ -1059,6 +1134,330 @@ export const CustomerAdoptionMutationResolvers = {
         },
       },
     });
+  },
+
+  exportCustomerAdoptionToExcel: async (_: any, { customerId, customerProductId }: any, ctx: any) => {
+    ensureRole(ctx, 'ADMIN');
+
+    const ExcelJS = await import('exceljs');
+    
+    const customerProduct = await prisma.customerProduct.findUnique({
+      where: { id: customerProductId },
+      include: {
+        customer: true,
+        product: true,
+        adoptionPlans: {
+          include: {
+            tasks: {
+              include: {
+                telemetryAttributes: {
+                  include: {
+                    values: {
+                      orderBy: { createdAt: 'desc' },
+                      take: 1,
+                    },
+                  },
+                },
+                outcomes: { include: { outcome: true } },
+              },
+              orderBy: { sequenceNumber: 'asc' },
+            },
+          },
+        },
+      },
+    });
+
+    if (!customerProduct) {
+      throw new Error('Customer product assignment not found');
+    }
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Customer Adoption Data');
+
+    // Headers
+    worksheet.columns = [
+      { header: 'Customer ID', key: 'customerId', width: 20 },
+      { header: 'Customer Name', key: 'customerName', width: 30 },
+      { header: 'Product ID', key: 'productId', width: 20 },
+      { header: 'Product Name', key: 'productName', width: 30 },
+      { header: 'License Level', key: 'licenseLevel', width: 15 },
+      { header: 'Task Sequence', key: 'taskSequence', width: 12 },
+      { header: 'Task Name', key: 'taskName', width: 40 },
+      { header: 'Task Status', key: 'taskStatus', width: 15 },
+      { header: 'Telemetry Attribute', key: 'telemetryAttribute', width: 30 },
+      { header: 'Attribute Type', key: 'attributeType', width: 15 },
+      { header: 'Required', key: 'required', width: 10 },
+      { header: 'Current Value', key: 'currentValue', width: 30 },
+      { header: 'Last Updated', key: 'lastUpdated', width: 20 },
+      { header: 'Criteria Met', key: 'criteriaMet', width: 12 },
+    ];
+
+    // Style header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' },
+    };
+
+    const adoptionPlan = customerProduct.adoptionPlans[0];
+    if (adoptionPlan) {
+      for (const task of adoptionPlan.tasks) {
+        if (task.telemetryAttributes.length === 0) {
+          // Task with no telemetry
+          worksheet.addRow({
+            customerId: customerProduct.customer.id,
+            customerName: customerProduct.customer.name,
+            productId: customerProduct.product.id,
+            productName: customerProduct.product.name,
+            licenseLevel: customerProduct.licenseLevel,
+            taskSequence: task.sequenceNumber,
+            taskName: task.name,
+            taskStatus: task.status,
+            telemetryAttribute: '',
+            attributeType: '',
+            required: '',
+            currentValue: '',
+            lastUpdated: '',
+            criteriaMet: '',
+          });
+        } else {
+          for (const attr of task.telemetryAttributes) {
+            const latestValue = attr.values[0];
+            const criteriaMet = latestValue && attr.successCriteria
+              ? evaluateCriteria(attr.successCriteria, latestValue.value)
+              : null;
+
+            worksheet.addRow({
+              customerId: customerProduct.customer.id,
+              customerName: customerProduct.customer.name,
+              productId: customerProduct.product.id,
+              productName: customerProduct.product.name,
+              licenseLevel: customerProduct.licenseLevel,
+              taskSequence: task.sequenceNumber,
+              taskName: task.name,
+              taskStatus: task.status,
+              telemetryAttribute: attr.name,
+              attributeType: attr.attributeType,
+              required: attr.isRequired ? 'Yes' : 'No',
+              currentValue: latestValue ? JSON.stringify(latestValue.value) : '',
+              lastUpdated: latestValue ? latestValue.createdAt.toISOString() : '',
+              criteriaMet: criteriaMet === null ? '' : criteriaMet ? 'Yes' : 'No',
+            });
+          }
+        }
+      }
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const content = Buffer.from(buffer).toString('base64');
+    const filename = `${customerProduct.customer.name}_${customerProduct.product.name}_adoption.xlsx`;
+
+    await logAudit('EXPORT_CUSTOMER_ADOPTION', 'CustomerProduct', customerProductId, { filename }, ctx.user?.id);
+
+    return {
+      filename,
+      content,
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      size: buffer.byteLength,
+      stats: {
+        tasksExported: adoptionPlan?.tasks.length || 0,
+        customAttributesExported: 0,
+        licensesExported: 0,
+        outcomesExported: 0,
+        releasesExported: 0,
+        telemetryAttributesExported: adoptionPlan?.tasks.reduce((sum: any, t: any) => sum + t.telemetryAttributes.length, 0) || 0,
+      },
+    };
+  },
+
+  importCustomerAdoptionFromExcel: async (_: any, { content }: any, ctx: any) => {
+    ensureRole(ctx, 'ADMIN');
+
+    const ExcelJS = await import('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    const buffer = Buffer.from(content, 'base64');
+    await workbook.xlsx.load(buffer.buffer as ArrayBuffer);
+
+    const worksheet = workbook.getWorksheet('Customer Adoption Data');
+    if (!worksheet) {
+      throw new Error('Worksheet "Customer Adoption Data" not found');
+    }
+
+    const errors: any[] = [];
+    const warnings: any[] = [];
+    let telemetryValuesImported = 0;
+    let taskStatusesUpdated = 0;
+    let attributesCreated = 0;
+
+    let customerId = '';
+    let customerName = '';
+    let customerProductId = '';
+    let productName = '';
+
+    const rows: any[] = [];
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return; // Skip header
+      rows.push({
+        rowNumber,
+        customerId: row.getCell(1).value,
+        customerName: row.getCell(2).value,
+        productId: row.getCell(3).value,
+        productName: row.getCell(4).value,
+        licenseLevel: row.getCell(5).value,
+        taskSequence: row.getCell(6).value,
+        taskName: row.getCell(7).value,
+        taskStatus: row.getCell(8).value,
+        telemetryAttribute: row.getCell(9).value,
+        attributeType: row.getCell(10).value,
+        required: row.getCell(11).value,
+        currentValue: row.getCell(12).value,
+        lastUpdated: row.getCell(13).value,
+        criteriaMet: row.getCell(14).value,
+      });
+    });
+
+    if (rows.length === 0) {
+      throw new Error('No data rows found in worksheet');
+    }
+
+    // Get customer and product from first row
+    const firstRow = rows[0];
+    customerId = firstRow.customerId;
+    customerName = firstRow.customerName;
+    productName = firstRow.productName;
+
+    // Find customer product
+    const customerProduct = await prisma.customerProduct.findFirst({
+      where: {
+        customerId: customerId,
+        productId: firstRow.productId,
+      },
+      include: {
+        adoptionPlans: {
+          include: {
+            tasks: {
+              include: {
+                telemetryAttributes: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!customerProduct) {
+      throw new Error(`Customer product assignment not found for customer ${customerName} and product ${productName}`);
+    }
+
+    customerProductId = customerProduct.id;
+    const adoptionPlan = customerProduct.adoptionPlans[0];
+
+    if (!adoptionPlan) {
+      throw new Error('No adoption plan found for this customer product');
+    }
+
+    // Process each row
+    for (const row of rows) {
+      try {
+        // Find task by sequence number
+        const task = adoptionPlan.tasks.find((t: any) => t.sequenceNumber === Number(row.taskSequence));
+        
+        if (!task) {
+          warnings.push({
+            row: row.rowNumber,
+            field: 'taskSequence',
+            message: `Task with sequence ${row.taskSequence} not found`,
+          });
+          continue;
+        }
+
+        // Update task status if changed
+        if (row.taskStatus && row.taskStatus !== task.status) {
+          await prisma.customerTask.update({
+            where: { id: task.id },
+            data: {
+              status: row.taskStatus as any,
+              statusUpdatedBy: 'import',
+              statusUpdatedAt: new Date(),
+            },
+          });
+          taskStatusesUpdated++;
+        }
+
+        // Process telemetry if present
+        if (row.telemetryAttribute && row.currentValue) {
+          // Find or create telemetry attribute
+          let attribute = task.telemetryAttributes.find((a: any) => a.name === row.telemetryAttribute);
+          
+          if (!attribute) {
+            attribute = await prisma.customerTelemetryAttribute.create({
+              data: {
+                customerTaskId: task.id,
+                name: row.telemetryAttribute,
+                attributeType: row.attributeType || 'TEXT',
+                isRequired: row.required === 'Yes',
+                isActive: true,
+              },
+            });
+            attributesCreated++;
+          }
+
+          // Parse value
+          let parsedValue: any;
+          try {
+            parsedValue = JSON.parse(row.currentValue);
+          } catch {
+            parsedValue = row.currentValue;
+          }
+
+          // Create telemetry value
+          await prisma.customerTelemetryValue.create({
+            data: {
+              customerAttributeId: attribute.id,
+              value: parsedValue,
+              batchId: `import_${Date.now()}`,
+            },
+          });
+          telemetryValuesImported++;
+        }
+      } catch (error: any) {
+        errors.push({
+          row: row.rowNumber,
+          field: 'general',
+          message: error.message,
+        });
+      }
+    }
+
+    // Recalculate progress
+    const allTasks = await prisma.customerTask.findMany({
+      where: { adoptionPlanId: adoptionPlan.id },
+    });
+    
+    const progress = calculateProgress(allTasks);
+    
+    await prisma.adoptionPlan.update({
+      where: { id: adoptionPlan.id },
+      data: progress,
+    });
+
+    await logAudit('IMPORT_CUSTOMER_ADOPTION', 'CustomerProduct', customerProductId, { telemetryValuesImported, taskStatusesUpdated }, ctx.user?.id);
+
+    return {
+      success: errors.length === 0,
+      customerId,
+      customerName,
+      customerProductId,
+      productName,
+      stats: {
+        telemetryValuesImported,
+        taskStatusesUpdated,
+        attributesCreated,
+      },
+      errors,
+      warnings,
+    };
   },
 };
 
