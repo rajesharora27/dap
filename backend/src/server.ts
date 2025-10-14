@@ -16,8 +16,12 @@ export async function createApp() {
   const app = express();
 
   // Configure CORS to allow frontend requests
+  // In development with no ALLOWED_ORIGINS set, allow all origins for SSH tunnel access
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  const hasCustomOrigins = !!process.env.ALLOWED_ORIGINS;
+  
   app.use(cors({
-    origin: getCorsOrigins(), // Use configuration system
+    origin: (isDevelopment && !hasCustomOrigins) ? true : getCorsOrigins(), // Allow all in dev for SSH tunnels
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'Apollo-Require-Preflight', 'authorization'], // Allow Apollo headers
     methods: ['GET', 'POST', 'OPTIONS']
