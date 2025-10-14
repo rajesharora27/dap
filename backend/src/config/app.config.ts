@@ -32,7 +32,7 @@ const environments = {
       url: process.env.FRONTEND_URL || 'http://localhost:5173'
     },
     backend: {
-      host: process.env.BACKEND_HOST || '127.0.0.1', // Use IPv4 explicitly
+      host: process.env.BACKEND_HOST || '0.0.0.0', // Listen on all interfaces for SSH tunnel access
       port: parseInt(process.env.BACKEND_PORT || '4000'),
       url: process.env.BACKEND_URL || 'http://localhost:4000',
       graphqlEndpoint: process.env.GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql'
