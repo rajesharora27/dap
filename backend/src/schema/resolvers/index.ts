@@ -16,6 +16,14 @@ import {
   TelemetryMutationResolvers,
   TaskTelemetryResolvers
 } from './telemetry';
+import {
+  CustomerAdoptionQueryResolvers,
+  CustomerAdoptionMutationResolvers,
+  CustomerProductWithPlanResolvers,
+  AdoptionPlanResolvers,
+  CustomerTaskResolvers,
+  CustomerTelemetryAttributeResolvers
+} from './customerAdoption';
 import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../lib/pagination';
 import { logAudit } from '../../lib/audit';
 import { ensureRole, requireUser } from '../../lib/auth';
@@ -352,6 +360,12 @@ export const resolvers = {
   
   TelemetryValue: TelemetryValueResolvers,
   
+  // Customer Adoption field resolvers
+  CustomerProductWithPlan: CustomerProductWithPlanResolvers,
+  AdoptionPlan: AdoptionPlanResolvers,
+  CustomerTask: CustomerTaskResolvers,
+  CustomerTelemetryAttribute: CustomerTelemetryAttributeResolvers,
+  
   Outcome: {
     product: (parent: any) => {
       if (fallbackActive) {
@@ -509,6 +523,13 @@ export const resolvers = {
     , telemetryValuesByBatch: TelemetryQueryResolvers.telemetryValuesByBatch
     
     , taskDependencies: async (_: any, { taskId }: any) => prisma.taskDependency.findMany({ where: { taskId }, orderBy: { createdAt: 'asc' } })
+    
+    // Customer Adoption queries
+    , customer: CustomerAdoptionQueryResolvers.customer
+    , adoptionPlan: CustomerAdoptionQueryResolvers.adoptionPlan
+    , adoptionPlansForCustomer: CustomerAdoptionQueryResolvers.adoptionPlansForCustomer
+    , customerTask: CustomerAdoptionQueryResolvers.customerTask
+    , customerTasksForPlan: CustomerAdoptionQueryResolvers.customerTasksForPlan
     
     // Excel Export
     , exportProductToExcel: async (_: any, { productName }: any) => {
@@ -1825,6 +1846,19 @@ export const resolvers = {
       await logAudit('PROCESS_DELETE_QUEUE', 'Task', undefined, { count: deletedCount });
       return deletedCount;
     },
+
+    // Customer Adoption mutations
+    assignProductToCustomer: CustomerAdoptionMutationResolvers.assignProductToCustomer,
+    updateCustomerProduct: CustomerAdoptionMutationResolvers.updateCustomerProduct,
+    removeProductFromCustomerEnhanced: CustomerAdoptionMutationResolvers.removeProductFromCustomerEnhanced,
+    createAdoptionPlan: CustomerAdoptionMutationResolvers.createAdoptionPlan,
+    syncAdoptionPlan: CustomerAdoptionMutationResolvers.syncAdoptionPlan,
+    updateCustomerTaskStatus: CustomerAdoptionMutationResolvers.updateCustomerTaskStatus,
+    bulkUpdateCustomerTaskStatus: CustomerAdoptionMutationResolvers.bulkUpdateCustomerTaskStatus,
+    addCustomerTelemetryValue: CustomerAdoptionMutationResolvers.addCustomerTelemetryValue,
+    bulkAddCustomerTelemetryValues: CustomerAdoptionMutationResolvers.bulkAddCustomerTelemetryValues,
+    evaluateTaskTelemetry: CustomerAdoptionMutationResolvers.evaluateTaskTelemetry,
+    evaluateAllTasksTelemetry: CustomerAdoptionMutationResolvers.evaluateAllTasksTelemetry,
 
     // Excel Import
     importProductFromExcel: async (_: any, { content, mode }: any, ctx: any) => {
