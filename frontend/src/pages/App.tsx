@@ -37,7 +37,7 @@ import { LicenseDialog } from '../components/dialogs/LicenseDialog';
 import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
 import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
-import { CustomerManagementPanel } from '../components/CustomerManagementPanel';
+import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
 import { LicenseHandlers, ReleaseHandlers, OutcomeHandlers, ProductHandlers } from '../utils/sharedHandlers';
 import { resolveImportTarget, type ResolveImportAbortReason } from '../utils/excelImportTarget';
 import { License, Outcome } from '../types/shared';
@@ -5526,7 +5526,7 @@ export function App() {
 
             {/* Customers Section */}
             {selectedSection === 'customers' && (
-              <CustomerManagementPanel />
+              <CustomerAdoptionPanelV4 />
             )}
 
             {/* Add Product Dialog */}
