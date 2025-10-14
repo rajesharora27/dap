@@ -37,6 +37,7 @@ import { LicenseDialog } from '../components/dialogs/LicenseDialog';
 import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
 import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
+import { CustomerAdoptionPanel } from '../components/CustomerAdoptionPanel';
 import { LicenseHandlers, ReleaseHandlers, OutcomeHandlers, ProductHandlers } from '../utils/sharedHandlers';
 import { resolveImportTarget, type ResolveImportAbortReason } from '../utils/excelImportTarget';
 import { License, Outcome } from '../types/shared';
@@ -5525,36 +5526,7 @@ export function App() {
 
             {/* Customers Section */}
             {selectedSection === 'customers' && (
-              <Box>
-                <Typography variant="h4" gutterBottom>
-                  Customer Management
-                </Typography>
-
-                {customersLoading && <LinearProgress />}
-                {customersError && (
-                  <Typography color="error">Error: {customersError.message}</Typography>
-                )}
-
-                <Paper sx={{ p: 2, mt: 2 }}>
-                  <Typography variant="h6" gutterBottom>Customers</Typography>
-                  {customers.length > 0 ? (
-                    <List>
-                      {customers.map((customer: any) => (
-                        <ListItemButton key={customer.id}>
-                          <ListItemText
-                            primary={customer.name}
-                            secondary={customer.description}
-                          />
-                        </ListItemButton>
-                      ))}
-                    </List>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No customers found
-                    </Typography>
-                  )}
-                </Paper>
-              </Box>
+              <CustomerAdoptionPanel />
             )}
 
             {/* Add Product Dialog */}
