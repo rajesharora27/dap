@@ -5,6 +5,7 @@ export const typeDefs = gql`
 
   enum Role { ADMIN USER }
   enum LicenseLevel { Essential Advantage Signature }
+  enum CustomerTaskStatus { NOT_STARTED IN_PROGRESS DONE NOT_APPLICABLE }
 
   interface Node { id: ID! }
 
@@ -202,6 +203,13 @@ export const typeDefs = gql`
     telemetryValuesByBatch(batchId: String!): [TelemetryValue!]!
     
     taskDependencies(taskId: ID!): [TaskDependencyEdge!]!
+    
+    # Customer Adoption queries
+    customer(id: ID!): Customer
+    adoptionPlan(id: ID!): AdoptionPlan
+    adoptionPlansForCustomer(customerId: ID!): [AdoptionPlan!]!
+    customerTask(id: ID!): CustomerTask
+    customerTasksForPlan(adoptionPlanId: ID!, status: CustomerTaskStatus): [CustomerTask!]!
     
     # Excel Export
     exportProductToExcel(productName: String!): ExcelExportResult!
@@ -418,9 +426,154 @@ export const typeDefs = gql`
   
   # Excel Import/Export mutations
   importProductFromExcel(content: String!, mode: ImportMode!): ImportResult!
+  
+  # Customer Adoption mutations
+  assignProductToCustomer(input: AssignProductToCustomerInput!): CustomerProductWithPlan!
+  updateCustomerProduct(id: ID!, input: UpdateCustomerProductInput!): CustomerProductWithPlan!
+  removeProductFromCustomerEnhanced(id: ID!): DeleteResult!
+  createAdoptionPlan(customerProductId: ID!): AdoptionPlan!
+  syncAdoptionPlan(adoptionPlanId: ID!): AdoptionPlan!
+  updateCustomerTaskStatus(input: UpdateCustomerTaskStatusInput!): CustomerTask!
+  bulkUpdateCustomerTaskStatus(adoptionPlanId: ID!, taskIds: [ID!]!, status: CustomerTaskStatus!, notes: String): [CustomerTask!]!
+  addCustomerTelemetryValue(input: AddCustomerTelemetryValueInput!): CustomerTelemetryValue!
+  bulkAddCustomerTelemetryValues(inputs: [AddCustomerTelemetryValueInput!]!): [CustomerTelemetryValue!]!
+  evaluateTaskTelemetry(customerTaskId: ID!): CustomerTask!
+  evaluateAllTasksTelemetry(adoptionPlanId: ID!): AdoptionPlan!
   }
 
   union SearchResult = Product | Task | Solution | Customer
+
+  # Customer Adoption Types
+  type CustomerProductWithPlan {
+    id: ID!
+    customer: Customer!
+    product: Product!
+    licenseLevel: LicenseLevel!
+    selectedOutcomes: [Outcome!]!
+    adoptionPlan: AdoptionPlan
+    purchasedAt: String!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type AdoptionPlan {
+    id: ID!
+    customerProduct: CustomerProductWithPlan!
+    productId: ID!
+    productName: String!
+    licenseLevel: LicenseLevel!
+    selectedOutcomes: [Outcome!]!
+    totalTasks: Int!
+    completedTasks: Int!
+    totalWeight: Float!
+    completedWeight: Float!
+    progressPercentage: Float!
+    tasks: [CustomerTask!]!
+    tasksByStatus(status: CustomerTaskStatus): [CustomerTask!]!
+    createdAt: String!
+    updatedAt: String!
+    lastSyncedAt: String
+    needsSync: Boolean!
+  }
+
+  type CustomerTask {
+    id: ID!
+    adoptionPlan: AdoptionPlan!
+    originalTaskId: ID!
+    name: String!
+    description: String
+    estMinutes: Int!
+    weight: Float!
+    sequenceNumber: Int!
+    priority: String
+    howToDoc: [String!]!
+    howToVideo: [String!]!
+    notes: String
+    licenseLevel: LicenseLevel!
+    status: CustomerTaskStatus!
+    statusUpdatedAt: String
+    statusUpdatedBy: String
+    statusNotes: String
+    isComplete: Boolean!
+    completedAt: String
+    completedBy: String
+    telemetryAttributes: [CustomerTelemetryAttribute!]!
+    outcomes: [Outcome!]!
+    releases: [Release!]!
+    telemetryProgress: TelemetryProgress!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type CustomerTelemetryAttribute {
+    id: ID!
+    customerTask: CustomerTask!
+    originalAttributeId: ID
+    name: String!
+    description: String
+    dataType: TelemetryDataType!
+    isRequired: Boolean!
+    successCriteria: JSON!
+    order: Int!
+    isActive: Boolean!
+    isMet: Boolean!
+    lastCheckedAt: String
+    values: [CustomerTelemetryValue!]!
+    latestValue: CustomerTelemetryValue
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type CustomerTelemetryValue {
+    id: ID!
+    customerAttribute: CustomerTelemetryAttribute!
+    value: JSON!
+    source: String
+    batchId: String
+    notes: String
+    createdAt: String!
+  }
+
+  type TelemetryProgress {
+    totalAttributes: Int!
+    requiredAttributes: Int!
+    metAttributes: Int!
+    metRequiredAttributes: Int!
+    completionPercentage: Float!
+    allRequiredMet: Boolean!
+  }
+
+  type DeleteResult {
+    success: Boolean!
+    message: String
+  }
+
+  # Customer Adoption Input Types
+  input AssignProductToCustomerInput {
+    customerId: ID!
+    productId: ID!
+    licenseLevel: LicenseLevel!
+    selectedOutcomeIds: [ID!]!
+  }
+
+  input UpdateCustomerProductInput {
+    licenseLevel: LicenseLevel
+    selectedOutcomeIds: [ID!]
+  }
+
+  input UpdateCustomerTaskStatusInput {
+    customerTaskId: ID!
+    status: CustomerTaskStatus!
+    notes: String
+  }
+
+  input AddCustomerTelemetryValueInput {
+    customerAttributeId: ID!
+    value: JSON!
+    source: String
+    batchId: String
+    notes: String
+  }
 
   type Subscription {
     productUpdated: Product!
