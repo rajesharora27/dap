@@ -84,7 +84,7 @@ interface Props {
 
 export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId, onAssigned }) => {
   const [selectedProductId, setSelectedProductId] = useState('');
-  const [licenseLevel, setLicenseLevel] = useState<'ESSENTIAL' | 'ADVANTAGE' | 'SIGNATURE'>('ESSENTIAL');
+  const [licenseLevel, setLicenseLevel] = useState<'Essential' | 'Advantage' | 'Signature'>('Essential');
   const [selectedOutcomeIds, setSelectedOutcomeIds] = useState<string[]>([]);
   const [createPlanImmediately, setCreatePlanImmediately] = useState(true);
   const [step, setStep] = useState(1); // 1: Select Product, 2: Configure, 3: Confirm
@@ -107,7 +107,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
     if (!open) {
       // Reset form when dialog closes
       setSelectedProductId('');
-      setLicenseLevel('ESSENTIAL');
+      setLicenseLevel('Essential');
       setSelectedOutcomeIds([]);
       setCreatePlanImmediately(true);
       setStep(1);
@@ -165,9 +165,9 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
   };
 
   const licenseLevels = [
-    { value: 'ESSENTIAL', label: 'Essential', description: 'Basic features and core functionality' },
-    { value: 'ADVANTAGE', label: 'Advantage', description: 'Essential + Advanced features' },
-    { value: 'SIGNATURE', label: 'Signature', description: 'All features and premium support' },
+    { value: 'Essential', label: 'Essential', description: 'Basic features and core functionality' },
+    { value: 'Advantage', label: 'Advantage', description: 'Essential + Advanced features' },
+    { value: 'Signature', label: 'Signature', description: 'All features + Premium support' },
   ];
 
   return (
