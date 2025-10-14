@@ -67,7 +67,7 @@ export const typeDefs = gql`
     id: ID!
     name: String!
     description: String
-    products: [Product!]!
+    products: [CustomerProductWithPlan!]!
     solutions: [Solution!]!
   }
 
