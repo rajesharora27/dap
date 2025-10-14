@@ -20,7 +20,8 @@ import {
   Alert,
   Divider,
 } from '@mui/material';
-import { CheckCircle, HourglassEmpty, NotStarted, Block } from '@mui/icons-material';
+import { CheckCircle, HourglassEmpty, NotStarted, Block, Assessment } from '@mui/icons-material';
+import { CustomerTelemetryDialog } from './CustomerTelemetryDialog';
 
 const UPDATE_TASK_STATUS = gql`
   mutation UpdateCustomerTaskStatus($taskId: ID!, $status: CustomerTaskStatus!, $notes: String) {
@@ -46,6 +47,7 @@ interface Props {
 export const UpdateTaskStatusDialog: React.FC<Props> = ({ open, onClose, task, onUpdated }) => {
   const [status, setStatus] = useState(task.status || 'NOT_STARTED');
   const [notes, setNotes] = useState(task.statusNotes || '');
+  const [telemetryDialogOpen, setTelemetryDialogOpen] = useState(false);
 
   useEffect(() => {
     if (open && task) {
@@ -250,6 +252,15 @@ export const UpdateTaskStatusDialog: React.FC<Props> = ({ open, onClose, task, o
       </DialogContent>
 
       <DialogActions>
+        <Box sx={{ flex: 1 }}>
+          <Button
+            onClick={() => setTelemetryDialogOpen(true)}
+            startIcon={<Assessment />}
+            disabled={loading}
+          >
+            Manage Telemetry
+          </Button>
+        </Box>
         <Button onClick={onClose} disabled={loading}>
           Cancel
         </Button>
@@ -261,6 +272,14 @@ export const UpdateTaskStatusDialog: React.FC<Props> = ({ open, onClose, task, o
           {loading ? 'Updating...' : 'Update Status'}
         </Button>
       </DialogActions>
+
+      {/* Telemetry Dialog */}
+      <CustomerTelemetryDialog
+        open={telemetryDialogOpen}
+        onClose={() => setTelemetryDialogOpen(false)}
+        customerTaskId={task?.id}
+        onUpdated={onUpdated}
+      />
     </Dialog>
   );
 };
