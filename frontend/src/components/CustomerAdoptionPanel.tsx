@@ -31,6 +31,8 @@ import {
   CheckCircle,
   HourglassEmpty,
   NotInterested,
+  Download,
+  Upload,
 } from '@mui/icons-material';
 import { AssignProductDialog } from './dialogs/AssignProductDialog';
 import { AdoptionPlanDialog } from './dialogs/AdoptionPlanDialog';
@@ -138,6 +140,36 @@ const DELETE_CUSTOMER = gql`
   }
 `;
 
+const EXPORT_CUSTOMER_ADOPTION = gql`
+  mutation ExportCustomerAdoption($customerId: ID!, $customerProductId: ID!) {
+    exportCustomerAdoptionToExcel(customerId: $customerId, customerProductId: $customerProductId) {
+      filename
+      content
+      mimeType
+    }
+  }
+`;
+
+const IMPORT_CUSTOMER_ADOPTION = gql`
+  mutation ImportCustomerAdoption($content: String!) {
+    importCustomerAdoptionFromExcel(content: $content) {
+      success
+      customerName
+      productName
+      stats {
+        telemetryValuesImported
+        taskStatusesUpdated
+        attributesCreated
+      }
+      errors {
+        row
+        field
+        message
+      }
+    }
+  }
+`;
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -208,6 +240,9 @@ export const CustomerAdoptionPanel: React.FC = () => {
     },
   });
 
+  const [exportAdoption, { loading: exporting }] = useMutation(EXPORT_CUSTOMER_ADOPTION);
+  const [importAdoption, { loading: importing }] = useMutation(IMPORT_CUSTOMER_ADOPTION);
+
   const customers = customersData?.customers || [];
   const selectedCustomer = customerDetailData?.customer;
   const adoptionPlans = adoptionPlansData?.adoptionPlansForCustomer || [];
@@ -260,6 +295,60 @@ export const CustomerAdoptionPanel: React.FC = () => {
   const handleViewAdoptionPlan = (plan: any) => {
     setSelectedAdoptionPlan(plan);
     setAdoptionPlanDialogOpen(true);
+  };
+
+  const handleExportAdoption = async (customerProductId: string) => {
+    if (!selectedCustomerId) return;
+
+    try {
+      const result = await exportAdoption({
+        variables: {
+          customerId: selectedCustomerId,
+          customerProductId,
+        },
+      });
+
+      const { filename, content, mimeType } = result.data.exportCustomerAdoptionToExcel;
+      
+      // Download file
+      const blob = new Blob([Uint8Array.from(atob(content), c => c.charCodeAt(0))], { type: mimeType });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      alert(`Error exporting: ${error.message}`);
+    }
+  };
+
+  const handleImportAdoption = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      const content = btoa(String.fromCharCode(...bytes));
+
+      const result = await importAdoption({ variables: { content } });
+      
+      if (result.data.importCustomerAdoptionFromExcel.success) {
+        alert(`Import successful!\n${result.data.importCustomerAdoptionFromExcel.stats.telemetryValuesImported} telemetry values imported\n${result.data.importCustomerAdoptionFromExcel.stats.taskStatusesUpdated} task statuses updated`);
+        refetchCustomers();
+      } else {
+        const errors = result.data.importCustomerAdoptionFromExcel.errors.map((e: any) => `Row ${e.row}: ${e.message}`).join('\n');
+        alert(`Import completed with errors:\n${errors}`);
+      }
+    } catch (error: any) {
+      alert(`Error importing: ${error.message}`);
+    }
+
+    // Reset file input
+    event.target.value = '';
   };
 
   const getStatusChip = (progressPercentage: number) => {
@@ -511,9 +600,20 @@ export const CustomerAdoptionPanel: React.FC = () => {
 
                   {/* Products & Solutions Tab */}
                   <TabPanel value={tabValue} index={2}>
-                    <Typography variant="h6" gutterBottom>
-                      Assigned Products
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="h6">
+                        Assigned Products
+                      </Typography>
+                      <Button
+                        component="label"
+                        startIcon={<Upload />}
+                        size="small"
+                        disabled={importing}
+                      >
+                        {importing ? 'Importing...' : 'Import'}
+                        <input type="file" hidden accept=".xlsx" onChange={handleImportAdoption} />
+                      </Button>
+                    </Box>
                     {selectedCustomer.products?.length === 0 ? (
                       <Alert severity="info" sx={{ mb: 2 }}>
                         No products assigned yet.
@@ -544,6 +644,17 @@ export const CustomerAdoptionPanel: React.FC = () => {
                                 </>
                               }
                             />
+                            <ListItemSecondaryAction>
+                              <Tooltip title="Export telemetry data">
+                                <IconButton
+                                  edge="end"
+                                  onClick={() => handleExportAdoption(cp.id)}
+                                  disabled={exporting}
+                                >
+                                  <Download />
+                                </IconButton>
+                              </Tooltip>
+                            </ListItemSecondaryAction>
                           </ListItem>
                         ))}
                       </List>
