@@ -290,6 +290,143 @@ UPDATE_CUSTOMER_TASK_STATUS
 
 **Note:** Telemetry management can be added incrementally. Core customer adoption workflow (assign product → create plan → update status) is now fully functional.
 
+#### Task 10-11: Telemetry Management & Import/Export ✅
+**Commits:** `c03f5a5`, `fe5029a`
+
+**Backend Additions:**
+
+**1. Export Customer Adoption to Excel**
+- Mutation: `exportCustomerAdoptionToExcel(customerId, customerProductId)`
+- Returns Excel file with customer-product telemetry data
+- Includes: customer info, product info, tasks, telemetry attributes, current values, criteria evaluation
+- Format: Base64-encoded XLSX
+
+**2. Import Customer Adoption from Excel**
+- Mutation: `importCustomerAdoptionFromExcel(content)`
+- Updates telemetry values from Excel
+- Updates task statuses
+- Creates new telemetry attributes if needed
+- Returns: import stats, errors, warnings
+
+**3. Telemetry Database Query**
+- Query: `customerTelemetryDatabase(customerId?, customerProductId?)`
+- Returns comprehensive telemetry view across all customers/products
+- Includes: all telemetry attributes, latest values, criteria evaluation, task statuses
+- Supports filtering by customer or customer-product
+
+**Frontend Components:**
+
+**1. CustomerTelemetryDialog.tsx (~350 lines)**
+- Dialog for managing telemetry values for individual tasks
+- Features:
+  - Attribute selector dropdown
+  - Current value display with criteria evaluation icons
+  - Success criteria visualization (JSON display)
+  - Add new value form with value and notes fields
+  - Historical values list with timestamps
+  - "Latest" badge on most recent value
+  - Evaluate Criteria button to re-evaluate all telemetry
+
+**GraphQL:**
+```graphql
+GET_TASK_TELEMETRY
+ADD_TELEMETRY_VALUE
+EVALUATE_TASK_TELEMETRY
+```
+
+**2. TelemetryDatabasePanel.tsx (~400 lines)**
+- Full telemetry database view for all customers/products
+- Features:
+  - Customer filter dropdown
+  - Search functionality across all fields
+  - Customer-product export cards (click to download Excel)
+  - Import button for bulk telemetry updates
+  - Comprehensive table with all telemetry data
+  - Color-coded criteria met indicators (green/red chips)
+  - Task status display
+
+**GraphQL:**
+```graphql
+GET_TELEMETRY_DATABASE
+GET_CUSTOMERS_SIMPLE
+EXPORT_CUSTOMER_ADOPTION
+IMPORT_CUSTOMER_ADOPTION
+```
+
+**3. Enhanced UpdateTaskStatusDialog**
+- Added "Manage Telemetry" button
+- Opens CustomerTelemetryDialog in nested dialog
+- Allows telemetry management while updating task status
+
+**4. Enhanced CustomerAdoptionPanel**
+- Added export/import functionality to Products tab
+- Export button for each assigned product (downloads Excel)
+- Import button at top of Products tab
+- Handles import success/error messages
+- Refreshes data after import
+
+**Import/Export Workflow:**
+
+**Export Process:**
+1. User clicks Export button on customer-product
+2. Backend generates Excel with:
+   - Customer metadata (ID, name)
+   - Product metadata (ID, name, license level)
+   - All tasks with sequence numbers
+   - Task statuses
+   - Telemetry attributes (name, type, required, criteria)
+   - Current values
+   - Last updated dates
+   - Criteria evaluation results
+3. Downloads as `{CustomerName}_{ProductName}_adoption.xlsx`
+
+**Import Process:**
+1. User uploads Excel file via Import button
+2. Backend parses Excel and:
+   - Finds customer and product by IDs
+   - Updates task statuses if changed
+   - Creates new telemetry attributes if not existing
+   - Adds new telemetry values
+   - Recalculates adoption plan progress
+3. Returns success message with stats
+4. Frontend displays results and refreshes data
+
+**Use Cases Enabled:**
+- Manual telemetry entry via GUI (CustomerTelemetryDialog)
+- Bulk telemetry updates via Excel import
+- Telemetry database export for reporting/analysis
+- Cross-customer telemetry comparison (TelemetryDatabasePanel)
+- Integration with external systems via API (GraphQL mutations)
+- Audit trail of telemetry changes (batchId, createdAt)
+
+---
+
+## 🎉 All Tasks Complete!
+
+### Phase 4: Final Status
+
+**Testing:** Ready for end-to-end testing ⏳
+
+The following workflow is now fully functional:
+1. ✅ Create customer
+2. ✅ Assign product with license level and outcomes
+3. ✅ Create adoption plan (automatic task snapshot)
+4. ✅ View adoption plan with progress visualization
+5. ✅ Update task statuses (manual or via telemetry)
+6. ✅ Enter telemetry values (GUI or Excel import)
+7. ✅ Evaluate telemetry criteria
+8. ✅ Export customer adoption data to Excel
+9. ✅ Import telemetry updates from Excel
+10. ✅ View telemetry database across all customers
+11. ✅ Sync adoption plan when product changes
+
+**Implementation Complete:** October 14, 2025
+
+**Branch:** `feature/customer-adoption`  
+**Commits:** 6 total (c95c630, b2fc6ea, c50fb7c, e737b15, c03f5a5, fe5029a)
+
+---
+
 ### Phase 4: Testing (Not Started)
 
 #### Task 12: Write Tests
