@@ -232,8 +232,18 @@ export const resolvers = {
   },
   Customer: {
     products: (parent: any) => {
-      if (fallbackActive) { const { products } = require('../../lib/fallbackStore'); return products.filter((p: any) => parent.productIds?.includes(p.id)); }
-      return prisma.customerProduct.findMany({ where: { customerId: parent.id }, include: { product: true } }).then((rows: any) => rows.map((r: any) => r.product));
+      if (fallbackActive) { 
+        const { products } = require('../../lib/fallbackStore'); 
+        return products.filter((p: any) => parent.productIds?.includes(p.id)); 
+      }
+      // Return CustomerProductWithPlan instead of just Product
+      return prisma.customerProduct.findMany({ 
+        where: { customerId: parent.id }, 
+        include: { 
+          product: true,
+          customer: true,
+        } 
+      });
     },
     solutions: (parent: any) => {
       if (fallbackActive) { const { solutions } = require('../../lib/fallbackStore'); return solutions.filter((s: any) => parent.solutionIds?.includes(s.id)); }

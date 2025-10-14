@@ -1149,29 +1149,35 @@ export const CustomerAdoptionMutationResolvers = {
       include: {
         customer: true,
         product: true,
-        adoptionPlans: {
+      },
+    });
+    
+    if (!customerProduct) {
+      throw new Error('Customer product not found');
+    }
+    
+    const adoptionPlan = await prisma.adoptionPlan.findUnique({
+      where: { customerProductId },
+      include: {
+        tasks: {
           include: {
-            tasks: {
+            telemetryAttributes: {
               include: {
-                telemetryAttributes: {
-                  include: {
-                    values: {
-                      orderBy: { createdAt: 'desc' },
-                      take: 1,
-                    },
-                  },
+                values: {
+                  orderBy: { createdAt: 'desc' },
+                  take: 1,
                 },
-                outcomes: { include: { outcome: true } },
               },
-              orderBy: { sequenceNumber: 'asc' },
             },
+            outcomes: { include: { outcome: true } },
           },
+          orderBy: { sequenceNumber: 'asc' },
         },
       },
     });
 
-    if (!customerProduct) {
-      throw new Error('Customer product assignment not found');
+    if (!adoptionPlan) {
+      throw new Error('No adoption plan found for this customer product');
     }
 
     const workbook = new ExcelJS.Workbook();
@@ -1203,8 +1209,7 @@ export const CustomerAdoptionMutationResolvers = {
       fgColor: { argb: 'FFE0E0E0' },
     };
 
-    const adoptionPlan = customerProduct.adoptionPlans[0];
-    if (adoptionPlan) {
+    if (adoptionPlan.tasks && adoptionPlan.tasks.length > 0) {
       for (const task of adoptionPlan.tasks) {
         if (task.telemetryAttributes.length === 0) {
           // Task with no telemetry
@@ -1480,6 +1485,12 @@ export const CustomerProductWithPlanResolvers = {
       where: { id: { in: outcomeIds } },
     });
   },
+  adoptionPlan: async (parent: any) => {
+    // Find the adoption plan for this customer product
+    return await prisma.adoptionPlan.findUnique({
+      where: { customerProductId: parent.id },
+    });
+  },
 };
 
 export const AdoptionPlanResolvers = {
@@ -1495,6 +1506,14 @@ export const AdoptionPlanResolvers = {
     
     return await prisma.outcome.findMany({
       where: { id: { in: outcomeIds } },
+    });
+  },
+  
+  tasks: async (parent: any) => {
+    // Return all tasks for this adoption plan
+    return await prisma.customerTask.findMany({
+      where: { adoptionPlanId: parent.id },
+      orderBy: { sequenceNumber: 'asc' },
     });
   },
   
@@ -1540,6 +1559,13 @@ export const CustomerTaskResolvers = {
     const level = parent.licenseLevel;
     if (!level) return null;
     return level.charAt(0) + level.slice(1).toLowerCase();
+  },
+  telemetryAttributes: async (parent: any) => {
+    // Return all telemetry attributes for this customer task
+    return await prisma.customerTelemetryAttribute.findMany({
+      where: { customerTaskId: parent.id },
+      orderBy: { order: 'asc' },
+    });
   },
   outcomes: async (parent: any) => {
     const taskOutcomes = await prisma.customerTaskOutcome.findMany({
