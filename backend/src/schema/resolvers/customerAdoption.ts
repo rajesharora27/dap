@@ -391,12 +391,15 @@ export const CustomerAdoptionMutationResolvers = {
       }
     }
     
+    // Convert GraphQL enum (PascalCase) to Prisma enum (UPPERCASE)
+    const prismaLicenseLevel = licenseLevel.toUpperCase() as 'ESSENTIAL' | 'ADVANTAGE' | 'SIGNATURE';
+    
     // Create customer product assignment
     const customerProduct = await prisma.customerProduct.create({
       data: {
         customerId,
         productId,
-        licenseLevel,
+        licenseLevel: prismaLicenseLevel,
         selectedOutcomes: selectedOutcomeIds || [],
       },
       include: {
@@ -438,7 +441,7 @@ export const CustomerAdoptionMutationResolvers = {
     }
     
     const updateData: any = {};
-    if (licenseLevel) updateData.licenseLevel = licenseLevel;
+    if (licenseLevel) updateData.licenseLevel = licenseLevel.toUpperCase();
     if (selectedOutcomeIds) updateData.selectedOutcomes = selectedOutcomeIds;
     
     const updated = await prisma.customerProduct.update({
@@ -1463,6 +1466,12 @@ export const CustomerAdoptionMutationResolvers = {
 
 // Field resolvers
 export const CustomerProductWithPlanResolvers = {
+  licenseLevel: (parent: any) => {
+    // Convert Prisma enum (UPPERCASE) to GraphQL enum (PascalCase)
+    const level = parent.licenseLevel;
+    if (!level) return null;
+    return level.charAt(0) + level.slice(1).toLowerCase();
+  },
   selectedOutcomes: async (parent: any) => {
     const outcomeIds = parent.selectedOutcomes as string[] || [];
     if (outcomeIds.length === 0) return [];
@@ -1474,6 +1483,12 @@ export const CustomerProductWithPlanResolvers = {
 };
 
 export const AdoptionPlanResolvers = {
+  licenseLevel: (parent: any) => {
+    // Convert Prisma enum (UPPERCASE) to GraphQL enum (PascalCase)
+    const level = parent.licenseLevel;
+    if (!level) return null;
+    return level.charAt(0) + level.slice(1).toLowerCase();
+  },
   selectedOutcomes: async (parent: any) => {
     const outcomeIds = parent.selectedOutcomes as string[] || [];
     if (outcomeIds.length === 0) return [];
@@ -1520,6 +1535,12 @@ export const AdoptionPlanResolvers = {
 };
 
 export const CustomerTaskResolvers = {
+  licenseLevel: (parent: any) => {
+    // Convert Prisma enum (UPPERCASE) to GraphQL enum (PascalCase)
+    const level = parent.licenseLevel;
+    if (!level) return null;
+    return level.charAt(0) + level.slice(1).toLowerCase();
+  },
   outcomes: async (parent: any) => {
     const taskOutcomes = await prisma.customerTaskOutcome.findMany({
       where: { customerTaskId: parent.id },

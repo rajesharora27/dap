@@ -51,6 +51,27 @@ const JSONScalar = new GraphQLScalarType({
   }
 });
 
+const DateTimeScalar = new GraphQLScalarType({
+  name: 'DateTime',
+  description: 'DateTime scalar type',
+  parseValue: (v: any) => {
+    if (v instanceof Date) return v;
+    if (typeof v === 'string' || typeof v === 'number') return new Date(v);
+    return null;
+  },
+  serialize: (v: any) => {
+    if (v instanceof Date) return v.toISOString();
+    if (typeof v === 'string') return v;
+    return null;
+  },
+  parseLiteral(ast: any) {
+    if (ast.kind === Kind.STRING || ast.kind === Kind.INT) {
+      return new Date(ast.value);
+    }
+    return null;
+  }
+});
+
 // legacy helper kept for potential backward compatibility (unused now)
 function relayFromArray<T>(items: T[], args: ConnectionArguments) {
   const offset = args.after ? cursorToOffset(args.after) + 1 : 0;
@@ -62,6 +83,7 @@ function relayFromArray<T>(items: T[], args: ConnectionArguments) {
 
 export const resolvers = {
   JSON: JSONScalar,
+  DateTime: DateTimeScalar,
   Node: {
     __resolveType(obj: any) {
       if (obj.tasks !== undefined) return 'Product';
