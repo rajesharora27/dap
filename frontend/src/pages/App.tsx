@@ -666,6 +666,8 @@ export function App() {
   const [detailProduct, setDetailProduct] = useState<any>(null);
   const [selectedProductSubSection, setSelectedProductSubSection] = useState<'main' | 'tasks' | 'licenses' | 'releases' | 'outcomes' | 'customAttributes'>('main');
   const [productsExpanded, setProductsExpanded] = useState(true);
+  const [customersExpanded, setCustomersExpanded] = useState(true);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
   // Dialog states
   const [addProductDialog, setAddProductDialog] = useState(false);
@@ -4621,13 +4623,59 @@ export function App() {
 
             <ListItemButton
               selected={selectedSection === 'customers'}
-              onClick={() => handleSectionChange('customers')}
+              onClick={() => {
+                setSelectedSection('customers');
+                setCustomersExpanded(!customersExpanded);
+              }}
             >
               <ListItemIcon>
                 <CustomerIcon />
               </ListItemIcon>
               <ListItemText primary="Customers" />
+              {customersExpanded ? <ExpandLess /> : <ExpandMore />}
             </ListItemButton>
+
+            <Collapse in={customersExpanded && selectedSection === 'customers'} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
+                {[...customers].sort((a: any, b: any) => a.name.localeCompare(b.name)).map((customer: any) => (
+                  <ListItemButton
+                    key={customer.id}
+                    sx={{ 
+                      pl: 6,
+                      position: 'relative',
+                      '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        left: '16px',
+                        top: 0,
+                        bottom: 0,
+                        width: '2px',
+                        backgroundColor: '#e0e0e0',
+                      },
+                      '&::after': {
+                        content: '""',
+                        position: 'absolute',
+                        left: '16px',
+                        top: '50%',
+                        width: '12px',
+                        height: '2px',
+                        backgroundColor: '#e0e0e0',
+                      }
+                    }}
+                    selected={selectedCustomerId === customer.id}
+                    onClick={() => setSelectedCustomerId(customer.id)}
+                  >
+                    <ListItemIcon>
+                      <CustomerIcon />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={customer.name}
+                      secondary={`${customer.products?.length || 0} products`}
+                    />
+                  </ListItemButton>
+                ))}
+              </List>
+            </Collapse>
           </List>
           <Divider />
         </Box>
@@ -5526,7 +5574,7 @@ export function App() {
 
             {/* Customers Section */}
             {selectedSection === 'customers' && (
-              <CustomerAdoptionPanelV4 />
+              <CustomerAdoptionPanelV4 selectedCustomerId={selectedCustomerId} />
             )}
 
             {/* Add Product Dialog */}

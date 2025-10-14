@@ -188,10 +188,12 @@ interface StatusDialogState {
   currentStatus: string;
 }
 
-export function CustomerAdoptionPanelV4() {
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+interface CustomerAdoptionPanelV4Props {
+  selectedCustomerId: string | null;
+}
+
+export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoptionPanelV4Props) {
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
-  const [customerListOpen, setCustomerListOpen] = useState(true);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [assignProductDialogOpen, setAssignProductDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
@@ -242,10 +244,8 @@ export function CustomerAdoptionPanelV4() {
     onCompleted: () => {
       refetch();
       setSuccess('Customer deleted successfully');
-      if (selectedCustomerId === editingCustomer?.id) {
-        setSelectedCustomerId(null);
-        setSelectedProductId(null);
-      }
+      // Note: Customer will be deselected in the parent App component
+      setSelectedProductId(null);
     },
     onError: (err) => setError(err.message),
   });
@@ -300,17 +300,6 @@ export function CustomerAdoptionPanelV4() {
     onError: (err) => setError(err.message),
   });
 
-  // Sort customers by name
-  const sortedCustomers = React.useMemo(() => {
-    if (!data?.customers) return [];
-    return [...data.customers].sort((a, b) => a.name.localeCompare(b.name));
-  }, [data?.customers]);
-
-  const handleCustomerSelect = (customerId: string) => {
-    setSelectedCustomerId(customerId);
-    setSelectedProductId(null); // Reset product selection
-  };
-
   const handleProductChange = (productId: string) => {
     setSelectedProductId(productId);
   };
@@ -341,12 +330,12 @@ export function CustomerAdoptionPanelV4() {
     }
   };
 
-  const handleStatusChange = (taskId: string, taskName: string, currentStatus: string) => {
+  const handleStatusChange = (taskId: string, taskName: string, newStatus: string) => {
     setStatusDialog({
       open: true,
       taskId,
       taskName,
-      currentStatus,
+      currentStatus: newStatus,
     });
   };
 
@@ -418,7 +407,7 @@ export function CustomerAdoptionPanelV4() {
   };
 
   return (
-    <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
       {/* Messages */}
       {error && (
         <Alert severity="error" onClose={() => setError(null)} sx={{ position: 'absolute', top: 16, right: 16, zIndex: 1000 }}>
@@ -430,50 +419,6 @@ export function CustomerAdoptionPanelV4() {
           {success}
         </Alert>
       )}
-
-      {/* Left Sidebar - Customer List */}
-      <Box sx={{ 
-        width: customerListOpen ? 280 : 50, 
-        borderRight: '1px solid',
-        borderColor: 'divider',
-        transition: 'width 0.3s',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-        <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {customerListOpen && <Typography variant="h6">Customers</Typography>}
-          <IconButton onClick={() => setCustomerListOpen(!customerListOpen)} size="small">
-            {customerListOpen ? <ExpandLess /> : <ExpandMore />}
-          </IconButton>
-        </Box>
-        
-        <Collapse in={customerListOpen} orientation="horizontal">
-          <Box sx={{ width: 280, overflow: 'auto', flex: 1 }}>
-            {loading ? (
-              <Box sx={{ p: 2 }}>
-                <LinearProgress />
-              </Box>
-            ) : (
-              <List dense>
-                {sortedCustomers.map((customer: any) => (
-                  <ListItem key={customer.id} disablePadding>
-                    <ListItemButton
-                      selected={selectedCustomerId === customer.id}
-                      onClick={() => handleCustomerSelect(customer.id)}
-                    >
-                      <ListItemText 
-                        primary={customer.name}
-                        secondary={`${customer.products?.length || 0} products`}
-                      />
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            )}
-          </Box>
-        </Collapse>
-      </Box>
 
       {/* Main Content Area */}
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -642,13 +587,24 @@ export function CustomerAdoptionPanelV4() {
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() => handleStatusChange(task.id, task.name, task.status)}
-                                  >
-                                    Change
-                                  </Button>
+                                  <FormControl size="small" sx={{ minWidth: 140 }}>
+                                    <Select
+                                      value={task.status}
+                                      onChange={(e) => handleStatusChange(task.id, task.name, e.target.value)}
+                                      variant="outlined"
+                                      sx={{ 
+                                        '& .MuiSelect-select': { 
+                                          py: 0.5,
+                                          fontSize: '0.875rem'
+                                        }
+                                      }}
+                                    >
+                                      <MenuItem value="NOT_STARTED">Not Started</MenuItem>
+                                      <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
+                                      <MenuItem value="DONE">Done</MenuItem>
+                                      <MenuItem value="NOT_APPLICABLE">Not Applicable</MenuItem>
+                                    </Select>
+                                  </FormControl>
                                 </TableCell>
                               </TableRow>
                             ))}
@@ -686,37 +642,28 @@ export function CustomerAdoptionPanelV4() {
         )}
       </Box>
 
-      {/* Status Change Dialog */}
+      {/* Status Change Notes Dialog */}
       <Dialog open={statusDialog.open} onClose={() => setStatusDialog({ ...statusDialog, open: false })} maxWidth="sm" fullWidth>
-        <DialogTitle>Change Task Status: {statusDialog.taskName}</DialogTitle>
+        <DialogTitle>Update Task Status: {statusDialog.taskName}</DialogTitle>
         <DialogContent>
-          <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel>New Status</InputLabel>
-            <Select
-              value={statusDialog.currentStatus}
-              onChange={(e) => setStatusDialog({ ...statusDialog, currentStatus: e.target.value })}
-              label="New Status"
-            >
-              <MenuItem value="NOT_STARTED">Not Started</MenuItem>
-              <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
-              <MenuItem value="DONE">Done</MenuItem>
-              <MenuItem value="NOT_APPLICABLE">Not Applicable</MenuItem>
-            </Select>
-          </FormControl>
+          <Alert severity="info" sx={{ mt: 2, mb: 2 }}>
+            Changing status to: <strong>{statusDialog.currentStatus.replace('_', ' ')}</strong>
+          </Alert>
           <TextField
             fullWidth
             multiline
-            rows={3}
+            rows={4}
             label="Notes (optional)"
+            placeholder="Add notes about this status change..."
             value={statusNotes}
             onChange={(e) => setStatusNotes(e.target.value)}
-            sx={{ mt: 2 }}
+            helperText="These notes will be recorded with the status change"
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setStatusDialog({ ...statusDialog, open: false })}>Cancel</Button>
-          <Button onClick={() => handleStatusSave(statusDialog.currentStatus)} variant="contained">
-            Save
+          <Button onClick={() => handleStatusSave(statusDialog.currentStatus)} variant="contained" color="primary">
+            Confirm Change
           </Button>
         </DialogActions>
       </Dialog>
