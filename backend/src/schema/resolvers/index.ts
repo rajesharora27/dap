@@ -523,10 +523,12 @@ export const resolvers = {
     },
     customers: async () => { if (fallbackActive) return fbListCustomers(); return prisma.customer.findMany({ where: { deletedAt: null } }).catch(() => []); },
     licenses: async () => { if (fallbackActive) return listLicenses(); return prisma.license.findMany({ where: { deletedAt: null } }); },
-    releases: async () => { 
+    releases: async (_: any, { productId }: any) => { 
       if (fallbackActive) return []; 
+      const where: any = { deletedAt: null };
+      if (productId) where.productId = productId;
       return prisma.release.findMany({ 
-        where: { deletedAt: null }, 
+        where, 
         orderBy: [{ productId: 'asc' }, { level: 'asc' }] 
       }); 
     },

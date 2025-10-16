@@ -32,6 +32,12 @@ const GET_PRODUCTS_AND_OUTCOMES = gql`
           id
           name
           description
+          licenses {
+            id
+            name
+            level
+            isActive
+          }
         }
       }
     }
@@ -48,6 +54,17 @@ const GET_OUTCOMES_FOR_PRODUCT = gql`
   }
 `;
 
+const GET_RELEASES_FOR_PRODUCT = gql`
+  query GetReleasesForProduct($productId: ID!) {
+    releases(productId: $productId) {
+      id
+      name
+      level
+      description
+    }
+  }
+`;
+
 const ASSIGN_PRODUCT_TO_CUSTOMER = gql`
   mutation AssignProductToCustomer($input: AssignProductToCustomerInput!) {
     assignProductToCustomer(input: $input) {
@@ -57,9 +74,19 @@ const ASSIGN_PRODUCT_TO_CUSTOMER = gql`
         id
         name
       }
+      selectedReleases {
+        id
+        name
+      }
       product {
         id
         name
+      }
+      adoptionPlan {
+        id
+        progressPercentage
+        totalTasks
+        completedTasks
       }
     }
   }
@@ -70,6 +97,7 @@ const CREATE_ADOPTION_PLAN = gql`
     createAdoptionPlan(customerProductId: $customerProductId) {
       id
       totalTasks
+      completedTasks
       progressPercentage
     }
   }
@@ -86,22 +114,54 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
   const [selectedProductId, setSelectedProductId] = useState('');
   const [licenseLevel, setLicenseLevel] = useState<'Essential' | 'Advantage' | 'Signature'>('Essential');
   const [selectedOutcomeIds, setSelectedOutcomeIds] = useState<string[]>([]);
+  const [selectedReleaseIds, setSelectedReleaseIds] = useState<string[]>([]);
   const [createPlanImmediately, setCreatePlanImmediately] = useState(true);
   const [step, setStep] = useState(1); // 1: Select Product, 2: Configure, 3: Confirm
 
-  const { data: productsData, loading: productsLoading } = useQuery(GET_PRODUCTS_AND_OUTCOMES);
+  const { data: productsData, loading: productsLoading, error: productsError } = useQuery(GET_PRODUCTS_AND_OUTCOMES);
   
   const { data: outcomesData, loading: outcomesLoading } = useQuery(GET_OUTCOMES_FOR_PRODUCT, {
     variables: { productId: selectedProductId },
     skip: !selectedProductId,
   });
 
-  const [assignProduct, { loading: assigning }] = useMutation(ASSIGN_PRODUCT_TO_CUSTOMER);
-  const [createAdoptionPlan, { loading: creatingPlan }] = useMutation(CREATE_ADOPTION_PLAN);
+  const { data: releasesData, loading: releasesLoading } = useQuery(GET_RELEASES_FOR_PRODUCT, {
+    variables: { productId: selectedProductId },
+    skip: !selectedProductId,
+  });
+
+  // Debug logging
+  if (productsError) {
+    console.error('Products loading error:', productsError);
+  }
+  if (productsData) {
+    console.log('Products data loaded:', productsData.products?.edges?.length, 'products');
+  }
+
+  const [assignProduct, { loading: assigning }] = useMutation(ASSIGN_PRODUCT_TO_CUSTOMER, {
+    refetchQueries: ['GetCustomers'],
+    awaitRefetchQueries: true,
+  });
+  const [createAdoptionPlan, { loading: creatingPlan }] = useMutation(CREATE_ADOPTION_PLAN, {
+    refetchQueries: ['GetCustomers'],
+    awaitRefetchQueries: true,
+  });
 
   const products = productsData?.products?.edges?.map((e: any) => e.node) || [];
   const outcomes = outcomesData?.outcomes || [];
+  const releases = releasesData?.releases || [];
   const selectedProduct = products.find((p: any) => p.id === selectedProductId);
+  
+  // Get available licenses for selected product
+  const availableLicenses = selectedProduct?.licenses?.filter((l: any) => l.isActive) || [];
+
+  // Helper function to extract license level enum from license name
+  const extractLicenseLevel = (licenseName: string): 'Essential' | 'Advantage' | 'Signature' => {
+    const name = licenseName.toLowerCase();
+    if (name.includes('signature')) return 'Signature';
+    if (name.includes('advantage')) return 'Advantage';
+    return 'Essential'; // Default fallback
+  };
 
   useEffect(() => {
     if (!open) {
@@ -109,16 +169,33 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
       setSelectedProductId('');
       setLicenseLevel('Essential');
       setSelectedOutcomeIds([]);
+      setSelectedReleaseIds([]);
       setCreatePlanImmediately(true);
       setStep(1);
     }
   }, [open]);
+  
+  // Reset license level when product changes
+  useEffect(() => {
+    if (selectedProductId && availableLicenses.length > 0) {
+      // Extract license level from first available license name
+      setLicenseLevel(extractLicenseLevel(availableLicenses[0].name));
+    }
+  }, [selectedProductId, availableLicenses.length]);
 
   const handleOutcomeToggle = (outcomeId: string) => {
     setSelectedOutcomeIds((prev) =>
       prev.includes(outcomeId)
         ? prev.filter((id) => id !== outcomeId)
         : [...prev, outcomeId]
+    );
+  };
+
+  const handleReleaseToggle = (releaseId: string) => {
+    setSelectedReleaseIds((prev) =>
+      prev.includes(releaseId)
+        ? prev.filter((id) => id !== releaseId)
+        : [...prev, releaseId]
     );
   };
 
@@ -144,6 +221,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
             productId: selectedProductId,
             licenseLevel,
             selectedOutcomeIds,
+            selectedReleaseIds,
           },
         },
       });
@@ -164,12 +242,6 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
     }
   };
 
-  const licenseLevels = [
-    { value: 'Essential', label: 'Essential', description: 'Basic features and core functionality' },
-    { value: 'Advantage', label: 'Advantage', description: 'Essential + Advanced features' },
-    { value: 'Signature', label: 'Signature', description: 'All features + Premium support' },
-  ];
-
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
@@ -188,6 +260,8 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
             </Typography>
             {productsLoading ? (
               <LinearProgress />
+            ) : productsError ? (
+              <Alert severity="error">Error loading products: {productsError.message}</Alert>
             ) : products.length === 0 ? (
               <Alert severity="warning">No products available. Please create a product first.</Alert>
             ) : (
@@ -240,25 +314,36 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
             <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
               License Level
             </Typography>
-            <FormControl fullWidth sx={{ mb: 3 }}>
-              <Select
-                value={licenseLevel}
-                onChange={(e) => setLicenseLevel(e.target.value as any)}
-              >
-                {licenseLevels.map((level) => (
-                  <MenuItem key={level.value} value={level.value}>
-                    <Box>
-                      <Typography variant="body1" fontWeight="medium">
-                        {level.label}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {level.description}
-                      </Typography>
-                    </Box>
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            {availableLicenses.length === 0 ? (
+              <Alert severity="warning" sx={{ mb: 3 }}>
+                No active licenses configured for this product. Please configure licenses first.
+              </Alert>
+            ) : (
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <Select
+                  value={licenseLevel}
+                  onChange={(e) => setLicenseLevel(e.target.value as any)}
+                >
+                  {availableLicenses.map((license: any) => {
+                    const levelEnum = extractLicenseLevel(license.name);
+                    return (
+                      <MenuItem key={license.id} value={levelEnum}>
+                        <Box>
+                          <Typography variant="body1" fontWeight="medium">
+                            {license.name}
+                          </Typography>
+                          {license.description && (
+                            <Typography variant="caption" color="text.secondary">
+                              {license.description}
+                            </Typography>
+                          )}
+                        </Box>
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+              </FormControl>
+            )}
 
             <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
               Desired Outcomes
@@ -301,6 +386,51 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                   {selectedOutcomeIds.length === 0
                     ? 'No outcomes selected - all tasks will be included'
                     : `${selectedOutcomeIds.length} outcome(s) selected`}
+                </Typography>
+              </Paper>
+            )}
+
+            <Typography variant="subtitle1" fontWeight="medium" gutterBottom sx={{ mt: 3 }}>
+              Product Releases
+            </Typography>
+            {releasesLoading ? (
+              <LinearProgress />
+            ) : releases.length === 0 ? (
+              <Alert severity="info">
+                No releases defined for this product. All tasks will be included in the adoption plan.
+              </Alert>
+            ) : (
+              <Paper variant="outlined" sx={{ p: 2, maxHeight: 300, overflow: 'auto' }}>
+                <FormGroup>
+                  {releases.map((release: any) => (
+                    <FormControlLabel
+                      key={release.id}
+                      control={
+                        <Checkbox
+                          checked={selectedReleaseIds.includes(release.id)}
+                          onChange={() => handleReleaseToggle(release.id)}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {release.name}
+                          </Typography>
+                          {release.description && (
+                            <Typography variant="caption" color="text.secondary">
+                              {release.description}
+                            </Typography>
+                          )}
+                        </Box>
+                      }
+                    />
+                  ))}
+                </FormGroup>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="caption" color="text.secondary">
+                  {selectedReleaseIds.length === 0
+                    ? 'No releases selected - all tasks will be included'
+                    : `${selectedReleaseIds.length} release(s) selected`}
                 </Typography>
               </Paper>
             )}
@@ -353,6 +483,29 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                   })}
                 </Box>
               )}
+
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 2 }}>
+                Selected Releases
+              </Typography>
+              {selectedReleaseIds.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  All tasks will be included (no release filter)
+                </Typography>
+              ) : (
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {selectedReleaseIds.map((releaseId) => {
+                    const release = releases.find((r: any) => r.id === releaseId);
+                    return (
+                      <Chip
+                        key={releaseId}
+                        label={release?.name}
+                        size="small"
+                        variant="outlined"
+                      />
+                    );
+                  })}
+                </Box>
+              )}
             </Paper>
 
             <FormControlLabel
@@ -376,8 +529,8 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
 
             {createPlanImmediately && (
               <Alert severity="info" icon={<CheckCircle />} sx={{ mt: 2 }}>
-                An adoption plan will be created automatically with tasks filtered by your license level
-                and selected outcomes.
+                An adoption plan will be created automatically with tasks filtered by your license level,
+                selected outcomes, and selected releases.
               </Alert>
             )}
           </Box>
