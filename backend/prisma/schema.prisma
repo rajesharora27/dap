@@ -106,6 +106,7 @@ model CustomerProduct {
   // License and Outcomes Selection
   licenseLevel      LicenseLevel        @default(ESSENTIAL)
   selectedOutcomes  Json?               // Array of outcome IDs customer selected
+  selectedReleases  Json?               // Array of release IDs customer selected
   
   // Metadata
   purchasedAt       DateTime            @default(now())
@@ -143,6 +144,7 @@ model AdoptionPlan {
   productName         String              // Snapshot of product name
   licenseLevel        LicenseLevel        // License level when created
   selectedOutcomes    Json?               // Outcome IDs when created
+  selectedReleases    Json?               // Release IDs when created
   
   // Progress tracking
   totalTasks          Int                 @default(0)
@@ -185,6 +187,7 @@ model CustomerTask {
   status                CustomerTaskStatus        @default(NOT_STARTED)
   statusUpdatedAt       DateTime?
   statusUpdatedBy       String?                   // User ID or "telemetry"
+  statusUpdateSource    StatusUpdateSource?       // How the status was updated (MANUAL, TELEMETRY, IMPORT, SYSTEM)
   statusNotes           String?                   // Why status changed
   
   // Completion tracking
@@ -439,8 +442,16 @@ enum CustomAttributeDataType {
 enum CustomerTaskStatus {
   NOT_STARTED
   IN_PROGRESS
+  COMPLETED
   DONE
   NOT_APPLICABLE
+}
+
+enum StatusUpdateSource {
+  MANUAL      // Updated via GUI by user
+  TELEMETRY   // Automatically updated via telemetry evaluation
+  IMPORT      // Updated via CSV import
+  SYSTEM      // Updated by system (e.g., adoption plan creation)
 }
 
 model CustomAttribute {

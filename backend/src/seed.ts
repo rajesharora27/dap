@@ -199,29 +199,29 @@ async function main() {
     // Create comprehensive licenses for each product
     const licensesByProduct = {
       'retail-app-001': [
-        { name: 'Retail Starter', level: 1, description: 'Single-location POS system with basic inventory and sales reporting' },
-        { name: 'Retail Professional', level: 2, description: 'Multi-location support with advanced inventory, loyalty programs, and analytics' },
-        { name: 'Retail Enterprise', level: 3, description: 'Unlimited locations with API access, custom integrations, and 24/7 support' }
+        { name: 'Retail Management App Essential', level: 1, description: 'Single-location POS system with basic inventory and sales reporting' },
+        { name: 'Retail Management App Advantage', level: 2, description: 'Multi-location support with advanced inventory, loyalty programs, and analytics' },
+        { name: 'Retail Management App Signature', level: 3, description: 'Unlimited locations with API access, custom integrations, and 24/7 support' }
       ],
       'financial-app-001': [
-        { name: 'Financial Basic', level: 1, description: 'Core portfolio management and basic trading capabilities for up to 100 clients' },
-        { name: 'Financial Professional', level: 2, description: 'Advanced trading, risk analytics, and compliance reporting for up to 1000 clients' },
-        { name: 'Financial Enterprise', level: 3, description: 'Unlimited clients with algorithmic trading, real-time data feeds, and white-label options' }
+        { name: 'Financial Services App Essential', level: 1, description: 'Core portfolio management and basic trading capabilities for up to 100 clients' },
+        { name: 'Financial Services App Advantage', level: 2, description: 'Advanced trading, risk analytics, and compliance reporting for up to 1000 clients' },
+        { name: 'Financial Services App Signature', level: 3, description: 'Unlimited clients with algorithmic trading, real-time data feeds, and white-label options' }
       ],
       'it-app-001': [
-        { name: 'IT Essential', level: 1, description: 'Monitor up to 50 devices with basic incident management and ticketing' },
-        { name: 'IT Advanced', level: 2, description: 'Monitor up to 500 devices with automation, asset management, and integrations' },
-        { name: 'IT Enterprise', level: 3, description: 'Unlimited devices with AI-powered automation, custom workflows, and premium support' }
+        { name: 'IT Operations App Essential', level: 1, description: 'Monitor up to 50 devices with basic incident management and ticketing' },
+        { name: 'IT Operations App Advantage', level: 2, description: 'Monitor up to 500 devices with automation, asset management, and integrations' },
+        { name: 'IT Operations App Signature', level: 3, description: 'Unlimited devices with AI-powered automation, custom workflows, and premium support' }
       ],
       'ai-app-001': [
-        { name: 'AI Starter', level: 1, description: 'Pre-built models for basic predictions and classifications with 10k API calls/month' },
-        { name: 'AI Professional', level: 2, description: 'Custom model training, NLP/CV capabilities with 100k API calls/month' },
-        { name: 'AI Enterprise', level: 3, description: 'Unlimited models, GPU clusters, MLOps platform with unlimited API calls' }
+        { name: 'AI-Powered Analytics App Essential', level: 1, description: 'Pre-built models for basic predictions and classifications with 10k API calls/month' },
+        { name: 'AI-Powered Analytics App Advantage', level: 2, description: 'Custom model training, NLP/CV capabilities with 100k API calls/month' },
+        { name: 'AI-Powered Analytics App Signature', level: 3, description: 'Unlimited models, GPU clusters, MLOps platform with unlimited API calls' }
       ],
       'networking-app-001': [
-        { name: 'Network Monitor', level: 1, description: 'Monitor up to 25 network devices with basic performance metrics' },
-        { name: 'Network Professional', level: 2, description: 'Monitor up to 250 devices with security management and SD-WAN support' },
-        { name: 'Network Enterprise', level: 3, description: 'Unlimited devices with advanced automation, multi-tenancy, and API access' }
+        { name: 'Network Infrastructure App Essential', level: 1, description: 'Monitor up to 25 network devices with basic performance metrics' },
+        { name: 'Network Infrastructure App Advantage', level: 2, description: 'Monitor up to 250 devices with security management and SD-WAN support' },
+        { name: 'Network Infrastructure App Signature', level: 3, description: 'Unlimited devices with advanced automation, multi-tenancy, and API access' }
       ]
     };
 

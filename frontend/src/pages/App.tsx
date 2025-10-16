@@ -667,7 +667,10 @@ export function App() {
   const [selectedProductSubSection, setSelectedProductSubSection] = useState<'main' | 'tasks' | 'licenses' | 'releases' | 'outcomes' | 'customAttributes'>('main');
   const [productsExpanded, setProductsExpanded] = useState(true);
   const [customersExpanded, setCustomersExpanded] = useState(true);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(() => {
+    // Initialize from localStorage
+    return localStorage.getItem('lastSelectedCustomerId');
+  });
 
   // Dialog states
   const [addProductDialog, setAddProductDialog] = useState(false);
@@ -814,6 +817,27 @@ export function App() {
       setSelectedProductSubSection('main');
     }
   }, [products, selectedProduct]);
+
+  // Auto-select first customer when customers section is opened
+  React.useEffect(() => {
+    if (selectedSection === 'customers' && customers.length > 0 && !selectedCustomerId) {
+      const lastCustomerId = localStorage.getItem('lastSelectedCustomerId');
+      // Check if last selected customer still exists
+      const customerExists = lastCustomerId && customers.some((c: any) => c.id === lastCustomerId);
+      const customerId = customerExists ? lastCustomerId : customers[0].id;
+      setSelectedCustomerId(customerId);
+      if (customerId) {
+        localStorage.setItem('lastSelectedCustomerId', customerId);
+      }
+    }
+  }, [selectedSection, customers, selectedCustomerId]);
+
+  // Persist customer selection to localStorage
+  React.useEffect(() => {
+    if (selectedCustomerId) {
+      localStorage.setItem('lastSelectedCustomerId', selectedCustomerId);
+    }
+  }, [selectedCustomerId]);
 
   // Debug logging
   console.log('App Component Loaded!');
@@ -4625,7 +4649,7 @@ export function App() {
               selected={selectedSection === 'customers'}
               onClick={() => {
                 setSelectedSection('customers');
-                setCustomersExpanded(!customersExpanded);
+                setCustomersExpanded(true); // Always expand when clicking customers menu
               }}
             >
               <ListItemIcon>

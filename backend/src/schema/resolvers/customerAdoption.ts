@@ -14,18 +14,21 @@ function calculateProgress(tasks: any[]): {
   completedWeight: number;
   progressPercentage: number;
 } {
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(t => t.status === 'DONE').length;
+  // Filter out NOT_APPLICABLE tasks - they should not count towards progress
+  const applicableTasks = tasks.filter(t => t.status !== 'NOT_APPLICABLE');
   
-  const totalWeight = tasks.reduce((sum, task) => {
+  const totalTasks = applicableTasks.length;
+  const completedTasks = applicableTasks.filter(t => t.status === 'COMPLETED' || t.status === 'DONE').length;
+  
+  const totalWeight = applicableTasks.reduce((sum, task) => {
     const weight = typeof task.weight === 'object' && 'toNumber' in task.weight 
       ? task.weight.toNumber() 
       : Number(task.weight || 0);
     return sum + weight;
   }, 0);
   
-  const completedWeight = tasks
-    .filter(t => t.status === 'DONE')
+  const completedWeight = applicableTasks
+    .filter(t => t.status === 'COMPLETED' || t.status === 'DONE')
     .reduce((sum, task) => {
       const weight = typeof task.weight === 'object' && 'toNumber' in task.weight 
         ? task.weight.toNumber() 
@@ -104,11 +107,29 @@ function evaluateCriteria(criteria: any, value: any): boolean {
 }
 
 // Helper function to check if task should be included based on license and outcomes
-function shouldIncludeTask(task: any, customerLicenseLevel: LicenseLevel, selectedOutcomeIds: string[]): boolean {
-  // Check license level (hierarchical: ESSENTIAL < ADVANTAGE < SIGNATURE)
+function shouldIncludeTask(
+  task: any, 
+  customerLicenseLevel: LicenseLevel, 
+  selectedOutcomeIds: string[],
+  selectedReleaseIds?: string[]
+): boolean {
+  // Check license level (hierarchical comparison using case-insensitive matching)
+  // Support both uppercase enum (ESSENTIAL) and capitalized (Essential) formats
   const licenseLevels = ['ESSENTIAL', 'ADVANTAGE', 'SIGNATURE'];
-  const customerLevel = licenseLevels.indexOf(customerLicenseLevel);
-  const taskLevel = licenseLevels.indexOf(task.licenseLevel);
+  
+  const customerLevel = licenseLevels.indexOf(customerLicenseLevel.toUpperCase());
+  const taskLevel = licenseLevels.indexOf(task.licenseLevel.toUpperCase());
+  
+  // If license level not found in hierarchy, skip this task (safety check)
+  if (taskLevel === -1) {
+    console.warn(`Unknown task license level: ${task.licenseLevel}`);
+    return false;
+  }
+  
+  if (customerLevel === -1) {
+    console.warn(`Unknown customer license level: ${customerLicenseLevel}`);
+    return false;
+  }
   
   if (taskLevel > customerLevel) {
     return false; // Task requires higher license
@@ -121,6 +142,17 @@ function shouldIncludeTask(task: any, customerLicenseLevel: LicenseLevel, select
     // Task must have at least one matching outcome
     const hasMatchingOutcome = taskOutcomeIds.some((oid: string) => selectedOutcomeIds.includes(oid));
     if (!hasMatchingOutcome) {
+      return false;
+    }
+  }
+  
+  // Check if task belongs to selected releases (if releases are specified)
+  if (selectedReleaseIds && selectedReleaseIds.length > 0) {
+    // Get task releases
+    const taskReleaseIds = task.releases?.map((r: any) => r.releaseId) || [];
+    // Task must have at least one matching release
+    const hasMatchingRelease = taskReleaseIds.some((rid: string) => selectedReleaseIds.includes(rid));
+    if (!hasMatchingRelease) {
       return false;
     }
   }
@@ -358,7 +390,7 @@ export const CustomerAdoptionMutationResolvers = {
   assignProductToCustomer: async (_: any, { input }: any, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
     
-    const { customerId, productId, licenseLevel, selectedOutcomeIds } = input;
+    const { customerId, productId, licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
     
     // Check if assignment already exists
     const existing = await prisma.customerProduct.findUnique({
@@ -391,6 +423,17 @@ export const CustomerAdoptionMutationResolvers = {
       }
     }
     
+    // Validate release IDs if provided
+    if (selectedReleaseIds && selectedReleaseIds.length > 0) {
+      const releases = await prisma.release.findMany({
+        where: { id: { in: selectedReleaseIds }, productId },
+      });
+      
+      if (releases.length !== selectedReleaseIds.length) {
+        throw new Error('Some release IDs are invalid or do not belong to this product');
+      }
+    }
+    
     // Convert GraphQL enum (PascalCase) to Prisma enum (UPPERCASE)
     const prismaLicenseLevel = licenseLevel.toUpperCase() as 'ESSENTIAL' | 'ADVANTAGE' | 'SIGNATURE';
     
@@ -401,10 +444,12 @@ export const CustomerAdoptionMutationResolvers = {
         productId,
         licenseLevel: prismaLicenseLevel,
         selectedOutcomes: selectedOutcomeIds || [],
+        selectedReleases: selectedReleaseIds || [],
       },
       include: {
         customer: true,
         product: true,
+        adoptionPlan: true,
       },
     });
     
@@ -416,12 +461,29 @@ export const CustomerAdoptionMutationResolvers = {
   updateCustomerProduct: async (_: any, { id, input }: any, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
     
-    const { licenseLevel, selectedOutcomeIds } = input;
+    const { licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
     
     const before = await prisma.customerProduct.findUnique({
       where: { id },
       include: {
-        adoptionPlan: true,
+        adoptionPlan: {
+          include: {
+            tasks: true,
+          },
+        },
+        product: {
+          include: {
+            tasks: {
+              where: { deletedAt: null },
+              include: {
+                telemetryAttributes: true,
+                outcomes: true,
+                releases: true,
+              },
+              orderBy: { sequenceNumber: 'asc' },
+            },
+          },
+        },
       },
     });
     
@@ -440,31 +502,174 @@ export const CustomerAdoptionMutationResolvers = {
       }
     }
     
+    // Validate release IDs if provided
+    if (selectedReleaseIds) {
+      const releases = await prisma.release.findMany({
+        where: { id: { in: selectedReleaseIds }, productId: before.productId },
+      });
+      
+      if (releases.length !== selectedReleaseIds.length) {
+        throw new Error('Some release IDs are invalid or do not belong to this product');
+      }
+    }
+    
     const updateData: any = {};
     if (licenseLevel) updateData.licenseLevel = licenseLevel.toUpperCase();
-    if (selectedOutcomeIds) updateData.selectedOutcomes = selectedOutcomeIds;
+    if (selectedOutcomeIds !== undefined) updateData.selectedOutcomes = selectedOutcomeIds;
+    if (selectedReleaseIds !== undefined) updateData.selectedReleases = selectedReleaseIds;
     
+    // Update customer product first
     const updated = await prisma.customerProduct.update({
       where: { id },
       data: updateData,
       include: {
         customer: true,
-        product: true,
+        product: {
+          include: {
+            tasks: {
+              where: { deletedAt: null },
+              include: {
+                telemetryAttributes: true,
+                outcomes: true,
+                releases: true,
+              },
+              orderBy: { sequenceNumber: 'asc' },
+            },
+          },
+        },
         adoptionPlan: true,
       },
     });
     
-    // If adoption plan exists and license/outcomes changed, mark it for sync
+    // If adoption plan exists, DELETE and RECREATE it with new filters
+    // This is different from sync - we're regenerating based on new entitlements
     if (before.adoptionPlan) {
-      await prisma.adoptionPlan.update({
+      console.log(`Regenerating adoption plan for customer product ${id} due to entitlement changes`);
+      
+      // Delete existing adoption plan and all related data (cascades to tasks, telemetry, etc.)
+      await prisma.adoptionPlan.delete({
         where: { id: before.adoptionPlan.id },
-        data: { lastSyncedAt: null }, // Mark as needing sync
       });
+      
+      // Get the new license level, outcomes, and releases from the updated product
+      const newLicenseLevel = updated.licenseLevel;
+      const newSelectedOutcomeIds = updated.selectedOutcomes as string[] || [];
+      const newSelectedReleaseIds = updated.selectedReleases as string[] || [];
+      
+      // Filter tasks based on NEW license level, outcomes, and releases
+      const eligibleTasks = updated.product.tasks.filter((task: any) =>
+        shouldIncludeTask(task, newLicenseLevel, newSelectedOutcomeIds, newSelectedReleaseIds)
+      );
+      
+      // Calculate initial progress
+      const progress = calculateProgress(eligibleTasks.map((t: any) => ({ ...t, status: 'NOT_STARTED' })));
+      
+      // Create NEW adoption plan
+      const newAdoptionPlan = await prisma.adoptionPlan.create({
+        data: {
+          customerProductId: id,
+          productId: updated.productId,
+          productName: updated.product.name,
+          licenseLevel: newLicenseLevel,
+          selectedOutcomes: newSelectedOutcomeIds,
+          selectedReleases: newSelectedReleaseIds,
+          totalTasks: progress.totalTasks,
+          completedTasks: 0,
+          totalWeight: progress.totalWeight,
+          completedWeight: 0,
+          progressPercentage: 0,
+          lastSyncedAt: new Date(),
+        },
+      });
+      
+      // Create customer tasks (snapshots of product tasks)
+      for (const task of eligibleTasks) {
+        const customerTask = await prisma.customerTask.create({
+          data: {
+            adoptionPlanId: newAdoptionPlan.id,
+            originalTaskId: task.id,
+            name: task.name,
+            description: task.description,
+            estMinutes: task.estMinutes,
+            weight: task.weight,
+            sequenceNumber: task.sequenceNumber,
+            priority: task.priority,
+            howToDoc: task.howToDoc,
+            howToVideo: task.howToVideo,
+            notes: task.notes,
+            licenseLevel: task.licenseLevel,
+            status: 'NOT_STARTED',
+            statusUpdateSource: 'SYSTEM',
+          },
+        });
+        
+        // Copy telemetry attributes
+        for (const attr of task.telemetryAttributes) {
+          await prisma.customerTelemetryAttribute.create({
+            data: {
+              customerTaskId: customerTask.id,
+              originalAttributeId: attr.id,
+              name: attr.name,
+              description: attr.description,
+              dataType: attr.dataType,
+              isRequired: attr.isRequired,
+              successCriteria: attr.successCriteria,
+              order: attr.order,
+              isActive: attr.isActive,
+            },
+          });
+        }
+        
+        // Copy outcome relationships
+        for (const taskOutcome of task.outcomes) {
+          await prisma.customerTaskOutcome.create({
+            data: {
+              customerTaskId: customerTask.id,
+              outcomeId: taskOutcome.outcomeId,
+            },
+          });
+        }
+        
+        // Copy release relationships
+        for (const taskRelease of task.releases) {
+          await prisma.customerTaskRelease.create({
+            data: {
+              customerTaskId: customerTask.id,
+              releaseId: taskRelease.releaseId,
+            },
+          });
+        }
+      }
+      
+      console.log(`Created ${eligibleTasks.length} tasks in regenerated adoption plan`);
     }
     
-    await logAudit('UPDATE_CUSTOMER_PRODUCT', 'CustomerProduct', id, { before, after: updated }, ctx.user?.id);
+    await logAudit('UPDATE_CUSTOMER_PRODUCT', 'CustomerProduct', id, { before: { licenseLevel: before.licenseLevel, selectedOutcomes: before.selectedOutcomes }, after: { licenseLevel: updated.licenseLevel, selectedOutcomes: updated.selectedOutcomes } }, ctx.user?.id);
     
-    return updated;
+    // Return with fresh adoption plan data
+    return await prisma.customerProduct.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        product: true,
+        adoptionPlan: {
+          include: {
+            tasks: {
+              include: {
+                telemetryAttributes: true,
+                outcomes: {
+                  include: { outcome: true },
+                },
+                releases: {
+                  include: { release: true },
+                },
+              },
+              orderBy: { sequenceNumber: 'asc' },
+            },
+          },
+        },
+      },
+    });
   },
 
   removeProductFromCustomerEnhanced: async (_: any, { id }: any, ctx: any) => {
@@ -521,10 +726,11 @@ export const CustomerAdoptionMutationResolvers = {
     }
     
     const selectedOutcomeIds = customerProduct.selectedOutcomes as string[] || [];
+    const selectedReleaseIds = customerProduct.selectedReleases as string[] || [];
     
-    // Filter tasks based on license level and outcomes
+    // Filter tasks based on license level, outcomes, and releases
     const eligibleTasks = customerProduct.product.tasks.filter((task: any) =>
-      shouldIncludeTask(task, customerProduct.licenseLevel, selectedOutcomeIds)
+      shouldIncludeTask(task, customerProduct.licenseLevel, selectedOutcomeIds, selectedReleaseIds)
     );
     
     // Calculate initial progress
@@ -538,6 +744,7 @@ export const CustomerAdoptionMutationResolvers = {
         productName: customerProduct.product.name,
         licenseLevel: customerProduct.licenseLevel,
         selectedOutcomes: selectedOutcomeIds,
+        selectedReleases: selectedReleaseIds,
         totalTasks: progress.totalTasks,
         completedTasks: 0,
         totalWeight: progress.totalWeight,
@@ -564,6 +771,7 @@ export const CustomerAdoptionMutationResolvers = {
           notes: task.notes,
           licenseLevel: task.licenseLevel,
           status: 'NOT_STARTED',
+          statusUpdateSource: 'SYSTEM',
         },
       });
       
@@ -651,6 +859,8 @@ export const CustomerAdoptionMutationResolvers = {
                     releases: true,
                   },
                 },
+                outcomes: true,  // Fetch all product outcomes
+                releases: true,  // Fetch all product releases
               },
             },
           },
@@ -670,11 +880,36 @@ export const CustomerAdoptionMutationResolvers = {
     }
     
     const { customerProduct } = plan;
-    const selectedOutcomeIds = customerProduct.selectedOutcomes as string[] || [];
     
-    // Get current eligible tasks from product
+    // Track original selections for audit
+    const originalOutcomeIds = (customerProduct.selectedOutcomes as string[]) || [];
+    const originalReleaseIds = (customerProduct.selectedReleases as string[]) || [];
+    
+    // STEP 1: Update customer's selected outcomes and releases with all available from product
+    // This ensures new outcomes/releases added to product are automatically included
+    const allProductOutcomeIds = customerProduct.product.outcomes.map((o: any) => o.id);
+    const allProductReleaseIds = customerProduct.product.releases.map((r: any) => r.id);
+    
+    // Calculate what's new
+    const newOutcomes = allProductOutcomeIds.filter((id: string) => !originalOutcomeIds.includes(id));
+    const newReleases = allProductReleaseIds.filter((id: string) => !originalReleaseIds.includes(id));
+    
+    // Update customer product selections to include all product outcomes and releases
+    await prisma.customerProduct.update({
+      where: { id: customerProduct.id },
+      data: {
+        selectedOutcomes: allProductOutcomeIds,
+        selectedReleases: allProductReleaseIds,
+      },
+    });
+    
+    // Use updated selections for task filtering
+    const selectedOutcomeIds = allProductOutcomeIds;
+    const selectedReleaseIds = allProductReleaseIds;
+    
+    // STEP 2: Get current eligible tasks from product
     const eligibleProductTasks = customerProduct.product.tasks.filter((task: any) =>
-      shouldIncludeTask(task, customerProduct.licenseLevel, selectedOutcomeIds)
+      shouldIncludeTask(task, customerProduct.licenseLevel, selectedOutcomeIds, selectedReleaseIds)
     );
     
     const eligibleProductTaskIds = eligibleProductTasks.map((t: any) => t.id);
@@ -690,9 +925,126 @@ export const CustomerAdoptionMutationResolvers = {
       (pt: any) => !currentCustomerTaskOriginalIds.includes(pt.id)
     );
     
+    // Find tasks to update (existing tasks that may have changed in product)
+    const tasksToUpdate = plan.tasks.filter(
+      (ct: any) => eligibleProductTaskIds.includes(ct.originalTaskId)
+    );
+    
     // Remove obsolete tasks
     for (const task of tasksToRemove) {
       await prisma.customerTask.delete({ where: { id: task.id } });
+    }
+    
+    // Update existing tasks with product changes
+    let tasksUpdated = 0;
+    for (const customerTask of tasksToUpdate) {
+      const productTask = eligibleProductTasks.find((pt: any) => pt.id === customerTask.originalTaskId);
+      if (!productTask) continue;
+      
+      // Check if task attributes have changed
+      const hasChanges = 
+        customerTask.name !== productTask.name ||
+        customerTask.description !== productTask.description ||
+        customerTask.estMinutes !== productTask.estMinutes ||
+        customerTask.weight !== productTask.weight ||
+        customerTask.sequenceNumber !== productTask.sequenceNumber ||
+        customerTask.priority !== productTask.priority ||
+        customerTask.howToDoc !== productTask.howToDoc ||
+        customerTask.howToVideo !== productTask.howToVideo ||
+        customerTask.notes !== productTask.notes ||
+        customerTask.licenseLevel !== productTask.licenseLevel;
+      
+      if (hasChanges) {
+        // Update customer task with product task data (preserve status and status-related fields)
+        await prisma.customerTask.update({
+          where: { id: customerTask.id },
+          data: {
+            name: productTask.name,
+            description: productTask.description,
+            estMinutes: productTask.estMinutes,
+            weight: productTask.weight,
+            sequenceNumber: productTask.sequenceNumber,
+            priority: productTask.priority,
+            howToDoc: productTask.howToDoc,
+            howToVideo: productTask.howToVideo,
+            notes: productTask.notes,
+            licenseLevel: productTask.licenseLevel,
+            // Note: Status, statusUpdatedAt, statusUpdatedBy, etc. are preserved
+          },
+        });
+        tasksUpdated++;
+      }
+      
+      // Update telemetry attributes
+      // Delete removed attributes
+      const productAttrIds = productTask.telemetryAttributes.map((a: any) => a.id);
+      await prisma.customerTelemetryAttribute.deleteMany({
+        where: {
+          customerTaskId: customerTask.id,
+          originalAttributeId: { notIn: productAttrIds },
+        },
+      });
+      
+      // Add or update attributes
+      for (const productAttr of productTask.telemetryAttributes) {
+        const existingAttr = await prisma.customerTelemetryAttribute.findFirst({
+          where: {
+            customerTaskId: customerTask.id,
+            originalAttributeId: productAttr.id,
+          },
+        });
+        
+        if (existingAttr) {
+          // Update existing attribute
+          await prisma.customerTelemetryAttribute.update({
+            where: { id: existingAttr.id },
+            data: {
+              name: productAttr.name,
+              description: productAttr.description,
+              dataType: productAttr.dataType,
+              isRequired: productAttr.isRequired,
+              successCriteria: productAttr.successCriteria,
+              order: productAttr.order,
+              isActive: productAttr.isActive,
+            },
+          });
+        } else {
+          // Add new attribute
+          await prisma.customerTelemetryAttribute.create({
+            data: {
+              customerTaskId: customerTask.id,
+              originalAttributeId: productAttr.id,
+              name: productAttr.name,
+              description: productAttr.description,
+              dataType: productAttr.dataType,
+              isRequired: productAttr.isRequired,
+              successCriteria: productAttr.successCriteria,
+              order: productAttr.order,
+              isActive: productAttr.isActive,
+            },
+          });
+        }
+      }
+      
+      // Update outcomes - delete and recreate
+      await prisma.customerTaskOutcome.deleteMany({
+        where: { customerTaskId: customerTask.id },
+      });
+      for (const taskOutcome of productTask.outcomes) {
+        await prisma.customerTaskOutcome.create({
+          data: { customerTaskId: customerTask.id, outcomeId: taskOutcome.outcomeId },
+        });
+      }
+      
+      // Update releases - delete and recreate
+      await prisma.customerTaskRelease.deleteMany({
+        where: { customerTaskId: customerTask.id },
+      });
+      for (const taskRelease of productTask.releases) {
+        await prisma.customerTaskRelease.create({
+          data: { customerTaskId: customerTask.id, releaseId: taskRelease.releaseId },
+        });
+      }
     }
     
     // Add new tasks
@@ -712,6 +1064,7 @@ export const CustomerAdoptionMutationResolvers = {
           notes: task.notes,
           licenseLevel: task.licenseLevel,
           status: 'NOT_STARTED',
+          statusUpdateSource: 'SYSTEM',
         },
       });
       
@@ -780,7 +1133,13 @@ export const CustomerAdoptionMutationResolvers = {
       },
     });
     
-    await logAudit('SYNC_ADOPTION_PLAN', 'AdoptionPlan', adoptionPlanId, { tasksRemoved: tasksToRemove.length, tasksAdded: tasksToAdd.length }, ctx.user?.id);
+    await logAudit('SYNC_ADOPTION_PLAN', 'AdoptionPlan', adoptionPlanId, { 
+      tasksRemoved: tasksToRemove.length, 
+      tasksAdded: tasksToAdd.length,
+      tasksUpdated,
+      outcomesAdded: newOutcomes.length,
+      releasesAdded: newReleases.length
+    }, ctx.user?.id);
     
     return updatedPlan;
   },
@@ -803,6 +1162,7 @@ export const CustomerAdoptionMutationResolvers = {
       status,
       statusUpdatedAt: new Date(),
       statusUpdatedBy: ctx.user?.id || 'unknown',
+      statusUpdateSource: 'MANUAL',
       statusNotes: notes,
       isComplete: status === 'DONE',
       completedAt: status === 'DONE' ? new Date() : null,
@@ -851,6 +1211,7 @@ export const CustomerAdoptionMutationResolvers = {
       status,
       statusUpdatedAt: new Date(),
       statusUpdatedBy: ctx.user?.id || 'unknown',
+      statusUpdateSource: 'MANUAL',
       statusNotes: notes,
       isComplete: status === 'DONE',
       completedAt: status === 'DONE' ? new Date() : null,
@@ -1035,6 +1396,7 @@ export const CustomerAdoptionMutationResolvers = {
           status: newStatus,
           statusUpdatedAt: new Date(),
           statusUpdatedBy: 'telemetry',
+          statusUpdateSource: 'TELEMETRY',
           statusNotes: 'Automatically updated based on telemetry criteria',
           isComplete: newStatus === 'DONE',
           completedAt: newStatus === 'DONE' ? new Date() : null,
@@ -1387,6 +1749,7 @@ export const CustomerAdoptionMutationResolvers = {
             data: {
               status: row.taskStatus as any,
               statusUpdatedBy: 'import',
+              statusUpdateSource: 'IMPORT',
               statusUpdatedAt: new Date(),
             },
           });
@@ -1485,6 +1848,14 @@ export const CustomerProductWithPlanResolvers = {
       where: { id: { in: outcomeIds } },
     });
   },
+  selectedReleases: async (parent: any) => {
+    const releaseIds = parent.selectedReleases as string[] || [];
+    if (releaseIds.length === 0) return [];
+    
+    return await prisma.release.findMany({
+      where: { id: { in: releaseIds } },
+    });
+  },
   adoptionPlan: async (parent: any) => {
     // Find the adoption plan for this customer product
     return await prisma.adoptionPlan.findUnique({
@@ -1506,6 +1877,14 @@ export const AdoptionPlanResolvers = {
     
     return await prisma.outcome.findMany({
       where: { id: { in: outcomeIds } },
+    });
+  },
+  selectedReleases: async (parent: any) => {
+    const releaseIds = parent.selectedReleases as string[] || [];
+    if (releaseIds.length === 0) return [];
+    
+    return await prisma.release.findMany({
+      where: { id: { in: releaseIds } },
     });
   },
   

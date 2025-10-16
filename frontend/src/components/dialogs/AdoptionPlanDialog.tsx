@@ -69,6 +69,7 @@ const GET_ADOPTION_PLAN = gql`
         status
         statusUpdatedAt
         statusUpdatedBy
+        statusUpdateSource
         statusNotes
         isComplete
         completedAt

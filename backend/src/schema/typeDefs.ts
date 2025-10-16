@@ -6,7 +6,8 @@ export const typeDefs = gql`
 
   enum Role { ADMIN USER }
   enum LicenseLevel { Essential Advantage Signature }
-  enum CustomerTaskStatus { NOT_STARTED IN_PROGRESS DONE NOT_APPLICABLE }
+  enum CustomerTaskStatus { NOT_STARTED IN_PROGRESS COMPLETED DONE NOT_APPLICABLE }
+  enum StatusUpdateSource { MANUAL TELEMETRY IMPORT SYSTEM }
 
   interface Node { id: ID! }
 
@@ -187,9 +188,9 @@ export const typeDefs = gql`
     tasks(first: Int, after: String, last: Int, before: String, productId: ID, solutionId: ID): TaskConnection!
     customers: [Customer!]!
     licenses: [License!]!
-    releases: [Release!]!
+    releases(productId: ID): [Release!]!
     taskStatuses: [TaskStatus!]!
-  outcomes(productId: ID): [Outcome!]!
+    outcomes(productId: ID): [Outcome!]!
     auditLogs(limit: Int = 50): [AuditLog!]!
     changeSets(limit: Int = 50): [ChangeSet!]!
     changeSet(id: ID!): ChangeSet
@@ -493,6 +494,7 @@ export const typeDefs = gql`
     product: Product!
     licenseLevel: LicenseLevel!
     selectedOutcomes: [Outcome!]!
+    selectedReleases: [Release!]!
     adoptionPlan: AdoptionPlan
     purchasedAt: String!
     createdAt: String!
@@ -506,6 +508,7 @@ export const typeDefs = gql`
     productName: String!
     licenseLevel: LicenseLevel!
     selectedOutcomes: [Outcome!]!
+    selectedReleases: [Release!]!
     totalTasks: Int!
     completedTasks: Int!
     totalWeight: Float!
@@ -536,6 +539,7 @@ export const typeDefs = gql`
     status: CustomerTaskStatus!
     statusUpdatedAt: String
     statusUpdatedBy: String
+    statusUpdateSource: StatusUpdateSource
     statusNotes: String
     isComplete: Boolean!
     completedAt: String
@@ -597,11 +601,13 @@ export const typeDefs = gql`
     productId: ID!
     licenseLevel: LicenseLevel!
     selectedOutcomeIds: [ID!]!
+    selectedReleaseIds: [ID!]!
   }
 
   input UpdateCustomerProductInput {
     licenseLevel: LicenseLevel
     selectedOutcomeIds: [ID!]
+    selectedReleaseIds: [ID!]
   }
 
   input UpdateCustomerTaskStatusInput {
