@@ -361,7 +361,9 @@ export const DataManager: React.FC = () => {
                                     description: outcome.description,
                                     productId: productId
                                 }
-                            }
+                            },
+                            refetchQueries: ['Products', 'Outcomes'],
+                            awaitRefetchQueries: true
                         });
                         createdOutcomes.push(result.data.createOutcome);
                         addLog(`✅ Created outcome: ${outcome.name}`);

@@ -1261,19 +1261,89 @@ export const resolvers = {
         throw new Error('Task not found');
       }
 
-      // If sequence number is being updated, check for conflicts
+      // Track if sequence number is being updated
+      let sequenceWasUpdated = false;
+
+      // If sequence number is being updated, handle reordering
       if (input.sequenceNumber && input.sequenceNumber !== before.sequenceNumber) {
-        const existingTask = await prisma.task.findFirst({
-          where: {
-            sequenceNumber: input.sequenceNumber,
-            id: { not: id },
-            ...(before.productId ? { productId: before.productId } : { solutionId: before.solutionId })
+        const oldSequence = before.sequenceNumber;
+        const newSequence = input.sequenceNumber;
+        sequenceWasUpdated = true;
+
+        console.log(`Reordering tasks: moving task ${id} from sequence ${oldSequence} to ${newSequence}`);
+
+        // Use a transaction with two-step approach to avoid unique constraint violations
+        await prisma.$transaction(async (tx: any) => {
+          if (newSequence < oldSequence) {
+            // Moving task to a lower sequence (e.g., from 5 to 2)
+            // Step 1: Get all tasks that need to shift up
+            const tasksToShift = await tx.task.findMany({
+              where: {
+                id: { not: id },
+                deletedAt: null,
+                sequenceNumber: { gte: newSequence, lt: oldSequence },
+                ...(before.productId ? { productId: before.productId } : { solutionId: before.solutionId })
+              },
+              orderBy: { sequenceNumber: 'desc' } // Process in reverse order
+            });
+
+            // Step 2: Move affected tasks to temporary negative sequences
+            for (let i = 0; i < tasksToShift.length; i++) {
+              await tx.task.update({
+                where: { id: tasksToShift[i].id },
+                data: { sequenceNumber: -(i + 1000) }
+              });
+            }
+
+            // Step 3: Move current task to new sequence
+            await tx.task.update({
+              where: { id },
+              data: { sequenceNumber: newSequence }
+            });
+
+            // Step 4: Move affected tasks to their final sequences
+            for (let i = 0; i < tasksToShift.length; i++) {
+              await tx.task.update({
+                where: { id: tasksToShift[i].id },
+                data: { sequenceNumber: tasksToShift[i].sequenceNumber + 1 }
+              });
+            }
+          } else if (newSequence > oldSequence) {
+            // Moving task to a higher sequence (e.g., from 2 to 5)
+            // Step 1: Get all tasks that need to shift down
+            const tasksToShift = await tx.task.findMany({
+              where: {
+                id: { not: id },
+                deletedAt: null,
+                sequenceNumber: { gt: oldSequence, lte: newSequence },
+                ...(before.productId ? { productId: before.productId } : { solutionId: before.solutionId })
+              },
+              orderBy: { sequenceNumber: 'asc' }
+            });
+
+            // Step 2: Move affected tasks to temporary negative sequences
+            for (let i = 0; i < tasksToShift.length; i++) {
+              await tx.task.update({
+                where: { id: tasksToShift[i].id },
+                data: { sequenceNumber: -(i + 1000) }
+              });
+            }
+
+            // Step 3: Move current task to new sequence
+            await tx.task.update({
+              where: { id },
+              data: { sequenceNumber: newSequence }
+            });
+
+            // Step 4: Move affected tasks to their final sequences
+            for (let i = 0; i < tasksToShift.length; i++) {
+              await tx.task.update({
+                where: { id: tasksToShift[i].id },
+                data: { sequenceNumber: tasksToShift[i].sequenceNumber - 1 }
+              });
+            }
           }
         });
-
-        if (existingTask) {
-          throw new Error('Sequence number already exists for this product/solution');
-        }
       }
 
       // If weight is being updated, validate total doesn't exceed 100
@@ -1365,6 +1435,11 @@ export const resolvers = {
             }
           }
         }
+      }
+
+      // Remove sequenceNumber from updateData if it was already handled in the reordering transaction
+      if (sequenceWasUpdated && updateData.sequenceNumber !== undefined) {
+        delete updateData.sequenceNumber;
       }
 
       const task = await prisma.task.update({
@@ -1856,20 +1931,41 @@ export const resolvers = {
           if (taskToDelete.sequenceNumber) {
             console.log(`Reordering tasks with sequence > ${taskToDelete.sequenceNumber} for product ${taskToDelete.productId}`);
 
-            const updatedCount = await prisma.task.updateMany({
+            // Use two-step approach to avoid unique constraint violations
+            // Step 1: Move all affected tasks to negative sequences
+            const tasksToReorder = await prisma.task.findMany({
               where: {
                 deletedAt: null,
                 sequenceNumber: { gt: taskToDelete.sequenceNumber },
                 ...(taskToDelete.productId ? { productId: taskToDelete.productId } : { solutionId: taskToDelete.solutionId })
               },
-              data: {
-                sequenceNumber: {
-                  decrement: 1
-                }
-              }
+              orderBy: { sequenceNumber: 'asc' }
             });
 
-            console.log(`Reordered ${updatedCount.count} tasks after deleting task with sequence ${taskToDelete.sequenceNumber}`);
+            // Step 2: Update each task to temporary negative value, then to final value
+            for (let i = 0; i < tasksToReorder.length; i++) {
+              const task = tasksToReorder[i];
+              const newSeq = task.sequenceNumber - 1;
+              
+              // First move to negative to avoid constraint
+              await prisma.task.update({
+                where: { id: task.id },
+                data: { sequenceNumber: -(i + 1000) }
+              });
+            }
+
+            // Step 3: Update to final positive values
+            for (let i = 0; i < tasksToReorder.length; i++) {
+              const task = tasksToReorder[i];
+              const newSeq = task.sequenceNumber - 1;
+              
+              await prisma.task.update({
+                where: { id: task.id },
+                data: { sequenceNumber: newSeq }
+              });
+            }
+
+            console.log(`Reordered ${tasksToReorder.length} tasks after deleting task with sequence ${taskToDelete.sequenceNumber}`);
           }
 
           deletedCount++;

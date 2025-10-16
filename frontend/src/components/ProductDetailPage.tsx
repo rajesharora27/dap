@@ -403,7 +403,7 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
             productId: product.id
           }
         },
-        refetchQueries: ['OutcomesForProduct'],
+        refetchQueries: ['OutcomesForProduct', 'Outcomes'],
         awaitRefetchQueries: true
       });
 
@@ -455,7 +455,9 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
             description: editingOutcome.description.trim(),
             productId: product.id
           }
-        }
+        },
+        refetchQueries: ['OutcomesForProduct', 'Outcomes'],
+        awaitRefetchQueries: true
       });
 
       setEditOutcomeDialog(false);
@@ -481,7 +483,9 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
 
     try {
       await deleteOutcome({
-        variables: { id: outcomeId }
+        variables: { id: outcomeId },
+        refetchQueries: ['OutcomesForProduct', 'Outcomes'],
+        awaitRefetchQueries: true
       });
 
       await refetchOutcomes();
@@ -840,7 +844,9 @@ export function ProductDetailPage({ product, onBack }: ProductDetailPageProps) {
                     description: outcomeData.description || '',
                     productId: product.id
                   }
-                }
+                },
+                refetchQueries: ['OutcomesForProduct', 'Outcomes'],
+                awaitRefetchQueries: true
               });
               importedCount++;
             } catch (error) {
