@@ -384,7 +384,7 @@ const DELETE_TELEMETRY_ATTRIBUTE = gql`
 `;
 
 // Sortable Task Item Component
-function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChange }: any) {
+function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChange, onSequenceChange }: any) {
   const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
   const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
   
@@ -426,15 +426,55 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
         <Box sx={{ flex: 1, minWidth: 0 }}>
           {/* Primary content - structured grid layout */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-            {/* Sequence number - fixed width */}
-            <Box sx={{ minWidth: '56px', flexShrink: 0 }}>
+            {/* Sequence number - fixed width, editable */}
+            <Box sx={{ minWidth: '70px', flexShrink: 0 }}>
               {task.sequenceNumber && (
-                <Chip
-                  size="small"
-                  label={`#${task.sequenceNumber}`}
-                  color="secondary"
-                  variant="outlined"
-                  sx={{ fontWeight: 'bold' }}
+                <input
+                  key={`seq-${task.id}-${task.sequenceNumber}`}
+                  type="number"
+                  defaultValue={task.sequenceNumber || 0}
+                  onBlur={(e) => {
+                    e.stopPropagation();
+                    const newSeq = parseInt(e.target.value) || 1;
+                    if (newSeq >= 1 && newSeq !== task.sequenceNumber) {
+                      if (onSequenceChange) {
+                        onSequenceChange(task.id, task.name, newSeq);
+                      }
+                    } else {
+                      // Reset to original value if invalid
+                      e.target.value = task.sequenceNumber.toString();
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.currentTarget.blur(); // Trigger save on Enter
+                    }
+                    if (e.key === 'Escape') {
+                      e.currentTarget.value = task.sequenceNumber.toString(); // Reset on Escape
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  onFocus={(e) => {
+                    e.stopPropagation();
+                    e.target.select();
+                  }}
+                  step="1"
+                  min="1"
+                  className="sequence-input-spinner"
+                  style={{
+                    width: '60px',
+                    padding: '4px 8px',
+                    border: '1px solid #9c27b0',
+                    borderRadius: '16px',
+                    textAlign: 'center',
+                    fontSize: '0.8125rem',
+                    fontWeight: 'bold',
+                    color: '#9c27b0',
+                    backgroundColor: 'transparent',
+                    cursor: 'text'
+                  }}
+                  title="Click to edit sequence (≥1), press Enter to save"
                 />
               )}
             </Box>
@@ -1806,15 +1846,21 @@ export function App() {
         variables: { id: taskId }
       });
 
-      // Then, process the deletion queue to actually remove it
+      // Then, process the deletion queue to actually remove it and reorder sequences
       await client.mutate({
         mutation: PROCESS_DELETION_QUEUE,
-        refetchQueries: ['TasksForProduct'],
+        refetchQueries: ['TasksForProduct', 'Products'],
         awaitRefetchQueries: true
       });
 
       console.log('Task deleted successfully');
+      
+      // Force a complete refetch to ensure sequence numbers are updated in UI
       await refetchTasks();
+      
+      // Also evict the deleted task from Apollo cache
+      client.cache.evict({ id: `Task:${taskId}` });
+      client.cache.gc();
     } catch (error: any) {
       console.error('Error deleting task:', error);
       alert('Failed to delete task: ' + (error?.message || 'Unknown error'));
@@ -1892,6 +1938,41 @@ export function App() {
     } catch (error: any) {
       console.error('❌ Failed to update weight:', error);
       alert('Failed to update task weight: ' + (error?.message || 'Unknown error'));
+    }
+  };
+
+  const handleTaskSequenceChange = async (taskId: string, taskName: string, newSequence: number) => {
+    try {
+      // Validate sequence number
+      if (newSequence < 1) {
+        alert('Sequence number must be at least 1');
+        return;
+      }
+
+      // Update the task sequence - backend will automatically reorder other tasks
+      await client.mutate({
+        mutation: UPDATE_TASK,
+        variables: {
+          id: taskId,
+          input: {
+            name: taskName,
+            sequenceNumber: newSequence
+          }
+        },
+        refetchQueries: ['TasksForProduct', 'Products'],
+        awaitRefetchQueries: true
+      });
+      
+      console.log(`✅ Sequence updated for task ${taskName}: → ${newSequence} (other tasks reordered automatically)`);
+      
+      // Force refetch to ensure all sequence numbers are updated in UI
+      await refetchTasks();
+      
+      // Clear Apollo cache to ensure fresh data
+      client.cache.gc();
+    } catch (error: any) {
+      console.error('❌ Failed to update sequence:', error);
+      alert('Failed to update task sequence: ' + (error?.message || 'Unknown error'));
     }
   };
 
@@ -4429,7 +4510,7 @@ export function App() {
               selected={selectedSection === 'products'}
               onClick={() => {
                 setSelectedSection('products');
-                setProductsExpanded(!productsExpanded);
+                setProductsExpanded(true); // Always expand when clicked
               }}
             >
               <ListItemIcon>
@@ -5531,6 +5612,7 @@ export function App() {
                                   onDelete={handleDeleteTask}
                                   onDoubleClick={handleTaskDoubleClick}
                                   onWeightChange={handleTaskWeightChange}
+                                  onSequenceChange={handleTaskSequenceChange}
                                 />
                               ))}
                             </Box>

@@ -50,6 +50,8 @@ import {
   HourglassEmpty,
   TrendingUp,
   NotInterested,
+  Article,
+  OndemandVideo,
 } from '@mui/icons-material';
 import { CustomerDialog } from './dialogs/CustomerDialog';
 import { AssignProductDialog } from './dialogs/AssignProductDialog';
@@ -116,6 +118,8 @@ const GET_ADOPTION_PLAN = gql`
         statusUpdateSource
         statusNotes
         licenseLevel
+        howToDoc
+        howToVideo
         telemetryAttributes {
           id
           name
@@ -947,38 +951,41 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                 >
                                 <TableCell>{task.sequenceNumber}</TableCell>
                                 <TableCell>
-                                  <Typography variant="body2" sx={{ mb: 0.5 }}>{task.name}</Typography>
-                                  {task.description && (
-                                    <Typography variant="caption" color="text.secondary" display="block">
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="body2">{task.name}</Typography>
+                                    {task.howToDoc && task.howToDoc.length > 0 && (
+                                      <Tooltip title={`${task.howToDoc.length} documentation link${task.howToDoc.length > 1 ? 's' : ''}`}>
+                                        <IconButton
+                                          size="small"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            window.open(task.howToDoc[0], '_blank', 'noopener,noreferrer');
+                                          }}
+                                          sx={{ p: 0.5, color: 'primary.main' }}
+                                        >
+                                          <Article fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    )}
+                                    {task.howToVideo && task.howToVideo.length > 0 && (
+                                      <Tooltip title={`${task.howToVideo.length} video tutorial${task.howToVideo.length > 1 ? 's' : ''}`}>
+                                        <IconButton
+                                          size="small"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            window.open(task.howToVideo[0], '_blank', 'noopener,noreferrer');
+                                          }}
+                                          sx={{ p: 0.5, color: 'error.main' }}
+                                        >
+                                          <OndemandVideo fontSize="small" />
+                                        </IconButton>
+                                      </Tooltip>
+                                    )}
+                                  </Box>
+                                  {hoveredTaskId === task.id && task.description && (
+                                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
                                       {task.description}
                                     </Typography>
-                                  )}
-                                  {hoveredTaskId === task.id && (
-                                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
-                                      {task.licenseLevel && (
-                                        <Chip label={task.licenseLevel} size="small" variant="outlined" color="primary" sx={{ height: 20, fontSize: '0.7rem' }} />
-                                      )}
-                                      {task.releases?.map((release: any) => (
-                                        <Chip 
-                                          key={release.id} 
-                                          label={`${release.name}${release.version ? ` ${release.version}` : ''}`}
-                                          size="small" 
-                                          variant="outlined" 
-                                          color="secondary"
-                                          sx={{ height: 20, fontSize: '0.7rem' }}
-                                        />
-                                      ))}
-                                      {task.outcomes?.map((outcome: any) => (
-                                        <Chip 
-                                          key={outcome.id} 
-                                          label={outcome.name}
-                                          size="small" 
-                                          variant="outlined" 
-                                          color="success"
-                                          sx={{ height: 20, fontSize: '0.7rem' }}
-                                        />
-                                      ))}
-                                    </Box>
                                   )}
                                   {task.statusUpdatedAt && (
                                     <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -1333,37 +1340,53 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                 </Box>
               )}
 
-              {selectedTask.howToDoc && (
+              {selectedTask.howToDoc && selectedTask.howToDoc.length > 0 && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                     Documentation
                   </Typography>
-                  <Typography 
-                    variant="body2" 
-                    component="a" 
-                    href={selectedTask.howToDoc}
-                    target="_blank"
-                    sx={{ color: 'primary.main', textDecoration: 'none' }}
-                  >
-                    View Documentation →
-                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {selectedTask.howToDoc.map((doc: string, index: number) => (
+                      <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Article fontSize="small" color="primary" />
+                        <Typography 
+                          variant="body2" 
+                          component="a" 
+                          href={doc}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                        >
+                          {doc.length > 60 ? `${doc.substring(0, 60)}...` : doc}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
                 </Box>
               )}
 
-              {selectedTask.howToVideo && (
+              {selectedTask.howToVideo && selectedTask.howToVideo.length > 0 && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Video Tutorial
+                    Video Tutorials
                   </Typography>
-                  <Typography 
-                    variant="body2" 
-                    component="a" 
-                    href={selectedTask.howToVideo}
-                    target="_blank"
-                    sx={{ color: 'primary.main', textDecoration: 'none' }}
-                  >
-                    Watch Video →
-                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {selectedTask.howToVideo.map((video: string, index: number) => (
+                      <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <OndemandVideo fontSize="small" color="error" />
+                        <Typography 
+                          variant="body2" 
+                          component="a" 
+                          href={video}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{ color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                        >
+                          {video.length > 60 ? `${video.substring(0, 60)}...` : video}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
                 </Box>
               )}
 
