@@ -29,7 +29,8 @@ import {
   Chip,
   Fab,
   Collapse,
-  Menu
+  Menu,
+  Tooltip
 } from '@mui/material';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
 import { ProductDialog } from '../components/dialogs/ProductDialog';
@@ -62,7 +63,6 @@ import {
   Rocket as ReleaseIcon
 } from '@mui/icons-material';
 import { AuthBar } from '../components/AuthBar';
-import { ProductDetailPage } from '../components/ProductDetailPage';
 import { TaskDetailDialog } from '../components/TaskDetailDialog';
 import { useAuth } from '../components/AuthContext';
 import { gql, useQuery, useApolloClient, ApolloError } from '@apollo/client';
@@ -157,7 +157,6 @@ const TASKS_FOR_PRODUCT = gql`
           weight
           sequenceNumber
           licenseLevel
-          priority
           notes
           howToDoc
           howToVideo
@@ -244,7 +243,6 @@ const UPDATE_TASK = gql`
       weight
       sequenceNumber
       licenseLevel
-      priority
       notes
       howToDoc
       howToVideo
@@ -407,13 +405,16 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
     <Box ref={setNodeRef} style={style} sx={{ mb: 1 }}>
       <ListItemButton
         onDoubleClick={() => onDoubleClick(task)}
+        title={task.description || 'No description available'}
         sx={{
           border: '1px solid #e0e0e0',
-          borderRadius: 1,
+          borderRadius: '8px',
           '&:hover': {
-            backgroundColor: '#f5f5f5'
+            backgroundColor: 'rgba(25, 118, 210, 0.08)',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           },
-          cursor: 'pointer'
+          cursor: 'pointer',
+          transition: 'all 0.2s ease-in-out',
         }}
       >
         <ListItemIcon
@@ -479,19 +480,77 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
               )}
             </Box>
             
-            {/* Task name - flexible width */}
-            <Box sx={{ flex: 1, minWidth: 0 }}>
+            {/* Task name with inline HowTo chips - flexible width */}
+            <Box sx={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="subtitle1" component="div" sx={{ 
                 overflow: 'hidden', 
                 textOverflow: 'ellipsis', 
-                whiteSpace: 'nowrap' 
+                whiteSpace: 'nowrap',
+                fontWeight: 500
               }}>
                 {task.name}
               </Typography>
+              
+              {/* HowTo chips inline with task name */}
+              {task.howToDoc && task.howToDoc.length > 0 && (
+                <Chip
+                  size="small"
+                  label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
+                  color="primary"
+                  variant="outlined"
+                  sx={{ 
+                    fontSize: '0.65rem', 
+                    height: '20px',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    '&:hover': { backgroundColor: 'primary.light', color: 'white' }
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (task.howToDoc.length === 1) {
+                      window.open(task.howToDoc[0], '_blank');
+                    } else {
+                      setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
+                    }
+                  }}
+                  title={task.howToDoc.length === 1 
+                    ? `Documentation: ${task.howToDoc[0]}`
+                    : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
+                  }
+                />
+              )}
+              
+              {task.howToVideo && task.howToVideo.length > 0 && (
+                <Chip
+                  size="small"
+                  label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
+                  color="primary"
+                  variant="outlined"
+                  sx={{ 
+                    fontSize: '0.65rem', 
+                    height: '20px',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    '&:hover': { backgroundColor: 'primary.light', color: 'white' }
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (task.howToVideo.length === 1) {
+                      window.open(task.howToVideo[0], '_blank');
+                    } else {
+                      setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
+                    }
+                  }}
+                  title={task.howToVideo.length === 1 
+                    ? `Video: ${task.howToVideo[0]}`
+                    : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
+                  }
+                />
+              )}
             </Box>
             
             {/* Weight - fixed width, editable */}
-            <Box sx={{ minWidth: '105px', flexShrink: 0 }}>
+            <Box sx={{ minWidth: '110px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
               <input
                 key={`weight-${task.id}-${task.weight}`}
                 type="number"
@@ -543,69 +602,6 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
                 }}
                 title="Click to edit weight (0-100), press Enter to save"
               />
-            </Box>
-            
-            {/* How-to links container - fixed width */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '120px', flexShrink: 0, justifyContent: 'flex-end' }}>
-              {/* How-to documentation links */}
-              <Box sx={{ minWidth: '50px' }}>
-                {task.howToDoc && task.howToDoc.length > 0 && (
-                  <Chip
-                    size="small"
-                    label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
-                    color="primary"
-                    variant="outlined"
-                    sx={{ 
-                      fontSize: '0.7rem', 
-                      height: '24px',
-                      cursor: 'pointer',
-                      '&:hover': { backgroundColor: 'primary.light' }
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (task.howToDoc.length === 1) {
-                        window.open(task.howToDoc[0], '_blank');
-                      } else {
-                        setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
-                      }
-                    }}
-                    title={task.howToDoc.length === 1 
-                      ? `Documentation: ${task.howToDoc[0]}`
-                      : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
-                    }
-                  />
-                )}
-              </Box>
-              
-              {/* How-to video links */}
-              <Box sx={{ minWidth: '50px' }}>
-                {task.howToVideo && task.howToVideo.length > 0 && (
-                  <Chip
-                    size="small"
-                    label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
-                    color="primary"
-                    variant="outlined"
-                    sx={{ 
-                      fontSize: '0.7rem', 
-                      height: '24px',
-                      cursor: 'pointer',
-                      '&:hover': { backgroundColor: 'primary.light' }
-                    }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (task.howToVideo.length === 1) {
-                        window.open(task.howToVideo[0], '_blank');
-                      } else {
-                        setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
-                      }
-                    }}
-                    title={task.howToVideo.length === 1 
-                      ? `Video: ${task.howToVideo[0]}`
-                      : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
-                    }
-                  />
-                )}
-              </Box>
             </Box>
           </Box>
         </Box>
@@ -767,9 +763,9 @@ export function App() {
         console.error('🚨 400 ERROR - This suggests a GraphQL query format issue');
       }
     },
-    onCompleted: (data) => {
-      console.log('✅ PRODUCTS Query Success:', data);
-    }
+    // onCompleted: (data) => {
+    //   console.log('✅ PRODUCTS Query Success:', data);
+    // }
   });
 
   const { data: solutionsData, loading: solutionsLoading, error: solutionsError } = useQuery(SOLUTIONS, {
@@ -879,30 +875,30 @@ export function App() {
     }
   }, [selectedCustomerId]);
 
-  // Debug logging
-  console.log('App Component Loaded!');
-  console.log('App authentication status:', {
-    isAuthenticated,
-    token: token ? 'Token present' : 'No token',
-    tokenLength: token?.length || 0
-  });
-  console.log('App Data Debug:', {
-    productsCount: products.length,
-    solutionsCount: solutions.length,
-    customersCount: customers.length,
-    tasksCount: tasks.length,
-    outcomesCount: outcomes.length,
-    selectedProduct,
-    selectedSection,
-    viewMode,
-    productsLoading,
-    tasksLoading,
-    productsError: productsError?.message,
-    tasksError: tasksError?.message,
-    products: products.slice(0, 2),
-    tasks: tasks.slice(0, 2),
-    outcomes: outcomes.slice(0, 2)
-  });
+  // Debug logging - uncomment for troubleshooting
+  // console.log('App Component Loaded!');
+  // console.log('App authentication status:', {
+  //   isAuthenticated,
+  //   token: token ? 'Token present' : 'No token',
+  //   tokenLength: token?.length || 0
+  // });
+  // console.log('App Data Debug:', {
+  //   productsCount: products.length,
+  //   solutionsCount: solutions.length,
+  //   customersCount: customers.length,
+  //   tasksCount: tasks.length,
+  //   outcomesCount: outcomes.length,
+  //   selectedProduct,
+  //   selectedSection,
+  //   viewMode,
+  //   productsLoading,
+  //   tasksLoading,
+  //   productsError: productsError?.message,
+  //   tasksError: tasksError?.message,
+  //   products: products.slice(0, 2),
+  //   tasks: tasks.slice(0, 2),
+  //   outcomes: outcomes.slice(0, 2)
+  // });
 
   // Release handlers
   const handleDeleteRelease = async (releaseId: string) => {
@@ -1256,11 +1252,11 @@ export function App() {
             const cleanId = licenseData.id?.toString().trim();
             const existingLicense = existingLicenses.find((l: any) => l.id?.toString() === cleanId);
 
-            console.log('Processing license:', licenseData.name, 'ID:', cleanId, 'Existing found:', !!existingLicense);
+            // console.log('Processing license:', licenseData.name, 'ID:', cleanId, 'Existing found:', !!existingLicense);
 
             if (cleanId && existingLicense) {
               // Update existing license
-              console.log('Updating existing license:', existingLicense.id);
+              // console.log('Updating existing license:', existingLicense.id);
               await client.mutate({
                 mutation: UPDATE_LICENSE,
                 variables: {
@@ -1277,10 +1273,10 @@ export function App() {
                 awaitRefetchQueries: true
               });
               updatedCount++;
-              console.log('License updated successfully:', licenseData.name);
+              // console.log('License updated successfully:', licenseData.name);
             } else {
               // Create new license
-              console.log('Creating new license:', licenseData.name);
+              // console.log('Creating new license:', licenseData.name);
               await client.mutate({
                 mutation: CREATE_LICENSE,
                 variables: {
@@ -1296,7 +1292,7 @@ export function App() {
                 awaitRefetchQueries: true
               });
               importedCount++;
-              console.log('License created successfully:', licenseData.name);
+              // console.log('License created successfully:', licenseData.name);
             }
           } catch (error) {
             console.error(`Failed to import/update license on row ${i + 1}:`, licenseData.name, error);
@@ -1470,11 +1466,11 @@ export function App() {
             const cleanId = outcomeData.id?.toString().trim();
             const existingOutcome = existingOutcomes.find((o: any) => o.id?.toString() === cleanId);
 
-            console.log('Processing outcome:', outcomeData.name, 'ID:', cleanId, 'Existing found:', !!existingOutcome);
+            // console.log('Processing outcome:', outcomeData.name, 'ID:', cleanId, 'Existing found:', !!existingOutcome);
 
             if (cleanId && existingOutcome) {
               // Update existing outcome
-              console.log('Updating existing outcome:', existingOutcome.id);
+              // console.log('Updating existing outcome:', existingOutcome.id);
               await client.mutate({
                 mutation: gql`
                   mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
@@ -1497,10 +1493,10 @@ export function App() {
                 awaitRefetchQueries: true
               });
               updatedCount++;
-              console.log('Outcome updated successfully:', outcomeData.name);
+              // console.log('Outcome updated successfully:', outcomeData.name);
             } else {
               // Create new outcome
-              console.log('Creating new outcome:', outcomeData.name);
+              // console.log('Creating new outcome:', outcomeData.name);
               await client.mutate({
                 mutation: gql`
                   mutation CreateOutcome($input: OutcomeInput!) {
@@ -1522,7 +1518,7 @@ export function App() {
                 awaitRefetchQueries: true
               });
               importedCount++;
-              console.log('Outcome created successfully:', outcomeData.name);
+              // console.log('Outcome created successfully:', outcomeData.name);
             }
           } catch (error) {
             console.error(`Failed to import/update outcome on row ${i + 1}:`, outcomeData.name, error);
@@ -1561,7 +1557,7 @@ export function App() {
       );
 
       if (result.success) {
-        console.log('Product updated successfully');
+        // console.log('Product updated successfully');
         setEditProductDialog(false);
         setEditingProduct(null);
       } else {
@@ -1582,8 +1578,7 @@ export function App() {
         name: editingTask.name,
         estMinutes: editingTask.estMinutes,
         weight: editingTask.weight,
-        licenseLevel: editingTask.licenseLevel || 'ESSENTIAL',
-        priority: editingTask.priority
+        licenseLevel: editingTask.licenseLevel || 'ESSENTIAL'
       };
 
       // Only add optional fields if they have values
@@ -1604,7 +1599,7 @@ export function App() {
         awaitRefetchQueries: true
       });
 
-      console.log('Task updated successfully');
+      // console.log('Task updated successfully');
       setEditTaskDialog(false);
       setEditingTask(null);
       await refetchTasks();
@@ -1628,8 +1623,7 @@ export function App() {
       const input: any = {
         name: taskData.name,
         estMinutes: taskData.estMinutes,
-        weight: taskData.weight,
-        priority: taskData.priority
+        weight: taskData.weight
       };
 
       // Add productId for new tasks only
@@ -1688,7 +1682,6 @@ export function App() {
                 weight
                 sequenceNumber
                 licenseLevel
-                priority
                 notes
                 howToDoc
                 howToVideo
@@ -1822,7 +1815,7 @@ export function App() {
       }
       await refetchTasks();
       
-      console.log(`Task ${isEdit ? 'updated' : 'created'} successfully`);
+      // console.log(`Task ${isEdit ? 'updated' : 'created'} successfully`);
     } catch (error: any) {
       console.error(`Error ${isEdit ? 'updating' : 'adding'} task:`, error);
       alert(`Failed to ${isEdit ? 'update' : 'add'} task: ` + (error?.message || 'Unknown error'));
@@ -1853,7 +1846,7 @@ export function App() {
         awaitRefetchQueries: true
       });
 
-      console.log('Task deleted successfully');
+      // console.log('Task deleted successfully');
       
       // Force a complete refetch to ensure sequence numbers are updated in UI
       await refetchTasks();
@@ -1890,7 +1883,7 @@ export function App() {
         console.log('Cleared selected product - tasks will be cleared automatically');
       }
 
-      console.log('Product deleted successfully!');
+      // console.log('Product deleted successfully!');
       alert('Product deleted successfully!');
     } catch (error: any) {
       console.error('Error deleting product:', error);
@@ -2103,7 +2096,7 @@ export function App() {
         });
       }
 
-      console.log('Product created successfully');
+      // console.log('Product created successfully');
       setAddProductDialog(false);
     } catch (error: any) {
       console.error('Error adding product:', error);
@@ -2173,7 +2166,7 @@ export function App() {
         }
       });
 
-      console.log('Product created successfully:', result.data.createProduct);
+      // console.log('Product created successfully:', result.data.createProduct);
       setNewProduct({ name: '', description: '' });
       setAddProductDialog(false);
 
@@ -2204,7 +2197,7 @@ export function App() {
     }
 
     // Create CSV content
-    const csvHeaders = 'id,name,description,estMinutes,weight,sequenceNumber,licenseLevel,priority,notes,howToDoc,howToVideo\n';
+    const csvHeaders = 'id,name,description,estMinutes,weight,sequenceNumber,licenseLevel,notes,howToDoc,howToVideo\n';
     const csvRows = tasks.map((task: any) => {
       const escapeCsv = (field: any) => {
         const str = String(field || '');
@@ -2223,7 +2216,6 @@ export function App() {
         escapeCsv(task.weight),
         escapeCsv(task.sequenceNumber),
         escapeCsv(task.licenseLevel),
-        escapeCsv(task.priority),
         escapeCsv(task.notes),
         escapeCsv(Array.isArray(task.howToDoc) ? task.howToDoc.join(', ') : (task.howToDoc || '')),
         escapeCsv(Array.isArray(task.howToVideo) ? task.howToVideo.join(', ') : (task.howToVideo || ''))
@@ -2265,7 +2257,7 @@ export function App() {
 
         // Parse CSV headers
         const headers = lines[0].split(',').map((h: string) => h.trim().replace(/"/g, ''));
-        const expectedHeaders = ['id', 'name', 'description', 'estMinutes', 'weight', 'sequenceNumber', 'licenseLevel', 'priority', 'notes'];
+        const expectedHeaders = ['id', 'name', 'description', 'estMinutes', 'weight', 'sequenceNumber', 'licenseLevel', 'notes'];
 
         if (!['id', 'name'].every(header => headers.includes(header))) {
           throw new Error('CSV must include at least id and name headers');
@@ -2318,17 +2310,16 @@ export function App() {
             const cleanId = taskData.id?.toString().trim();
             const existingTask = tasks.find((t: any) => t.id?.toString() === cleanId);
 
-            console.log('Processing task:', taskData.name, 'ID:', cleanId, 'Existing found:', !!existingTask);
+            // console.log('Processing task:', taskData.name, 'ID:', cleanId, 'Existing found:', !!existingTask);
 
             if (cleanId && existingTask) {
               // Update existing task
-              console.log('Updating existing task:', existingTask.id);
+              // console.log('Updating existing task:', existingTask.id);
               const input: any = {
                 name: taskData.name,
                 estMinutes: parseInt(taskData.estMinutes) || 0,
                 weight: parseInt(taskData.weight) || 0,
-                licenseLevel: taskData.licenseLevel || 'ESSENTIAL',
-                priority: taskData.priority || 'MEDIUM'
+                licenseLevel: taskData.licenseLevel || 'ESSENTIAL'
               };
 
               // Only add optional fields if they have values
@@ -2352,17 +2343,16 @@ export function App() {
                 awaitRefetchQueries: true
               });
               updatedCount++;
-              console.log('Task updated successfully:', taskData.name);
+              // console.log('Task updated successfully:', taskData.name);
             } else {
               // Create new task
-              console.log('Creating new task:', taskData.name);
+              // console.log('Creating new task:', taskData.name);
               const input: any = {
                 productId: selectedProduct,
                 name: taskData.name,
                 estMinutes: parseInt(taskData.estMinutes) || 0,
                 weight: parseInt(taskData.weight) || 0,
-                licenseLevel: taskData.licenseLevel || 'ESSENTIAL',
-                priority: taskData.priority || 'MEDIUM'
+                licenseLevel: taskData.licenseLevel || 'ESSENTIAL'
               };
 
               // Only add optional fields if they have values
@@ -2384,7 +2374,6 @@ export function App() {
                       weight
                       sequenceNumber
                       licenseLevel
-                      priority
                       notes
                       howToDoc
                       howToVideo
@@ -2410,7 +2399,7 @@ export function App() {
                 awaitRefetchQueries: true
               });
               importedCount++;
-              console.log('Task created successfully:', taskData.name);
+              // console.log('Task created successfully:', taskData.name);
             }
           } catch (error) {
             console.error(`Failed to import/update task on row ${i + 1}:`, taskData.name, error);
@@ -2456,7 +2445,7 @@ export function App() {
       });
 
       if (result.success) {
-        console.log('Product attribute added successfully');
+        // console.log('Product attribute added successfully');
         setAddCustomAttributeDialog(false);
       } else {
         throw new Error(result.error?.message || 'Failed to add product attribute');
@@ -2499,7 +2488,7 @@ export function App() {
       });
 
       if (result.success) {
-        console.log('Custom attribute updated successfully');
+        // console.log('Custom attribute updated successfully');
         setEditCustomAttributeDialog(false);
         setEditingCustomAttribute(null);
       } else {
@@ -2536,7 +2525,7 @@ export function App() {
       });
 
       if (result.success) {
-        console.log('Custom attribute deleted successfully');
+        // console.log('Custom attribute deleted successfully');
       } else {
         throw new Error(result.error?.message || 'Failed to delete custom attribute');
       }
@@ -2623,7 +2612,7 @@ export function App() {
           awaitRefetchQueries: true
         });
 
-        console.log('Custom attributes updated successfully');
+        // console.log('Custom attributes updated successfully');
         await refetchProducts();
         const importedCount = Object.keys(importData.customAttributes).length;
         const existingCount = Object.keys(currentProduct.customAttrs || {}).length;
@@ -2776,7 +2765,7 @@ export function App() {
       linkElement.setAttribute('download', exportFileDefaultName);
       linkElement.click();
 
-      console.log(`${type} exported successfully:`, exportData);
+      // console.log(`${type} exported successfully:`, exportData);
 
     } catch (error) {
       console.error(`Error exporting ${type}:`, error);
@@ -3106,7 +3095,7 @@ export function App() {
         { content: '• Licenses: Name (required), Level (required), Description (optional), Active (Yes/No)', style: 'text' },
         { content: '• Releases: Name (required), Level (required), Description (optional), Active (Yes/No)', style: 'text' },
   { content: '• Custom Attributes: Key (required), Value (optional - supports JSON, numbers, booleans)', style: 'text' },
-  { content: '• Tasks: Name (required), Sequence (optional), Estimated Minutes (optional), Priority (optional)', style: 'text' },
+  { content: '• Tasks: Name (required), Sequence (optional), Estimated Minutes (optional)', style: 'text' },
         { content: '', style: 'empty' },
         { content: 'TIPS', style: 'header' },
         { content: '✓ Always keep a backup before importing', style: 'text' },
@@ -3232,7 +3221,6 @@ export function App() {
         { header: 'Sequence Number', key: 'sequenceNumber', width: 18 },
         { header: 'Estimated Minutes', key: 'estMinutes', width: 18 },
         { header: 'Weight', key: 'weight', width: 12 },
-        { header: 'Priority', key: 'priority', width: 12 },
         { header: 'License Name', key: 'licenseName', width: 24 },
         { header: 'Outcome Names', key: 'outcomeNames', width: 30 },
         { header: 'Release Names', key: 'releaseNames', width: 30 },
@@ -3248,7 +3236,6 @@ export function App() {
         sequenceNumber: task.sequenceNumber ?? '',
         estMinutes: task.estMinutes ?? '',
         weight: task.weight ?? '',
-        priority: task.priority || '',
         licenseName: task.license?.name || '',
         outcomeNames: (task.outcomes || []).map((outcome: any) => outcome.name).filter(Boolean).join(', '),
         releaseNames: (task.releases || []).map((release: any) => release.name).filter(Boolean).join(', '),
@@ -3960,19 +3947,6 @@ export function App() {
           return undefined;
         };
 
-        const normalizePriority = (value?: string): string | undefined => {
-          if (!value) return undefined;
-          const normalized = value.trim().toLowerCase();
-          if (!normalized) return undefined;
-          const priorityMap: Record<string, string> = {
-            'low': 'Low',
-            'medium': 'Medium',
-            'high': 'High',
-            'critical': 'Critical'
-          };
-          return priorityMap[normalized] || value.trim();
-        };
-
         const tasksSheet = workbook.getWorksheet('Tasks');
         if (tasksSheet) {
           // tasksById and tasksByName are already defined at the beginning of import
@@ -3985,7 +3959,6 @@ export function App() {
             estMinutes: ['estimated minutes', 'est minutes', 'est. minutes'],
             weight: ['weight'],
             licenseLevel: ['license level'],
-            priority: ['priority'],
             licenseName: ['license name'],
             outcomeNames: ['outcome names', 'outcomes'],
             releaseNames: ['release names', 'releases'],
@@ -4018,13 +3991,12 @@ export function App() {
             sequenceNumber: 4,
             estMinutes: 5,
             weight: 6,
-            priority: 7,
-            licenseName: 8,
-            outcomeNames: 9,
-            releaseNames: 10,
-            notes: 11,
-            howToDoc: 12,
-            howToVideo: 13
+            licenseName: 7,
+            outcomeNames: 8,
+            releaseNames: 9,
+            notes: 10,
+            howToDoc: 11,
+            howToVideo: 12
           };
 
           // Ensure essential headers have fallback indices for backward compatibility
@@ -4041,8 +4013,6 @@ export function App() {
             const name = toPlainString(getCellValue(row, 'name')).trim();
             if (!name) return;
 
-            const rawPriority = toPlainString(getCellValue(row, 'priority')).trim();
-            const normalizedPriority = normalizePriority(rawPriority);
             const rawLicenseLevel = toPlainString(getCellValue(row, 'licenseLevel')).trim();
 
             tasksToProcess.push({
@@ -4053,7 +4023,6 @@ export function App() {
               sequenceNumber: toNumberOrUndefined(getCellValue(row, 'sequenceNumber')),
               estMinutes: toNumberOrUndefined(getCellValue(row, 'estMinutes')),
               weight: toNumberOrUndefined(getCellValue(row, 'weight')),
-              priority: normalizedPriority,
               licenseName: toPlainString(getCellValue(row, 'licenseName')).trim(),
               outcomeNames: parseDelimitedList(getCellValue(row, 'outcomeNames')),
               releaseNames: parseDelimitedList(getCellValue(row, 'releaseNames')),
@@ -4117,8 +4086,6 @@ export function App() {
                 if (typeof taskRow.sequenceNumber === 'number') {
                   input.sequenceNumber = taskRow.sequenceNumber;
                 }
-                const effectivePriority = normalizePriority(taskRow.priority) || normalizePriority(existing?.priority) || 'Medium';
-                input.priority = effectivePriority;
 
                 const licenseLevelFromExisting = normalizeLicenseLevel(existing?.licenseLevel);
                 const licenseLevelFromSheet = normalizeLicenseLevel(taskRow.licenseLevel);
@@ -4365,7 +4332,7 @@ export function App() {
               let successCriteriaForBackend: string | undefined = undefined;
               if (telemetryRow.successCriteria) {
                 const criteriaStr = telemetryRow.successCriteria.trim();
-                console.log(`[Import] ========== Processing "${telemetryRow.attributeName}" ==========`);
+                // console.log(`[Import] ========== Processing "${telemetryRow.attributeName}" ==========`);
                 console.log(`[Import] Raw from Excel (length ${criteriaStr.length}):`, criteriaStr);
                 if (criteriaStr) {
                   // Check if it's already valid JSON
@@ -4421,7 +4388,7 @@ export function App() {
                   existingAttr.isActive !== input.isActive;
 
                 if (changed) {
-                  console.log(`[Import] ✅ Changes detected! Updating telemetry attribute "${telemetryRow.attributeName}" for task "${telemetryRow.taskName}"`);
+                  // console.log(`[Import] ✅ Changes detected! Updating telemetry attribute "${telemetryRow.attributeName}" for task "${telemetryRow.taskName}"`);
                   console.log('[Import] Mutation input:', JSON.stringify(input, null, 2));
                   await client.mutate({
                     mutation: UPDATE_TELEMETRY_ATTRIBUTE,
@@ -4437,7 +4404,7 @@ export function App() {
                 }
               } else {
                 // Create new telemetry attribute
-                console.log(`[Import] ✨ Creating NEW telemetry attribute "${telemetryRow.attributeName}" for task "${telemetryRow.taskName}"`);
+                // console.log(`[Import] ✨ Creating NEW telemetry attribute "${telemetryRow.attributeName}" for task "${telemetryRow.taskName}"`);
                 console.log('[Import] Success criteria to create:', input.successCriteria);
                 console.log('[Import] Mutation input:', JSON.stringify(input, null, 2));
                 await client.mutate({
@@ -4788,14 +4755,6 @@ export function App() {
 
       {/* Main Content */}
       <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
-        {/* Product Detail Page */}
-        {viewMode === 'detail' && detailProduct && (
-          <ProductDetailPage
-            product={detailProduct}
-            onBack={handleBackToList}
-          />
-        )}
-
         {/* Main List View */}
         {viewMode === 'list' && (
           <>
@@ -5568,23 +5527,18 @@ export function App() {
                           <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
                               {/* Sequence number */}
-                              <Box sx={{ minWidth: '56px', flexShrink: 0 }}>
+                              <Box sx={{ minWidth: '70px', flexShrink: 0 }}>
                                 <Typography variant="caption" fontWeight="bold" color="text.secondary">#</Typography>
                               </Box>
                               
-                              {/* Task name */}
-                              <Box sx={{ flex: 1, minWidth: 0 }}>
-                                <Typography variant="caption" fontWeight="bold" color="text.secondary">Task Name</Typography>
+                              {/* Task name with HowTo chips */}
+                              <Box sx={{ flex: 1, minWidth: 200 }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.secondary">Task Name & Resources</Typography>
                               </Box>
                               
                               {/* Weight */}
-                              <Box sx={{ minWidth: '105px', flexShrink: 0 }}>
+                              <Box sx={{ minWidth: '110px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
                                 <Typography variant="caption" fontWeight="bold" color="text.secondary">Weight (%)</Typography>
-                              </Box>
-                              
-                              {/* How-to links - matching task structure with gap: 1 between internal boxes */}
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '120px', flexShrink: 0, justifyContent: 'flex-end' }}>
-                                <Typography variant="caption" fontWeight="bold" color="text.secondary">How-To</Typography>
                               </Box>
                             </Box>
                           </Box>

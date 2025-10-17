@@ -5,23 +5,27 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
-  // Extract backend URL from GraphQL endpoint or use default
-  const graphqlEndpoint = env.VITE_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql';
-  const backendUrl = graphqlEndpoint.replace('/graphql', '');
-  
   return {
     plugins: [react()],
     server: {
       host: env.FRONTEND_HOST || '0.0.0.0',
       port: parseInt(env.FRONTEND_PORT || '5173'),
       strictPort: true,
+      // Allow access through reverse proxy domains
+      allowedHosts: [
+        'dap-8321890.ztna.sse.cisco.io',
+        'dap.cxsaaslab.com',              // CNAME record
+        '172.22.156.32',
+        'localhost',
+        '.ztna.sse.cisco.io',             // Allow all subdomains
+        '.cxsaaslab.com'                  // Allow all cxsaaslab.com subdomains
+      ],
       proxy: {
         '/graphql': {
-          target: backendUrl,
+          target: 'http://localhost:4000',  // Backend GraphQL server
           changeOrigin: true,
-          ws: true,
-          // Preserve path exactly
-          rewrite: (path) => path
+          ws: true,  // WebSocket support for subscriptions
+          secure: false
         }
       }
     }

@@ -1543,7 +1543,6 @@ export const resolvers = {
         weight: task.weight,
         sequenceNumber: task.sequenceNumber,
         licenseLevel: task.licenseLevel,
-        priority: task.priority || '',
         notes: task.notes || '',
         outcomeIds: task.outcomes.length > 0 ? JSON.stringify(task.outcomes.map((o: any) => o.outcomeId)) : ''
       }));
@@ -1678,7 +1677,6 @@ export const resolvers = {
               weight: weight,
               sequenceNumber: sequenceNumber,
               licenseLevel: licenseLevel as any,
-              priority: row.priority?.trim() || null,
               notes: row.notes?.trim() || null
             };
 

@@ -177,7 +177,6 @@ model CustomerTask {
   estMinutes            Int
   weight                Decimal                   @db.Decimal(5, 2)
   sequenceNumber        Int
-  priority              String?
   howToDoc              String[]
   howToVideo            String[]
   notes                 String?
@@ -296,7 +295,6 @@ model Task {
   weight              Decimal          @default(0) @db.Decimal(5, 2)
   sequenceNumber      Int
   licenseLevel        LicenseLevel     @default(ESSENTIAL)
-  priority            String?          // Priority level (Low, Medium, High, Critical)
   howToDoc            String[]         // HTTP links explaining how to implement the task
   howToVideo          String[]         // Links to videos explaining how to implement the task
   rawTelemetryMapping String?

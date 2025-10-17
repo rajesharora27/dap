@@ -2,6 +2,94 @@
 
 All notable changes to the DAP (Demo Application Platform) project are documented in this file.
 
+## [1.2.0] - 2025-10-16
+
+### Customer Adoption Plan Enhancements
+
+#### 🔄 Sync Improvements
+- **ENHANCED**: Sync automatically includes ALL product outcomes and releases
+- **FIXED**: Sync button now properly updates customer adoption plans with latest product changes
+- **IMPROVED**: Backend auto-includes related entities without manual selection
+
+#### 🔢 Sequence Number Management
+- **FIXED**: Task deletion now properly renumbers remaining tasks
+- **ADDED**: Inline sequence number editing in task list view
+- **IMPLEMENTED**: Two-phase update approach to prevent unique constraint violations
+- **ENHANCED**: Transaction-safe sequence reordering using temporary negative values
+
+#### 📚 HowTo Documentation Features
+- **ADDED**: `howToDoc` field for documentation links
+- **ADDED**: `howToVideo` field for video tutorial links
+- **IMPLEMENTED**: Clickable Material-UI icons (Article, OndemandVideo)
+- **ENHANCED**: Professional icon buttons with tooltips in task list and details dialog
+
+#### 🎨 UX Improvements
+- **IMPROVED**: Task list view with progressive disclosure (description on hover only)
+- **REMOVED**: Unnecessary chips and badges for cleaner interface
+- **FIXED**: Product menu now auto-expands on click
+- **ENHANCED**: Hover effects showing task descriptions
+
+#### 🔄 Outcome Synchronization
+- **FIXED**: Outcome mutations now properly refetch across all components
+- **ADDED**: 'Outcomes' to refetchQueries in shared handlers
+- **ENHANCED**: Cache consistency across ProductDetailPage and DataManager
+- **IMPROVED**: Real-time outcome updates visible everywhere
+
+### Technical Improvements
+
+#### 🐛 Bug Fixes
+- **FIXED**: GraphQL 400 errors by adding subfields to queries
+- **FIXED**: Unique constraint violations during sequence editing
+- **FIXED**: Task deletion not updating GUI immediately
+- **FIXED**: Outcome changes not syncing to adoption plans
+- **FIXED**: Product menu requiring double-click to expand
+
+#### 🏗️ Architecture Enhancements
+- **REFACTORED**: Sequence management with two-phase approach
+- **IMPLEMENTED**: Apollo cache eviction and garbage collection
+- **ENHANCED**: Coordinated refetchQueries across components
+- **IMPROVED**: Transaction safety in sequence updates
+
+#### 🧹 Code Quality
+- **REMOVED**: 28+ test/debug scripts from root directory
+- **ORGANIZED**: Moved all test files to `/tests` directory
+- **CLEANED**: Log files moved to appropriate locations
+- **CONSOLIDATED**: 100+ documentation files into comprehensive guides
+- **VERIFIED**: 0 TypeScript errors across all modified files
+
+#### 📚 Documentation
+- **CREATED**: Comprehensive FEATURES.md documenting all capabilities
+- **UPDATED**: CHANGELOG.md with detailed change history
+- **IMPROVED**: README.md with production-ready overview
+- **ORGANIZED**: Documentation into clear, maintainable structure
+
+### Files Modified
+
+#### Backend
+- `backend/src/schema/resolvers/customerAdoption.ts` - Enhanced sync functionality
+- `backend/src/schema/resolvers/index.ts` - Sequence management and deletion queue
+
+#### Frontend
+- `frontend/src/components/CustomerAdoptionPanelV4.tsx` - HowTo features, icons, UX improvements
+- `frontend/src/utils/sharedHandlers.ts` - Outcome refetch coordination
+- `frontend/src/components/ProductDetailPage.tsx` - Outcome sync fixes
+- `frontend/src/pages/App.tsx` - Product menu, sequence editing, cache management
+
+### Migration Notes
+
+#### Upgrading from 1.1.0 to 1.2.0
+
+1. **Database**: No schema changes required - all changes are code-only
+2. **GraphQL**: No API breaking changes - only enhancements
+3. **Dependencies**: Run `npm install` in both frontend and backend to ensure latest packages
+4. **Cache**: Clear browser cache to see UI improvements
+
+#### New Features Available
+- HowTo documentation links in task dialogs
+- Inline sequence number editing in task lists
+- Improved sync behavior for adoption plans
+- Professional Material-UI icons throughout
+
 ## [1.1.0] - 2025-10-07
 
 ### Documentation & Release Packaging
