@@ -36,6 +36,7 @@ import {
   Tooltip,
   Checkbox,
   OutlinedInput,
+  Menu,
 } from '@mui/material';
 import {
   Add,
@@ -317,6 +318,10 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
   const [statusNotes, setStatusNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  // State for howToDoc and howToVideo dropdown menus
+  const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
+  const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
 
   const { data, loading, refetch } = useQuery(GET_CUSTOMERS, {
     fetchPolicy: 'cache-and-network',
@@ -325,17 +330,6 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
   const selectedCustomer = data?.customers?.find((c: any) => c.id === selectedCustomerId);
   const selectedCustomerProduct = selectedCustomer?.products?.find((cp: any) => cp.product.id === selectedProductId);
   const adoptionPlanId = selectedCustomerProduct?.adoptionPlan?.id;
-
-  // Debug logging
-  console.log('[CustomerAdoptionPanelV4] Debug:', {
-    selectedCustomerId,
-    selectedProductId,
-    selectedCustomer: selectedCustomer?.name,
-    productsCount: selectedCustomer?.products?.length,
-    selectedCustomerProduct: selectedCustomerProduct?.product?.name,
-    adoptionPlanId,
-    hasAdoptionPlan: !!selectedCustomerProduct?.adoptionPlan,
-  });
 
   const { data: planData, refetch: refetchPlan } = useQuery(GET_ADOPTION_PLAN, {
     variables: { id: adoptionPlanId },
@@ -346,7 +340,6 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
   // Auto-select first product when customer is selected or products change
   useEffect(() => {
     if (selectedCustomer?.products?.length > 0 && !selectedProductId) {
-      console.log('[CustomerAdoptionPanelV4] Auto-selecting first product:', selectedCustomer.products[0].product.name);
       setSelectedProductId(selectedCustomer.products[0].product.id);
     }
   }, [selectedCustomer, selectedProductId]);
@@ -923,14 +916,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                               <TableCell width={100}>Weight</TableCell>
                               <TableCell width={150}>Status</TableCell>
                               <TableCell width={120}>Updated Via</TableCell>
-                              <TableCell width={120}>Telemetry</TableCell>
                               <TableCell width={100}>Actions</TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
                             {filteredTasks.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={7} align="center">
+                                <TableCell colSpan={6} align="center">
                                   <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
                                     No tasks match the selected filters
                                   </Typography>
@@ -947,63 +939,83 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     setSelectedTask(task);
                                     setTaskDetailsDialogOpen(true);
                                   }}
-                                  sx={{ cursor: 'pointer' }}
+                                  sx={{ 
+                                    cursor: 'pointer',
+                                    // Grey out NOT_APPLICABLE tasks - more distinct styling
+                                    opacity: task.status === 'NOT_APPLICABLE' ? 0.4 : 1,
+                                    backgroundColor: task.status === 'NOT_APPLICABLE' ? 'rgba(0, 0, 0, 0.12)' : 'inherit',
+                                    color: task.status === 'NOT_APPLICABLE' ? 'text.disabled' : 'inherit',
+                                    textDecoration: task.status === 'NOT_APPLICABLE' ? 'line-through' : 'none',
+                                    '&:hover': {
+                                      backgroundColor: task.status === 'NOT_APPLICABLE' 
+                                        ? 'rgba(0, 0, 0, 0.12)' // Keep same grey for NOT_APPLICABLE
+                                        : 'rgba(0, 0, 0, 0.04)', // Normal hover color
+                                    }
+                                  }}
                                 >
                                 <TableCell>{task.sequenceNumber}</TableCell>
                                 <TableCell>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     <Typography variant="body2">{task.name}</Typography>
+                                    {/* How-to documentation links */}
                                     {task.howToDoc && task.howToDoc.length > 0 && (
-                                      <Tooltip title={`${task.howToDoc.length} documentation link${task.howToDoc.length > 1 ? 's' : ''}`}>
-                                        <IconButton
-                                          size="small"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            window.open(task.howToDoc[0], '_blank', 'noopener,noreferrer');
-                                          }}
-                                          sx={{ p: 0.5, color: 'primary.main' }}
-                                        >
-                                          <Article fontSize="small" />
-                                        </IconButton>
-                                      </Tooltip>
+                                      <Chip
+                                        size="small"
+                                        label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
+                                        color="primary"
+                                        variant="outlined"
+                                        sx={{ 
+                                          fontSize: '0.7rem', 
+                                          height: '24px',
+                                          cursor: 'pointer',
+                                          '&:hover': { backgroundColor: 'primary.light' }
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (task.howToDoc.length === 1) {
+                                            window.open(task.howToDoc[0], '_blank');
+                                          } else {
+                                            setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
+                                          }
+                                        }}
+                                        title={task.howToDoc.length === 1 
+                                          ? `Documentation: ${task.howToDoc[0]}`
+                                          : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
+                                        }
+                                      />
                                     )}
+                                    {/* How-to video links */}
                                     {task.howToVideo && task.howToVideo.length > 0 && (
-                                      <Tooltip title={`${task.howToVideo.length} video tutorial${task.howToVideo.length > 1 ? 's' : ''}`}>
-                                        <IconButton
-                                          size="small"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            window.open(task.howToVideo[0], '_blank', 'noopener,noreferrer');
-                                          }}
-                                          sx={{ p: 0.5, color: 'error.main' }}
-                                        >
-                                          <OndemandVideo fontSize="small" />
-                                        </IconButton>
-                                      </Tooltip>
+                                      <Chip
+                                        size="small"
+                                        label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
+                                        color="primary"
+                                        variant="outlined"
+                                        sx={{ 
+                                          fontSize: '0.7rem', 
+                                          height: '24px',
+                                          cursor: 'pointer',
+                                          '&:hover': { backgroundColor: 'primary.light' }
+                                        }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (task.howToVideo.length === 1) {
+                                            window.open(task.howToVideo[0], '_blank');
+                                          } else {
+                                            setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
+                                          }
+                                        }}
+                                        title={task.howToVideo.length === 1 
+                                          ? `Video: ${task.howToVideo[0]}`
+                                          : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
+                                        }
+                                      />
                                     )}
                                   </Box>
+                                  {/* Show only description on hover */}
                                   {hoveredTaskId === task.id && task.description && (
                                     <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
                                       {task.description}
-                                    </Typography>
-                                  )}
-                                  {task.statusUpdatedAt && (
-                                    <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
-                                      Updated: {new Date(task.statusUpdatedAt).toLocaleString()}
-                                      {task.statusUpdatedBy && ` by ${task.statusUpdatedBy}`}
-                                      {task.statusUpdateSource && (
-                                        <Chip 
-                                          label={task.statusUpdateSource}
-                                          size="small"
-                                          sx={{ ml: 1, height: 18, fontSize: '0.65rem' }}
-                                          color={
-                                            task.statusUpdateSource === 'MANUAL' ? 'primary' :
-                                            task.statusUpdateSource === 'TELEMETRY' ? 'success' :
-                                            task.statusUpdateSource === 'IMPORT' ? 'info' :
-                                            'default'
-                                          }
-                                        />
-                                      )}
                                     </Typography>
                                   )}
                                 </TableCell>
@@ -1030,13 +1042,6 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     />
                                   ) : (
                                     <Typography variant="caption" color="text.secondary">-</Typography>
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {task.telemetryAttributes?.length > 0 ? (
-                                    <Chip label={`${task.telemetryAttributes.length} attrs`} size="small" variant="outlined" />
-                                  ) : (
-                                    <Typography variant="caption" color="text.secondary">None</Typography>
                                   )}
                                 </TableCell>
                                 <TableCell>
@@ -1340,6 +1345,25 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                 </Box>
               )}
 
+              {selectedTask.telemetryAttributes && selectedTask.telemetryAttributes.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Telemetry Attributes
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                    {selectedTask.telemetryAttributes.map((attr: any) => (
+                      <Chip 
+                        key={attr.id} 
+                        label={attr.name}
+                        color="info"
+                        size="small"
+                        variant="outlined"
+                      />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
               {selectedTask.howToDoc && selectedTask.howToDoc.length > 0 && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -1403,27 +1427,39 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                 </Box>
               )}
 
-              {selectedTask.statusUpdatedAt && (
-                <Box>
-                  <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    Last updated: {new Date(selectedTask.statusUpdatedAt).toLocaleString()}
-                    {selectedTask.statusUpdatedBy && ` by ${selectedTask.statusUpdatedBy}`}
-                    {selectedTask.statusUpdateSource && (
-                      <Chip 
-                        label={selectedTask.statusUpdateSource}
-                        size="small"
-                        sx={{ height: 20, fontSize: '0.7rem' }}
-                        color={
-                          selectedTask.statusUpdateSource === 'MANUAL' ? 'primary' :
-                          selectedTask.statusUpdateSource === 'TELEMETRY' ? 'success' :
-                          selectedTask.statusUpdateSource === 'IMPORT' ? 'info' :
-                          'default'
-                        }
-                      />
-                    )}
-                  </Typography>
-                </Box>
-              )}
+              {(() => {
+                // Only show update info if we have a valid date
+                if (!selectedTask.statusUpdatedAt) return null;
+                
+                try {
+                  const date = new Date(selectedTask.statusUpdatedAt);
+                  if (isNaN(date.getTime())) return null; // Invalid date, don't show section
+                  
+                  return (
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        Last updated: {date.toLocaleString()}
+                        {selectedTask.statusUpdatedBy && ` by ${selectedTask.statusUpdatedBy}`}
+                        {selectedTask.statusUpdateSource && (
+                          <Chip 
+                            label={selectedTask.statusUpdateSource}
+                            size="small"
+                            sx={{ height: 20, fontSize: '0.7rem' }}
+                            color={
+                              selectedTask.statusUpdateSource === 'MANUAL' ? 'primary' :
+                              selectedTask.statusUpdateSource === 'TELEMETRY' ? 'success' :
+                              selectedTask.statusUpdateSource === 'IMPORT' ? 'info' :
+                              'default'
+                            }
+                          />
+                        )}
+                      </Typography>
+                    </Box>
+                  );
+                } catch (e) {
+                  return null; // Error parsing date, don't show section
+                }
+              })()}
             </Box>
           )}
         </DialogContent>
@@ -1433,6 +1469,70 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Menu for multiple documentation links */}
+      <Menu
+        anchorEl={docMenuAnchor?.el}
+        open={Boolean(docMenuAnchor)}
+        onClose={() => setDocMenuAnchor(null)}
+      >
+        <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
+          Documentation Links:
+        </MenuItem>
+        {docMenuAnchor?.links.map((link, index) => (
+          <MenuItem
+            key={index}
+            onClick={() => {
+              window.open(link, '_blank');
+              setDocMenuAnchor(null);
+            }}
+            sx={{ fontSize: '0.875rem' }}
+          >
+            {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+          </MenuItem>
+        ))}
+        <MenuItem
+          onClick={() => {
+            docMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
+            setDocMenuAnchor(null);
+          }}
+          sx={{ fontSize: '0.875rem', fontWeight: 'bold', borderTop: '1px solid #ddd' }}
+        >
+          Open All ({docMenuAnchor?.links.length})
+        </MenuItem>
+      </Menu>
+
+      {/* Menu for multiple video links */}
+      <Menu
+        anchorEl={videoMenuAnchor?.el}
+        open={Boolean(videoMenuAnchor)}
+        onClose={() => setVideoMenuAnchor(null)}
+      >
+        <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
+          Video Links:
+        </MenuItem>
+        {videoMenuAnchor?.links.map((link, index) => (
+          <MenuItem
+            key={index}
+            onClick={() => {
+              window.open(link, '_blank');
+              setVideoMenuAnchor(null);
+            }}
+            sx={{ fontSize: '0.875rem' }}
+          >
+            {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+          </MenuItem>
+        ))}
+        <MenuItem
+          onClick={() => {
+            videoMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
+            setVideoMenuAnchor(null);
+          }}
+          sx={{ fontSize: '0.875rem', fontWeight: 'bold', borderTop: '1px solid #ddd' }}
+        >
+          Open All ({videoMenuAnchor?.links.length})
+        </MenuItem>
+      </Menu>
     </Box>
   );
 }

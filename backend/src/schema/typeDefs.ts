@@ -81,7 +81,6 @@ export const typeDefs = gql`
     weight: Float!                  # Weightage percentage (sum in parent = 100%, supports decimals like 0.01%)
     sequenceNumber: Int!            # Execution sequence number
     licenseLevel: LicenseLevel!     # License level required for this task (backward compatibility)
-    priority: String                # Priority level (Low, Medium, High, Critical)
     howToDoc: [String!]!            # HTTP links explaining how to implement the task
     howToVideo: [String!]!          # Links to videos explaining how to implement the task
     product: Product                # Parent product (mutually exclusive with solution)
@@ -331,7 +330,7 @@ export const typeDefs = gql`
   }
   input TaskStatusInput { code: String! label: String! }
   input OutcomeInput { name: String! description: String productId: ID! }
-  input TaskInput { 
+  input TaskCreateInput { 
     productId: ID
     solutionId: ID
     name: String! 
@@ -341,7 +340,6 @@ export const typeDefs = gql`
     sequenceNumber: Int 
     licenseLevel: LicenseLevel
     notes: String 
-    priority: String
     howToDoc: [String!]             # HTTP links explaining how to implement the task
     howToVideo: [String!]           # Links to videos explaining how to implement the task
     outcomeIds: [ID!]
@@ -357,7 +355,6 @@ export const typeDefs = gql`
     sequenceNumber: Int 
     licenseLevel: LicenseLevel
     notes: String 
-    priority: String
     howToDoc: [String!]             # HTTP links explaining how to implement the task
     howToVideo: [String!]           # Links to videos explaining how to implement the task
     outcomeIds: [ID!]
@@ -431,7 +428,7 @@ export const typeDefs = gql`
   addSolutionToCustomer(customerId: ID!, solutionId: ID!): Boolean!
   removeSolutionFromCustomer(customerId: ID!, solutionId: ID!): Boolean!
   reorderTasks(productId: ID!, order: [ID!]!): Boolean!
-    createTask(input: TaskInput!): Task!
+    createTask(input: TaskCreateInput!): Task!
     updateTask(id: ID!, input: TaskUpdateInput!): Task!
     markTaskDone(id: ID!, reason: String): Task!
     acquireLock(entityType: String!, entityId: ID!): Boolean!
@@ -531,7 +528,6 @@ export const typeDefs = gql`
     estMinutes: Int!
     weight: Float!
     sequenceNumber: Int!
-    priority: String
     howToDoc: [String!]!
     howToVideo: [String!]!
     notes: String

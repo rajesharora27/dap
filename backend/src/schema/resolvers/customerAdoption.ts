@@ -593,7 +593,6 @@ export const CustomerAdoptionMutationResolvers = {
             estMinutes: task.estMinutes,
             weight: task.weight,
             sequenceNumber: task.sequenceNumber,
-            priority: task.priority,
             howToDoc: task.howToDoc,
             howToVideo: task.howToVideo,
             notes: task.notes,
@@ -765,7 +764,6 @@ export const CustomerAdoptionMutationResolvers = {
           estMinutes: task.estMinutes,
           weight: task.weight,
           sequenceNumber: task.sequenceNumber,
-          priority: task.priority,
           howToDoc: task.howToDoc,
           howToVideo: task.howToVideo,
           notes: task.notes,
@@ -948,7 +946,6 @@ export const CustomerAdoptionMutationResolvers = {
         customerTask.estMinutes !== productTask.estMinutes ||
         customerTask.weight !== productTask.weight ||
         customerTask.sequenceNumber !== productTask.sequenceNumber ||
-        customerTask.priority !== productTask.priority ||
         customerTask.howToDoc !== productTask.howToDoc ||
         customerTask.howToVideo !== productTask.howToVideo ||
         customerTask.notes !== productTask.notes ||
@@ -964,7 +961,6 @@ export const CustomerAdoptionMutationResolvers = {
             estMinutes: productTask.estMinutes,
             weight: productTask.weight,
             sequenceNumber: productTask.sequenceNumber,
-            priority: productTask.priority,
             howToDoc: productTask.howToDoc,
             howToVideo: productTask.howToVideo,
             notes: productTask.notes,
@@ -1058,7 +1054,6 @@ export const CustomerAdoptionMutationResolvers = {
           estMinutes: task.estMinutes,
           weight: task.weight,
           sequenceNumber: task.sequenceNumber,
-          priority: task.priority,
           howToDoc: task.howToDoc,
           howToVideo: task.howToVideo,
           notes: task.notes,

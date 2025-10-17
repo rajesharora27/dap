@@ -31,7 +31,6 @@ interface Task {
   estMinutes: number;
   weight: number;
   notes?: string;
-  priority?: string;
   sequenceNumber?: number;
   licenseLevel?: string;
   requiredLicenseLevel?: number;
@@ -80,7 +79,6 @@ interface Props {
     estMinutes: number;
     weight: number;
     notes?: string;
-    priority?: string;
     licenseId?: string;
     outcomeIds?: string[];
     releaseIds?: string[];
@@ -97,8 +95,6 @@ interface Props {
   availableLicenses?: License[];
   availableReleases?: Release[];
 }
-
-const priorities = ['Low', 'Medium', 'High', 'Critical'];
 
 export const TaskDialog: React.FC<Props> = ({
   open,
@@ -118,7 +114,6 @@ export const TaskDialog: React.FC<Props> = ({
   const [estMinutes, setEstMinutes] = useState(60);
   const [weight, setWeight] = useState(1);
   const [notes, setNotes] = useState('');
-  const [priority, setPriority] = useState('Medium');
   const [howToDoc, setHowToDoc] = useState<string[]>([]);
   const [howToVideo, setHowToVideo] = useState<string[]>([]);
   const [selectedLicense, setSelectedLicense] = useState<string>('');
@@ -142,7 +137,6 @@ export const TaskDialog: React.FC<Props> = ({
       setEstMinutes(task.estMinutes || 60);
       setWeight(task.weight || 1);
       setNotes(task.notes || '');
-      setPriority(task.priority || 'Medium');
       setHowToDoc(task.howToDoc || []);
       setHowToVideo(task.howToVideo || []);
       // Fix: task.license is an object, need to access task.license.id
@@ -156,7 +150,6 @@ export const TaskDialog: React.FC<Props> = ({
       setEstMinutes(60);
       setWeight(Math.min(maxAllowedWeight, Math.max(0.01, remainingWeight)));
       setNotes('');
-      setPriority('Medium');
       setHowToDoc([]);
       setHowToVideo([]);
       setSelectedLicense('');
@@ -197,7 +190,6 @@ export const TaskDialog: React.FC<Props> = ({
         estMinutes: estMinutes,
         weight: weight,
         notes: notes.trim() || undefined,
-        priority: priority,
         howToDoc: howToDoc.filter(link => link.trim()).length > 0 ? howToDoc.filter(link => link.trim()) : undefined,
         howToVideo: howToVideo.filter(link => link.trim()).length > 0 ? howToVideo.filter(link => link.trim()) : undefined,
         licenseId: selectedLicense || undefined,
@@ -217,7 +209,7 @@ export const TaskDialog: React.FC<Props> = ({
     <Dialog 
       open={open} 
       onClose={onClose} 
-      maxWidth="md" 
+      maxWidth="lg" 
       fullWidth
       keepMounted
       disableEnforceFocus
@@ -233,57 +225,84 @@ export const TaskDialog: React.FC<Props> = ({
       sx={{
         '& .MuiDialog-container': {
           alignItems: 'flex-start',
-          mt: 4
+          mt: 2
+        },
+        '& .MuiDialog-paper': {
+          borderRadius: '12px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
         }
       }}
     >
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <Box sx={{ pt: 1 }}>
+      <DialogTitle sx={{ 
+        pb: 1, 
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        fontWeight: 600,
+        fontSize: '1.25rem'
+      }}>
+        {title}
+      </DialogTitle>
+      <DialogContent sx={{ pt: 2 }}>
+        <Box>
           <Tabs 
             value={activeTab} 
             onChange={(e, newValue) => setActiveTab(newValue)}
-            sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+            sx={{ 
+              borderBottom: 1, 
+              borderColor: 'divider', 
+              mb: 2,
+              minHeight: '40px',
+              '& .MuiTab-root': {
+                minHeight: '40px',
+                py: 1
+              }
+            }}
           >
             <Tab label="Basic Info" />
             <Tab label="Telemetry" />
           </Tabs>
 
           {activeTab === 0 && (
-            <Box>
+            <>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              {/* Task Name - Full Width */}
+              <Box sx={{ gridColumn: '1 / -1' }}>
+                <TextField
+                  fullWidth
+                  label="Task Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  placeholder="e.g., Implement user authentication"
+                  size="small"
+                />
+              </Box>
+
+              {/* Description - Full Width */}
+              <Box sx={{ gridColumn: '1 / -1' }}>
+                <TextField
+                  fullWidth
+                  label="Description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  multiline
+                  rows={2}
+                  placeholder="Detailed description..."
+                  size="small"
+                />
+              </Box>
+
+              {/* Estimated Time */}
               <TextField
                 fullWidth
-                label="Task Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                margin="normal"
-                required
-                placeholder="e.g., Implement user authentication"
-              />
-
-          <TextField
-            fullWidth
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            margin="normal"
-            multiline
-            rows={3}
-            placeholder="Detailed description of what needs to be accomplished..."
-          />
-
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>
-            <Box sx={{ flex: '1 1 200px' }}>
-              <TextField
-                fullWidth
-                label="Estimated Time (minutes)"
+                label="Est. Time (min)"
                 type="number"
                 value={estMinutes}
                 onChange={(e) => setEstMinutes(parseInt(e.target.value) || 0)}
-                margin="normal"
+                size="small"
               />
-            </Box>
-            <Box sx={{ flex: '1 1 200px' }}>
+
+              {/* Weight */}
               <TextField
                 fullWidth
                 label="Weight (%)"
@@ -293,34 +312,16 @@ export const TaskDialog: React.FC<Props> = ({
                   const value = parseFloat(e.target.value) || 0.01;
                   setWeight(Math.min(maxAllowedWeight, Math.max(0.01, value)));
                 }}
-                margin="normal"
                 inputProps={{ 
                   min: 0.01, 
                   max: maxAllowedWeight,
                   step: 0.01
                 }}
-                helperText={`Remaining weight: ${(remainingWeight + (task?.weight || 0)).toFixed(2)}% • Max allowed: ${maxAllowedWeight.toFixed(2)}%`}
+                helperText={`Max: ${maxAllowedWeight.toFixed(2)}%`}
+                size="small"
               />
             </Box>
-            <Box sx={{ flex: '1 1 200px' }}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Priority</InputLabel>
-                <Select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  label="Priority"
-                >
-                  {priorities.map((pri) => (
-                    <MenuItem key={pri} value={pri}>
-                      {pri}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-          </Box>
 
-          {availableLicenses.length > 0 && (
             <Box sx={{ mt: 2 }}>
               <FormControl fullWidth margin="normal">
                 <InputLabel>Required License</InputLabel>
@@ -351,6 +352,7 @@ export const TaskDialog: React.FC<Props> = ({
                 </Select>
               </FormControl>
             </Box>
+            </>
           )}
 
           <Box sx={{ mt: 2 }}>
@@ -586,8 +588,6 @@ export const TaskDialog: React.FC<Props> = ({
             <Alert severity="warning" sx={{ mt: 2 }}>
               Product weight is almost fully allocated ({totalUsedWeight}% used). Consider adjusting task weights.
             </Alert>
-          )}
-            </Box>
           )}
 
           {activeTab === 1 && (
