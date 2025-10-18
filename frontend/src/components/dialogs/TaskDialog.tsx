@@ -24,6 +24,10 @@ import {
 import { Release } from '../../types/shared';
 import TelemetryConfiguration from '../telemetry/TelemetryConfiguration';
 
+// Special marker IDs for "All" selections
+export const ALL_OUTCOMES_ID = '__ALL_OUTCOMES__';
+export const ALL_RELEASES_ID = '__ALL_RELEASES__';
+
 interface Task {
   id: string;
   name: string;
@@ -31,7 +35,6 @@ interface Task {
   estMinutes: number;
   weight: number;
   notes?: string;
-  priority?: string;
   sequenceNumber?: number;
   licenseLevel?: string;
   requiredLicenseLevel?: number;
@@ -80,7 +83,6 @@ interface Props {
     estMinutes: number;
     weight: number;
     notes?: string;
-    priority?: string;
     licenseId?: string;
     outcomeIds?: string[];
     releaseIds?: string[];
@@ -97,8 +99,6 @@ interface Props {
   availableLicenses?: License[];
   availableReleases?: Release[];
 }
-
-const priorities = ['Low', 'Medium', 'High', 'Critical'];
 
 export const TaskDialog: React.FC<Props> = ({
   open,
@@ -118,7 +118,6 @@ export const TaskDialog: React.FC<Props> = ({
   const [estMinutes, setEstMinutes] = useState(60);
   const [weight, setWeight] = useState(1);
   const [notes, setNotes] = useState('');
-  const [priority, setPriority] = useState('Medium');
   const [howToDoc, setHowToDoc] = useState<string[]>([]);
   const [howToVideo, setHowToVideo] = useState<string[]>([]);
   const [selectedLicense, setSelectedLicense] = useState<string>('');
@@ -142,13 +141,20 @@ export const TaskDialog: React.FC<Props> = ({
       setEstMinutes(task.estMinutes || 60);
       setWeight(task.weight || 1);
       setNotes(task.notes || '');
-      setPriority(task.priority || 'Medium');
       setHowToDoc(task.howToDoc || []);
       setHowToVideo(task.howToVideo || []);
       // Fix: task.license is an object, need to access task.license.id
       setSelectedLicense((task as any).license?.id || task.licenseId || '');
-      setSelectedOutcomes(task.outcomes?.map(o => o.id) || []);
-      setSelectedReleases(task.releases?.map(r => r.id) || task.releaseIds || []);
+      
+      // If task has no outcomes (null/undefined/empty), it means "applies to all"
+      // Set the special "All" marker in this case
+      const taskOutcomes = task.outcomes?.map(o => o.id) || [];
+      setSelectedOutcomes(taskOutcomes.length > 0 ? taskOutcomes : [ALL_OUTCOMES_ID]);
+      
+      // Same for releases
+      const taskReleases = task.releases?.map(r => r.id) || task.releaseIds || [];
+      setSelectedReleases(taskReleases.length > 0 ? taskReleases : [ALL_RELEASES_ID]);
+      
       setTelemetryAttributes(task.telemetryAttributes || []);
     } else {
       setName('');
@@ -156,7 +162,6 @@ export const TaskDialog: React.FC<Props> = ({
       setEstMinutes(60);
       setWeight(Math.min(maxAllowedWeight, Math.max(0.01, remainingWeight)));
       setNotes('');
-      setPriority('Medium');
       setHowToDoc([]);
       setHowToVideo([]);
       setSelectedLicense('');
@@ -166,7 +171,8 @@ export const TaskDialog: React.FC<Props> = ({
     }
     setError('');
     setActiveTab(0);
-  }, [task, open, remainingWeight]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task, open]);
 
     const handleSave = async () => {
     if (!name.trim()) {
@@ -191,18 +197,31 @@ export const TaskDialog: React.FC<Props> = ({
     setError('');
 
     try {
+      // Filter out special "All" markers - they should not be sent to backend
+      // If "All" is selected, send empty array (backend treats this as "applies to all")
+      const filteredOutcomes = selectedOutcomes.filter(id => id !== ALL_OUTCOMES_ID);
+      const filteredReleases = selectedReleases.filter(id => id !== ALL_RELEASES_ID);
+      
+      console.log('🚨 TaskDialog handleSave DEBUG:', {
+        selectedOutcomes,
+        selectedReleases,
+        filteredOutcomes,
+        filteredReleases,
+        'will send outcomeIds': filteredOutcomes,
+        'will send releaseIds': filteredReleases
+      });
+      
       await onSave({
         name: name.trim(),
         description: description.trim() || undefined,
         estMinutes: estMinutes,
         weight: weight,
         notes: notes.trim() || undefined,
-        priority: priority,
         howToDoc: howToDoc.filter(link => link.trim()).length > 0 ? howToDoc.filter(link => link.trim()) : undefined,
         howToVideo: howToVideo.filter(link => link.trim()).length > 0 ? howToVideo.filter(link => link.trim()) : undefined,
         licenseId: selectedLicense || undefined,
-        outcomeIds: selectedOutcomes.length > 0 ? selectedOutcomes : undefined,
-        releaseIds: selectedReleases.length > 0 ? selectedReleases : undefined,
+        outcomeIds: filteredOutcomes,  // Send empty array [] if "All" selected, or array of IDs
+        releaseIds: filteredReleases,   // Send empty array [] if "All" selected, or array of IDs
         telemetryAttributes: telemetryAttributes.length > 0 ? telemetryAttributes : undefined
       });
       onClose();
@@ -217,7 +236,7 @@ export const TaskDialog: React.FC<Props> = ({
     <Dialog 
       open={open} 
       onClose={onClose} 
-      maxWidth="md" 
+      maxWidth="lg" 
       fullWidth
       keepMounted
       disableEnforceFocus
@@ -233,57 +252,84 @@ export const TaskDialog: React.FC<Props> = ({
       sx={{
         '& .MuiDialog-container': {
           alignItems: 'flex-start',
-          mt: 4
+          mt: 2
+        },
+        '& .MuiDialog-paper': {
+          borderRadius: '12px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
         }
       }}
     >
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <Box sx={{ pt: 1 }}>
+      <DialogTitle sx={{ 
+        pb: 1, 
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        fontWeight: 600,
+        fontSize: '1.25rem'
+      }}>
+        Product Task: {title}
+      </DialogTitle>
+      <DialogContent sx={{ pt: 2 }}>
+        <Box>
           <Tabs 
             value={activeTab} 
             onChange={(e, newValue) => setActiveTab(newValue)}
-            sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}
+            sx={{ 
+              borderBottom: 1, 
+              borderColor: 'divider', 
+              mb: 2,
+              minHeight: '40px',
+              '& .MuiTab-root': {
+                minHeight: '40px',
+                py: 1
+              }
+            }}
           >
             <Tab label="Basic Info" />
             <Tab label="Telemetry" />
           </Tabs>
 
           {activeTab === 0 && (
-            <Box>
+            <>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              {/* Task Name - Full Width */}
+              <Box sx={{ gridColumn: '1 / -1' }}>
+                <TextField
+                  fullWidth
+                  label="Task Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  placeholder="e.g., Implement user authentication"
+                  size="small"
+                />
+              </Box>
+
+              {/* Description - Full Width */}
+              <Box sx={{ gridColumn: '1 / -1' }}>
+                <TextField
+                  fullWidth
+                  label="Description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  multiline
+                  rows={2}
+                  placeholder="Detailed description..."
+                  size="small"
+                />
+              </Box>
+
+              {/* Estimated Time */}
               <TextField
                 fullWidth
-                label="Task Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                margin="normal"
-                required
-                placeholder="e.g., Implement user authentication"
-              />
-
-          <TextField
-            fullWidth
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            margin="normal"
-            multiline
-            rows={3}
-            placeholder="Detailed description of what needs to be accomplished..."
-          />
-
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>
-            <Box sx={{ flex: '1 1 200px' }}>
-              <TextField
-                fullWidth
-                label="Estimated Time (minutes)"
+                label="Est. Time (min)"
                 type="number"
                 value={estMinutes}
                 onChange={(e) => setEstMinutes(parseInt(e.target.value) || 0)}
-                margin="normal"
+                size="small"
               />
-            </Box>
-            <Box sx={{ flex: '1 1 200px' }}>
+
+              {/* Weight */}
               <TextField
                 fullWidth
                 label="Weight (%)"
@@ -293,34 +339,16 @@ export const TaskDialog: React.FC<Props> = ({
                   const value = parseFloat(e.target.value) || 0.01;
                   setWeight(Math.min(maxAllowedWeight, Math.max(0.01, value)));
                 }}
-                margin="normal"
                 inputProps={{ 
                   min: 0.01, 
                   max: maxAllowedWeight,
                   step: 0.01
                 }}
-                helperText={`Remaining weight: ${(remainingWeight + (task?.weight || 0)).toFixed(2)}% • Max allowed: ${maxAllowedWeight.toFixed(2)}%`}
+                helperText={`Max: ${maxAllowedWeight.toFixed(2)}%`}
+                size="small"
               />
             </Box>
-            <Box sx={{ flex: '1 1 200px' }}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Priority</InputLabel>
-                <Select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value)}
-                  label="Priority"
-                >
-                  {priorities.map((pri) => (
-                    <MenuItem key={pri} value={pri}>
-                      {pri}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-          </Box>
 
-          {availableLicenses.length > 0 && (
             <Box sx={{ mt: 2 }}>
               <FormControl fullWidth margin="normal">
                 <InputLabel>Required License</InputLabel>
@@ -351,33 +379,102 @@ export const TaskDialog: React.FC<Props> = ({
                 </Select>
               </FormControl>
             </Box>
-          )}
 
-          <Box sx={{ mt: 2 }}>
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Expected Outcomes</InputLabel>
-              <Select
+            {/* Expected Outcomes */}
+            <Box sx={{ mt: 2 }}>
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Expected Outcomes</InputLabel>
+                <Select
                 multiple
                 value={selectedOutcomes}
-                onChange={(e) => setSelectedOutcomes(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                onChange={(e) => {
+                  const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                  
+                  // Check if "All" was clicked
+                  const allWasInPrevious = selectedOutcomes.includes(ALL_OUTCOMES_ID);
+                  const allIsInNew = value.includes(ALL_OUTCOMES_ID);
+                  
+                  if (allIsInNew && !allWasInPrevious) {
+                    // User just selected "All" - set only "All"
+                    setSelectedOutcomes([ALL_OUTCOMES_ID]);
+                  } else if (allWasInPrevious && !allIsInNew) {
+                    // User deselected "All" - clear everything
+                    setSelectedOutcomes([]);
+                  } else if (allIsInNew && allWasInPrevious) {
+                    // "All" was already selected, user clicked something else - remove "All" and set the new selection
+                    setSelectedOutcomes(value.filter(v => v !== ALL_OUTCOMES_ID));
+                  } else {
+                    // Normal selection without "All"
+                    setSelectedOutcomes(value);
+                  }
+                }}
                 input={<OutlinedInput label="Expected Outcomes" />}
-                renderValue={(selected) => (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selected.map((value) => {
-                      const outcome = outcomes.find(o => o.id === value);
-                      return (
-                        <Chip 
-                          key={value} 
-                          label={outcome?.name || value} 
-                          size="small"
-                          color="success"
-                          sx={{ fontWeight: 600 }}
-                        />
-                      );
-                    })}
-                  </Box>
-                )}
+                renderValue={(selected) => {
+                  if (selected.includes(ALL_OUTCOMES_ID)) {
+                    return (
+                      <Chip 
+                        label="All Outcomes" 
+                        size="small"
+                        color="success"
+                        sx={{ fontWeight: 700, fontSize: '0.875rem' }}
+                      />
+                    );
+                  }
+                  return (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => {
+                        const outcome = outcomes.find(o => o.id === value);
+                        return (
+                          <Chip 
+                            key={value} 
+                            label={outcome?.name || value} 
+                            size="small"
+                            color="success"
+                            sx={{ fontWeight: 600 }}
+                          />
+                        );
+                      })}
+                    </Box>
+                  );
+                }}
               >
+                {/* "All" option at the top */}
+                <MenuItem 
+                  value={ALL_OUTCOMES_ID}
+                  sx={{
+                    backgroundColor: selectedOutcomes.includes(ALL_OUTCOMES_ID) ? '#e8f5e9' : 'transparent',
+                    borderBottom: '2px solid #e0e0e0',
+                    fontWeight: 700,
+                    '&:hover': {
+                      backgroundColor: selectedOutcomes.includes(ALL_OUTCOMES_ID) ? '#c8e6c9' : '#f5f5f5'
+                    }
+                  }}
+                >
+                  <Checkbox 
+                    checked={selectedOutcomes.includes(ALL_OUTCOMES_ID)}
+                    sx={{
+                      color: selectedOutcomes.includes(ALL_OUTCOMES_ID) ? 'success.main' : 'default',
+                      '&.Mui-checked': {
+                        color: 'success.main',
+                      }
+                    }}
+                  />
+                  <ListItemText 
+                    primary="All Outcomes"
+                    secondary="Task applies to all outcomes"
+                    sx={{
+                      '& .MuiListItemText-primary': {
+                        fontWeight: 700,
+                        color: selectedOutcomes.includes(ALL_OUTCOMES_ID) ? 'success.main' : 'text.primary'
+                      },
+                      '& .MuiListItemText-secondary': {
+                        fontSize: '0.75rem'
+                      }
+                    }}
+                  />
+                </MenuItem>
+                
+                {/* Individual outcomes */}
                 {outcomes.map((outcome) => {
                   const isSelected = selectedOutcomes.includes(outcome.id);
                   return (
@@ -422,64 +519,134 @@ export const TaskDialog: React.FC<Props> = ({
             <Select
               multiple
               value={selectedReleases}
-              onChange={(e) => setSelectedReleases(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+              onChange={(e) => {
+                const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                
+                // Check if "All" was clicked
+                const allWasInPrevious = selectedReleases.includes(ALL_RELEASES_ID);
+                const allIsInNew = value.includes(ALL_RELEASES_ID);
+                
+                if (allIsInNew && !allWasInPrevious) {
+                  // User just selected "All" - set only "All"
+                  setSelectedReleases([ALL_RELEASES_ID]);
+                } else if (allWasInPrevious && !allIsInNew) {
+                  // User deselected "All" - clear everything
+                  setSelectedReleases([]);
+                } else if (allIsInNew && allWasInPrevious) {
+                  // "All" was already selected, user clicked something else - remove "All" and set the new selection
+                  setSelectedReleases(value.filter(v => v !== ALL_RELEASES_ID));
+                } else {
+                  // Normal selection without "All"
+                  setSelectedReleases(value);
+                }
+              }}
               input={<OutlinedInput label="Releases" />}
-              renderValue={(selected) => (
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {selected.map((value) => {
-                    const release = availableReleases.find(r => r.id === value);
-                    return (
-                      <Chip 
-                        key={value} 
-                        label={release ? `${release.name} (v${release.level})` : value} 
-                        size="small"
-                        color="primary"
-                        sx={{ fontWeight: 600 }}
-                      />
-                    );
-                  })}
-                </Box>
-              )}
+              renderValue={(selected) => {
+                if (selected.includes(ALL_RELEASES_ID)) {
+                  return (
+                    <Chip 
+                      label="All Releases" 
+                      size="small"
+                      color="primary"
+                      sx={{ fontWeight: 700, fontSize: '0.875rem' }}
+                    />
+                  );
+                }
+                return (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((value) => {
+                      const release = availableReleases.find(r => r.id === value);
+                      return (
+                        <Chip 
+                          key={value} 
+                          label={release ? `${release.name} (v${release.level})` : value} 
+                          size="small"
+                          color="primary"
+                          sx={{ fontWeight: 600 }}
+                        />
+                      );
+                    })}
+                  </Box>
+                );
+              }}
               disabled={availableReleases?.length === 0}
             >
-              {availableReleases?.length > 0 ? (
-                [...availableReleases]
-                  .sort((a, b) => a.level - b.level)
-                  .map((release) => {
-                    const isSelected = release.id ? selectedReleases.includes(release.id) : false;
-                    return (
-                      <MenuItem 
-                        key={release.id} 
-                        value={release.id}
-                        sx={{
-                          backgroundColor: isSelected ? '#e3f2fd' : 'transparent',
-                          '&:hover': {
-                            backgroundColor: isSelected ? '#bbdefb' : '#f5f5f5'
-                          }
-                        }}
-                      >
-                        <Checkbox 
-                          checked={isSelected}
+              {availableReleases?.length > 0 ? [
+                  /* "All" option at the top */
+                  <MenuItem 
+                    key="all-releases"
+                    value={ALL_RELEASES_ID}
+                    sx={{
+                      backgroundColor: selectedReleases.includes(ALL_RELEASES_ID) ? '#e3f2fd' : 'transparent',
+                      borderBottom: '2px solid #e0e0e0',
+                      fontWeight: 700,
+                      '&:hover': {
+                        backgroundColor: selectedReleases.includes(ALL_RELEASES_ID) ? '#bbdefb' : '#f5f5f5'
+                      }
+                    }}
+                  >
+                    <Checkbox 
+                      checked={selectedReleases.includes(ALL_RELEASES_ID)}
+                      sx={{
+                        color: selectedReleases.includes(ALL_RELEASES_ID) ? 'primary.main' : 'default',
+                        '&.Mui-checked': {
+                          color: 'primary.main',
+                        }
+                      }}
+                    />
+                    <ListItemText 
+                      primary="All Releases"
+                      secondary="Task applies to all releases"
+                      sx={{
+                        '& .MuiListItemText-primary': {
+                          fontWeight: 700,
+                          color: selectedReleases.includes(ALL_RELEASES_ID) ? 'primary.main' : 'text.primary'
+                        },
+                        '& .MuiListItemText-secondary': {
+                          fontSize: '0.75rem'
+                        }
+                      }}
+                    />
+                  </MenuItem>,
+                  
+                  /* Individual releases */
+                  ...[...availableReleases]
+                    .sort((a, b) => a.level - b.level)
+                    .map((release) => {
+                      const isSelected = release.id ? selectedReleases.includes(release.id) : false;
+                      return (
+                        <MenuItem 
+                          key={release.id} 
+                          value={release.id}
                           sx={{
-                            color: isSelected ? 'primary.main' : 'default',
-                            '&.Mui-checked': {
-                              color: 'primary.main',
+                            backgroundColor: isSelected ? '#e3f2fd' : 'transparent',
+                            '&:hover': {
+                              backgroundColor: isSelected ? '#bbdefb' : '#f5f5f5'
                             }
                           }}
-                        />
-                        <ListItemText 
-                          primary={`${release.name} (v${release.level})`}
-                          sx={{
-                            '& .MuiListItemText-primary': {
-                              fontWeight: isSelected ? 600 : 400,
-                              color: isSelected ? 'primary.main' : 'text.primary'
-                            }
-                          }}
-                        />
-                      </MenuItem>
-                    );
-                  })
-              ) : (
+                        >
+                          <Checkbox 
+                            checked={isSelected}
+                            sx={{
+                              color: isSelected ? 'primary.main' : 'default',
+                              '&.Mui-checked': {
+                                color: 'primary.main',
+                              }
+                            }}
+                          />
+                          <ListItemText 
+                            primary={`${release.name} (v${release.level})`}
+                            sx={{
+                              '& .MuiListItemText-primary': {
+                                fontWeight: isSelected ? 600 : 400,
+                                color: isSelected ? 'primary.main' : 'text.primary'
+                              }
+                            }}
+                          />
+                        </MenuItem>
+                      );
+                    })
+              ] : (
                 <MenuItem disabled>No releases available for this product</MenuItem>
               )}
             </Select>
@@ -581,13 +748,7 @@ export const TaskDialog: React.FC<Props> = ({
               + Add Video Link
             </Button>
           </Box>
-
-          {totalUsedWeight > 90 && (
-            <Alert severity="warning" sx={{ mt: 2 }}>
-              Product weight is almost fully allocated ({totalUsedWeight}% used). Consider adjusting task weights.
-            </Alert>
-          )}
-            </Box>
+            </>
           )}
 
           {activeTab === 1 && (

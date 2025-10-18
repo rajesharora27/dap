@@ -489,7 +489,7 @@ export class OutcomeHandlers {
                         productId: outcome.productId
                     }
                 },
-                refetchQueries: ['Products'],
+                refetchQueries: ['Products', 'Outcomes'],
                 awaitRefetchQueries: true
             });
 
@@ -548,7 +548,7 @@ export class OutcomeHandlers {
                         productId: outcome.productId // Always required for update
                     }
                 },
-                refetchQueries: ['Products'],
+                refetchQueries: ['Products', 'Outcomes'],
                 awaitRefetchQueries: true
             });
 
@@ -591,7 +591,7 @@ export class OutcomeHandlers {
             await this.client.mutate({
                 mutation: DELETE_OUTCOME,
                 variables: { id },
-                refetchQueries: ['Products'],
+                refetchQueries: ['Products', 'Outcomes'],
                 awaitRefetchQueries: true
             });
 

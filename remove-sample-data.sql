@@ -66,8 +66,42 @@ DELETE FROM "License" WHERE "productId" IN (
     'test-product-1'
 );
 
--- Remove sample customer relationships
-DELETE FROM "CustomerProduct" WHERE "productId" IN (
+-- Remove customer adoption plan data (includes ALL customers, not just sample data)
+-- This ensures a fresh start for customer adoption plans
+
+-- Remove customer telemetry values
+DELETE FROM "CustomerTelemetryValue" WHERE "attributeId" IN (
+    SELECT id FROM "CustomerTelemetryAttribute" WHERE "customerTaskId" IN (
+        SELECT id FROM "CustomerTask"
+    )
+);
+
+-- Remove customer telemetry attributes
+DELETE FROM "CustomerTelemetryAttribute" WHERE "customerTaskId" IN (
+    SELECT id FROM "CustomerTask"
+);
+
+-- Remove customer task outcomes
+DELETE FROM "CustomerTaskOutcome" WHERE "customerTaskId" IN (
+    SELECT id FROM "CustomerTask"
+);
+
+-- Remove customer task releases  
+DELETE FROM "CustomerTaskRelease" WHERE "customerTaskId" IN (
+    SELECT id FROM "CustomerTask"
+);
+
+-- Remove customer tasks
+DELETE FROM "CustomerTask";
+
+-- Remove adoption plans
+DELETE FROM "AdoptionPlan";
+
+-- Remove ALL customer product assignments (this ensures fresh start)
+DELETE FROM "CustomerProduct";
+
+-- Remove sample customer solutions (if any exist related to sample products)
+DELETE FROM "CustomerSolution" WHERE "productId" IN (
     'retail-app-001', 
     'financial-app-001', 
     'it-app-001', 
