@@ -3,6 +3,7 @@ import gql from 'graphql-tag';
 export const typeDefs = gql`
   scalar JSON
   scalar DateTime
+  scalar Upload
 
   enum Role { ADMIN USER }
   enum LicenseLevel { Essential Advantage Signature }
