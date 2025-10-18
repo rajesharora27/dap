@@ -63,7 +63,6 @@ import {
   Rocket as ReleaseIcon
 } from '@mui/icons-material';
 import { AuthBar } from '../components/AuthBar';
-import { TaskDetailDialog } from '../components/TaskDetailDialog';
 import { useAuth } from '../components/AuthContext';
 import { gql, useQuery, useApolloClient, ApolloError } from '@apollo/client';
 import {
@@ -141,6 +140,17 @@ const CUSTOMERS = gql`
       id
       name
       description
+      products {
+        id
+        name
+        product {
+          id
+          name
+        }
+        adoptionPlan {
+          id
+        }
+      }
     }
   }
 `;
@@ -713,12 +723,10 @@ export function App() {
   const [addTaskDialog, setAddTaskDialog] = useState(false);
   const [editProductDialog, setEditProductDialog] = useState(false);
   const [editTaskDialog, setEditTaskDialog] = useState(false);
-  const [taskDetailDialog, setTaskDetailDialog] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', description: '' });
 
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [editingTask, setEditingTask] = useState<any>(null);
-  const [selectedTaskForDetail, setSelectedTaskForDetail] = useState<any>(null);
 
   // New dialog states for sub-sections
   const [addLicenseDialog, setAddLicenseDialog] = useState(false);
@@ -1647,12 +1655,25 @@ export function App() {
       if (taskData.licenseId) {
         input.licenseId = taskData.licenseId;
       }
-      if (taskData.outcomeIds && taskData.outcomeIds.length > 0) {
-        input.outcomeIds = taskData.outcomeIds;
+      // Always include outcomeIds and releaseIds when provided
+      // Empty array means "applies to all"
+      // undefined means "don't change this field"
+      if (taskData.outcomeIds !== undefined) {
+        input.outcomeIds = taskData.outcomeIds;  // Send as-is: empty array or array of IDs
       }
-      if (taskData.releaseIds && taskData.releaseIds.length > 0) {
-        input.releaseIds = taskData.releaseIds;
+      if (taskData.releaseIds !== undefined) {
+        input.releaseIds = taskData.releaseIds;  // Send as-is: empty array or array of IDs
       }
+
+      console.log('🚨 handleTaskSave DEBUG:', {
+        isEdit,
+        taskIdToUse,
+        'taskData.outcomeIds': taskData.outcomeIds,
+        'taskData.releaseIds': taskData.releaseIds,
+        'input.outcomeIds': input.outcomeIds,
+        'input.releaseIds': input.releaseIds,
+        fullInput: input
+      });
 
       let finalTaskId: string;
 
@@ -1967,10 +1988,6 @@ export function App() {
       console.error('❌ Failed to update sequence:', error);
       alert('Failed to update task sequence: ' + (error?.message || 'Unknown error'));
     }
-  };
-
-  const handleTaskDetailSave = async () => {
-    await refetchTasks();
   };
 
   const handleAddProductSave = async (data: {
@@ -5686,18 +5703,6 @@ export function App() {
             />
 
             {/* Task Detail Dialog */}
-            <TaskDetailDialog
-              open={taskDetailDialog}
-              task={selectedTaskForDetail}
-              productId={selectedProduct}
-              availableLicenses={selectedProduct ? products.find((p: any) => p.id === selectedProduct)?.licenses || [] : []}
-              availableReleases={selectedProduct ? products.find((p: any) => p.id === selectedProduct)?.releases || [] : []}
-              onClose={() => {
-                setTaskDetailDialog(false);
-                setSelectedTaskForDetail(null);
-              }}
-              onSave={handleTaskDetailSave}
-            />
 
             {/* Add License Dialog */}
             <LicenseDialog

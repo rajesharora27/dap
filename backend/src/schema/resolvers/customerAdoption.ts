@@ -390,18 +390,10 @@ export const CustomerAdoptionMutationResolvers = {
   assignProductToCustomer: async (_: any, { input }: any, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
     
-    const { customerId, productId, licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
+    const { customerId, productId, name, licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
     
-    // Check if assignment already exists
-    const existing = await prisma.customerProduct.findUnique({
-      where: {
-        customerId_productId: { customerId, productId },
-      },
-    });
-    
-    if (existing) {
-      throw new Error('Product already assigned to customer. Use updateCustomerProduct to modify.');
-    }
+    // Note: Removed unique constraint check - customers can now have the same product multiple times
+    // Each assignment must be differentiated by a required name
     
     // Validate product exists
     const product = await prisma.product.findUnique({
@@ -426,7 +418,7 @@ export const CustomerAdoptionMutationResolvers = {
     // Validate release IDs if provided
     if (selectedReleaseIds && selectedReleaseIds.length > 0) {
       const releases = await prisma.release.findMany({
-        where: { id: { in: selectedReleaseIds }, productId },
+        where: { id: { in: selectedReleaseIds}, productId },
       });
       
       if (releases.length !== selectedReleaseIds.length) {
@@ -442,6 +434,7 @@ export const CustomerAdoptionMutationResolvers = {
       data: {
         customerId,
         productId,
+        name, // Required field
         licenseLevel: prismaLicenseLevel,
         selectedOutcomes: selectedOutcomeIds || [],
         selectedReleases: selectedReleaseIds || [],
@@ -461,7 +454,7 @@ export const CustomerAdoptionMutationResolvers = {
   updateCustomerProduct: async (_: any, { id, input }: any, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
     
-    const { licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
+    const { name, licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
     
     const before = await prisma.customerProduct.findUnique({
       where: { id },
@@ -514,6 +507,7 @@ export const CustomerAdoptionMutationResolvers = {
     }
     
     const updateData: any = {};
+    if (name !== undefined) updateData.name = name || null;
     if (licenseLevel) updateData.licenseLevel = licenseLevel.toUpperCase();
     if (selectedOutcomeIds !== undefined) updateData.selectedOutcomes = selectedOutcomeIds;
     if (selectedReleaseIds !== undefined) updateData.selectedReleases = selectedReleaseIds;
@@ -1153,12 +1147,21 @@ export const CustomerAdoptionMutationResolvers = {
       throw new Error('Customer task not found');
     }
     
+    // Append new notes to existing notes with timestamp and status change
+    let updatedNotes = task.statusNotes || '';
+    if (notes && notes.trim()) {
+      const timestamp = new Date().toISOString();
+      const user = ctx.user?.id || 'unknown';
+      const statusChange = `[${timestamp}] Status changed to ${status} by ${user}:\n${notes.trim()}\n\n`;
+      updatedNotes = updatedNotes ? `${updatedNotes}${statusChange}` : statusChange;
+    }
+    
     const updateData: any = {
       status,
       statusUpdatedAt: new Date(),
       statusUpdatedBy: ctx.user?.id || 'unknown',
       statusUpdateSource: 'MANUAL',
-      statusNotes: notes,
+      statusNotes: updatedNotes,
       isComplete: status === 'DONE',
       completedAt: status === 'DONE' ? new Date() : null,
       completedBy: status === 'DONE' ? (ctx.user?.id || 'unknown') : null,
@@ -1202,24 +1205,42 @@ export const CustomerAdoptionMutationResolvers = {
   bulkUpdateCustomerTaskStatus: async (_: any, { adoptionPlanId, taskIds, status, notes }: any, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
     
-    const updateData: any = {
-      status,
-      statusUpdatedAt: new Date(),
-      statusUpdatedBy: ctx.user?.id || 'unknown',
-      statusUpdateSource: 'MANUAL',
-      statusNotes: notes,
-      isComplete: status === 'DONE',
-      completedAt: status === 'DONE' ? new Date() : null,
-      completedBy: status === 'DONE' ? (ctx.user?.id || 'unknown') : null,
-    };
-    
-    await prisma.customerTask.updateMany({
+    // Fetch existing tasks to preserve their notes
+    const existingTasks = await prisma.customerTask.findMany({
       where: {
         id: { in: taskIds },
         adoptionPlanId,
       },
-      data: updateData,
     });
+    
+    // Update each task individually to append notes
+    const timestamp = new Date().toISOString();
+    const user = ctx.user?.id || 'unknown';
+    const statusChange = notes && notes.trim() 
+      ? `[${timestamp}] Status changed to ${status} by ${user}:\n${notes.trim()}\n\n`
+      : '';
+    
+    const updatePromises = existingTasks.map((task: any) => {
+      const updatedNotes = statusChange 
+        ? (task.statusNotes || '') + statusChange
+        : task.statusNotes;
+      
+      return prisma.customerTask.update({
+        where: { id: task.id },
+        data: {
+          status,
+          statusUpdatedAt: new Date(),
+          statusUpdatedBy: user,
+          statusUpdateSource: 'MANUAL',
+          statusNotes: updatedNotes,
+          isComplete: status === 'DONE',
+          completedAt: status === 'DONE' ? new Date() : null,
+          completedBy: status === 'DONE' ? user : null,
+        },
+      });
+    });
+    
+    await Promise.all(updatePromises);
     
     // Fetch updated tasks
     const updatedTasks = await prisma.customerTask.findMany({

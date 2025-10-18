@@ -2,6 +2,140 @@
 
 All notable changes to the DAP (Demo Application Platform) project are documented in this file.
 
+## [2.0.0] - 2025-10-18
+
+### 🎉 Major Release: Customer Adoption Planning & UI Modernization
+
+#### New Features
+
+##### Customer Adoption Planning
+- **ADDED**: Complete customer adoption planning workflow
+- **ADDED**: Product assignment to customers with custom license levels
+- **ADDED**: Required assignment names for better organization
+- **ADDED**: Customer count display in sidebar
+- **IMPLEMENTED**: Smart task filtering by releases and outcomes (multiple selections)
+- **ADDED**: "All" option for comprehensive filtering views
+- **IMPLEMENTED**: Task status management (Not Started, In Progress, Done, Blocked, Not Applicable)
+- **ADDED**: Task adoption notes with complete history preservation
+- **IMPLEMENTED**: Timestamped status change tracking with user attribution
+- **ADDED**: Auto-sync detection when product tasks are modified
+- **IMPLEMENTED**: One-click sync preserving all custom status and notes
+- **ADDED**: Visual indicators for out-of-sync adoption plans
+
+##### Enhanced Task Details
+- **ADDED**: Success criteria display in blue highlight boxes
+- **ADDED**: Documentation and video tutorial links in task details
+- **ADDED**: Product task notes display (from definition)
+- **ADDED**: Task adoption notes history (customer-specific with timestamps)
+- **ADDED**: Telemetry attributes with success criteria
+- **ADDED**: Last updated information with user attribution
+
+##### UI/UX Improvements
+- **REDESIGNED**: Product task list with modern card-based layout
+- **ADDED**: Inline sequence number editing with validation
+- **IMPROVED**: Drag-and-drop reordering with smooth animations
+- **ADDED**: HowTo Doc/Video chips inline with task names
+- **CHANGED**: Description display to native browser tooltips on hover
+- **REDESIGNED**: Adoption plan table to match product task list design
+- **REMOVED**: Sortable columns for simplified UX
+- **ADDED**: Non-sortable headers with clear styling (grey background, bold text)
+- **ADDED**: Resources column for Doc/Video access
+- **IMPROVED**: Status-based visual indicators
+- **ADDED**: Grey-out styling for NOT_APPLICABLE tasks
+- **IMPROVED**: Smooth transitions and hover effects throughout
+
+##### Dialog Improvements
+- **ADDED**: Unique, descriptive titles for all dialogs
+- **IMPROVED**: Tab-based organization for complex content
+- **ENHANCED**: Consistent styling and spacing across dialogs
+- **IMPROVED**: Form layouts and validation
+- **ENHANCED**: Error handling and user feedback
+
+#### Technical Improvements
+
+##### Backend
+- **ENHANCED**: SYNC_ADOPTION_PLAN mutation with complete field coverage
+- **ADDED**: statusUpdatedAt, statusUpdatedBy, statusUpdateSource to sync
+- **ADDED**: howToDoc, howToVideo preservation in sync operations
+- **CHANGED**: Task adoption notes from overwrite to append-based storage
+- **IMPLEMENTED**: Timestamped audit trail for all status changes
+- **IMPROVED**: Bulk update operations to preserve per-task notes
+- **ENHANCED**: Progress calculation optimization
+- **IMPROVED**: Error handling in resolvers
+
+##### Frontend
+- **REMOVED**: UpdateTaskStatusDialog component (unused)
+- **CLEANED**: Removed 13+ duplicate/redundant component files
+- **REMOVED**: Dead code paths and unused state
+- **IMPROVED**: Apollo Client cache handling
+- **ENHANCED**: Refetch strategies across components
+- **OPTIMIZED**: Re-render patterns
+- **REDUCED**: Unnecessary state management
+- **IMPROVED**: Performance and memory usage
+- **ENHANCED**: Initial load time
+- **OPTIMIZED**: Animation smoothness
+
+#### Bug Fixes
+
+##### Critical Fixes
+- **FIXED**: Task status and fields lost when editing customer assignments
+- **FIXED**: Adoption notes overwritten on status change
+- **FIXED**: Success criteria not visible in adoption plan task details
+- **FIXED**: Distracting inline hover behavior in tables
+- **FIXED**: Customer count showing incorrect value
+- **FIXED**: Status metadata incomplete in sync operations
+
+##### UI Fixes
+- **REMOVED**: Redundant telemetry attributes section
+- **REMOVED**: Confusing weight warning messages
+- **FIXED**: Telemetry tab in product task dialog
+- **FIXED**: Adoption plan table alignment with product design
+- **FIXED**: Inconsistent hover behaviors
+- **IMPROVED**: Visual consistency across all interfaces
+
+##### Data Integrity
+- **FIXED**: All task fields now preserved during sync
+- **FIXED**: Notes history maintained across multiple status changes
+- **FIXED**: HowTo links persist through updates
+- **FIXED**: Status metadata complete and accurate
+- **FIXED**: Bulk update operations preserve individual task data
+
+#### Documentation
+
+##### Added
+- Comprehensive adoption planning documentation in FEATURES.md
+- UI design patterns and conventions
+- Data persistence explanations
+- Release notes for v2.0.0
+
+##### Changed
+- Updated README.md with latest feature highlights
+- Enhanced QUICK_START.md with adoption planning examples
+- Refreshed CHANGELOG.md with comprehensive history
+- Updated technical documentation
+
+##### Removed
+- Archived 20+ incremental development docs to `archive/` directory
+- Removed 12+ test and debug scripts from root
+- Cleaned up temporary documentation files
+
+#### Repository Cleanup
+- **REMOVED**: 25+ test scripts (check-success-criteria.js, test-*.js, etc.)
+- **REMOVED**: Debug files (debug-ui.html, MANUAL_BROWSER_TEST.js)
+- **REMOVED**: Shell test scripts (verify-*.sh, final-comprehensive-test.sh)
+- **REMOVED**: UpdateTaskStatusDialog.tsx component
+- **ARCHIVED**: 20+ temporary .md documentation files
+- **CLEANED**: Root directory for release-ready state
+
+#### Deployment Notes
+- No database migrations required
+- Existing data fully compatible
+- No configuration changes needed
+- Upgrade path: `git pull && ./dap restart`
+- Clear browser cache for UI updates
+
+---
+
 ## [1.2.0] - 2025-10-16
 
 ### Customer Adoption Plan Enhancements

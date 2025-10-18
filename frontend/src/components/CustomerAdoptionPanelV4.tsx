@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { gql, useQuery, useMutation } from '@apollo/client';
+import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from './dialogs/TaskDialog';
 import {
   Box,
   Typography,
@@ -37,6 +38,8 @@ import {
   Checkbox,
   OutlinedInput,
   Menu,
+  Tabs,
+  Tab,
 } from '@mui/material';
 import {
   Add,
@@ -67,6 +70,7 @@ const GET_CUSTOMERS = gql`
       description
       products {
         id
+        name
         product {
           id
           name
@@ -75,10 +79,12 @@ const GET_CUSTOMERS = gql`
         selectedOutcomes {
           id
           name
+          description
         }
         selectedReleases {
           id
           name
+          level
         }
         adoptionPlan {
           id
@@ -107,10 +113,16 @@ const GET_ADOPTION_PLAN = gql`
         id
         name
       }
+      selectedReleases {
+        id
+        name
+        level
+      }
       tasks {
         id
         name
         description
+        notes
         status
         weight
         sequenceNumber
@@ -124,6 +136,8 @@ const GET_ADOPTION_PLAN = gql`
         telemetryAttributes {
           id
           name
+          description
+          successCriteria
         }
         outcomes {
           id
@@ -207,13 +221,22 @@ const SYNC_ADOPTION_PLAN = gql`
         id
         name
         description
+        notes
         status
         weight
         sequenceNumber
+        statusUpdatedAt
+        statusUpdatedBy
+        statusUpdateSource
+        statusNotes
         licenseLevel
+        howToDoc
+        howToVideo
         telemetryAttributes {
           id
           name
+          description
+          successCriteria
         }
         outcomes {
           id
@@ -237,10 +260,12 @@ const UPDATE_CUSTOMER_PRODUCT = gql`
       selectedOutcomes {
         id
         name
+        description
       }
       selectedReleases {
         id
         name
+        level
       }
       adoptionPlan {
         id
@@ -294,15 +319,15 @@ interface CustomerAdoptionPanelV4Props {
 }
 
 export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoptionPanelV4Props) {
-  const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedCustomerProductId, setSelectedCustomerProductId] = useState<string | null>(null);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [assignProductDialogOpen, setAssignProductDialogOpen] = useState(false);
   const [editEntitlementsDialogOpen, setEditEntitlementsDialogOpen] = useState(false);
   const [deleteProductDialogOpen, setDeleteProductDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
-  const [hoveredTaskId, setHoveredTaskId] = useState<string | null>(null);
   const [taskDetailsDialogOpen, setTaskDetailsDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [taskDetailsActiveTab, setTaskDetailsActiveTab] = useState(0);
   
   // Filter states - releases and outcomes support multiple selections
   // Note: License filter removed - tasks are pre-filtered by assigned license level
@@ -328,7 +353,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
   });
 
   const selectedCustomer = data?.customers?.find((c: any) => c.id === selectedCustomerId);
-  const selectedCustomerProduct = selectedCustomer?.products?.find((cp: any) => cp.product.id === selectedProductId);
+  const selectedCustomerProduct = selectedCustomer?.products?.find((cp: any) => cp.id === selectedCustomerProductId);
   const adoptionPlanId = selectedCustomerProduct?.adoptionPlan?.id;
 
   const { data: planData, refetch: refetchPlan } = useQuery(GET_ADOPTION_PLAN, {
@@ -339,19 +364,20 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
 
   // Auto-select first product when customer is selected or products change
   useEffect(() => {
-    if (selectedCustomer?.products?.length > 0 && !selectedProductId) {
-      setSelectedProductId(selectedCustomer.products[0].product.id);
+    if (selectedCustomer?.products?.length > 0 && !selectedCustomerProductId) {
+      setSelectedCustomerProductId(selectedCustomer.products[0].id);
     }
-  }, [selectedCustomer, selectedProductId]);
+  }, [selectedCustomer, selectedCustomerProductId]);
 
   // Filter tasks based on release and outcome
   // Note: Tasks are already pre-filtered by license level (based on product assignment)
   const filteredTasks = React.useMemo(() => {
     if (!planData?.adoptionPlan?.tasks) return [];
     
-    return planData.adoptionPlan.tasks.filter((task: any) => {
+    let tasks = planData.adoptionPlan.tasks.filter((task: any) => {
       // Filter by releases (multiple selection - task must have at least one selected release)
-      if (filterReleases.length > 0) {
+      // Skip filtering if "All" is selected or no filter is active
+      if (filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) {
         const hasSelectedRelease = task.releases?.some((release: any) => 
           filterReleases.includes(release.id)
         );
@@ -359,7 +385,8 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       }
       
       // Filter by outcomes (multiple selection - task must have at least one selected outcome)
-      if (filterOutcomes.length > 0) {
+      // Skip filtering if "All" is selected or no filter is active
+      if (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID)) {
         const hasSelectedOutcome = task.outcomes?.some((outcome: any) => 
           filterOutcomes.includes(outcome.id)
         );
@@ -368,10 +395,26 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       
       return true;
     });
+
+    // Sort by sequence number (natural order from product definition)
+    tasks = [...tasks].sort((a: any, b: any) => {
+      const aSeq = a.sequenceNumber || 0;
+      const bSeq = b.sequenceNumber || 0;
+      return aSeq - bSeq;
+    });
+
+    return tasks;
   }, [planData?.adoptionPlan?.tasks, filterReleases, filterOutcomes]);
 
   // Get unique releases, licenses, and outcomes for filter dropdowns
   const availableReleases = React.useMemo(() => {
+    // If customer has specific release entitlements, show only those
+    if (planData?.adoptionPlan?.selectedReleases && planData.adoptionPlan.selectedReleases.length > 0) {
+      // Create a copy before sorting (GraphQL data is read-only)
+      return [...planData.adoptionPlan.selectedReleases].sort((a: any, b: any) => a.name.localeCompare(b.name));
+    }
+    
+    // Otherwise, show all releases from tasks (customer has "All" entitlement)
     if (!planData?.adoptionPlan?.tasks) return [];
     const releases = new Map();
     planData.adoptionPlan.tasks.forEach((task: any) => {
@@ -382,9 +425,16 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       });
     });
     return Array.from(releases.values()).sort((a: any, b: any) => a.name.localeCompare(b.name));
-  }, [planData?.adoptionPlan?.tasks]);
+  }, [planData?.adoptionPlan?.tasks, planData?.adoptionPlan?.selectedReleases]);
 
   const availableOutcomes = React.useMemo(() => {
+    // If customer has specific outcome entitlements, show only those
+    if (planData?.adoptionPlan?.selectedOutcomes && planData.adoptionPlan.selectedOutcomes.length > 0) {
+      // Create a copy before sorting (GraphQL data is read-only)
+      return [...planData.adoptionPlan.selectedOutcomes].sort((a: any, b: any) => a.name.localeCompare(b.name));
+    }
+    
+    // Otherwise, show all outcomes from tasks (customer has "All" entitlement)
     if (!planData?.adoptionPlan?.tasks) return [];
     const outcomes = new Map();
     planData.adoptionPlan.tasks.forEach((task: any) => {
@@ -395,7 +445,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       });
     });
     return Array.from(outcomes.values()).sort((a: any, b: any) => a.name.localeCompare(b.name));
-  }, [planData?.adoptionPlan?.tasks]);
+  }, [planData?.adoptionPlan?.tasks, planData?.adoptionPlan?.selectedOutcomes]);
 
   // Calculate progress based on filtered tasks (excluding NOT_APPLICABLE)
   const filteredProgress = React.useMemo(() => {
@@ -440,7 +490,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       refetch();
       setSuccess('Customer deleted successfully');
       // Note: Customer will be deselected in the parent App component
-      setSelectedProductId(null);
+      setSelectedCustomerProductId(null);
     },
     onError: (err) => setError(err.message),
   });
@@ -488,7 +538,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     refetchQueries: ['GetCustomers'],
     awaitRefetchQueries: true,
     onCompleted: () => {
-      setSelectedProductId(null);
+      setSelectedCustomerProductId(null);
       refetch();
       setSuccess('Product removed from customer successfully');
     },
@@ -528,8 +578,8 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     onError: (err) => setError(err.message),
   });
 
-  const handleProductChange = (productId: string) => {
-    setSelectedProductId(productId);
+  const handleProductChange = (customerProductId: string) => {
+    setSelectedCustomerProductId(customerProductId);
   };
 
   const handleAddCustomer = () => {
@@ -678,10 +728,10 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                   <Button startIcon={<Delete />} variant="outlined" size="small" color="error" onClick={handleDeleteCustomer}>
                     Delete
                   </Button>
-                  <Button startIcon={<Download />} variant="outlined" size="small" onClick={handleExport} disabled={!selectedProductId}>
+                  <Button startIcon={<Download />} variant="outlined" size="small" onClick={handleExport} disabled={!selectedCustomerProductId}>
                     Export
                   </Button>
-                  <Button startIcon={<Upload />} variant="outlined" size="small" component="label" disabled={!selectedProductId}>
+                  <Button startIcon={<Upload />} variant="outlined" size="small" component="label" disabled={!selectedCustomerProductId}>
                     Import
                     <input type="file" hidden accept=".xlsx" onChange={handleImport} />
                   </Button>
@@ -693,13 +743,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                 <FormControl sx={{ minWidth: 300 }} size="small">
                   <InputLabel>Select Product</InputLabel>
                   <Select
-                    value={selectedProductId || ''}
+                    value={selectedCustomerProductId || ''}
                     onChange={(e) => handleProductChange(e.target.value)}
                     label="Select Product"
                   >
                     {selectedCustomer.products?.map((cp: any) => (
-                      <MenuItem key={cp.id} value={cp.product.id}>
-                        {cp.product.name} ({cp.licenseLevel})
+                      <MenuItem key={cp.id} value={cp.id}>
+                        {cp.product.name} ({cp.licenseLevel}){cp.name ? ` - ${cp.name}` : ''}
                       </MenuItem>
                     ))}
                   </Select>
@@ -712,7 +762,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                 >
                   Assign Product
                 </Button>
-                {selectedProductId && planData?.adoptionPlan && (
+                {selectedCustomerProductId && planData?.adoptionPlan && (
                   <>
                     <Tooltip title="Edit license and outcomes">
                       <Button
@@ -755,7 +805,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
 
             {/* Progress and Tasks */}
             <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-              {selectedProductId && planData?.adoptionPlan ? (
+              {selectedCustomerProductId && planData?.adoptionPlan ? (
                 <>
                   {/* Progress Card */}
                   <Card sx={{ mb: 2 }}>
@@ -787,7 +837,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                           <Typography variant="body2" color="text.secondary">
                             {filteredProgress.completedTasks} / {filteredProgress.totalTasks} tasks completed
-                            {(filterReleases.length > 0 || filterOutcomes.length > 0) && (
+                            {/* Show "Filtered" chip only if actual filters are active (not "All") */}
+                            {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) || 
+                              (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
                               <Chip 
                                 label="Filtered" 
                                 size="small" 
@@ -827,11 +879,26 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                             <Select
                               multiple
                               value={filterReleases}
-                              onChange={(e) => setFilterReleases(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+                              onChange={(e) => {
+                                const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                                // If "All" is clicked, toggle between "All" and empty
+                                if (value.includes(ALL_RELEASES_ID)) {
+                                  if (filterReleases.includes(ALL_RELEASES_ID)) {
+                                    // Was "All", now deselect
+                                    setFilterReleases([]);
+                                  } else {
+                                    // Select "All" only
+                                    setFilterReleases([ALL_RELEASES_ID]);
+                                  }
+                                } else {
+                                  // Regular selection - remove "All" if present
+                                  setFilterReleases(value.filter(id => id !== ALL_RELEASES_ID));
+                                }
+                              }}
                               input={<OutlinedInput label="Releases" />}
                               renderValue={(selected) => (
                                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                  {selected.length === 0 ? (
+                                  {selected.length === 0 || selected.includes(ALL_RELEASES_ID) ? (
                                     <em>All Releases</em>
                                   ) : (
                                     selected.map((id) => {
@@ -848,12 +915,39 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                 </Box>
                               )}
                             >
-                              {availableReleases.map((release: any) => (
-                                <MenuItem key={release.id} value={release.id}>
-                                  <Checkbox checked={filterReleases.includes(release.id)} />
-                                  <ListItemText primary={`${release.name}${release.version ? ` (${release.version})` : ''}`} />
-                                </MenuItem>
-                              ))}
+                              {[
+                                // Only show "All Releases" if customer has entitlement to all releases
+                                // (selectedReleases is empty in adoption plan)
+                                ...((!planData?.adoptionPlan?.selectedReleases || planData.adoptionPlan.selectedReleases.length === 0) ? [
+                                  <MenuItem
+                                    key={ALL_RELEASES_ID}
+                                    value={ALL_RELEASES_ID}
+                                    sx={{
+                                      backgroundColor: filterReleases.includes(ALL_RELEASES_ID) ? 'rgba(33, 150, 243, 0.08)' : 'inherit',
+                                      borderBottom: '1px solid',
+                                      borderColor: 'divider',
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(33, 150, 243, 0.12)',
+                                      },
+                                    }}
+                                  >
+                                    <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID)} sx={{ color: 'primary.main' }} />
+                                    <ListItemText 
+                                      primary="All Releases" 
+                                      primaryTypographyProps={{ 
+                                        fontWeight: 600,
+                                        color: 'primary.main'
+                                      }} 
+                                    />
+                                  </MenuItem>
+                                ] : []),
+                                ...availableReleases.map((release: any) => (
+                                  <MenuItem key={release.id} value={release.id}>
+                                    <Checkbox checked={filterReleases.includes(release.id)} />
+                                    <ListItemText primary={`${release.name}${release.version ? ` (${release.version})` : ''}`} />
+                                  </MenuItem>
+                                ))
+                              ]}
                             </Select>
                           </FormControl>
 
@@ -863,11 +957,26 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                             <Select
                               multiple
                               value={filterOutcomes}
-                              onChange={(e) => setFilterOutcomes(typeof e.target.value === 'string' ? [e.target.value] : e.target.value)}
+                              onChange={(e) => {
+                                const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                                // If "All" is clicked, toggle between "All" and empty
+                                if (value.includes(ALL_OUTCOMES_ID)) {
+                                  if (filterOutcomes.includes(ALL_OUTCOMES_ID)) {
+                                    // Was "All", now deselect
+                                    setFilterOutcomes([]);
+                                  } else {
+                                    // Select "All" only
+                                    setFilterOutcomes([ALL_OUTCOMES_ID]);
+                                  }
+                                } else {
+                                  // Regular selection - remove "All" if present
+                                  setFilterOutcomes(value.filter(id => id !== ALL_OUTCOMES_ID));
+                                }
+                              }}
                               input={<OutlinedInput label="Outcomes" />}
                               renderValue={(selected) => (
                                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                  {selected.length === 0 ? (
+                                  {selected.length === 0 || selected.includes(ALL_OUTCOMES_ID) ? (
                                     <em>All Outcomes</em>
                                   ) : (
                                     selected.map((id) => {
@@ -884,12 +993,39 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                 </Box>
                               )}
                             >
-                              {availableOutcomes.map((outcome: any) => (
-                                <MenuItem key={outcome.id} value={outcome.id}>
-                                  <Checkbox checked={filterOutcomes.includes(outcome.id)} />
-                                  <ListItemText primary={outcome.name} />
-                                </MenuItem>
-                              ))}
+                              {[
+                                // Only show "All Outcomes" if customer has entitlement to all outcomes
+                                // (selectedOutcomes is empty in adoption plan)
+                                ...((!planData?.adoptionPlan?.selectedOutcomes || planData.adoptionPlan.selectedOutcomes.length === 0) ? [
+                                  <MenuItem
+                                    key={ALL_OUTCOMES_ID}
+                                    value={ALL_OUTCOMES_ID}
+                                    sx={{
+                                      backgroundColor: filterOutcomes.includes(ALL_OUTCOMES_ID) ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
+                                      borderBottom: '1px solid',
+                                      borderColor: 'divider',
+                                      '&:hover': {
+                                        backgroundColor: 'rgba(76, 175, 80, 0.12)',
+                                      },
+                                    }}
+                                  >
+                                    <Checkbox checked={filterOutcomes.includes(ALL_OUTCOMES_ID)} sx={{ color: 'success.main' }} />
+                                    <ListItemText 
+                                      primary="All Outcomes" 
+                                      primaryTypographyProps={{ 
+                                        fontWeight: 600,
+                                        color: 'success.main'
+                                      }} 
+                                    />
+                                  </MenuItem>
+                                ] : []),
+                                ...availableOutcomes.map((outcome: any) => (
+                                  <MenuItem key={outcome.id} value={outcome.id}>
+                                    <Checkbox checked={filterOutcomes.includes(outcome.id)} />
+                                    <ListItemText primary={outcome.name} />
+                                  </MenuItem>
+                                ))
+                              ]}
                             </Select>
                           </FormControl>
 
@@ -910,19 +1046,34 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                       <TableContainer component={Paper} variant="outlined">
                         <Table size="small">
                           <TableHead>
-                            <TableRow>
-                              <TableCell width={60}>#</TableCell>
-                              <TableCell>Task Name</TableCell>
-                              <TableCell width={100}>Weight</TableCell>
-                              <TableCell width={150}>Status</TableCell>
-                              <TableCell width={120}>Updated Via</TableCell>
-                              <TableCell width={100}>Actions</TableCell>
+                            <TableRow sx={{ backgroundColor: 'grey.100' }}>
+                              <TableCell width={60}>
+                                <Typography variant="subtitle2" fontWeight="bold">#</Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Typography variant="subtitle2" fontWeight="bold">Task Name</Typography>
+                              </TableCell>
+                              <TableCell width={120}>
+                                <Typography variant="subtitle2" fontWeight="bold">Resources</Typography>
+                              </TableCell>
+                              <TableCell width={100}>
+                                <Typography variant="subtitle2" fontWeight="bold">Weight</Typography>
+                              </TableCell>
+                              <TableCell width={150}>
+                                <Typography variant="subtitle2" fontWeight="bold">Status</Typography>
+                              </TableCell>
+                              <TableCell width={120}>
+                                <Typography variant="subtitle2" fontWeight="bold">Updated Via</Typography>
+                              </TableCell>
+                              <TableCell width={100}>
+                                <Typography variant="subtitle2" fontWeight="bold">Actions</Typography>
+                              </TableCell>
                             </TableRow>
                           </TableHead>
                           <TableBody>
                             {filteredTasks.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={6} align="center">
+                                <TableCell colSpan={7} align="center">
                                   <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
                                     No tasks match the selected filters
                                   </Typography>
@@ -933,8 +1084,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                 <TableRow 
                                   key={task.id} 
                                   hover
-                                  onMouseEnter={() => setHoveredTaskId(task.id)}
-                                  onMouseLeave={() => setHoveredTaskId(null)}
+                                  title={task.description || 'No description available'}
                                   onDoubleClick={() => {
                                     setSelectedTask(task);
                                     setTaskDetailsDialogOpen(true);
@@ -949,14 +1099,20 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     '&:hover': {
                                       backgroundColor: task.status === 'NOT_APPLICABLE' 
                                         ? 'rgba(0, 0, 0, 0.12)' // Keep same grey for NOT_APPLICABLE
-                                        : 'rgba(0, 0, 0, 0.04)', // Normal hover color
-                                    }
+                                        : 'rgba(25, 118, 210, 0.08)', // Match product list hover color
+                                      boxShadow: task.status === 'NOT_APPLICABLE'
+                                        ? 'none'
+                                        : '0 2px 8px rgba(0,0,0,0.1)', // Match product list shadow
+                                    },
+                                    transition: 'all 0.2s ease-in-out', // Match product list transition
                                   }}
                                 >
                                 <TableCell>{task.sequenceNumber}</TableCell>
                                 <TableCell>
-                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Typography variant="body2">{task.name}</Typography>
+                                  <Typography variant="body2">{task.name}</Typography>
+                                </TableCell>
+                                <TableCell>
+                                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                                     {/* How-to documentation links */}
                                     {task.howToDoc && task.howToDoc.length > 0 && (
                                       <Chip
@@ -966,7 +1122,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                         variant="outlined"
                                         sx={{ 
                                           fontSize: '0.7rem', 
-                                          height: '24px',
+                                          height: '20px',
                                           cursor: 'pointer',
                                           '&:hover': { backgroundColor: 'primary.light' }
                                         }}
@@ -989,13 +1145,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                       <Chip
                                         size="small"
                                         label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
-                                        color="primary"
+                                        color="error"
                                         variant="outlined"
                                         sx={{ 
                                           fontSize: '0.7rem', 
-                                          height: '24px',
+                                          height: '20px',
                                           cursor: 'pointer',
-                                          '&:hover': { backgroundColor: 'primary.light' }
+                                          '&:hover': { backgroundColor: 'error.light' }
                                         }}
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -1012,12 +1168,6 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                       />
                                     )}
                                   </Box>
-                                  {/* Show only description on hover */}
-                                  {hoveredTaskId === task.id && task.description && (
-                                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                                      {task.description}
-                                    </Typography>
-                                  )}
                                 </TableCell>
                                 <TableCell>{task.weight}%</TableCell>
                                 <TableCell>
@@ -1073,17 +1223,17 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                     </CardContent>
                   </Card>
                 </>
-              ) : selectedProductId ? (
+              ) : selectedCustomerProductId ? (
                 <Alert severity="warning">
                   <strong>No adoption plan found for this product.</strong>
                   <br />
-                  Product ID: {selectedProductId}
+                  Customer Product ID: {selectedCustomerProductId}
                   <br />
                   Customer Product: {selectedCustomerProduct ? 'Found' : 'Not Found'}
                   <br />
                   Adoption Plan ID: {adoptionPlanId || 'NULL'}
                   <br />
-                  {!selectedCustomerProduct && `Could not find customer product with product.id = ${selectedProductId}`}
+                  {!selectedCustomerProduct && `Could not find customer product with id = ${selectedCustomerProductId}`}
                 </Alert>
               ) : (
                 <Alert severity="info">
@@ -1092,7 +1242,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                   Available products: {selectedCustomer?.products?.length || 0}
                   <br />
                   {selectedCustomer?.products?.length > 0 ? 
-                    `Products: ${selectedCustomer.products.map((cp: any) => cp.product.name).join(', ')}` :
+                    `Products: ${selectedCustomer.products.map((cp: any) => cp.name ? `${cp.product.name} (${cp.name})` : cp.product.name).join(', ')}` :
                     'Assign a product to this customer to get started.'
                   }
                 </Alert>
@@ -1230,12 +1380,15 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       {/* Task Details Dialog */}
       <Dialog
         open={taskDetailsDialogOpen}
-        onClose={() => setTaskDetailsDialogOpen(false)}
+        onClose={() => {
+          setTaskDetailsDialogOpen(false);
+          setTaskDetailsActiveTab(0); // Reset to first tab when closing
+        }}
         maxWidth="md"
         fullWidth
       >
         <DialogTitle>
-          Task Details
+          Adoption Plan - Task Details
         </DialogTitle>
         <DialogContent>
           {selectedTask && (
@@ -1254,6 +1407,29 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                   </Typography>
                 </Box>
               )}
+
+              {/* Tabs for organizing content */}
+              <Tabs 
+                value={taskDetailsActiveTab} 
+                onChange={(e, newValue) => setTaskDetailsActiveTab(newValue)}
+                sx={{ 
+                  borderBottom: 1, 
+                  borderColor: 'divider',
+                  mb: 2,
+                  minHeight: '40px',
+                  '& .MuiTab-root': {
+                    minHeight: '40px',
+                    py: 1
+                  }
+                }}
+              >
+                <Tab label="Details" />
+                <Tab label="Success Criteria" />
+              </Tabs>
+
+              {/* Tab 0: Details */}
+              {taskDetailsActiveTab === 0 && (
+                <Box>
 
               <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
                 <Box>
@@ -1345,25 +1521,6 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                 </Box>
               )}
 
-              {selectedTask.telemetryAttributes && selectedTask.telemetryAttributes.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Telemetry Attributes
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                    {selectedTask.telemetryAttributes.map((attr: any) => (
-                      <Chip 
-                        key={attr.id} 
-                        label={attr.name}
-                        color="info"
-                        size="small"
-                        variant="outlined"
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              )}
-
               {selectedTask.howToDoc && selectedTask.howToDoc.length > 0 && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -1417,11 +1574,24 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
               {selectedTask.notes && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Notes
+                    Task Notes
                   </Typography>
                   <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
                     <Typography variant="body2">
                       {selectedTask.notes}
+                    </Typography>
+                  </Paper>
+                </Box>
+              )}
+
+              {selectedTask.statusNotes && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Task Adoption Notes History
+                  </Typography>
+                  <Paper variant="outlined" sx={{ p: 2, bgcolor: '#E3F2FD', maxHeight: '300px', overflow: 'auto' }}>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                      {selectedTask.statusNotes}
                     </Typography>
                   </Paper>
                 </Box>
@@ -1436,10 +1606,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                   if (isNaN(date.getTime())) return null; // Invalid date, don't show section
                   
                   return (
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                        Last updated: {date.toLocaleString()}
-                        {selectedTask.statusUpdatedBy && ` by ${selectedTask.statusUpdatedBy}`}
+                    <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                        Last Status Update
+                      </Typography>
+                      <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {date.toLocaleString()}
+                        {selectedTask.statusUpdatedBy && ` • by ${selectedTask.statusUpdatedBy}`}
                         {selectedTask.statusUpdateSource && (
                           <Chip 
                             label={selectedTask.statusUpdateSource}
@@ -1460,6 +1633,88 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                   return null; // Error parsing date, don't show section
                 }
               })()}
+                </Box>
+              )}
+
+              {/* Tab 1: Success Criteria */}
+              {taskDetailsActiveTab === 1 && (
+                <Box>
+              {/* Success Criteria */}
+              {selectedTask.telemetryAttributes && selectedTask.telemetryAttributes.some((attr: any) => attr.successCriteria) && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                    Success Criteria
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {selectedTask.telemetryAttributes
+                      .filter((attr: any) => attr.successCriteria)
+                      .map((attr: any) => {
+                        let criteriaDisplay: React.ReactNode = null;
+                        
+                        try {
+                          const parsed = JSON.parse(attr.successCriteria);
+                          if (typeof parsed === 'object' && parsed !== null) {
+                            criteriaDisplay = (
+                              <Box component="pre" sx={{ 
+                                m: 0, 
+                                p: 1, 
+                                backgroundColor: '#f5f5f5', 
+                                borderRadius: 1, 
+                                fontSize: '0.75rem',
+                                overflow: 'auto',
+                                fontFamily: 'monospace'
+                              }}>
+                                {JSON.stringify(parsed, null, 2)}
+                              </Box>
+                            );
+                          } else {
+                            criteriaDisplay = <Typography variant="body2">{String(parsed)}</Typography>;
+                          }
+                        } catch {
+                          criteriaDisplay = <Typography variant="body2">{attr.successCriteria}</Typography>;
+                        }
+
+                        return (
+                          <Box
+                            key={attr.id}
+                            sx={{
+                              p: 2,
+                              border: '1px solid #2196F3',
+                              borderRadius: 1,
+                              backgroundColor: '#E3F2FD'
+                            }}
+                          >
+                            <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 600 }}>
+                              {attr.name}
+                            </Typography>
+                            {attr.description && (
+                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: '0.85rem' }}>
+                                {attr.description}
+                              </Typography>
+                            )}
+                            {criteriaDisplay}
+                          </Box>
+                        );
+                      })}
+                  </Box>
+                </Box>
+              )}
+
+              {!selectedTask.telemetryAttributes?.some((attr: any) => attr.successCriteria) && (
+                <Box sx={{ 
+                  mb: 3, 
+                  p: 2, 
+                  backgroundColor: '#FFF3E0', 
+                  border: '1px solid #FF9800', 
+                  borderRadius: 1 
+                }}>
+                  <Typography variant="body2" color="warning.dark">
+                    ⚠️ No success criteria defined for this task
+                  </Typography>
+                </Box>
+              )}
+                </Box>
+              )}
             </Box>
           )}
         </DialogContent>

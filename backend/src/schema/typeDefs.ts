@@ -489,6 +489,7 @@ export const typeDefs = gql`
     id: ID!
     customer: Customer!
     product: Product!
+    name: String!
     licenseLevel: LicenseLevel!
     selectedOutcomes: [Outcome!]!
     selectedReleases: [Release!]!
@@ -595,12 +596,14 @@ export const typeDefs = gql`
   input AssignProductToCustomerInput {
     customerId: ID!
     productId: ID!
+    name: String!
     licenseLevel: LicenseLevel!
     selectedOutcomeIds: [ID!]!
     selectedReleaseIds: [ID!]!
   }
 
   input UpdateCustomerProductInput {
+    name: String
     licenseLevel: LicenseLevel
     selectedOutcomeIds: [ID!]
     selectedReleaseIds: [ID!]

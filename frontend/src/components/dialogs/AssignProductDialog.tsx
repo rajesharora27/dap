@@ -21,8 +21,10 @@ import {
   Chip,
   Paper,
   Divider,
+  TextField,
 } from '@mui/material';
 import { CheckCircle } from '@mui/icons-material';
+import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from './TaskDialog';
 
 const GET_PRODUCTS_AND_OUTCOMES = gql`
   query GetProductsAndOutcomes {
@@ -112,6 +114,7 @@ interface Props {
 
 export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId, onAssigned }) => {
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [productName, setProductName] = useState('');
   const [licenseLevel, setLicenseLevel] = useState<'Essential' | 'Advantage' | 'Signature'>('Essential');
   const [selectedOutcomeIds, setSelectedOutcomeIds] = useState<string[]>([]);
   const [selectedReleaseIds, setSelectedReleaseIds] = useState<string[]>([]);
@@ -167,6 +170,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
     if (!open) {
       // Reset form when dialog closes
       setSelectedProductId('');
+      setProductName('');
       setLicenseLevel('Essential');
       setSelectedOutcomeIds([]);
       setSelectedReleaseIds([]);
@@ -184,19 +188,45 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
   }, [selectedProductId, availableLicenses.length]);
 
   const handleOutcomeToggle = (outcomeId: string) => {
-    setSelectedOutcomeIds((prev) =>
-      prev.includes(outcomeId)
-        ? prev.filter((id) => id !== outcomeId)
-        : [...prev, outcomeId]
-    );
+    if (outcomeId === ALL_OUTCOMES_ID) {
+      // Toggle "All" - if selected, deselect all; if not selected, select only "All"
+      if (selectedOutcomeIds.includes(ALL_OUTCOMES_ID)) {
+        setSelectedOutcomeIds([]);
+      } else {
+        setSelectedOutcomeIds([ALL_OUTCOMES_ID]);
+      }
+    } else {
+      // Toggle individual outcome
+      setSelectedOutcomeIds((prev) => {
+        // Remove "All" if present
+        const withoutAll = prev.filter(id => id !== ALL_OUTCOMES_ID);
+        // Toggle the clicked outcome
+        return withoutAll.includes(outcomeId)
+          ? withoutAll.filter((id) => id !== outcomeId)
+          : [...withoutAll, outcomeId];
+      });
+    }
   };
 
   const handleReleaseToggle = (releaseId: string) => {
-    setSelectedReleaseIds((prev) =>
-      prev.includes(releaseId)
-        ? prev.filter((id) => id !== releaseId)
-        : [...prev, releaseId]
-    );
+    if (releaseId === ALL_RELEASES_ID) {
+      // Toggle "All" - if selected, deselect all; if not selected, select only "All"
+      if (selectedReleaseIds.includes(ALL_RELEASES_ID)) {
+        setSelectedReleaseIds([]);
+      } else {
+        setSelectedReleaseIds([ALL_RELEASES_ID]);
+      }
+    } else {
+      // Toggle individual release
+      setSelectedReleaseIds((prev) => {
+        // Remove "All" if present
+        const withoutAll = prev.filter(id => id !== ALL_RELEASES_ID);
+        // Toggle the clicked release
+        return withoutAll.includes(releaseId)
+          ? withoutAll.filter((id) => id !== releaseId)
+          : [...withoutAll, releaseId];
+      });
+    }
   };
 
   const handleNext = () => {
@@ -213,15 +243,21 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
 
   const handleAssign = async () => {
     try {
+      // Filter out special "All" markers before sending to backend
+      // If "All" is selected, send empty array (backend treats this as "applies to all")
+      const filteredOutcomes = selectedOutcomeIds.filter(id => id !== ALL_OUTCOMES_ID);
+      const filteredReleases = selectedReleaseIds.filter(id => id !== ALL_RELEASES_ID);
+      
       // Step 1: Assign product to customer
       const { data } = await assignProduct({
         variables: {
           input: {
             customerId,
             productId: selectedProductId,
+            name: productName.trim(), // Required field
             licenseLevel,
-            selectedOutcomeIds,
-            selectedReleaseIds,
+            selectedOutcomeIds: filteredOutcomes,
+            selectedReleaseIds: filteredReleases,
           },
         },
       });
@@ -312,6 +348,24 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
             )}
 
             <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
+              Assignment Name *
+            </Typography>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              Give this product assignment a name to distinguish it from other assignments of the same product (e.g., "Production", "Development", "QA Environment")
+            </Typography>
+            <TextField
+              fullWidth
+              required
+              value={productName}
+              onChange={(e) => setProductName(e.target.value)}
+              placeholder="e.g., Production Environment"
+              sx={{ mb: 3 }}
+              size="small"
+              error={productName.trim() === ''}
+              helperText={productName.trim() === '' ? 'Assignment name is required' : ''}
+            />
+
+            <Typography variant="subtitle1" fontWeight="medium" gutterBottom>
               License Level
             </Typography>
             {availableLicenses.length === 0 ? (
@@ -357,6 +411,33 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
             ) : (
               <Paper variant="outlined" sx={{ p: 2, maxHeight: 300, overflow: 'auto' }}>
                 <FormGroup>
+                  {/* "All Outcomes" option */}
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={selectedOutcomeIds.includes(ALL_OUTCOMES_ID)}
+                        onChange={() => handleOutcomeToggle(ALL_OUTCOMES_ID)}
+                        sx={{
+                          color: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'success.main' : 'default',
+                          '&.Mui-checked': {
+                            color: 'success.main',
+                          }
+                        }}
+                      />
+                    }
+                    label={
+                      <Box sx={{ borderBottom: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? '2px solid #4caf50' : '2px solid #e0e0e0', pb: 1, mb: 1 }}>
+                        <Typography variant="body2" fontWeight={700} color={selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'success.main' : 'text.primary'}>
+                          All Outcomes
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Include tasks for all outcomes (wildcard)
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                  
+                  {/* Individual outcomes */}
                   {outcomes.map((outcome: any) => (
                     <FormControlLabel
                       key={outcome.id}
@@ -364,6 +445,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                         <Checkbox
                           checked={selectedOutcomeIds.includes(outcome.id)}
                           onChange={() => handleOutcomeToggle(outcome.id)}
+                          disabled={selectedOutcomeIds.includes(ALL_OUTCOMES_ID)}
                         />
                       }
                       label={
@@ -383,7 +465,9 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                 </FormGroup>
                 <Divider sx={{ my: 2 }} />
                 <Typography variant="caption" color="text.secondary">
-                  {selectedOutcomeIds.length === 0
+                  {selectedOutcomeIds.includes(ALL_OUTCOMES_ID)
+                    ? 'All outcomes selected (wildcard)'
+                    : selectedOutcomeIds.length === 0
                     ? 'No outcomes selected - all tasks will be included'
                     : `${selectedOutcomeIds.length} outcome(s) selected`}
                 </Typography>
@@ -402,6 +486,33 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
             ) : (
               <Paper variant="outlined" sx={{ p: 2, maxHeight: 300, overflow: 'auto' }}>
                 <FormGroup>
+                  {/* "All Releases" option */}
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={selectedReleaseIds.includes(ALL_RELEASES_ID)}
+                        onChange={() => handleReleaseToggle(ALL_RELEASES_ID)}
+                        sx={{
+                          color: selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'primary.main' : 'default',
+                          '&.Mui-checked': {
+                            color: 'primary.main',
+                          }
+                        }}
+                      />
+                    }
+                    label={
+                      <Box sx={{ borderBottom: selectedReleaseIds.includes(ALL_RELEASES_ID) ? '2px solid #1976d2' : '2px solid #e0e0e0', pb: 1, mb: 1 }}>
+                        <Typography variant="body2" fontWeight={700} color={selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'primary.main' : 'text.primary'}>
+                          All Releases
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Include tasks for all releases (wildcard)
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                  
+                  {/* Individual releases */}
                   {releases.map((release: any) => (
                     <FormControlLabel
                       key={release.id}
@@ -409,6 +520,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                         <Checkbox
                           checked={selectedReleaseIds.includes(release.id)}
                           onChange={() => handleReleaseToggle(release.id)}
+                          disabled={selectedReleaseIds.includes(ALL_RELEASES_ID)}
                         />
                       }
                       label={
@@ -428,7 +540,9 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                 </FormGroup>
                 <Divider sx={{ my: 2 }} />
                 <Typography variant="caption" color="text.secondary">
-                  {selectedReleaseIds.length === 0
+                  {selectedReleaseIds.includes(ALL_RELEASES_ID)
+                    ? 'All releases selected (wildcard)'
+                    : selectedReleaseIds.length === 0
                     ? 'No releases selected - all tasks will be included'
                     : `${selectedReleaseIds.length} release(s) selected`}
                 </Typography>
@@ -452,6 +566,17 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                 {selectedProduct?.name}
               </Typography>
 
+              {productName && (
+                <>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 2 }}>
+                    Assignment Name
+                  </Typography>
+                  <Typography variant="body1" gutterBottom>
+                    {productName}
+                  </Typography>
+                </>
+              )}
+
               <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 2 }}>
                 License Level
               </Typography>
@@ -464,10 +589,13 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
               <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 2 }}>
                 Selected Outcomes
               </Typography>
-              {selectedOutcomeIds.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  All tasks will be included (no outcome filter)
-                </Typography>
+              {selectedOutcomeIds.length === 0 || selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? (
+                <Chip
+                  label={selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? "All Outcomes (Wildcard)" : "All tasks (no filter)"}
+                  color="success"
+                  size="small"
+                  sx={{ fontWeight: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 700 : 400 }}
+                />
               ) : (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {selectedOutcomeIds.map((outcomeId) => {
@@ -487,10 +615,13 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
               <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mt: 2 }}>
                 Selected Releases
               </Typography>
-              {selectedReleaseIds.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  All tasks will be included (no release filter)
-                </Typography>
+              {selectedReleaseIds.length === 0 || selectedReleaseIds.includes(ALL_RELEASES_ID) ? (
+                <Chip
+                  label={selectedReleaseIds.includes(ALL_RELEASES_ID) ? "All Releases (Wildcard)" : "All tasks (no filter)"}
+                  color="primary"
+                  size="small"
+                  sx={{ fontWeight: selectedReleaseIds.includes(ALL_RELEASES_ID) ? 700 : 400 }}
+                />
               ) : (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {selectedReleaseIds.map((releaseId) => {
@@ -550,7 +681,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
           <Button
             variant="contained"
             onClick={handleNext}
-            disabled={step === 1 && !selectedProductId}
+            disabled={(step === 1 && !selectedProductId) || (step === 2 && productName.trim() === '')}
           >
             Next
           </Button>

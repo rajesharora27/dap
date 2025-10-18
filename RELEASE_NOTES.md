@@ -1,5 +1,84 @@
 # 🚀 DAP Release Notes
 
+## Version 2.0.0 - Customer Adoption Planning & UI Modernization
+**Release Date**: October 18, 2025  
+**Tag**: `v2.0.0`  
+**Status**: Production Ready ✅
+
+### 🎯 Release Highlights
+
+- 🎉 **NEW: Customer Adoption Planning** - Complete workflow for managing customer implementations with adoption plans, task filtering, status tracking, and auto-sync
+- 🎨 **UI Modernization** - Redesigned product and adoption plan interfaces with consistent design patterns, better hover behavior, and improved usability
+- 📝 **Task Adoption Notes History** - All status change notes are now preserved with timestamps and user attribution for complete audit trails
+- 🔄 **Auto-Sync Enhancement** - Adoption plans automatically detect product changes and sync with one-click while preserving all custom status
+- 🧹 **Code Cleanup** - Removed 25+ unused test files, debug scripts, and duplicate components for cleaner codebase
+- ✅ **Critical Bug Fixes** - Fixed task status persistence, notes preservation, and success criteria display issues
+
+### 🌟 New Features
+
+#### Customer Adoption Planning
+- **Adoption Plan Management**: Assign products to customers with custom license levels and required assignment names
+- **Smart Task Filtering**: Filter by releases and outcomes (single or multiple selections) with "All" option
+- **Task Status Tracking**: Comprehensive status management (Not Started → In Progress → Done/Blocked/Not Applicable)
+- **Adoption Notes History**: Timestamped notes with user attribution preserved across all status changes
+- **Auto-Sync**: One-click sync when product tasks change, preserving all custom status and notes
+- **Enhanced Task Details**: Success criteria in blue boxes, documentation links, telemetry attributes, complete history
+
+#### UI/UX Improvements
+- **Product Task List**: Modern card layout with inline editing, drag-and-drop, native tooltips on hover
+- **Adoption Plan Table**: Consistent design with product list, non-sortable headers, resources column, status indicators
+- **Dialog Improvements**: Unique titles, tab organization, better layouts, improved error handling
+- **Visual Polish**: Grey-out styling for NOT_APPLICABLE tasks, smooth transitions, consistent spacing
+
+### 🔧 Technical Improvements
+
+#### Backend
+- Extended GraphQL mutations with complete field coverage for status preservation
+- Append-based notes storage (not overwrite) with timestamps and user attribution
+- Individual updates in bulk operations to preserve per-task notes
+- Improved progress calculation and error handling
+
+#### Frontend
+- Removed UpdateTaskStatusDialog and 13+ duplicate/redundant components
+- Improved Apollo Client cache handling and refetch strategies
+- Optimized re-render patterns and reduced unnecessary state
+- Better performance and memory usage
+
+### 🐛 Bug Fixes
+
+- ✅ Task status and fields now preserved when editing customer assignments
+- ✅ Adoption notes no longer overwritten on status changes - complete history maintained
+- ✅ Success criteria now visible in adoption plan task details
+- ✅ Fixed distracting inline hover behavior - now uses native tooltips
+- ✅ Customer count displays correct value in sidebar
+- ✅ Removed redundant telemetry section and weight warning
+- ✅ Fixed telemetry tab in product task dialog
+- ✅ Removed sortable columns for simplified UX
+
+### 📚 Documentation
+
+- Archived 20+ incremental development docs to `archive/` directory
+- Updated README.md with latest feature highlights
+- Enhanced FEATURES.md with adoption planning documentation
+- Refreshed QUICK_START.md with new examples
+- Comprehensive CHANGELOG.md entries
+
+### 🚀 Deployment Notes
+
+- No database migrations required - existing data fully compatible
+- No configuration changes needed
+- Upgrade: `git pull && ./dap restart`
+- Clear browser cache for UI updates
+
+### 📊 Statistics
+
+- **Frontend:** 1,800+ lines modified across core components
+- **Backend:** 150+ lines enhanced in resolvers
+- **Files Cleaned:** 25+ test/debug/duplicate files removed
+- **Features:** 8 major enhancements, 15+ UI improvements, 10+ bug fixes
+
+---
+
 ## Version 1.1.0 - Documentation Refresh & Repository Cleanup
 **Release Date**: October 7, 2025  
 **Tag**: `v1.1.0`  
