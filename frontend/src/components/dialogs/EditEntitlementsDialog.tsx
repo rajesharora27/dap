@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { gql, useQuery } from '@apollo/client';
+import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from './TaskDialog';
 import {
   Dialog,
   DialogTitle,
@@ -115,29 +116,71 @@ export function EditEntitlementsDialog({
   useEffect(() => {
     if (open) {
       setLicenseLevel(currentLicenseLevel);
-      setSelectedOutcomeIds(currentSelectedOutcomes.map(o => o.id));
-      setSelectedReleaseIds(currentSelectedReleases.map(r => r.id));
+      
+      // If no outcomes selected (empty array), show "All" marker in UI
+      if (currentSelectedOutcomes.length === 0) {
+        setSelectedOutcomeIds([ALL_OUTCOMES_ID]);
+      } else {
+        setSelectedOutcomeIds(currentSelectedOutcomes.map(o => o.id));
+      }
+      
+      // If no releases selected (empty array), show "All" marker in UI
+      if (currentSelectedReleases.length === 0) {
+        setSelectedReleaseIds([ALL_RELEASES_ID]);
+      } else {
+        setSelectedReleaseIds(currentSelectedReleases.map(r => r.id));
+      }
     }
   }, [open, currentLicenseLevel, currentSelectedOutcomes, currentSelectedReleases]);
 
   const handleToggleOutcome = (outcomeId: string) => {
-    setSelectedOutcomeIds((prev) =>
-      prev.includes(outcomeId)
-        ? prev.filter((id) => id !== outcomeId)
-        : [...prev, outcomeId]
-    );
+    if (outcomeId === ALL_OUTCOMES_ID) {
+      // Toggle "All" - if selected, deselect all; if not selected, select only "All"
+      if (selectedOutcomeIds.includes(ALL_OUTCOMES_ID)) {
+        setSelectedOutcomeIds([]);
+      } else {
+        setSelectedOutcomeIds([ALL_OUTCOMES_ID]);
+      }
+    } else {
+      // Toggle individual outcome
+      setSelectedOutcomeIds((prev) => {
+        // Remove "All" if present
+        const withoutAll = prev.filter(id => id !== ALL_OUTCOMES_ID);
+        // Toggle the clicked outcome
+        return withoutAll.includes(outcomeId)
+          ? withoutAll.filter((id) => id !== outcomeId)
+          : [...withoutAll, outcomeId];
+      });
+    }
   };
 
   const handleToggleRelease = (releaseId: string) => {
-    setSelectedReleaseIds((prev) =>
-      prev.includes(releaseId)
-        ? prev.filter((id) => id !== releaseId)
-        : [...prev, releaseId]
-    );
+    if (releaseId === ALL_RELEASES_ID) {
+      // Toggle "All" - if selected, deselect all; if not selected, select only "All"
+      if (selectedReleaseIds.includes(ALL_RELEASES_ID)) {
+        setSelectedReleaseIds([]);
+      } else {
+        setSelectedReleaseIds([ALL_RELEASES_ID]);
+      }
+    } else {
+      // Toggle individual release
+      setSelectedReleaseIds((prev) => {
+        // Remove "All" if present
+        const withoutAll = prev.filter(id => id !== ALL_RELEASES_ID);
+        // Toggle the clicked release
+        return withoutAll.includes(releaseId)
+          ? withoutAll.filter((id) => id !== releaseId)
+          : [...withoutAll, releaseId];
+      });
+    }
   };
 
   const handleSave = () => {
-    onSave(licenseLevel, selectedOutcomeIds, selectedReleaseIds);
+    // Filter out special "All" markers before sending to backend
+    const filteredOutcomes = selectedOutcomeIds.filter(id => id !== ALL_OUTCOMES_ID);
+    const filteredReleases = selectedReleaseIds.filter(id => id !== ALL_RELEASES_ID);
+    
+    onSave(licenseLevel, filteredOutcomes, filteredReleases);
   };
 
   const outcomes = outcomesData?.outcomes || [];
@@ -201,6 +244,33 @@ export function EditEntitlementsDialog({
             <Alert severity="warning">No outcomes available for this product.</Alert>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {/* "All Outcomes" option */}
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={selectedOutcomeIds.includes(ALL_OUTCOMES_ID)}
+                    onChange={() => handleToggleOutcome(ALL_OUTCOMES_ID)}
+                    sx={{
+                      color: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'success.main' : 'default',
+                      '&.Mui-checked': {
+                        color: 'success.main',
+                      }
+                    }}
+                  />
+                }
+                label={
+                  <Box sx={{ borderBottom: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? '2px solid #4caf50' : '2px solid #e0e0e0', pb: 1 }}>
+                    <Typography variant="body1" fontWeight={700} color={selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'success.main' : 'text.primary'}>
+                      All Outcomes
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Include tasks for all outcomes (wildcard)
+                    </Typography>
+                  </Box>
+                }
+              />
+              
+              {/* Individual outcomes */}
               {outcomes.map((outcome: any) => (
                 <FormControlLabel
                   key={outcome.id}
@@ -208,6 +278,7 @@ export function EditEntitlementsDialog({
                     <Checkbox
                       checked={selectedOutcomeIds.includes(outcome.id)}
                       onChange={() => handleToggleOutcome(outcome.id)}
+                      disabled={selectedOutcomeIds.includes(ALL_OUTCOMES_ID)}
                     />
                   }
                   label={
@@ -238,6 +309,33 @@ export function EditEntitlementsDialog({
             <Alert severity="warning">No releases available for this product.</Alert>
           ) : (
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {/* "All Releases" option */}
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={selectedReleaseIds.includes(ALL_RELEASES_ID)}
+                    onChange={() => handleToggleRelease(ALL_RELEASES_ID)}
+                    sx={{
+                      color: selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'primary.main' : 'default',
+                      '&.Mui-checked': {
+                        color: 'primary.main',
+                      }
+                    }}
+                  />
+                }
+                label={
+                  <Box sx={{ borderBottom: selectedReleaseIds.includes(ALL_RELEASES_ID) ? '2px solid #1976d2' : '2px solid #e0e0e0', pb: 1 }}>
+                    <Typography variant="body1" fontWeight={700} color={selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'primary.main' : 'text.primary'}>
+                      All Releases
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Include tasks for all releases (wildcard)
+                    </Typography>
+                  </Box>
+                }
+              />
+              
+              {/* Individual releases */}
               {releases.map((release: any) => (
                 <FormControlLabel
                   key={release.id}
@@ -245,6 +343,7 @@ export function EditEntitlementsDialog({
                     <Checkbox
                       checked={selectedReleaseIds.includes(release.id)}
                       onChange={() => handleToggleRelease(release.id)}
+                      disabled={selectedReleaseIds.includes(ALL_RELEASES_ID)}
                     />
                   }
                   label={

@@ -34,7 +34,6 @@ import {
   Sync,
   Assessment,
 } from '@mui/icons-material';
-import { UpdateTaskStatusDialog } from './UpdateTaskStatusDialog';
 
 const GET_ADOPTION_PLAN = gql`
   query GetAdoptionPlan($id: ID!) {
@@ -73,6 +72,9 @@ const GET_ADOPTION_PLAN = gql`
         statusNotes
         isComplete
         completedAt
+        howToDoc
+        howToVideo
+        notes
         telemetryProgress {
           totalAttributes
           requiredAttributes
@@ -81,9 +83,33 @@ const GET_ADOPTION_PLAN = gql`
           completionPercentage
           allRequiredMet
         }
+        telemetryAttributes {
+          id
+          originalAttributeId
+          name
+          description
+          dataType
+          isRequired
+          successCriteria
+          order
+          isActive
+          isMet
+          lastCheckedAt
+          latestValue {
+            id
+            value
+            source
+            createdAt
+          }
+        }
         outcomes {
           id
           name
+        }
+        releases {
+          id
+          name
+          level
         }
       }
     }
@@ -135,8 +161,6 @@ function TabPanel(props: TabPanelProps) {
 
 export const AdoptionPlanDialog: React.FC<Props> = ({ open, onClose, adoptionPlanId }) => {
   const [tabValue, setTabValue] = useState(0);
-  const [selectedTask, setSelectedTask] = useState<any>(null);
-  const [updateStatusDialogOpen, setUpdateStatusDialogOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -177,16 +201,6 @@ export const AdoptionPlanDialog: React.FC<Props> = ({ open, onClose, adoptionPla
     } catch (error: any) {
       alert(`Error evaluating telemetry: ${error.message}`);
     }
-  };
-
-  const handleUpdateTaskStatus = (task: any) => {
-    setSelectedTask(task);
-    setUpdateStatusDialogOpen(true);
-  };
-
-  const handleTaskStatusUpdated = () => {
-    refetch();
-    setUpdateStatusDialogOpen(false);
   };
 
   const getStatusIcon = (status: string) => {
@@ -237,9 +251,13 @@ export const AdoptionPlanDialog: React.FC<Props> = ({ open, onClose, adoptionPla
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>
+        {/* VERSION BANNER */}
+        <Alert severity="info" sx={{ mb: 2, bgcolor: '#2196F3', color: 'white', fontWeight: 'bold' }}>
+          🔵 SUCCESS CRITERIA v2.0 ACTIVE - Click any task to see blue criteria boxes
+        </Alert>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
-            <Typography variant="h6">Adoption Plan Details</Typography>
+            <Typography variant="h6">Customer Adoption Plan</Typography>
             {adoptionPlan && (
               <Typography variant="caption" color="text.secondary">
                 {adoptionPlan.productName} • {adoptionPlan.licenseLevel}
@@ -383,9 +401,7 @@ export const AdoptionPlanDialog: React.FC<Props> = ({ open, onClose, adoptionPla
                         flexDirection: 'column',
                         alignItems: 'stretch',
                         '&:hover': { bgcolor: 'action.hover' },
-                        cursor: 'pointer',
                       }}
-                      onClick={() => handleUpdateTaskStatus(task)}
                     >
                       <Box sx={{ display: 'flex', width: '100%', mb: 1 }}>
                         <Box sx={{ flex: 1 }}>
@@ -525,19 +541,6 @@ export const AdoptionPlanDialog: React.FC<Props> = ({ open, onClose, adoptionPla
       <DialogActions>
         <Button onClick={onClose}>Close</Button>
       </DialogActions>
-
-      {/* Update Task Status Dialog */}
-      {selectedTask && (
-        <UpdateTaskStatusDialog
-          open={updateStatusDialogOpen}
-          onClose={() => {
-            setUpdateStatusDialogOpen(false);
-            setSelectedTask(null);
-          }}
-          task={selectedTask}
-          onUpdated={handleTaskStatusUpdated}
-        />
-      )}
     </Dialog>
   );
 };

@@ -102,6 +102,7 @@ model CustomerProduct {
   id                String              @id @default(cuid())
   customerId        String
   productId         String
+  name              String              // Required name/identifier for this product assignment (e.g., "Production", "Development")
   
   // License and Outcomes Selection
   licenseLevel      LicenseLevel        @default(ESSENTIAL)
@@ -116,9 +117,8 @@ model CustomerProduct {
   // Relations
   customer          Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
   product           Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
-  adoptionPlan      AdoptionPlan?       // One adoption plan per product
+  adoptionPlan      AdoptionPlan?       // One adoption plan per product assignment
   
-  @@unique([customerId, productId])
   @@index([customerId])
   @@index([productId])
 }
