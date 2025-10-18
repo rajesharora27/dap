@@ -72,6 +72,19 @@ const DateTimeScalar = new GraphQLScalarType({
   }
 });
 
+// Upload scalar for file uploads
+const UploadScalar = new GraphQLScalarType({
+  name: 'Upload',
+  description: 'File upload scalar type',
+  parseValue: (value: any) => value,
+  serialize: () => {
+    throw new Error('Upload serialization not supported');
+  },
+  parseLiteral: () => {
+    throw new Error('Upload literal parsing not supported');
+  }
+});
+
 // legacy helper kept for potential backward compatibility (unused now)
 function relayFromArray<T>(items: T[], args: ConnectionArguments) {
   const offset = args.after ? cursorToOffset(args.after) + 1 : 0;
@@ -84,6 +97,7 @@ function relayFromArray<T>(items: T[], args: ConnectionArguments) {
 export const resolvers = {
   JSON: JSONScalar,
   DateTime: DateTimeScalar,
+  Upload: UploadScalar,
   Node: {
     __resolveType(obj: any) {
       if (obj.tasks !== undefined) return 'Product';
