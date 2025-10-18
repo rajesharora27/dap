@@ -188,34 +188,34 @@ async function main() {
     // Create licenses for each product
     const licensesByProduct = {
       'test-product-1': [
-        { name: 'Basic Commerce', level: 1, description: 'Essential e-commerce features' },
-        { name: 'Professional Commerce', level: 2, description: 'Advanced marketing and analytics tools' },
-        { name: 'Enterprise Commerce', level: 3, description: 'Full-featured enterprise solution' }
+        { name: 'Test E-Commerce Platform Essential', level: 1, description: 'Essential e-commerce features' },
+        { name: 'Test E-Commerce Platform Advantage', level: 2, description: 'Advanced marketing and analytics tools' },
+        { name: 'Test E-Commerce Platform Signature', level: 3, description: 'Full-featured enterprise solution' }
       ],
       'retail-app-001': [
-        { name: 'Retail Starter', level: 1, description: 'Single-location POS with basic inventory' },
-        { name: 'Retail Professional', level: 2, description: 'Multi-location with loyalty programs' },
-        { name: 'Retail Enterprise', level: 3, description: 'Unlimited locations with API access' }
+        { name: 'Retail Management App Essential', level: 1, description: 'Single-location POS with basic inventory' },
+        { name: 'Retail Management App Advantage', level: 2, description: 'Multi-location with loyalty programs' },
+        { name: 'Retail Management App Signature', level: 3, description: 'Unlimited locations with API access' }
       ],
       'financial-app-001': [
-        { name: 'Financial Basic', level: 1, description: 'Core portfolio management for up to 100 clients' },
-        { name: 'Financial Professional', level: 2, description: 'Advanced trading for up to 1000 clients' },
-        { name: 'Financial Enterprise', level: 3, description: 'Unlimited with algorithmic trading' }
+        { name: 'Financial Services App Essential', level: 1, description: 'Core portfolio management for up to 100 clients' },
+        { name: 'Financial Services App Advantage', level: 2, description: 'Advanced trading for up to 1000 clients' },
+        { name: 'Financial Services App Signature', level: 3, description: 'Unlimited with algorithmic trading' }
       ],
       'it-app-001': [
-        { name: 'IT Essential', level: 1, description: 'Monitor up to 50 devices' },
-        { name: 'IT Advanced', level: 2, description: 'Monitor up to 500 devices with automation' },
-        { name: 'IT Enterprise', level: 3, description: 'Unlimited devices with AIOps' }
+        { name: 'IT Operations App Essential', level: 1, description: 'Monitor up to 50 devices' },
+        { name: 'IT Operations App Advantage', level: 2, description: 'Monitor up to 500 devices with automation' },
+        { name: 'IT Operations App Signature', level: 3, description: 'Unlimited devices with AIOps' }
       ],
       'ai-app-001': [
-        { name: 'AI Starter', level: 1, description: 'Pre-built models with 10k API calls/month' },
-        { name: 'AI Professional', level: 2, description: 'Custom training with 100k API calls/month' },
-        { name: 'AI Enterprise', level: 3, description: 'Unlimited models and API calls' }
+        { name: 'AI-Powered Analytics App Essential', level: 1, description: 'Pre-built models with 10k API calls/month' },
+        { name: 'AI-Powered Analytics App Advantage', level: 2, description: 'Custom training with 100k API calls/month' },
+        { name: 'AI-Powered Analytics App Signature', level: 3, description: 'Unlimited models and API calls' }
       ],
       'networking-app-001': [
-        { name: 'Network Monitor', level: 1, description: 'Monitor up to 25 devices' },
-        { name: 'Network Professional', level: 2, description: 'Monitor up to 250 devices with SD-WAN' },
-        { name: 'Network Enterprise', level: 3, description: 'Unlimited devices with automation' }
+        { name: 'Network Infrastructure App Essential', level: 1, description: 'Monitor up to 25 devices' },
+        { name: 'Network Infrastructure App Advantage', level: 2, description: 'Monitor up to 250 devices with SD-WAN' },
+        { name: 'Network Infrastructure App Signature', level: 3, description: 'Unlimited devices with automation' }
       ]
     };
 

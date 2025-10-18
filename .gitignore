@@ -9,3 +9,10 @@ node_modules
 dist/
 **/dist/
 frontend/frontend.log
+*.bak
+*.backup
+*.old
+tests/*.log
+archive/
+.env.local
+.env.*.local

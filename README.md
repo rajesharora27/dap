@@ -1,6 +1,6 @@
 # DAP (Data Application Platform)
 
-**Modern task and product management platform with multi-sheet Excel import/export, telemetry, and production-ready tooling.**
+**Production-ready task and product management platform with multi-sheet Excel import/export, customer adoption planning, telemetry, and comprehensive tooling.**
 
 ## Overview
 
@@ -8,14 +8,15 @@ DAP helps product organizations structure work around products, licenses, outcom
 
 ### Feature Highlights
 
-- **Product & Task Management**: Tasks own sequence, weight, license level, documentation links, telemetry attributes, and relationships to outcomes & releases.
-- **Multi-Sheet Excel Workflow**: Eight-tab workbook export/import for products, tasks, licenses, releases, outcomes, custom attributes, telemetry, and instructions (ExcelJS-powered on the backend, matching import logic in the frontend).
-- **Telemetry Insight**: Task-level telemetry configuration with success criteria tracking, evaluation engine, and dashboards.
-- **Configuration & Deployment**: Environment-specific configs (dev/staging/prod) with no hardcoded URLs plus Docker Compose support.
-- **Sample Data Automation**: Enhanced 5-product dataset that can be added, removed, or fully reset via the DAP script.
-- **Real-Time UX**: Apollo Client subscriptions keep product/task views synchronized without manual refreshes.
+- **Customer Adoption Planning**: Create customized implementation roadmaps with auto-sync, HowTo documentation links, and smart task filtering
+- **Product & Task Management**: Tasks with sequence management, weight, license level, documentation links, telemetry attributes, and relationships to outcomes & releases
+- **Multi-Sheet Excel Workflow**: Eight-tab workbook export/import for products, tasks, licenses, releases, outcomes, custom attributes, telemetry, and instructions (ExcelJS-powered on the backend)
+- **Telemetry Insight**: Task-level telemetry configuration with success criteria tracking, evaluation engine, and dashboards
+- **Configuration & Deployment**: Environment-specific configs (dev/staging/prod) with no hardcoded URLs plus Docker Compose support
+- **Sample Data Automation**: Enhanced 5-product dataset that can be added, removed, or fully reset via the DAP script
+- **Real-Time UX**: Apollo Client with intelligent cache management keeps views synchronized without manual refreshes
 
-For a deep dive into system tiers, module boundaries, and data flow see the dedicated [ARCHITECTURE.md](ARCHITECTURE.md).
+For a deep dive into all features, see [FEATURES.md](FEATURES.md). For system tiers, module boundaries, and data flow, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Technology Stack
 
@@ -113,18 +114,34 @@ Common GraphQL samples live in [QUICK_START.md](QUICK_START.md).
 
 ## Documentation Index
 
-Authoritative references live at the repository root:
+Production-ready documentation lives at the repository root:
 
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** – Layered architecture, request flows, component responsibilities, schema overview
-- **[CHANGELOG.md](CHANGELOG.md)** – Release history and maintenance notes (including the October 2025 cleanup)
-- **[RELEASE_NOTES.md](RELEASE_NOTES.md)** – Snapshot of the first production-ready release
-- **[DAP-MANAGEMENT.md](DAP-MANAGEMENT.md)** – Usage of the consolidated `./dap` management script
+### Core Documentation
+- **[README.md](README.md)** – You are here! Project overview and getting started
+- **[FEATURES.md](FEATURES.md)** – Comprehensive feature documentation and usage guide
+- **[CHANGELOG.md](CHANGELOG.md)** – Release history with detailed change notes
+- **[RELEASE_NOTES.md](RELEASE_NOTES.md)** – Current release highlights
+
+### Setup & Deployment
 - **[QUICK_START.md](QUICK_START.md)** – Fast local setup and GraphQL examples
+- **[DAP-MANAGEMENT.md](DAP-MANAGEMENT.md)** – Usage of the consolidated `./dap` management script
 - **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** – Containerized deployment steps & environment promotion
 - **[CONFIG_SYSTEM_GUIDE.md](CONFIG_SYSTEM_GUIDE.md)** – Environment configuration reference
-- **[SAMPLE_DATA_MANAGEMENT.md](SAMPLE_DATA_MANAGEMENT.md)** – Details on seeding and cleaning sample data
-- **[TELEMETRY_SYSTEM_DOCUMENTATION.md](TELEMETRY_SYSTEM_DOCUMENTATION.md)** – Telemetry architecture and evaluator details
+
+### Public URL / Production Deployment
+- **[SINGLE_PORT_DEPLOYMENT.md](SINGLE_PORT_DEPLOYMENT.md)** – ✅ **Recommended:** Single port (443) nginx setup
+- **[SINGLE_PORT_ARCHITECTURE.md](SINGLE_PORT_ARCHITECTURE.md)** – Visual guide and architecture diagrams
+- **[QUICK_PUBLIC_URL.md](QUICK_PUBLIC_URL.md)** – Simple 5-step public URL setup
+- **[PUBLIC_URL_SETUP.md](PUBLIC_URL_SETUP.md)** – Comprehensive public deployment guide
+- **[setup-nginx.sh](setup-nginx.sh)** – Automated nginx setup script
+
+### Technical References
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** – Layered architecture, request flows, component responsibilities
 - **[TECHNICAL-DOCUMENTATION.md](TECHNICAL-DOCUMENTATION.md)** – Extended system analysis and deep-dive notes
+- **[SAMPLE_DATA_MANAGEMENT.md](SAMPLE_DATA_MANAGEMENT.md)** – Details on seeding and cleaning sample data
+
+### Archive
+Historical documentation and incremental fix notes are available in the `archive/` directory.
 
 ---
 

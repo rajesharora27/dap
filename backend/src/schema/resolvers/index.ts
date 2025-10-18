@@ -16,6 +16,14 @@ import {
   TelemetryMutationResolvers,
   TaskTelemetryResolvers
 } from './telemetry';
+import {
+  CustomerAdoptionQueryResolvers,
+  CustomerAdoptionMutationResolvers,
+  CustomerProductWithPlanResolvers,
+  AdoptionPlanResolvers,
+  CustomerTaskResolvers,
+  CustomerTelemetryAttributeResolvers
+} from './customerAdoption';
 import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../lib/pagination';
 import { logAudit } from '../../lib/audit';
 import { ensureRole, requireUser } from '../../lib/auth';
@@ -43,6 +51,27 @@ const JSONScalar = new GraphQLScalarType({
   }
 });
 
+const DateTimeScalar = new GraphQLScalarType({
+  name: 'DateTime',
+  description: 'DateTime scalar type',
+  parseValue: (v: any) => {
+    if (v instanceof Date) return v;
+    if (typeof v === 'string' || typeof v === 'number') return new Date(v);
+    return null;
+  },
+  serialize: (v: any) => {
+    if (v instanceof Date) return v.toISOString();
+    if (typeof v === 'string') return v;
+    return null;
+  },
+  parseLiteral(ast: any) {
+    if (ast.kind === Kind.STRING || ast.kind === Kind.INT) {
+      return new Date(ast.value);
+    }
+    return null;
+  }
+});
+
 // legacy helper kept for potential backward compatibility (unused now)
 function relayFromArray<T>(items: T[], args: ConnectionArguments) {
   const offset = args.after ? cursorToOffset(args.after) + 1 : 0;
@@ -54,6 +83,7 @@ function relayFromArray<T>(items: T[], args: ConnectionArguments) {
 
 export const resolvers = {
   JSON: JSONScalar,
+  DateTime: DateTimeScalar,
   Node: {
     __resolveType(obj: any) {
       if (obj.tasks !== undefined) return 'Product';
@@ -202,8 +232,18 @@ export const resolvers = {
   },
   Customer: {
     products: (parent: any) => {
-      if (fallbackActive) { const { products } = require('../../lib/fallbackStore'); return products.filter((p: any) => parent.productIds?.includes(p.id)); }
-      return prisma.customerProduct.findMany({ where: { customerId: parent.id }, include: { product: true } }).then((rows: any) => rows.map((r: any) => r.product));
+      if (fallbackActive) { 
+        const { products } = require('../../lib/fallbackStore'); 
+        return products.filter((p: any) => parent.productIds?.includes(p.id)); 
+      }
+      // Return CustomerProductWithPlan instead of just Product
+      return prisma.customerProduct.findMany({ 
+        where: { customerId: parent.id }, 
+        include: { 
+          product: true,
+          customer: true,
+        } 
+      });
     },
     solutions: (parent: any) => {
       if (fallbackActive) { const { solutions } = require('../../lib/fallbackStore'); return solutions.filter((s: any) => parent.solutionIds?.includes(s.id)); }
@@ -352,6 +392,12 @@ export const resolvers = {
   
   TelemetryValue: TelemetryValueResolvers,
   
+  // Customer Adoption field resolvers
+  CustomerProductWithPlan: CustomerProductWithPlanResolvers,
+  AdoptionPlan: AdoptionPlanResolvers,
+  CustomerTask: CustomerTaskResolvers,
+  CustomerTelemetryAttribute: CustomerTelemetryAttributeResolvers,
+  
   Outcome: {
     product: (parent: any) => {
       if (fallbackActive) {
@@ -477,10 +523,12 @@ export const resolvers = {
     },
     customers: async () => { if (fallbackActive) return fbListCustomers(); return prisma.customer.findMany({ where: { deletedAt: null } }).catch(() => []); },
     licenses: async () => { if (fallbackActive) return listLicenses(); return prisma.license.findMany({ where: { deletedAt: null } }); },
-    releases: async () => { 
+    releases: async (_: any, { productId }: any) => { 
       if (fallbackActive) return []; 
+      const where: any = { deletedAt: null };
+      if (productId) where.productId = productId;
       return prisma.release.findMany({ 
-        where: { deletedAt: null }, 
+        where, 
         orderBy: [{ productId: 'asc' }, { level: 'asc' }] 
       }); 
     },
@@ -509,6 +557,14 @@ export const resolvers = {
     , telemetryValuesByBatch: TelemetryQueryResolvers.telemetryValuesByBatch
     
     , taskDependencies: async (_: any, { taskId }: any) => prisma.taskDependency.findMany({ where: { taskId }, orderBy: { createdAt: 'asc' } })
+    
+    // Customer Adoption queries
+    , customer: CustomerAdoptionQueryResolvers.customer
+    , adoptionPlan: CustomerAdoptionQueryResolvers.adoptionPlan
+    , adoptionPlansForCustomer: CustomerAdoptionQueryResolvers.adoptionPlansForCustomer
+    , customerTask: CustomerAdoptionQueryResolvers.customerTask
+    , customerTasksForPlan: CustomerAdoptionQueryResolvers.customerTasksForPlan
+    , customerTelemetryDatabase: CustomerAdoptionQueryResolvers.customerTelemetryDatabase
     
     // Excel Export
     , exportProductToExcel: async (_: any, { productName }: any) => {
@@ -1205,19 +1261,89 @@ export const resolvers = {
         throw new Error('Task not found');
       }
 
-      // If sequence number is being updated, check for conflicts
+      // Track if sequence number is being updated
+      let sequenceWasUpdated = false;
+
+      // If sequence number is being updated, handle reordering
       if (input.sequenceNumber && input.sequenceNumber !== before.sequenceNumber) {
-        const existingTask = await prisma.task.findFirst({
-          where: {
-            sequenceNumber: input.sequenceNumber,
-            id: { not: id },
-            ...(before.productId ? { productId: before.productId } : { solutionId: before.solutionId })
+        const oldSequence = before.sequenceNumber;
+        const newSequence = input.sequenceNumber;
+        sequenceWasUpdated = true;
+
+        console.log(`Reordering tasks: moving task ${id} from sequence ${oldSequence} to ${newSequence}`);
+
+        // Use a transaction with two-step approach to avoid unique constraint violations
+        await prisma.$transaction(async (tx: any) => {
+          if (newSequence < oldSequence) {
+            // Moving task to a lower sequence (e.g., from 5 to 2)
+            // Step 1: Get all tasks that need to shift up
+            const tasksToShift = await tx.task.findMany({
+              where: {
+                id: { not: id },
+                deletedAt: null,
+                sequenceNumber: { gte: newSequence, lt: oldSequence },
+                ...(before.productId ? { productId: before.productId } : { solutionId: before.solutionId })
+              },
+              orderBy: { sequenceNumber: 'desc' } // Process in reverse order
+            });
+
+            // Step 2: Move affected tasks to temporary negative sequences
+            for (let i = 0; i < tasksToShift.length; i++) {
+              await tx.task.update({
+                where: { id: tasksToShift[i].id },
+                data: { sequenceNumber: -(i + 1000) }
+              });
+            }
+
+            // Step 3: Move current task to new sequence
+            await tx.task.update({
+              where: { id },
+              data: { sequenceNumber: newSequence }
+            });
+
+            // Step 4: Move affected tasks to their final sequences
+            for (let i = 0; i < tasksToShift.length; i++) {
+              await tx.task.update({
+                where: { id: tasksToShift[i].id },
+                data: { sequenceNumber: tasksToShift[i].sequenceNumber + 1 }
+              });
+            }
+          } else if (newSequence > oldSequence) {
+            // Moving task to a higher sequence (e.g., from 2 to 5)
+            // Step 1: Get all tasks that need to shift down
+            const tasksToShift = await tx.task.findMany({
+              where: {
+                id: { not: id },
+                deletedAt: null,
+                sequenceNumber: { gt: oldSequence, lte: newSequence },
+                ...(before.productId ? { productId: before.productId } : { solutionId: before.solutionId })
+              },
+              orderBy: { sequenceNumber: 'asc' }
+            });
+
+            // Step 2: Move affected tasks to temporary negative sequences
+            for (let i = 0; i < tasksToShift.length; i++) {
+              await tx.task.update({
+                where: { id: tasksToShift[i].id },
+                data: { sequenceNumber: -(i + 1000) }
+              });
+            }
+
+            // Step 3: Move current task to new sequence
+            await tx.task.update({
+              where: { id },
+              data: { sequenceNumber: newSequence }
+            });
+
+            // Step 4: Move affected tasks to their final sequences
+            for (let i = 0; i < tasksToShift.length; i++) {
+              await tx.task.update({
+                where: { id: tasksToShift[i].id },
+                data: { sequenceNumber: tasksToShift[i].sequenceNumber - 1 }
+              });
+            }
           }
         });
-
-        if (existingTask) {
-          throw new Error('Sequence number already exists for this product/solution');
-        }
       }
 
       // If weight is being updated, validate total doesn't exceed 100
@@ -1309,6 +1435,11 @@ export const resolvers = {
             }
           }
         }
+      }
+
+      // Remove sequenceNumber from updateData if it was already handled in the reordering transaction
+      if (sequenceWasUpdated && updateData.sequenceNumber !== undefined) {
+        delete updateData.sequenceNumber;
       }
 
       const task = await prisma.task.update({
@@ -1412,7 +1543,6 @@ export const resolvers = {
         weight: task.weight,
         sequenceNumber: task.sequenceNumber,
         licenseLevel: task.licenseLevel,
-        priority: task.priority || '',
         notes: task.notes || '',
         outcomeIds: task.outcomes.length > 0 ? JSON.stringify(task.outcomes.map((o: any) => o.outcomeId)) : ''
       }));
@@ -1547,7 +1677,6 @@ export const resolvers = {
               weight: weight,
               sequenceNumber: sequenceNumber,
               licenseLevel: licenseLevel as any,
-              priority: row.priority?.trim() || null,
               notes: row.notes?.trim() || null
             };
 
@@ -1800,20 +1929,41 @@ export const resolvers = {
           if (taskToDelete.sequenceNumber) {
             console.log(`Reordering tasks with sequence > ${taskToDelete.sequenceNumber} for product ${taskToDelete.productId}`);
 
-            const updatedCount = await prisma.task.updateMany({
+            // Use two-step approach to avoid unique constraint violations
+            // Step 1: Move all affected tasks to negative sequences
+            const tasksToReorder = await prisma.task.findMany({
               where: {
                 deletedAt: null,
                 sequenceNumber: { gt: taskToDelete.sequenceNumber },
                 ...(taskToDelete.productId ? { productId: taskToDelete.productId } : { solutionId: taskToDelete.solutionId })
               },
-              data: {
-                sequenceNumber: {
-                  decrement: 1
-                }
-              }
+              orderBy: { sequenceNumber: 'asc' }
             });
 
-            console.log(`Reordered ${updatedCount.count} tasks after deleting task with sequence ${taskToDelete.sequenceNumber}`);
+            // Step 2: Update each task to temporary negative value, then to final value
+            for (let i = 0; i < tasksToReorder.length; i++) {
+              const task = tasksToReorder[i];
+              const newSeq = task.sequenceNumber - 1;
+              
+              // First move to negative to avoid constraint
+              await prisma.task.update({
+                where: { id: task.id },
+                data: { sequenceNumber: -(i + 1000) }
+              });
+            }
+
+            // Step 3: Update to final positive values
+            for (let i = 0; i < tasksToReorder.length; i++) {
+              const task = tasksToReorder[i];
+              const newSeq = task.sequenceNumber - 1;
+              
+              await prisma.task.update({
+                where: { id: task.id },
+                data: { sequenceNumber: newSeq }
+              });
+            }
+
+            console.log(`Reordered ${tasksToReorder.length} tasks after deleting task with sequence ${taskToDelete.sequenceNumber}`);
           }
 
           deletedCount++;
@@ -1825,6 +1975,21 @@ export const resolvers = {
       await logAudit('PROCESS_DELETE_QUEUE', 'Task', undefined, { count: deletedCount });
       return deletedCount;
     },
+
+    // Customer Adoption mutations
+    assignProductToCustomer: CustomerAdoptionMutationResolvers.assignProductToCustomer,
+    updateCustomerProduct: CustomerAdoptionMutationResolvers.updateCustomerProduct,
+    removeProductFromCustomerEnhanced: CustomerAdoptionMutationResolvers.removeProductFromCustomerEnhanced,
+    createAdoptionPlan: CustomerAdoptionMutationResolvers.createAdoptionPlan,
+    syncAdoptionPlan: CustomerAdoptionMutationResolvers.syncAdoptionPlan,
+    updateCustomerTaskStatus: CustomerAdoptionMutationResolvers.updateCustomerTaskStatus,
+    bulkUpdateCustomerTaskStatus: CustomerAdoptionMutationResolvers.bulkUpdateCustomerTaskStatus,
+    addCustomerTelemetryValue: CustomerAdoptionMutationResolvers.addCustomerTelemetryValue,
+    bulkAddCustomerTelemetryValues: CustomerAdoptionMutationResolvers.bulkAddCustomerTelemetryValues,
+    evaluateTaskTelemetry: CustomerAdoptionMutationResolvers.evaluateTaskTelemetry,
+    evaluateAllTasksTelemetry: CustomerAdoptionMutationResolvers.evaluateAllTasksTelemetry,
+    exportCustomerAdoptionToExcel: CustomerAdoptionMutationResolvers.exportCustomerAdoptionToExcel,
+    importCustomerAdoptionFromExcel: CustomerAdoptionMutationResolvers.importCustomerAdoptionFromExcel,
 
     // Excel Import
     importProductFromExcel: async (_: any, { content, mode }: any, ctx: any) => {
