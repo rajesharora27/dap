@@ -6,6 +6,7 @@ import { createServer } from 'http';
 import { WebSocketServer } from 'ws';
 import { useServer } from 'graphql-ws/lib/use/ws';
 import bodyParser from 'body-parser';
+import path from 'path';
 import { typeDefs } from './schema/typeDefs';
 import { resolvers } from './schema/resolvers';
 import { makeExecutableSchema } from '@graphql-tools/schema';
@@ -32,6 +33,11 @@ export async function createApp() {
     const fb = (process.env.AUTH_FALLBACK || '').toLowerCase();
     res.json({ status: 'ok', uptime: process.uptime(), fallbackAuth: fb === '1' || fb === 'true', timestamp: new Date().toISOString() });
   });
+
+  // Serve telemetry export files
+  const telemetryExportsDir = path.join(process.cwd(), 'temp', 'telemetry-exports');
+  app.use('/api/downloads/telemetry-exports', express.static(telemetryExportsDir));
+
   const schema = makeExecutableSchema({ typeDefs, resolvers });
   const apollo = new ApolloServer({ schema });
   await apollo.start();

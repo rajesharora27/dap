@@ -480,6 +480,45 @@ export const typeDefs = gql`
   bulkAddCustomerTelemetryValues(inputs: [AddCustomerTelemetryValueInput!]!): [CustomerTelemetryValue!]!
   evaluateTaskTelemetry(customerTaskId: ID!): CustomerTask!
   evaluateAllTasksTelemetry(adoptionPlanId: ID!): AdoptionPlan!
+  
+  # Telemetry Import/Export
+  exportAdoptionPlanTelemetryTemplate(adoptionPlanId: ID!): TelemetryTemplateExport!
+  importAdoptionPlanTelemetry(adoptionPlanId: ID!, file: Upload!): TelemetryImportResult!
+  }
+
+  # Telemetry Import/Export Types
+  type TelemetryTemplateExport {
+    url: String!
+    filename: String!
+    taskCount: Int!
+    attributeCount: Int!
+    customerName: String!
+    productName: String!
+    assignmentName: String!
+  }
+
+  type TelemetryImportResult {
+    success: Boolean!
+    batchId: String!
+    summary: TelemetryImportSummary!
+    taskResults: [TaskTelemetryResult!]!
+  }
+
+  type TelemetryImportSummary {
+    tasksProcessed: Int!
+    attributesUpdated: Int!
+    criteriaEvaluated: Int!
+    errors: [String!]!
+  }
+
+  type TaskTelemetryResult {
+    taskId: ID!
+    taskName: String!
+    attributesUpdated: Int!
+    criteriaMet: Int!
+    criteriaTotal: Int!
+    completionPercentage: Float!
+    errors: [String!]!
   }
 
   union SearchResult = Product | Task | Solution | Customer
