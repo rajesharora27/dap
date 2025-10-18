@@ -1990,6 +1990,8 @@ export const resolvers = {
     evaluateAllTasksTelemetry: CustomerAdoptionMutationResolvers.evaluateAllTasksTelemetry,
     exportCustomerAdoptionToExcel: CustomerAdoptionMutationResolvers.exportCustomerAdoptionToExcel,
     importCustomerAdoptionFromExcel: CustomerAdoptionMutationResolvers.importCustomerAdoptionFromExcel,
+    exportAdoptionPlanTelemetryTemplate: CustomerAdoptionMutationResolvers.exportAdoptionPlanTelemetryTemplate,
+    importAdoptionPlanTelemetry: CustomerAdoptionMutationResolvers.importAdoptionPlanTelemetry,
 
     // Excel Import
     importProductFromExcel: async (_: any, { content, mode }: any, ctx: any) => {
