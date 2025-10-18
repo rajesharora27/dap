@@ -4,7 +4,6 @@ import { logAudit } from '../../lib/audit';
 import { LicenseLevel } from '@prisma/client';
 import { CustomerTelemetryExportService } from '../../services/telemetry/CustomerTelemetryExportService';
 import { CustomerTelemetryImportService } from '../../services/telemetry/CustomerTelemetryImportService';
-import { v4 as uuidv4 } from 'uuid';
 import * as fs from 'fs';
 import * as path from 'path';
 
