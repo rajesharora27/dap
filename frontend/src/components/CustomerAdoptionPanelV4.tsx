@@ -623,40 +623,37 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
 
   const [exportTelemetryTemplate] = useMutation(EXPORT_TELEMETRY_TEMPLATE, {
     onCompleted: async (data) => {
-      console.log('Export mutation completed', data);
       const { url, filename } = data.exportAdoptionPlanTelemetryTemplate;
-      
+
       try {
-        // Fetch the file from the backend as a blob
-        console.log('Fetching file from:', `http://localhost:4000${url}`);
-        const response = await fetch(`http://localhost:4000${url}`);
+        // Ensure the URL is fully qualified and encoded
+        const fileUrl = new URL(url, 'http://localhost:4000');
+
+        const response = await fetch(fileUrl.toString());
         if (!response.ok) {
-          throw new Error(`Failed to download file: ${response.statusText}`);
+          throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
         }
-        
-        const blob = await response.blob();
-        console.log('Blob received, size:', blob.size);
-        
-        // Create a download link and trigger download
-        const downloadUrl = window.URL.createObjectURL(blob);
+
+        const arrayBuffer = await response.arrayBuffer();
+        const blob = new Blob([arrayBuffer], {
+          type: response.headers.get('content-type') || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+
+        const objectUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = downloadUrl;
+        a.href = objectUrl;
         a.download = filename;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        window.URL.revokeObjectURL(downloadUrl);
-        
+        window.URL.revokeObjectURL(objectUrl);
+
         setSuccess(`Telemetry template exported: ${filename}`);
       } catch (err: any) {
-        console.error('Download error:', err);
         setError(`Failed to download template: ${err.message}`);
       }
     },
-    onError: (err) => {
-      console.error('Export mutation error:', err);
-      setError(`Failed to export telemetry template: ${err.message}`);
-    },
+    onError: (err) => setError(`Failed to export telemetry template: ${err.message}`),
   });
 
   const [importTelemetry] = useMutation(IMPORT_TELEMETRY, {
@@ -771,17 +768,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
   };
 
   const handleExportTelemetry = async () => {
-    console.log('Export telemetry clicked', { adoptionPlanId, selectedCustomerProduct });
     if (!adoptionPlanId) {
       setError('No adoption plan found');
       return;
     }
     try {
-      console.log('Calling exportTelemetryTemplate mutation');
       await exportTelemetryTemplate({ variables: { adoptionPlanId } });
-      console.log('Mutation call completed');
     } catch (err: any) {
-      console.error('Mutation call error:', err);
       setError(`Export failed: ${err.message}`);
     }
   };
