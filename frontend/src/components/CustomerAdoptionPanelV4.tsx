@@ -307,6 +307,39 @@ const IMPORT_CUSTOMER_ADOPTION = gql`
   }
 `;
 
+const EXPORT_TELEMETRY_TEMPLATE = gql`
+  mutation ExportTelemetryTemplate($adoptionPlanId: ID!) {
+    exportAdoptionPlanTelemetryTemplate(adoptionPlanId: $adoptionPlanId) {
+      url
+      filename
+      taskCount
+      attributeCount
+    }
+  }
+`;
+
+const IMPORT_TELEMETRY = gql`
+  mutation ImportTelemetry($adoptionPlanId: ID!, $file: Upload!) {
+    importAdoptionPlanTelemetry(adoptionPlanId: $adoptionPlanId, file: $file) {
+      success
+      message
+      summary {
+        totalAttributes
+        valuesImported
+        criteriaEvaluated
+        criteriaMet
+      }
+      taskResults {
+        taskId
+        taskName
+        attributesImported
+        criteriaMet
+        criteriaTotal
+      }
+    }
+  }
+`;
+
 interface StatusDialogState {
   open: boolean;
   taskId: string;
@@ -578,6 +611,36 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     onError: (err) => setError(err.message),
   });
 
+  const [exportTelemetryTemplate] = useMutation(EXPORT_TELEMETRY_TEMPLATE, {
+    onCompleted: (data) => {
+      const { url, filename } = data.exportAdoptionPlanTelemetryTemplate;
+      // Download the file from the backend URL
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      setSuccess(`Telemetry template exported: ${filename}`);
+    },
+    onError: (err) => setError(`Failed to export telemetry template: ${err.message}`),
+  });
+
+  const [importTelemetry] = useMutation(IMPORT_TELEMETRY, {
+    onCompleted: (data) => {
+      if (data.importAdoptionPlanTelemetry.success) {
+        const summary = data.importAdoptionPlanTelemetry.summary;
+        setSuccess(
+          `Telemetry import successful: ${summary.valuesImported} values imported, ` +
+          `${summary.criteriaMet}/${summary.criteriaEvaluated} criteria met`
+        );
+        refetchPlan();
+        refetch();
+      } else {
+        setError(data.importAdoptionPlanTelemetry.message || 'Telemetry import failed');
+      }
+    },
+    onError: (err) => setError(`Failed to import telemetry: ${err.message}`),
+  });
+
   const handleProductChange = (customerProductId: string) => {
     setSelectedCustomerProductId(customerProductId);
   };
@@ -670,6 +733,25 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       removeProduct({ variables: { id: selectedCustomerProduct.id } });
       setDeleteProductDialogOpen(false);
     }
+  };
+
+  const handleExportTelemetry = () => {
+    if (!adoptionPlanId) {
+      setError('No adoption plan found');
+      return;
+    }
+    exportTelemetryTemplate({ variables: { adoptionPlanId } });
+  };
+
+  const handleImportTelemetry = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !adoptionPlanId) {
+      if (!adoptionPlanId) setError('No adoption plan found');
+      return;
+    }
+    importTelemetry({ variables: { adoptionPlanId, file } });
+    // Reset the input so the same file can be re-uploaded
+    event.target.value = '';
   };
 
   const getStatusColor = (status: string) => {
@@ -864,6 +946,47 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                           Last synced: {new Date(planData.adoptionPlan.lastSyncedAt).toLocaleString()}
                         </Typography>
                       )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Telemetry Section */}
+                  <Card sx={{ mb: 2 }}>
+                    <CardContent>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="h6">Telemetry Management</Typography>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Tooltip title="Export Excel template for telemetry data entry">
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<Download />}
+                              onClick={handleExportTelemetry}
+                            >
+                              Export Template
+                            </Button>
+                          </Tooltip>
+                          <Tooltip title="Import completed telemetry Excel file">
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<Upload />}
+                              component="label"
+                            >
+                              Import Data
+                              <input
+                                type="file"
+                                hidden
+                                accept=".xlsx"
+                                onChange={handleImportTelemetry}
+                              />
+                            </Button>
+                          </Tooltip>
+                        </Box>
+                      </Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Export a telemetry template with all tasks and their telemetry attributes. 
+                        Fill in the values in Excel, then import the completed file to update telemetry data and evaluate success criteria.
+                      </Typography>
                     </CardContent>
                   </Card>
 
