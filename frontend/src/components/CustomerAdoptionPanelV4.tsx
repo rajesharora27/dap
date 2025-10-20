@@ -629,25 +629,15 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       console.log('Export URL:', url, 'Filename:', filename);
 
       try {
-        const apiConfigUrl = getApiUrl();
-        console.log('API config URL:', apiConfigUrl);
-        let baseOrigin: string;
+        // For file downloads, use the URL as-is (it's a relative path like /api/downloads/...)
+        // In development: Vite proxy forwards /api/* to backend
+        // In production: Reverse proxy forwards /api/* to backend
+        // This ensures everything goes through the same origin (no CORS issues)
+        const fileUrl = url; // Already relative, no need to construct full URL
+        console.log('File URL:', fileUrl);
 
-        try {
-          const parsed = new URL(apiConfigUrl, window.location.origin);
-          baseOrigin = `${parsed.protocol}//${parsed.host}`;
-        } catch (parseErr) {
-          console.warn('Unable to derive API base from config, defaulting to window origin', parseErr);
-          baseOrigin = window.location.origin;
-        }
-
-        console.log('Base origin:', baseOrigin);
-        const fileUrl = new URL(url, baseOrigin);
-        console.log('Full file URL:', fileUrl.toString());
-
-        const response = await fetch(fileUrl.toString(), {
+        const response = await fetch(fileUrl, {
           credentials: 'include',
-          mode: 'cors',
         });
 
         console.log('Fetch response status:', response.status, response.statusText);
