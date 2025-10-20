@@ -7,11 +7,13 @@ import { WebSocketServer } from 'ws';
 import { useServer } from 'graphql-ws/lib/use/ws';
 import bodyParser from 'body-parser';
 import path from 'path';
+import multer from 'multer';
 import { typeDefs } from './schema/typeDefs';
 import { resolvers } from './schema/resolvers';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { createContext, prisma } from './context';
 import { config, getCorsOrigins } from './config/app.config';
+import { CustomerTelemetryImportService } from './services/telemetry/CustomerTelemetryImportService';
 
 export async function createApp() {
   const app = express();
@@ -37,6 +39,33 @@ export async function createApp() {
   // Serve telemetry export files
   const telemetryExportsDir = path.join(process.cwd(), 'temp', 'telemetry-exports');
   app.use('/api/downloads/telemetry-exports', express.static(telemetryExportsDir));
+
+  // REST endpoint for telemetry import (multipart file upload)
+  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+  app.post('/api/telemetry/import/:adoptionPlanId', upload.single('file'), async (req, res) => {
+    try {
+      const { adoptionPlanId } = req.params;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      if (!adoptionPlanId) {
+        return res.status(400).json({ success: false, message: 'Adoption plan ID is required' });
+      }
+
+      const result = await CustomerTelemetryImportService.importTelemetryValues(adoptionPlanId, file.buffer);
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('Telemetry import error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Import failed'
+      });
+    }
+  });
 
   const schema = makeExecutableSchema({ typeDefs, resolvers });
   const apollo = new ApolloServer({ schema });

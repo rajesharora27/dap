@@ -743,13 +743,40 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     exportTelemetryTemplate({ variables: { adoptionPlanId } });
   };
 
-  const handleImportTelemetry = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportTelemetry = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file || !adoptionPlanId) {
       if (!adoptionPlanId) setError('No adoption plan found');
       return;
     }
-    importTelemetry({ variables: { adoptionPlanId, file } });
+    
+    try {
+      // Use REST endpoint for file upload instead of GraphQL
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch(`http://localhost:4000/api/telemetry/import/${adoptionPlanId}`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        const summary = result.summary;
+        setSuccess(
+          `Telemetry import successful: ${summary.valuesImported} values imported, ` +
+          `${summary.criteriaMet}/${summary.criteriaEvaluated} criteria met`
+        );
+        refetchPlan();
+        refetch();
+      } else {
+        setError(result.message || 'Telemetry import failed');
+      }
+    } catch (err: any) {
+      setError(`Failed to import telemetry: ${err.message}`);
+    }
+    
     // Reset the input so the same file can be re-uploaded
     event.target.value = '';
   };
