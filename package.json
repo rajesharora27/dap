@@ -1,5 +1,6 @@
 {
   "devDependencies": {
+    "form-data": "^4.0.4",
     "prisma": "^6.15.0"
   },
   "dependencies": {
