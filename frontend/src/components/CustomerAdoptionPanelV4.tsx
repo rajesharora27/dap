@@ -60,6 +60,7 @@ import {
 import { CustomerDialog } from './dialogs/CustomerDialog';
 import { AssignProductDialog } from './dialogs/AssignProductDialog';
 import { EditEntitlementsDialog } from './dialogs/EditEntitlementsDialog';
+import { getApiUrl } from '../config/frontend.config';
 
 // GraphQL Queries
 const GET_CUSTOMERS = gql`
@@ -626,31 +627,39 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       const { url, filename } = data.exportAdoptionPlanTelemetryTemplate;
 
       try {
-        // Ensure the URL is fully qualified and encoded
-        const fileUrl = new URL(url, 'http://localhost:4000');
+        const apiBase = getApiUrl();
+        const fileUrl = new URL(url, apiBase);
 
-        const response = await fetch(fileUrl.toString());
+        const response = await fetch(fileUrl.toString(), {
+          credentials: 'include',
+          mode: 'cors',
+        });
+
         if (!response.ok) {
           throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
         }
 
-        const arrayBuffer = await response.arrayBuffer();
-        const blob = new Blob([arrayBuffer], {
-          type: response.headers.get('content-type') || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        });
-
-        const objectUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = objectUrl;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(objectUrl);
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename || 'telemetry_template.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 5000);
 
         setSuccess(`Telemetry template exported: ${filename}`);
       } catch (err: any) {
+        console.error('Telemetry export download failed:', err);
         setError(`Failed to download template: ${err.message}`);
+        // Fallback: open the URL in a new tab to allow manual download
+        try {
+          const fallbackUrl = new URL(url, getApiUrl());
+          window.open(fallbackUrl.toString(), '_blank', 'noopener');
+        } catch (_) {
+          // Ignore fallback failure
+        }
       }
     },
     onError: (err) => setError(`Failed to export telemetry template: ${err.message}`),
