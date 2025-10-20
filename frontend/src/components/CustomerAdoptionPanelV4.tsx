@@ -40,6 +40,7 @@ import {
   Menu,
   Tabs,
   Tab,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add,
@@ -402,7 +403,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
   const selectedCustomerProduct = selectedCustomer?.products?.find((cp: any) => cp.id === selectedCustomerProductId);
   const adoptionPlanId = selectedCustomerProduct?.adoptionPlan?.id;
 
-  const { data: planData, refetch: refetchPlan } = useQuery(GET_ADOPTION_PLAN, {
+  const { data: planData, loading: planLoading, error: planError, refetch: refetchPlan } = useQuery(GET_ADOPTION_PLAN, {
     variables: { id: adoptionPlanId },
     skip: !adoptionPlanId,
     fetchPolicy: 'cache-and-network',
@@ -1049,7 +1050,48 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
 
             {/* Progress and Tasks */}
             <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-              {selectedCustomerProductId && planData?.adoptionPlan ? (
+              {/* Loading State */}
+              {selectedCustomerProductId && planLoading && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: 2 }}>
+                  <CircularProgress size={60} thickness={4} />
+                  <Typography variant="h6" color="text.secondary">
+                    Loading Adoption Plan...
+                  </Typography>
+                </Box>
+              )}
+
+              {/* Error State */}
+              {selectedCustomerProductId && planError && !planLoading && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>Unable to Load Adoption Plan</Typography>
+                  <Typography variant="body2">
+                    {planError.message || 'An error occurred while loading the adoption plan. Please try refreshing the page.'}
+                  </Typography>
+                </Alert>
+              )}
+
+              {/* No Adoption Plan State */}
+              {selectedCustomerProductId && !planData?.adoptionPlan && !planLoading && !planError && (
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: 2 }}>
+                  <Typography variant="h6" color="text.secondary">
+                    No Adoption Plan Available
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" align="center">
+                    This product assignment doesn't have an adoption plan yet. Try syncing to create one.
+                  </Typography>
+                  <Button
+                    variant="contained"
+                    startIcon={<Sync />}
+                    onClick={handleSync}
+                    disabled={syncLoading}
+                  >
+                    {syncLoading ? 'Syncing...' : 'Sync Now'}
+                  </Button>
+                </Box>
+              )}
+
+              {/* Adoption Plan Content */}
+              {selectedCustomerProductId && planData?.adoptionPlan && !planLoading ? (
                 <>
                   {/* Progress Card */}
                   <Card sx={{ mb: 2 }}>
