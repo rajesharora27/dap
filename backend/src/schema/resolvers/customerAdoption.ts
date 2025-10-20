@@ -2071,6 +2071,19 @@ export const CustomerTaskResolvers = {
 };
 
 export const CustomerTelemetryAttributeResolvers = {
+  values: async (parent: any, args: any) => {
+    const limit = args.limit;
+    const values = await prisma.customerTelemetryValue.findMany({
+      where: { customerAttributeId: parent.id },
+      orderBy: { createdAt: 'desc' },
+      ...(limit && { take: limit }),
+      include: {
+        customerAttribute: true, // Include for criteriaMet resolver
+      },
+    });
+    
+    return values || []; // Always return array, never null
+  },
   latestValue: async (parent: any) => {
     const value = await prisma.customerTelemetryValue.findFirst({
       where: { customerAttributeId: parent.id },
