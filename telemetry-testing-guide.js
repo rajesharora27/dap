@@ -1,0 +1,221 @@
+#!/usr/bin/env node
+
+/**
+ * Telemetry Frontend Testing Guide
+ * 
+ * This script provides instructions for manual testing of the telemetry feature in the UI
+ */
+
+console.log('\n' + '='.repeat(80));
+console.log('TELEMETRY FRONTEND TESTING GUIDE');
+console.log('='.repeat(80) + '\n');
+
+console.log('📋 PREREQUISITES');
+console.log('─'.repeat(80));
+console.log('✓ Backend running on http://localhost:4000');
+console.log('✓ Frontend running on http://localhost:5173');
+console.log('✓ Demo data created (Adoption Plan ID: cmgwxi7c300otb25751jxznow)');
+console.log('');
+
+console.log('🧪 TEST 1: Export Telemetry Template');
+console.log('─'.repeat(80));
+console.log('1. Open http://localhost:5173 in your browser');
+console.log('2. Navigate to Customer Adoption Panel');
+console.log('3. Select the demo customer from the left sidebar');
+console.log('4. Select the demo product from the dropdown');
+console.log('5. Scroll down to "Telemetry Management" card');
+console.log('6. Click "Export Template" button');
+console.log('');
+console.log('✅ Expected Results:');
+console.log('   • Excel file downloads automatically');
+console.log('   • Filename: telemetry_template_YYYY-MM-DD_HH-MM-SS.xlsx');
+console.log('   • Success message appears: "Telemetry template exported: {filename}"');
+console.log('   • File size: ~11KB');
+console.log('');
+console.log('📂 Verify Excel File Structure:');
+console.log('   • Open downloaded file in Excel/LibreOffice');
+console.log('   • Sheet 1: "Instructions" with metadata and color coding guide');
+console.log('   • Sheet 2: "Telemetry_Data" with:');
+console.log('     - Column A: Customer Name');
+console.log('     - Column B: Product Name');
+console.log('     - Column C: Task Name');
+console.log('     - Columns D+: Telemetry attribute names (24 attributes)');
+console.log('     - 8 data rows (one per task)');
+console.log('');
+
+console.log('🧪 TEST 2: Fill Sample Data');
+console.log('─'.repeat(80));
+console.log('Fill in the following sample values in Telemetry_Data sheet:');
+console.log('');
+console.log('📝 BOOLEAN Attributes (enter TRUE or FALSE):');
+console.log('   • setup_complete: TRUE');
+console.log('   • training_complete: TRUE');
+console.log('   • api_configured: TRUE');
+console.log('   • security_audit_passed: TRUE');
+console.log('   • performance_tuned: TRUE');
+console.log('   • data_migrated: TRUE');
+console.log('   • monitoring_enabled: TRUE');
+console.log('   • uat_approved: TRUE');
+console.log('   • prod_deployed: FALSE (testing criteria failure)');
+console.log('');
+console.log('📝 NUMBER Attributes:');
+console.log('   • training_hours: 45 (should meet criteria >= 40)');
+console.log('   • api_calls: 1500 (should meet criteria >= 1000)');
+console.log('   • security_score: 95 (should meet criteria >= 90)');
+console.log('   • response_time: 450 (should meet criteria <= 500)');
+console.log('   • error_rate: 0.02 (should meet criteria <= 0.05)');
+console.log('   • uptime_percentage: 99.9 (should meet criteria >= 99.5)');
+console.log('   • migration_records: 12000 (should meet criteria >= 10000)');
+console.log('   • data_accuracy: 99.8 (should meet criteria >= 99)');
+console.log('   • alerts_configured: 25 (should meet criteria >= 20)');
+console.log('   • dashboard_views: 15 (should meet criteria >= 10)');
+console.log('   • test_cases_passed: 48 (should meet criteria >= 45)');
+console.log('   • user_acceptance: 92 (should meet criteria >= 85)');
+console.log('   • defects_found: 3 (should meet criteria <= 5)');
+console.log('   • Go-live readiness: 95 (should meet criteria >= 90)');
+console.log('   • documentation_complete: 100 (should meet criteria >= 95)');
+console.log('');
+console.log('💡 TIP: You can fill different values for each task row, or just fill one row for testing');
+console.log('');
+
+console.log('🧪 TEST 3: Import Telemetry Data');
+console.log('─'.repeat(80));
+console.log('1. Save the Excel file with your filled data');
+console.log('2. Return to the browser (Customer Adoption Panel)');
+console.log('3. Click "Import Data" button in Telemetry Management card');
+console.log('4. Select the filled Excel file');
+console.log('5. Wait for import to complete');
+console.log('');
+console.log('✅ Expected Results:');
+console.log('   • Success message appears with import statistics');
+console.log('   • Example: "Telemetry import successful: 24 values imported, 23/24 criteria met"');
+console.log('   • (One criterion fails: prod_deployed should be TRUE but we set FALSE)');
+console.log('   • UI refreshes automatically');
+console.log('   • Adoption progress may update based on criteria met');
+console.log('');
+
+console.log('🧪 TEST 4: Verify Data in Database');
+console.log('─'.repeat(80));
+console.log('Run this GraphQL query in http://localhost:4000/graphql:');
+console.log('');
+console.log('query {');
+console.log('  adoptionPlan(id: "cmgwxi7c300otb25751jxznow") {');
+console.log('    tasks {');
+console.log('      name');
+console.log('      telemetryAttributes {');
+console.log('        id');
+console.log('        name');
+console.log('        dataType');
+console.log('        successCriteria');
+console.log('        values {');
+console.log('          id');
+console.log('          value');
+console.log('          criteriaMet');
+console.log('        }');
+console.log('      }');
+console.log('    }');
+console.log('  }');
+console.log('}');
+console.log('');
+console.log('✅ Expected Results:');
+console.log('   • Each telemetryAttribute should have one value');
+console.log('   • Value should match what you entered in Excel');
+console.log('   • criteriaMet should be true/false based on successCriteria evaluation');
+console.log('');
+
+console.log('🧪 TEST 5: Error Handling');
+console.log('─'.repeat(80));
+console.log('Test 5a: Invalid File Format');
+console.log('   1. Click "Import Data"');
+console.log('   2. Select a .txt or .csv file');
+console.log('   3. Should reject (file picker only accepts .xlsx)');
+console.log('');
+console.log('Test 5b: Wrong Structure (if possible)');
+console.log('   1. Modify Excel file structure (remove columns, change order)');
+console.log('   2. Try to import');
+console.log('   3. Should show error message from backend');
+console.log('');
+console.log('Test 5c: No Adoption Plan');
+console.log('   1. Deselect product or customer');
+console.log('   2. Try to export/import');
+console.log('   3. Should show error: "No adoption plan found"');
+console.log('');
+
+console.log('🧪 TEST 6: Re-import (Update Values)');
+console.log('─'.repeat(80));
+console.log('1. Modify values in Excel (e.g., change training_hours to 50)');
+console.log('2. Save and re-import');
+console.log('3. Verify values update in database');
+console.log('4. Check if criteriaMet changes');
+console.log('');
+
+console.log('📊 EXPECTED SUCCESS CRITERIA RESULTS');
+console.log('─'.repeat(80));
+console.log('With the sample data above, you should see:');
+console.log('');
+console.log('✅ MET (23 out of 24):');
+console.log('   • All BOOLEAN attributes with TRUE value (8 attributes)');
+console.log('   • All NUMBER attributes meeting their criteria (15 attributes)');
+console.log('');
+console.log('❌ NOT MET (1 out of 24):');
+console.log('   • prod_deployed = FALSE (criteria requires TRUE)');
+console.log('');
+
+console.log('🎯 SUCCESS INDICATORS');
+console.log('─'.repeat(80));
+console.log('✓ Export downloads Excel file automatically');
+console.log('✓ Excel has correct structure (Instructions + Telemetry_Data)');
+console.log('✓ Import accepts filled Excel file');
+console.log('✓ Success message shows correct statistics');
+console.log('✓ Database contains imported values');
+console.log('✓ Success criteria evaluated correctly');
+console.log('✓ UI refreshes after import');
+console.log('✓ Error messages display for invalid operations');
+console.log('');
+
+console.log('🐛 TROUBLESHOOTING');
+console.log('─'.repeat(80));
+console.log('Issue: Export button does nothing');
+console.log('   → Check browser console for errors');
+console.log('   → Verify backend is running (http://localhost:4000)');
+console.log('   → Check Network tab for failed requests');
+console.log('');
+console.log('Issue: Import fails silently');
+console.log('   → Check backend logs for errors');
+console.log('   → Verify file is valid .xlsx format');
+console.log('   → Ensure adoption plan ID exists');
+console.log('');
+console.log('Issue: Success message shows 0 values imported');
+console.log('   → Verify you filled in values in Excel');
+console.log('   → Check column headers match attribute names');
+console.log('   → Ensure data rows have customer/product/task names');
+console.log('');
+
+console.log('📝 TESTING CHECKLIST');
+console.log('─'.repeat(80));
+console.log('[ ] Export template downloads successfully');
+console.log('[ ] Excel file has correct structure (2 sheets)');
+console.log('[ ] Excel file has 8 task rows and 24 attribute columns');
+console.log('[ ] Fill sample BOOLEAN values (TRUE/FALSE)');
+console.log('[ ] Fill sample NUMBER values');
+console.log('[ ] Import completes without errors');
+console.log('[ ] Success message shows correct statistics');
+console.log('[ ] Database query shows imported values');
+console.log('[ ] Success criteria evaluated correctly (23/24 met)');
+console.log('[ ] Re-import updates existing values');
+console.log('[ ] Error handling works for invalid files');
+console.log('[ ] UI refreshes after successful import');
+console.log('');
+
+console.log('🎉 NEXT STEPS');
+console.log('─'.repeat(80));
+console.log('After successful testing:');
+console.log('1. Create TELEMETRY_TESTING_RESULTS.md with findings');
+console.log('2. Screenshot the UI showing Telemetry Management card');
+console.log('3. Commit any bug fixes found during testing');
+console.log('4. Consider adding telemetry status indicators to task table');
+console.log('5. Merge telemetry-simulation branch to main');
+console.log('');
+
+console.log('=' + '='.repeat(78) + '=\n');
+console.log('Ready to test! Open http://localhost:5173 and follow the steps above.\n');
