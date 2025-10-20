@@ -26,6 +26,11 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           ws: true,  // WebSocket support for subscriptions
           secure: false
+        },
+        '/api': {
+          target: 'http://localhost:4000',  // Backend REST API and file downloads
+          changeOrigin: true,
+          secure: false
         }
       }
     }
