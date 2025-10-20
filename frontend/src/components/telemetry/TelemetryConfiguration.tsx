@@ -200,6 +200,12 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
     const [operator, setOperator] = useState(getInitialOperator());
     const [value, setValue] = useState(getInitialValue());
 
+    // Update states when attribute changes (e.g., when reopening dialog with existing data)
+    useEffect(() => {
+      setOperator(getInitialOperator());
+      setValue(getInitialValue());
+    }, [attribute.successCriteria, attribute.dataType]);
+
     const getOperatorOptions = () => {
       switch (attribute.dataType) {
         case 'NUMBER':
