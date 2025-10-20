@@ -138,6 +138,7 @@ const GET_ADOPTION_PLAN = gql`
           id
           name
           description
+          dataType
           successCriteria
           values {
             id
@@ -242,6 +243,7 @@ const SYNC_ADOPTION_PLAN = gql`
           id
           name
           description
+          dataType
           successCriteria
           values {
             id
@@ -719,6 +721,42 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     },
     onError: (err) => setError(`Failed to import telemetry: ${err.message}`),
   });
+
+  // Auto-update task status when all telemetry criteria are met
+  useEffect(() => {
+    if (selectedTask && selectedTask.telemetryAttributes && selectedTask.telemetryAttributes.length > 0) {
+      const attributesWithCriteria = selectedTask.telemetryAttributes.filter((attr: any) => 
+        attr.successCriteria && attr.successCriteria !== 'No criteria'
+      ).length;
+      const attributesWithCriteriaMet = selectedTask.telemetryAttributes.filter((attr: any) => 
+        attr.values?.some((v: any) => v.criteriaMet === true)
+      ).length;
+      const allCriteriaMet = attributesWithCriteria > 0 && attributesWithCriteriaMet === attributesWithCriteria;
+
+      // Auto-update if all criteria met and task is not already DONE
+      if (allCriteriaMet && selectedTask.status !== 'DONE') {
+        console.log('All telemetry criteria met - auto-updating task status to DONE');
+        updateTaskStatus({
+          variables: {
+            input: {
+              taskId: selectedTask.id,
+              status: 'DONE',
+              notes: 'Automatically marked as done via telemetry criteria',
+              updateSource: 'TELEMETRY'
+            }
+          }
+        }).then(() => {
+          // Update the selectedTask in state to reflect the change
+          setSelectedTask({
+            ...selectedTask,
+            status: 'DONE',
+            statusUpdateSource: 'TELEMETRY',
+            statusUpdatedAt: new Date().toISOString()
+          });
+        });
+      }
+    }
+  }, [selectedTask?.telemetryAttributes, selectedTask?.id, selectedTask?.status, updateTaskStatus]);
 
   const handleProductChange = (customerProductId: string) => {
     setSelectedCustomerProductId(customerProductId);
@@ -1753,171 +1791,218 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
               {/* Tab 0: Details */}
               {taskDetailsActiveTab === 0 && (
                 <Box>
-
-              <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Sequence
+              {/* Overview Section - Key Metrics */}
+              <Card variant="outlined" sx={{ mb: 3, bgcolor: 'grey.50' }}>
+                <CardContent>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                    Overview
                   </Typography>
-                  <Chip label={`#${selectedTask.sequenceNumber}`} size="small" />
-                </Box>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 2 }}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                        Sequence
+                      </Typography>
+                      <Chip label={`#${selectedTask.sequenceNumber}`} size="small" color="primary" />
+                    </Box>
 
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Weight
-                  </Typography>
-                  <Chip label={`${selectedTask.weight}%`} size="small" />
-                </Box>
-
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Status
-                  </Typography>
-                  <Chip
-                    label={selectedTask.status.replace('_', ' ')}
-                    color={getStatusColor(selectedTask.status) as any}
-                    size="small"
-                  />
-                </Box>
-              </Box>
-
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                  License Level
-                </Typography>
-                <Chip label={selectedTask.licenseLevel} color="primary" size="small" />
-              </Box>
-
-              {selectedTask.releases && selectedTask.releases.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Releases
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                    {selectedTask.releases.map((release: any) => (
-                      <Chip 
-                        key={release.id} 
-                        label={`${release.name}${release.version ? ` ${release.version}` : ''}`}
-                        color="secondary"
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                        Status
+                      </Typography>
+                      <Chip
+                        label={selectedTask.status.replace('_', ' ')}
+                        color={getStatusColor(selectedTask.status) as any}
                         size="small"
                       />
-                    ))}
-                  </Box>
-                </Box>
-              )}
+                    </Box>
 
-              {selectedTask.outcomes && selectedTask.outcomes.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Outcomes
-                  </Typography>
-                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                    {selectedTask.outcomes.map((outcome: any) => (
-                      <Chip 
-                        key={outcome.id} 
-                        label={outcome.name}
-                        color="success"
-                        size="small"
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              )}
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                        Weight
+                      </Typography>
+                      <Chip label={`${selectedTask.weight}%`} size="small" variant="outlined" />
+                    </Box>
 
-              {selectedTask.estMinutes && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Estimated Time
-                  </Typography>
-                  <Typography variant="body2">
-                    {selectedTask.estMinutes} minutes
-                  </Typography>
-                </Box>
-              )}
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                        License Level
+                      </Typography>
+                      <Chip label={selectedTask.licenseLevel} size="small" color="secondary" />
+                    </Box>
 
-              {selectedTask.priority && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Priority
-                  </Typography>
-                  <Chip label={selectedTask.priority} size="small" />
-                </Box>
-              )}
-
-              {selectedTask.howToDoc && selectedTask.howToDoc.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Documentation
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {selectedTask.howToDoc.map((doc: string, index: number) => (
-                      <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Article fontSize="small" color="primary" />
-                        <Typography 
-                          variant="body2" 
-                          component="a" 
-                          href={doc}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{ color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                        >
-                          {doc.length > 60 ? `${doc.substring(0, 60)}...` : doc}
+                    {selectedTask.estMinutes && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                          Estimated Time
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          {selectedTask.estMinutes} min
                         </Typography>
                       </Box>
-                    ))}
-                  </Box>
-                </Box>
-              )}
+                    )}
 
-              {selectedTask.howToVideo && selectedTask.howToVideo.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Video Tutorials
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {selectedTask.howToVideo.map((video: string, index: number) => (
-                      <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <OndemandVideo fontSize="small" color="error" />
-                        <Typography 
-                          variant="body2" 
-                          component="a" 
-                          href={video}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          sx={{ color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-                        >
-                          {video.length > 60 ? `${video.substring(0, 60)}...` : video}
+                    {selectedTask.priority && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                          Priority
                         </Typography>
+                        <Chip label={selectedTask.priority} size="small" />
                       </Box>
-                    ))}
+                    )}
                   </Box>
-                </Box>
+                </CardContent>
+              </Card>
+
+              {/* Releases and Outcomes Section */}
+              {((selectedTask.releases && selectedTask.releases.length > 0) || 
+                (selectedTask.outcomes && selectedTask.outcomes.length > 0)) && (
+                <Card variant="outlined" sx={{ mb: 3 }}>
+                  <CardContent>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                      Features & Outcomes
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {selectedTask.releases && selectedTask.releases.length > 0 && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                            Associated Releases
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            {selectedTask.releases.map((release: any) => (
+                              <Chip 
+                                key={release.id} 
+                                label={`${release.name}${release.version ? ` ${release.version}` : ''}`}
+                                color="info"
+                                size="small"
+                                variant="outlined"
+                              />
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+
+                      {selectedTask.outcomes && selectedTask.outcomes.length > 0 && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                            Expected Outcomes
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                            {selectedTask.outcomes.map((outcome: any) => (
+                              <Chip 
+                                key={outcome.id} 
+                                label={outcome.name}
+                                color="success"
+                                size="small"
+                                variant="outlined"
+                              />
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
               )}
 
-              {selectedTask.notes && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Task Notes
-                  </Typography>
-                  <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
-                    <Typography variant="body2">
-                      {selectedTask.notes}
+              {/* Resources Section */}
+              {((selectedTask.howToDoc && selectedTask.howToDoc.length > 0) ||
+                (selectedTask.howToVideo && selectedTask.howToVideo.length > 0)) && (
+                <Card variant="outlined" sx={{ mb: 3 }}>
+                  <CardContent>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                      Resources
                     </Typography>
-                  </Paper>
-                </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {selectedTask.howToDoc && selectedTask.howToDoc.length > 0 && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                            Documentation
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            {selectedTask.howToDoc.map((doc: string, index: number) => (
+                              <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Article fontSize="small" color="primary" />
+                                <Typography 
+                                  variant="body2" 
+                                  component="a" 
+                                  href={doc}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  sx={{ color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                                >
+                                  {doc.length > 60 ? `${doc.substring(0, 60)}...` : doc}
+                                </Typography>
+                              </Box>
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+
+                      {selectedTask.howToVideo && selectedTask.howToVideo.length > 0 && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                            Video Tutorials
+                          </Typography>
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            {selectedTask.howToVideo.map((video: string, index: number) => (
+                              <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <OndemandVideo fontSize="small" color="error" />
+                                <Typography 
+                                  variant="body2" 
+                                  component="a" 
+                                  href={video}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  sx={{ color: 'primary.main', textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
+                                >
+                                  {video.length > 60 ? `${video.substring(0, 60)}...` : video}
+                                </Typography>
+                              </Box>
+                            ))}
+                          </Box>
+                        </Box>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
               )}
 
-              {selectedTask.statusNotes && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Task Adoption Notes History
-                  </Typography>
-                  <Paper variant="outlined" sx={{ p: 2, bgcolor: '#E3F2FD', maxHeight: '300px', overflow: 'auto' }}>
-                    <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                      {selectedTask.statusNotes}
+              {/* Notes Section */}
+              {(selectedTask.notes || selectedTask.statusNotes) && (
+                <Card variant="outlined" sx={{ mb: 3 }}>
+                  <CardContent>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                      Notes
                     </Typography>
-                  </Paper>
-                </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {selectedTask.notes && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                            Task Notes
+                          </Typography>
+                          <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
+                            <Typography variant="body2">
+                              {selectedTask.notes}
+                            </Typography>
+                          </Paper>
+                        </Box>
+                      )}
+
+                      {selectedTask.statusNotes && (
+                        <Box>
+                          <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                            Adoption Notes History
+                          </Typography>
+                          <Paper variant="outlined" sx={{ p: 2, bgcolor: '#E3F2FD', maxHeight: '300px', overflow: 'auto' }}>
+                            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                              {selectedTask.statusNotes}
+                            </Typography>
+                          </Paper>
+                        </Box>
+                      )}
+                    </Box>
+                  </CardContent>
+                </Card>
               )}
 
               {(() => {
@@ -2003,9 +2088,33 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                             <CardContent>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
                                 <Box sx={{ flex: 1 }}>
-                                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-                                    {attr.name}
-                                  </Typography>
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                                      {attr.name}
+                                    </Typography>
+                                    <Chip
+                                      label={attr.dataType}
+                                      size="small"
+                                      variant="outlined"
+                                      sx={{ 
+                                        height: 18, 
+                                        fontSize: '0.65rem',
+                                        fontWeight: 600,
+                                        borderColor: 
+                                          attr.dataType === 'BOOLEAN' ? '#9c27b0' :
+                                          attr.dataType === 'NUMBER' ? '#2196f3' :
+                                          attr.dataType === 'STRING' ? '#4caf50' :
+                                          attr.dataType === 'TIMESTAMP' ? '#ff9800' :
+                                          '#757575',
+                                        color:
+                                          attr.dataType === 'BOOLEAN' ? '#9c27b0' :
+                                          attr.dataType === 'NUMBER' ? '#2196f3' :
+                                          attr.dataType === 'STRING' ? '#4caf50' :
+                                          attr.dataType === 'TIMESTAMP' ? '#ff9800' :
+                                          '#757575'
+                                      }}
+                                    />
+                                  </Box>
                                   {attr.description && (
                                     <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
                                       {attr.description}
