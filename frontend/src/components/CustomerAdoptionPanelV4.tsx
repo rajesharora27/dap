@@ -627,8 +627,18 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       const { url, filename } = data.exportAdoptionPlanTelemetryTemplate;
 
       try {
-        const apiBase = getApiUrl();
-        const fileUrl = new URL(url, apiBase);
+        const apiConfigUrl = getApiUrl();
+        let baseOrigin: string;
+
+        try {
+          const parsed = new URL(apiConfigUrl, window.location.origin);
+          baseOrigin = `${parsed.protocol}//${parsed.host}`;
+        } catch (parseErr) {
+          console.warn('Unable to derive API base from config, defaulting to window origin', parseErr);
+          baseOrigin = window.location.origin;
+        }
+
+        const fileUrl = new URL(url, baseOrigin);
 
         const response = await fetch(fileUrl.toString(), {
           credentials: 'include',
@@ -655,7 +665,8 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
         setError(`Failed to download template: ${err.message}`);
         // Fallback: open the URL in a new tab to allow manual download
         try {
-          const fallbackUrl = new URL(url, getApiUrl());
+          const fallbackBase = window.location.origin;
+          const fallbackUrl = new URL(url, fallbackBase);
           window.open(fallbackUrl.toString(), '_blank', 'noopener');
         } catch (_) {
           // Ignore fallback failure
