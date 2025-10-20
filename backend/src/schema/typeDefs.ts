@@ -654,6 +654,7 @@ export const typeDefs = gql`
     customerTaskId: ID!
     status: CustomerTaskStatus!
     notes: String
+    updateSource: StatusUpdateSource
   }
 
   input AddCustomerTelemetryValueInput {

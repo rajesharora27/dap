@@ -733,19 +733,29 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       ).length;
       const allCriteriaMet = attributesWithCriteria > 0 && attributesWithCriteriaMet === attributesWithCriteria;
 
+      console.log('Telemetry auto-update check:', {
+        taskId: selectedTask.id,
+        taskName: selectedTask.name,
+        taskStatus: selectedTask.status,
+        attributesWithCriteria,
+        attributesWithCriteriaMet,
+        allCriteriaMet
+      });
+
       // Auto-update if all criteria met and task is not already DONE
       if (allCriteriaMet && selectedTask.status !== 'DONE') {
         console.log('All telemetry criteria met - auto-updating task status to DONE');
         updateTaskStatus({
           variables: {
             input: {
-              taskId: selectedTask.id,
+              customerTaskId: selectedTask.id,
               status: 'DONE',
               notes: 'Automatically marked as done via telemetry criteria',
               updateSource: 'TELEMETRY'
             }
           }
         }).then(() => {
+          console.log('Task status updated successfully via telemetry');
           // Update the selectedTask in state to reflect the change
           setSelectedTask({
             ...selectedTask,
@@ -753,6 +763,10 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
             statusUpdateSource: 'TELEMETRY',
             statusUpdatedAt: new Date().toISOString()
           });
+          setSuccess('Task automatically marked as DONE via telemetry criteria ✓');
+        }).catch((err) => {
+          console.error('Failed to auto-update task status:', err);
+          setError(`Failed to auto-update task: ${err.message}`);
         });
       }
     }

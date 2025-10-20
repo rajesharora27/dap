@@ -14,7 +14,6 @@ export interface TelemetryTemplateRow {
   taskName: string;
   attributeName: string;
   dataType: string;
-  successCriteria: string;
   currentValue: string;
   date: string;
   notes: string;
@@ -64,7 +63,6 @@ export class CustomerTelemetryExportService {
       { header: 'Task Name', key: 'taskName', width: 30 },
       { header: 'Attribute Name', key: 'attributeName', width: 25 },
       { header: 'Data Type', key: 'dataType', width: 15 },
-      { header: 'Success Criteria (Info)', key: 'successCriteria', width: 40 },
       { header: 'Current Value', key: 'currentValue', width: 20 },
       { header: 'Date', key: 'date', width: 15 },
       { header: 'Notes', key: 'notes', width: 30 }
@@ -93,27 +91,11 @@ export class CustomerTelemetryExportService {
 
       for (const attribute of task.telemetryAttributes) {
         const row = worksheet.getRow(rowIndex);
-        
-        // Format success criteria for display
-        let criteriaDisplay = 'No criteria';
-        try {
-          if (attribute.successCriteria && typeof attribute.successCriteria === 'object') {
-            const criteria = attribute.successCriteria as any;
-            if (criteria.operator && criteria.value !== undefined) {
-              criteriaDisplay = `${criteria.operator} ${criteria.value}`;
-            } else if (criteria.type === 'and' || criteria.type === 'or') {
-              criteriaDisplay = `${criteria.type.toUpperCase()} condition`;
-            }
-          }
-        } catch (e) {
-          criteriaDisplay = 'Complex criteria';
-        }
 
         row.values = {
           taskName: task.name,
           attributeName: attribute.name,
           dataType: attribute.dataType,
-          successCriteria: criteriaDisplay,
           currentValue: '', // User will fill this
           date: today,
           notes: ''
