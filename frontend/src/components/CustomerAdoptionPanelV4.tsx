@@ -622,14 +622,32 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
   });
 
   const [exportTelemetryTemplate] = useMutation(EXPORT_TELEMETRY_TEMPLATE, {
-    onCompleted: (data) => {
+    onCompleted: async (data) => {
       const { url, filename } = data.exportAdoptionPlanTelemetryTemplate;
-      // Download the file from the backend URL
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      setSuccess(`Telemetry template exported: ${filename}`);
+      
+      try {
+        // Fetch the file from the backend as a blob
+        const response = await fetch(`http://localhost:4000${url}`);
+        if (!response.ok) {
+          throw new Error(`Failed to download file: ${response.statusText}`);
+        }
+        
+        const blob = await response.blob();
+        
+        // Create a download link and trigger download
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(downloadUrl);
+        
+        setSuccess(`Telemetry template exported: ${filename}`);
+      } catch (err: any) {
+        setError(`Failed to download template: ${err.message}`);
+      }
     },
     onError: (err) => setError(`Failed to export telemetry template: ${err.message}`),
   });
