@@ -138,6 +138,11 @@ const GET_ADOPTION_PLAN = gql`
           name
           description
           successCriteria
+          values {
+            id
+            value
+            criteriaMet
+          }
         }
         outcomes {
           id
@@ -237,6 +242,11 @@ const SYNC_ADOPTION_PLAN = gql`
           name
           description
           successCriteria
+          values {
+            id
+            value
+            criteriaMet
+          }
         }
         outcomes {
           id
@@ -1213,6 +1223,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                 <Typography variant="subtitle2" fontWeight="bold">Status</Typography>
                               </TableCell>
                               <TableCell width={120}>
+                                <Typography variant="subtitle2" fontWeight="bold">Telemetry</Typography>
+                              </TableCell>
+                              <TableCell width={120}>
                                 <Typography variant="subtitle2" fontWeight="bold">Updated Via</Typography>
                               </TableCell>
                               <TableCell width={100}>
@@ -1223,7 +1236,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                           <TableBody>
                             {filteredTasks.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={7} align="center">
+                                <TableCell colSpan={8} align="center">
                                   <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
                                     No tasks match the selected filters
                                   </Typography>
@@ -1327,6 +1340,46 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     color={getStatusColor(task.status) as any}
                                     size="small"
                                   />
+                                </TableCell>
+                                <TableCell>
+                                  {(() => {
+                                    const totalAttributes = task.telemetryAttributes?.length || 0;
+                                    const attributesWithValues = task.telemetryAttributes?.filter((attr: any) => 
+                                      attr.values && attr.values.length > 0
+                                    ).length || 0;
+                                    const criteriaMet = task.telemetryAttributes?.reduce((count: number, attr: any) => {
+                                      return count + (attr.values?.filter((v: any) => v.criteriaMet).length || 0);
+                                    }, 0) || 0;
+                                    const criteriaTotal = task.telemetryAttributes?.filter((attr: any) => 
+                                      attr.successCriteria && attr.successCriteria !== 'No criteria'
+                                    ).length || 0;
+                                    
+                                    if (totalAttributes === 0) {
+                                      return <Typography variant="caption" color="text.secondary">-</Typography>;
+                                    }
+                                    
+                                    const hasData = attributesWithValues > 0;
+                                    const percentage = criteriaTotal > 0 ? Math.round((criteriaMet / criteriaTotal) * 100) : 0;
+                                    
+                                    return (
+                                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                                        <Chip
+                                          label={`${attributesWithValues}/${totalAttributes}`}
+                                          size="small"
+                                          color={hasData ? 'info' : 'default'}
+                                          sx={{ fontSize: '0.7rem', height: 20 }}
+                                        />
+                                        {criteriaTotal > 0 && (
+                                          <Chip
+                                            label={`${criteriaMet}/${criteriaTotal} ✓`}
+                                            size="small"
+                                            color={percentage === 100 ? 'success' : percentage > 0 ? 'warning' : 'default'}
+                                            sx={{ fontSize: '0.7rem', height: 20 }}
+                                          />
+                                        )}
+                                      </Box>
+                                    );
+                                  })()}
                                 </TableCell>
                                 <TableCell>
                                   {task.statusUpdateSource ? (
