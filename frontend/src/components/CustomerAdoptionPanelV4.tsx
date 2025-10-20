@@ -623,16 +623,19 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
 
   const [exportTelemetryTemplate] = useMutation(EXPORT_TELEMETRY_TEMPLATE, {
     onCompleted: async (data) => {
+      console.log('Export mutation completed', data);
       const { url, filename } = data.exportAdoptionPlanTelemetryTemplate;
       
       try {
         // Fetch the file from the backend as a blob
+        console.log('Fetching file from:', `http://localhost:4000${url}`);
         const response = await fetch(`http://localhost:4000${url}`);
         if (!response.ok) {
           throw new Error(`Failed to download file: ${response.statusText}`);
         }
         
         const blob = await response.blob();
+        console.log('Blob received, size:', blob.size);
         
         // Create a download link and trigger download
         const downloadUrl = window.URL.createObjectURL(blob);
@@ -646,10 +649,14 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
         
         setSuccess(`Telemetry template exported: ${filename}`);
       } catch (err: any) {
+        console.error('Download error:', err);
         setError(`Failed to download template: ${err.message}`);
       }
     },
-    onError: (err) => setError(`Failed to export telemetry template: ${err.message}`),
+    onError: (err) => {
+      console.error('Export mutation error:', err);
+      setError(`Failed to export telemetry template: ${err.message}`);
+    },
   });
 
   const [importTelemetry] = useMutation(IMPORT_TELEMETRY, {
@@ -763,12 +770,20 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     }
   };
 
-  const handleExportTelemetry = () => {
+  const handleExportTelemetry = async () => {
+    console.log('Export telemetry clicked', { adoptionPlanId, selectedCustomerProduct });
     if (!adoptionPlanId) {
       setError('No adoption plan found');
       return;
     }
-    exportTelemetryTemplate({ variables: { adoptionPlanId } });
+    try {
+      console.log('Calling exportTelemetryTemplate mutation');
+      await exportTelemetryTemplate({ variables: { adoptionPlanId } });
+      console.log('Mutation call completed');
+    } catch (err: any) {
+      console.error('Mutation call error:', err);
+      setError(`Export failed: ${err.message}`);
+    }
   };
 
   const handleImportTelemetry = async (event: React.ChangeEvent<HTMLInputElement>) => {
