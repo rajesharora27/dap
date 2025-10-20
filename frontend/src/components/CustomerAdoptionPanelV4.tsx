@@ -1420,10 +1420,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     const attributesWithValues = task.telemetryAttributes?.filter((attr: any) => 
                                       attr.values && attr.values.length > 0
                                     ).length || 0;
-                                    const criteriaMet = task.telemetryAttributes?.reduce((count: number, attr: any) => {
-                                      return count + (attr.values?.filter((v: any) => v.criteriaMet).length || 0);
-                                    }, 0) || 0;
-                                    const criteriaTotal = task.telemetryAttributes?.filter((attr: any) => 
+                                    
+                                    // Count attributes that have at least one value with criteriaMet === true
+                                    const attributesWithCriteriaMet = task.telemetryAttributes?.filter((attr: any) => 
+                                      attr.values?.some((v: any) => v.criteriaMet === true)
+                                    ).length || 0;
+                                    
+                                    const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) => 
                                       attr.successCriteria && attr.successCriteria !== 'No criteria'
                                     ).length || 0;
                                     
@@ -1432,7 +1435,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     }
                                     
                                     const hasData = attributesWithValues > 0;
-                                    const percentage = criteriaTotal > 0 ? Math.round((criteriaMet / criteriaTotal) * 100) : 0;
+                                    const percentage = attributesWithCriteria > 0 ? Math.round((attributesWithCriteriaMet / attributesWithCriteria) * 100) : 0;
                                     
                                     return (
                                       <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
@@ -1459,13 +1462,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                             sx={{ fontSize: '0.7rem', height: 20 }}
                                           />
                                         </Tooltip>
-                                        {criteriaTotal > 0 && (
+                                        {attributesWithCriteria > 0 && (
                                           <Tooltip 
                                             title={
                                               <Box>
                                                 <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Success Criteria Met</Typography>
                                                 <Typography variant="caption" display="block">
-                                                  {criteriaMet} out of {criteriaTotal} success criteria are currently met
+                                                  {attributesWithCriteriaMet} out of {attributesWithCriteria} success criteria are currently met
                                                 </Typography>
                                                 {percentage === 100 && (
                                                   <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'success.light' }}>
@@ -1487,7 +1490,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                             arrow
                                           >
                                             <Chip
-                                              label={`${criteriaMet}/${criteriaTotal} ✓`}
+                                              label={`${attributesWithCriteriaMet}/${attributesWithCriteria} ✓`}
                                               size="small"
                                               color={percentage === 100 ? 'success' : percentage > 0 ? 'warning' : 'default'}
                                               sx={{ fontSize: '0.7rem', height: 20 }}
@@ -1744,8 +1747,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                 }}
               >
                 <Tab label="Details" />
-                <Tab label="Success Criteria" />
-                <Tab label="Telemetry Values" disabled={!selectedTask.telemetryAttributes || selectedTask.telemetryAttributes.length === 0} />
+                <Tab label="Telemetry" disabled={!selectedTask.telemetryAttributes || selectedTask.telemetryAttributes.length === 0} />
               </Tabs>
 
               {/* Tab 0: Details */}
@@ -1957,93 +1959,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                 </Box>
               )}
 
-              {/* Tab 1: Success Criteria */}
+              {/* Tab 1: Telemetry */}
               {taskDetailsActiveTab === 1 && (
                 <Box>
-              {/* Success Criteria */}
-              {selectedTask.telemetryAttributes && selectedTask.telemetryAttributes.some((attr: any) => attr.successCriteria) && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                    Success Criteria
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {selectedTask.telemetryAttributes
-                      .filter((attr: any) => attr.successCriteria)
-                      .map((attr: any) => {
-                        let criteriaDisplay: React.ReactNode = null;
-                        
-                        try {
-                          const parsed = JSON.parse(attr.successCriteria);
-                          if (typeof parsed === 'object' && parsed !== null) {
-                            criteriaDisplay = (
-                              <Box component="pre" sx={{ 
-                                m: 0, 
-                                p: 1, 
-                                backgroundColor: '#f5f5f5', 
-                                borderRadius: 1, 
-                                fontSize: '0.75rem',
-                                overflow: 'auto',
-                                fontFamily: 'monospace'
-                              }}>
-                                {JSON.stringify(parsed, null, 2)}
-                              </Box>
-                            );
-                          } else {
-                            criteriaDisplay = <Typography variant="body2">{String(parsed)}</Typography>;
-                          }
-                        } catch {
-                          criteriaDisplay = <Typography variant="body2">{attr.successCriteria}</Typography>;
-                        }
-
-                        return (
-                          <Box
-                            key={attr.id}
-                            sx={{
-                              p: 2,
-                              border: '1px solid #2196F3',
-                              borderRadius: 1,
-                              backgroundColor: '#E3F2FD'
-                            }}
-                          >
-                            <Typography variant="subtitle2" color="primary" gutterBottom sx={{ fontWeight: 600 }}>
-                              {attr.name}
-                            </Typography>
-                            {attr.description && (
-                              <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontSize: '0.85rem' }}>
-                                {attr.description}
-                              </Typography>
-                            )}
-                            {criteriaDisplay}
-                          </Box>
-                        );
-                      })}
-                  </Box>
-                </Box>
-              )}
-
-              {!selectedTask.telemetryAttributes?.some((attr: any) => attr.successCriteria) && (
-                <Box sx={{ 
-                  mb: 3, 
-                  p: 2, 
-                  backgroundColor: '#FFF3E0', 
-                  border: '1px solid #FF9800', 
-                  borderRadius: 1 
-                }}>
-                  <Typography variant="body2" color="warning.dark">
-                    ⚠️ No success criteria defined for this task
-                  </Typography>
-                </Box>
-              )}
-                </Box>
-              )}
-
-              {/* Tab 2: Telemetry Values */}
-              {taskDetailsActiveTab === 2 && (
-                <Box>
-                  <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mb: 2 }}>
-                    Current Telemetry Values
-                  </Typography>
-
                   {selectedTask.telemetryAttributes && selectedTask.telemetryAttributes.length > 0 ? (
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       {selectedTask.telemetryAttributes.map((attr: any) => {
@@ -2084,7 +2002,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                           <Card key={attr.id} variant="outlined">
                             <CardContent>
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
-                                <Box>
+                                <Box sx={{ flex: 1 }}>
                                   <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
                                     {attr.name}
                                   </Typography>
@@ -2099,7 +2017,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     label={latestValue.criteriaMet ? 'Criteria Met ✓' : 'Criteria Not Met'}
                                     size="small"
                                     color={latestValue.criteriaMet ? 'success' : 'default'}
-                                    sx={{ ml: 2 }}
+                                    sx={{ ml: 2, flexShrink: 0 }}
                                   />
                                 )}
                               </Box>
@@ -2155,22 +2073,22 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                             const attributesWithValues = selectedTask.telemetryAttributes.filter((attr: any) => 
                               attr.values && attr.values.length > 0
                             ).length;
-                            const criteriaMetCount = selectedTask.telemetryAttributes.reduce((count: number, attr: any) => {
-                              return count + (attr.values?.filter((v: any) => v.criteriaMet).length > 0 ? 1 : 0);
-                            }, 0);
-                            const criteriaTotal = selectedTask.telemetryAttributes.filter((attr: any) => 
+                            const attributesWithCriteriaMet = selectedTask.telemetryAttributes.filter((attr: any) => 
+                              attr.values?.some((v: any) => v.criteriaMet === true)
+                            ).length;
+                            const attributesWithCriteria = selectedTask.telemetryAttributes.filter((attr: any) => 
                               attr.successCriteria && attr.successCriteria !== 'No criteria'
                             ).length;
-                            const allCriteriaMet = criteriaTotal > 0 && criteriaMetCount === criteriaTotal;
+                            const allCriteriaMet = attributesWithCriteria > 0 && attributesWithCriteriaMet === attributesWithCriteria;
 
                             return (
                               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                 <Typography variant="body2">
                                   <strong>{attributesWithValues}</strong> out of <strong>{totalAttributes}</strong> attributes have imported values
                                 </Typography>
-                                {criteriaTotal > 0 && (
+                                {attributesWithCriteria > 0 && (
                                   <Typography variant="body2">
-                                    <strong>{criteriaMetCount}</strong> out of <strong>{criteriaTotal}</strong> success criteria are met
+                                    <strong>{attributesWithCriteriaMet}</strong> out of <strong>{attributesWithCriteria}</strong> success criteria are met
                                   </Typography>
                                 )}
                                 {allCriteriaMet && (
@@ -2178,9 +2096,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     ✓ All telemetry criteria met! This task can be marked as "Done via Telemetry"
                                   </Alert>
                                 )}
-                                {!allCriteriaMet && criteriaTotal > 0 && criteriaMetCount > 0 && (
+                                {!allCriteriaMet && attributesWithCriteria > 0 && attributesWithCriteriaMet > 0 && (
                                   <Alert severity="info" sx={{ mt: 1 }}>
-                                    {Math.round((criteriaMetCount / criteriaTotal) * 100)}% of criteria met. 
+                                    {Math.round((attributesWithCriteriaMet / attributesWithCriteria) * 100)}% of criteria met. 
                                     Keep monitoring telemetry values.
                                   </Alert>
                                 )}
