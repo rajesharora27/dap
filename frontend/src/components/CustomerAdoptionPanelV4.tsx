@@ -1436,19 +1436,63 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     
                                     return (
                                       <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-                                        <Chip
-                                          label={`${attributesWithValues}/${totalAttributes}`}
-                                          size="small"
-                                          color={hasData ? 'info' : 'default'}
-                                          sx={{ fontSize: '0.7rem', height: 20 }}
-                                        />
-                                        {criteriaTotal > 0 && (
+                                        <Tooltip 
+                                          title={
+                                            <Box>
+                                              <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Telemetry Values Filled</Typography>
+                                              <Typography variant="caption" display="block">
+                                                {attributesWithValues} out of {totalAttributes} telemetry attributes have imported values
+                                              </Typography>
+                                              {!hasData && (
+                                                <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
+                                                  No telemetry data imported yet
+                                                </Typography>
+                                              )}
+                                            </Box>
+                                          }
+                                          arrow
+                                        >
                                           <Chip
-                                            label={`${criteriaMet}/${criteriaTotal} ✓`}
+                                            label={`${attributesWithValues}/${totalAttributes}`}
                                             size="small"
-                                            color={percentage === 100 ? 'success' : percentage > 0 ? 'warning' : 'default'}
+                                            color={hasData ? 'info' : 'default'}
                                             sx={{ fontSize: '0.7rem', height: 20 }}
                                           />
+                                        </Tooltip>
+                                        {criteriaTotal > 0 && (
+                                          <Tooltip 
+                                            title={
+                                              <Box>
+                                                <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Success Criteria Met</Typography>
+                                                <Typography variant="caption" display="block">
+                                                  {criteriaMet} out of {criteriaTotal} success criteria are currently met
+                                                </Typography>
+                                                {percentage === 100 && (
+                                                  <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'success.light' }}>
+                                                    ✓ All criteria met! Task can be marked as "Done via Telemetry"
+                                                  </Typography>
+                                                )}
+                                                {percentage < 100 && percentage > 0 && (
+                                                  <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
+                                                    {percentage}% complete - Some criteria still need to be met
+                                                  </Typography>
+                                                )}
+                                                {percentage === 0 && (
+                                                  <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'error.light' }}>
+                                                    No criteria met yet
+                                                  </Typography>
+                                                )}
+                                              </Box>
+                                            }
+                                            arrow
+                                          >
+                                            <Chip
+                                              label={`${criteriaMet}/${criteriaTotal} ✓`}
+                                              size="small"
+                                              color={percentage === 100 ? 'success' : percentage > 0 ? 'warning' : 'default'}
+                                              sx={{ fontSize: '0.7rem', height: 20 }}
+                                            />
+                                          </Tooltip>
                                         )}
                                       </Box>
                                     );
@@ -1701,6 +1745,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
               >
                 <Tab label="Details" />
                 <Tab label="Success Criteria" />
+                <Tab label="Telemetry Values" disabled={!selectedTask.telemetryAttributes || selectedTask.telemetryAttributes.length === 0} />
               </Tabs>
 
               {/* Tab 0: Details */}
@@ -1989,6 +2034,167 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                   </Typography>
                 </Box>
               )}
+                </Box>
+              )}
+
+              {/* Tab 2: Telemetry Values */}
+              {taskDetailsActiveTab === 2 && (
+                <Box>
+                  <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ mb: 2 }}>
+                    Current Telemetry Values
+                  </Typography>
+
+                  {selectedTask.telemetryAttributes && selectedTask.telemetryAttributes.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {selectedTask.telemetryAttributes.map((attr: any) => {
+                        // Get the latest value
+                        const latestValue = attr.values && attr.values.length > 0 
+                          ? attr.values[attr.values.length - 1] 
+                          : null;
+                        
+                        // Parse success criteria for display
+                        let criteriaText = 'No criteria defined';
+                        let criteriaColor = 'text.secondary';
+                        
+                        if (attr.successCriteria) {
+                          try {
+                            const parsed = JSON.parse(attr.successCriteria);
+                            if (parsed.type === 'boolean_flag') {
+                              criteriaText = `Must be ${parsed.expectedValue ? 'TRUE' : 'FALSE'}`;
+                            } else if (parsed.type === 'number_threshold') {
+                              const opMap: Record<string, string> = {
+                                'greater_than': '>',
+                                'greater_than_or_equal': '>=',
+                                'less_than': '<',
+                                'less_than_or_equal': '<=',
+                                'equals': '='
+                              };
+                              criteriaText = `${opMap[parsed.operator] || parsed.operator} ${parsed.threshold}`;
+                            } else if (parsed.type === 'string_match') {
+                              criteriaText = `Match: "${parsed.pattern}"`;
+                            } else {
+                              criteriaText = parsed.description || 'Criteria defined';
+                            }
+                          } catch (e) {
+                            criteriaText = 'Criteria defined (complex)';
+                          }
+                        }
+
+                        return (
+                          <Card key={attr.id} variant="outlined">
+                            <CardContent>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
+                                <Box>
+                                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                                    {attr.name}
+                                  </Typography>
+                                  {attr.description && (
+                                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                                      {attr.description}
+                                    </Typography>
+                                  )}
+                                </Box>
+                                {latestValue && (
+                                  <Chip
+                                    label={latestValue.criteriaMet ? 'Criteria Met ✓' : 'Criteria Not Met'}
+                                    size="small"
+                                    color={latestValue.criteriaMet ? 'success' : 'default'}
+                                    sx={{ ml: 2 }}
+                                  />
+                                )}
+                              </Box>
+
+                              <Divider sx={{ my: 1 }} />
+
+                              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, mt: 2 }}>
+                                <Box>
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    Success Criteria
+                                  </Typography>
+                                  <Typography variant="body2" sx={{ fontWeight: 500, color: criteriaColor }}>
+                                    {criteriaText}
+                                  </Typography>
+                                </Box>
+
+                                <Box>
+                                  <Typography variant="caption" color="text.secondary" display="block">
+                                    Last Imported Value
+                                  </Typography>
+                                  {latestValue ? (
+                                    <Box>
+                                      <Typography 
+                                        variant="body2" 
+                                        sx={{ 
+                                          fontWeight: 600,
+                                          color: latestValue.criteriaMet ? 'success.main' : 'text.primary'
+                                        }}
+                                      >
+                                        {latestValue.value}
+                                      </Typography>
+                                    </Box>
+                                  ) : (
+                                    <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                                      No value imported yet
+                                    </Typography>
+                                  )}
+                                </Box>
+                              </Box>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+
+                      {/* Summary Box */}
+                      <Card variant="outlined" sx={{ bgcolor: 'grey.50', mt: 1 }}>
+                        <CardContent>
+                          <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                            Summary
+                          </Typography>
+                          {(() => {
+                            const totalAttributes = selectedTask.telemetryAttributes.length;
+                            const attributesWithValues = selectedTask.telemetryAttributes.filter((attr: any) => 
+                              attr.values && attr.values.length > 0
+                            ).length;
+                            const criteriaMetCount = selectedTask.telemetryAttributes.reduce((count: number, attr: any) => {
+                              return count + (attr.values?.filter((v: any) => v.criteriaMet).length > 0 ? 1 : 0);
+                            }, 0);
+                            const criteriaTotal = selectedTask.telemetryAttributes.filter((attr: any) => 
+                              attr.successCriteria && attr.successCriteria !== 'No criteria'
+                            ).length;
+                            const allCriteriaMet = criteriaTotal > 0 && criteriaMetCount === criteriaTotal;
+
+                            return (
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <Typography variant="body2">
+                                  <strong>{attributesWithValues}</strong> out of <strong>{totalAttributes}</strong> attributes have imported values
+                                </Typography>
+                                {criteriaTotal > 0 && (
+                                  <Typography variant="body2">
+                                    <strong>{criteriaMetCount}</strong> out of <strong>{criteriaTotal}</strong> success criteria are met
+                                  </Typography>
+                                )}
+                                {allCriteriaMet && (
+                                  <Alert severity="success" sx={{ mt: 1 }}>
+                                    ✓ All telemetry criteria met! This task can be marked as "Done via Telemetry"
+                                  </Alert>
+                                )}
+                                {!allCriteriaMet && criteriaTotal > 0 && criteriaMetCount > 0 && (
+                                  <Alert severity="info" sx={{ mt: 1 }}>
+                                    {Math.round((criteriaMetCount / criteriaTotal) * 100)}% of criteria met. 
+                                    Keep monitoring telemetry values.
+                                  </Alert>
+                                )}
+                              </Box>
+                            );
+                          })()}
+                        </CardContent>
+                      </Card>
+                    </Box>
+                  ) : (
+                    <Alert severity="info">
+                      No telemetry attributes configured for this task
+                    </Alert>
+                  )}
                 </Box>
               )}
             </Box>
