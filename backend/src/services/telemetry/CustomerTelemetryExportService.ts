@@ -270,10 +270,9 @@ export class CustomerTelemetryExportService {
       }
     });
 
-    // Make Instructions the first sheet
-    workbook.worksheets[1] = workbook.worksheets[0];
-    workbook.worksheets[0] = instructionsSheet;
-
+    // Note: Instructions sheet added second, so Telemetry_Data is first tab
+    // This is intentional - users should see the data sheet first
+    
     // Generate buffer
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer);
