@@ -18,17 +18,20 @@ const getConfig = (): FrontendConfig => {
   
   const configs = {
     development: {
-      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || 'http://localhost:4000/graphql') : 'http://localhost:4000/graphql',
+      // Development: Use relative paths, Vite proxy will forward to backend
+      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || '/graphql') : '/graphql',
       frontendUrl: isViteEnv ? (import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173') : 'http://localhost:5173',
       environment: 'development'
     },
     production: {
-      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || 'https://api.your-domain.com/graphql') : 'https://api.your-domain.com/graphql',
+      // Production: Use relative paths, reverse proxy will forward to backend
+      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || '/graphql') : '/graphql',
       frontendUrl: isViteEnv ? (import.meta.env.VITE_FRONTEND_URL || 'https://your-domain.com') : 'https://your-domain.com',
       environment: 'production'
     },
     staging: {
-      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || 'https://api-staging.your-domain.com/graphql') : 'https://api-staging.your-domain.com/graphql',
+      // Staging: Use relative paths, reverse proxy will forward to backend
+      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || '/graphql') : '/graphql',
       frontendUrl: isViteEnv ? (import.meta.env.VITE_FRONTEND_URL || 'https://staging.your-domain.com') : 'https://staging.your-domain.com',
       environment: 'staging'
     }

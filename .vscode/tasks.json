@@ -1,0 +1,18 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Persistent Terminal",
+            "type": "shell",
+            "command": "/bin/bash", // Or your preferred shell like /bin/zsh
+            "args": ["-l"],
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "group": "myTerminalGroup", // Group terminals together
+                "reveal": "always",
+                "panel": "shared" // Crucial for sharing the same panel
+            }
+        }
+    ]
+}
