@@ -1063,7 +1063,7 @@ export const resolvers = {
       }
 
       // Extract fields that need special handling
-      const { outcomeIds, dependencies, licenseId, releaseIds, ...taskData } = input;
+      const { outcomeIds, dependencies, licenseId, releaseIds, telemetryAttributes, ...taskData } = input;
 
       // Handle licenseId by converting it to licenseLevel
       let effectiveLicenseLevel = input.licenseLevel;
@@ -1234,6 +1234,22 @@ export const resolvers = {
         });
       }
 
+      // Handle telemetry attributes if provided
+      if (input.telemetryAttributes && input.telemetryAttributes.length > 0) {
+        await prisma.telemetryAttribute.createMany({
+          data: input.telemetryAttributes.map((attr: any, index: number) => ({
+            taskId: task.id,
+            name: attr.name,
+            description: attr.description || '',
+            dataType: attr.dataType,
+            isRequired: attr.isRequired || false,
+            successCriteria: attr.successCriteria || null,
+            order: attr.order !== undefined ? attr.order : index,
+            isActive: true
+          }))
+        });
+      }
+
       await logAudit('CREATE_TASK', 'Task', task.id, { input }, ctx.user?.id);
       return task;
     },
@@ -1383,7 +1399,7 @@ export const resolvers = {
       }
 
       // Extract fields that need special handling
-      const { outcomeIds, licenseId, releaseIds, ...inputData } = input;
+      const { outcomeIds, licenseId, releaseIds, telemetryAttributes, ...inputData } = input;
 
       // Handle licenseId by converting it to licenseLevel
       let effectiveLicenseLevel = inputData.licenseLevel;
@@ -1508,6 +1524,30 @@ export const resolvers = {
             data: releaseIds.map((releaseId: string) => ({
               taskId: id,
               releaseId: releaseId
+            }))
+          });
+        }
+      }
+
+      // Handle telemetry attributes if provided
+      if (telemetryAttributes !== undefined) {
+        // First, remove all existing telemetry attributes
+        await prisma.telemetryAttribute.deleteMany({
+          where: { taskId: id }
+        });
+
+        // Then, create new attributes if provided
+        if (telemetryAttributes.length > 0) {
+          await prisma.telemetryAttribute.createMany({
+            data: telemetryAttributes.map((attr: any, index: number) => ({
+              taskId: id,
+              name: attr.name,
+              description: attr.description || '',
+              dataType: attr.dataType,
+              isRequired: attr.isRequired || false,
+              successCriteria: attr.successCriteria || null,
+              order: attr.order !== undefined ? attr.order : index,
+              isActive: true
             }))
           });
         }
