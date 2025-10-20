@@ -1140,7 +1140,7 @@ export const CustomerAdoptionMutationResolvers = {
   updateCustomerTaskStatus: async (_: any, { input }: any, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
     
-    const { customerTaskId, status, notes } = input;
+    const { customerTaskId, status, notes, updateSource } = input;
     
     const task = await prisma.customerTask.findUnique({
       where: { id: customerTaskId },
@@ -1156,7 +1156,8 @@ export const CustomerAdoptionMutationResolvers = {
     if (notes && notes.trim()) {
       const timestamp = new Date().toISOString();
       const user = ctx.user?.id || 'unknown';
-      const statusChange = `[${timestamp}] Status changed to ${status} by ${user}:\n${notes.trim()}\n\n`;
+      const source = updateSource || 'MANUAL';
+      const statusChange = `[${timestamp}] Status changed to ${status} by ${user} (via ${source}):\n${notes.trim()}\n\n`;
       updatedNotes = updatedNotes ? `${updatedNotes}${statusChange}` : statusChange;
     }
     
@@ -1164,7 +1165,7 @@ export const CustomerAdoptionMutationResolvers = {
       status,
       statusUpdatedAt: new Date(),
       statusUpdatedBy: ctx.user?.id || 'unknown',
-      statusUpdateSource: 'MANUAL',
+      statusUpdateSource: updateSource || 'MANUAL',
       statusNotes: updatedNotes,
       isComplete: status === 'DONE',
       completedAt: status === 'DONE' ? new Date() : null,
