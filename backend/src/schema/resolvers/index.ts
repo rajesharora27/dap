@@ -22,7 +22,8 @@ import {
   CustomerProductWithPlanResolvers,
   AdoptionPlanResolvers,
   CustomerTaskResolvers,
-  CustomerTelemetryAttributeResolvers
+  CustomerTelemetryAttributeResolvers,
+  CustomerTelemetryValueResolvers
 } from './customerAdoption';
 import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../lib/pagination';
 import { logAudit } from '../../lib/audit';
@@ -411,6 +412,7 @@ export const resolvers = {
   AdoptionPlan: AdoptionPlanResolvers,
   CustomerTask: CustomerTaskResolvers,
   CustomerTelemetryAttribute: CustomerTelemetryAttributeResolvers,
+  CustomerTelemetryValue: CustomerTelemetryValueResolvers,
   
   Outcome: {
     product: (parent: any) => {

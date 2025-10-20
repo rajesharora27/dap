@@ -616,6 +616,7 @@ export const typeDefs = gql`
     batchId: String
     notes: String
     createdAt: String!
+    criteriaMet: Boolean    # Computed field: whether value meets success criteria
   }
 
   type TelemetryProgress {

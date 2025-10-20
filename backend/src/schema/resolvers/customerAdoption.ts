@@ -2080,3 +2080,53 @@ export const CustomerTelemetryAttributeResolvers = {
     return value;
   },
 };
+
+export const CustomerTelemetryValueResolvers = {
+  criteriaMet: async (parent: any) => {
+    // If no success criteria, return null (cannot evaluate)
+    if (!parent.customerAttribute?.successCriteria) {
+      return null;
+    }
+
+    // Need to fetch the attribute if not included
+    let attribute = parent.customerAttribute;
+    if (!attribute || !attribute.successCriteria) {
+      attribute = await prisma.customerTelemetryAttribute.findUnique({
+        where: { id: parent.customerAttributeId },
+      });
+    }
+
+    if (!attribute?.successCriteria) {
+      return null;
+    }
+
+    const criteria = typeof attribute.successCriteria === 'string'
+      ? JSON.parse(attribute.successCriteria)
+      : attribute.successCriteria;
+
+    // Evaluate based on criteria type
+    const value = typeof parent.value === 'string' ? JSON.parse(parent.value) : parent.value;
+
+    if (criteria.type === 'boolean_equals') {
+      return value === criteria.expectedValue;
+    } else if (criteria.type === 'number_threshold') {
+      const numValue = Number(value);
+      const threshold = Number(criteria.threshold);
+      
+      switch (criteria.operator) {
+        case 'greater_than': return numValue > threshold;
+        case 'greater_than_or_equal': return numValue >= threshold;
+        case 'less_than': return numValue < threshold;
+        case 'less_than_or_equal': return numValue <= threshold;
+        case 'equals': return numValue === threshold;
+        default: return false;
+      }
+    } else if (criteria.type === 'string_contains') {
+      const strValue = String(value).toLowerCase();
+      const expectedStr = String(criteria.expectedValue).toLowerCase();
+      return strValue.includes(expectedStr);
+    }
+
+    return null;
+  },
+};
