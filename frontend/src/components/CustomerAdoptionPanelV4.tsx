@@ -667,12 +667,18 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
         console.log('Downloaded bytes:', arrayBuffer.byteLength);
         
         // Check first few bytes to verify it's a valid Excel file (should start with PK)
-        const firstBytes = new Uint8Array(arrayBuffer.slice(0, 4));
-        const header = Array.from(firstBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-        console.log('File header:', header, 'Expected: 504b0304');
+        const firstBytes = new Uint8Array(arrayBuffer.slice(0, Math.min(100, arrayBuffer.byteLength)));
+        const header = Array.from(firstBytes.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join('');
+        console.log('File header (first 4 bytes):', header, 'Expected: 504b0304');
+        
+        // Log first 100 bytes as string to see if it's HTML/JSON
+        const textDecoder = new TextDecoder();
+        const previewText = textDecoder.decode(firstBytes);
+        console.log('Content preview (first 100 chars):', previewText);
         
         if (header !== '504b0304' && header !== '504b0506') {
           console.error('Invalid Excel file header! File may be corrupted or wrong content type');
+          console.error('This might be an HTML error page or JSON response instead of an Excel file');
           throw new Error('Downloaded file is not a valid Excel file');
         }
 

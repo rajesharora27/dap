@@ -1874,8 +1874,9 @@ export const CustomerAdoptionMutationResolvers = {
     // Write buffer to file
     fs.writeFileSync(filePath, buffer);
     
-    // Generate download URL (assuming a static file server or endpoint)
-    const url = `/api/downloads/telemetry-exports/${filename}`;
+    // Generate download URL with properly encoded filename
+    const encodedFilename = encodeURIComponent(filename);
+    const url = `/api/downloads/telemetry-exports/${encodedFilename}`;
     
     await logAudit('EXPORT_TELEMETRY_TEMPLATE', 'AdoptionPlan', adoptionPlanId, metadata, ctx.user?.id);
     
