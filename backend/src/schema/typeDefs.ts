@@ -117,7 +117,7 @@ export const typeDefs = gql`
     description: String
     dataType: TelemetryDataType!
     isRequired: Boolean!
-    successCriteria: JSON!
+    successCriteria: JSON
     order: Int!
     isActive: Boolean!
     createdAt: String!
