@@ -624,10 +624,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
 
   const [exportTelemetryTemplate] = useMutation(EXPORT_TELEMETRY_TEMPLATE, {
     onCompleted: async (data) => {
+      console.log('Export mutation completed:', data);
       const { url, filename } = data.exportAdoptionPlanTelemetryTemplate;
+      console.log('Export URL:', url, 'Filename:', filename);
 
       try {
         const apiConfigUrl = getApiUrl();
+        console.log('API config URL:', apiConfigUrl);
         let baseOrigin: string;
 
         try {
@@ -638,12 +641,16 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
           baseOrigin = window.location.origin;
         }
 
+        console.log('Base origin:', baseOrigin);
         const fileUrl = new URL(url, baseOrigin);
+        console.log('Full file URL:', fileUrl.toString());
 
         const response = await fetch(fileUrl.toString(), {
           credentials: 'include',
           mode: 'cors',
         });
+
+        console.log('Fetch response status:', response.status, response.statusText);
 
         if (!response.ok) {
           throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
@@ -673,30 +680,31 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
           type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
         });
         
+        console.log('Creating download link...');
         const downloadUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.download = filename || 'telemetry_template.xlsx';
+        link.style.display = 'none';
         document.body.appendChild(link);
+        console.log('Triggering download...');
         link.click();
         document.body.removeChild(link);
-        window.setTimeout(() => window.URL.revokeObjectURL(downloadUrl), 5000);
+        window.setTimeout(() => {
+          window.URL.revokeObjectURL(downloadUrl);
+          console.log('Download URL revoked');
+        }, 5000);
 
         setSuccess(`Telemetry template exported: ${filename}`);
       } catch (err: any) {
         console.error('Telemetry export download failed:', err);
         setError(`Failed to download template: ${err.message}`);
-        // Fallback: open the URL in a new tab to allow manual download
-        try {
-          const fallbackBase = window.location.origin;
-          const fallbackUrl = new URL(url, fallbackBase);
-          window.open(fallbackUrl.toString(), '_blank', 'noopener');
-        } catch (_) {
-          // Ignore fallback failure
-        }
       }
     },
-    onError: (err) => setError(`Failed to export telemetry template: ${err.message}`),
+    onError: (err) => {
+      console.error('Export mutation error:', err);
+      setError(`Failed to export telemetry template: ${err.message}`);
+    },
   });
 
   const [importTelemetry] = useMutation(IMPORT_TELEMETRY, {
