@@ -649,7 +649,30 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
           throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
         }
 
-        const blob = await response.blob();
+        console.log('Response headers:', {
+          contentType: response.headers.get('content-type'),
+          contentLength: response.headers.get('content-length'),
+          contentDisposition: response.headers.get('content-disposition'),
+        });
+
+        // Get as arrayBuffer to ensure binary data is preserved
+        const arrayBuffer = await response.arrayBuffer();
+        console.log('Downloaded bytes:', arrayBuffer.byteLength);
+        
+        // Check first few bytes to verify it's a valid Excel file (should start with PK)
+        const firstBytes = new Uint8Array(arrayBuffer.slice(0, 4));
+        const header = Array.from(firstBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+        console.log('File header:', header, 'Expected: 504b0304');
+        
+        if (header !== '504b0304' && header !== '504b0506') {
+          console.error('Invalid Excel file header! File may be corrupted or wrong content type');
+          throw new Error('Downloaded file is not a valid Excel file');
+        }
+
+        const blob = new Blob([arrayBuffer], { 
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        });
+        
         const downloadUrl = window.URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = downloadUrl;
