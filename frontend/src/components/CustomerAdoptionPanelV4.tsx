@@ -54,9 +54,11 @@ import {
   CheckCircle,
   HourglassEmpty,
   TrendingUp,
+  TrendingDown,
   NotInterested,
   Article,
   OndemandVideo,
+  Assessment,
 } from '@mui/icons-material';
 import { CustomerDialog } from './dialogs/CustomerDialog';
 import { AssignProductDialog } from './dialogs/AssignProductDialog';
@@ -141,6 +143,7 @@ const GET_ADOPTION_PLAN = gql`
           description
           dataType
           successCriteria
+          isMet
           values {
             id
             value
@@ -246,6 +249,7 @@ const SYNC_ADOPTION_PLAN = gql`
           description
           dataType
           successCriteria
+          isMet
           values {
             id
             value
@@ -260,6 +264,29 @@ const SYNC_ADOPTION_PLAN = gql`
           id
           name
           level
+        }
+      }
+    }
+  }
+`;
+
+const EVALUATE_ALL_TASKS_TELEMETRY = gql`
+  mutation EvaluateAllTasksTelemetry($adoptionPlanId: ID!) {
+    evaluateAllTasksTelemetry(adoptionPlanId: $adoptionPlanId) {
+      id
+      progressPercentage
+      totalTasks
+      completedTasks
+      tasks {
+        id
+        name
+        status
+        statusUpdatedAt
+        statusUpdatedBy
+        statusUpdateSource
+        telemetryAttributes {
+          id
+          isMet
         }
       }
     }
@@ -336,19 +363,21 @@ const IMPORT_TELEMETRY = gql`
   mutation ImportTelemetry($adoptionPlanId: ID!, $file: Upload!) {
     importAdoptionPlanTelemetry(adoptionPlanId: $adoptionPlanId, file: $file) {
       success
-      message
+      batchId
       summary {
-        totalAttributes
-        valuesImported
+        tasksProcessed
+        attributesUpdated
         criteriaEvaluated
-        criteriaMet
+        errors
       }
       taskResults {
         taskId
         taskName
-        attributesImported
+        attributesUpdated
         criteriaMet
         criteriaTotal
+        completionPercentage
+        errors
       }
     }
   }
@@ -359,6 +388,24 @@ interface StatusDialogState {
   taskId: string;
   taskName: string;
   currentStatus: string;
+}
+
+interface ImportResultDialog {
+  open: boolean;
+  success: boolean;
+  summary?: {
+    tasksProcessed: number;
+    attributesUpdated: number;
+    criteriaEvaluated: number;
+    errors: string[];
+  };
+  taskResults?: Array<{
+    taskName: string;
+    criteriaMet: number;
+    criteriaTotal: number;
+    completionPercentage: number;
+  }>;
+  errorMessage?: string;
 }
 
 interface CustomerAdoptionPanelV4Props {
@@ -388,6 +435,10 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     currentStatus: 'NOT_STARTED',
   });
   const [statusNotes, setStatusNotes] = useState('');
+  const [importResultDialog, setImportResultDialog] = useState<ImportResultDialog>({
+    open: false,
+    success: false,
+  });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
@@ -414,7 +465,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     if (selectedCustomer?.products?.length > 0 && !selectedCustomerProductId) {
       setSelectedCustomerProductId(selectedCustomer.products[0].id);
     }
-  }, [selectedCustomer, selectedCustomerProductId]);
+  }, [selectedCustomerId, selectedCustomer?.products?.length, selectedCustomerProductId]);
 
   // Filter tasks based on release and outcome
   // Note: Tasks are already pre-filtered by license level (based on product assignment)
@@ -569,6 +620,20 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     },
   });
 
+  const [evaluateAllTasksTelemetry, { loading: evaluateLoading }] = useMutation(EVALUATE_ALL_TASKS_TELEMETRY, {
+    refetchQueries: ['GetAdoptionPlan', 'GetCustomers'],
+    awaitRefetchQueries: true,
+    onCompleted: () => {
+      refetchPlan();
+      refetch();
+      setSuccess('All tasks re-evaluated successfully');
+    },
+    onError: (err) => {
+      console.error('Evaluation error:', err);
+      setError(`Failed to evaluate tasks: ${err.message}`);
+    },
+  });
+
   const [updateCustomerProduct] = useMutation(UPDATE_CUSTOMER_PRODUCT, {
     refetchQueries: ['GetAdoptionPlan', 'GetCustomers'],
     awaitRefetchQueries: true,
@@ -710,17 +775,52 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     onCompleted: (data) => {
       if (data.importAdoptionPlanTelemetry.success) {
         const summary = data.importAdoptionPlanTelemetry.summary;
-        setSuccess(
-          `Telemetry import successful: ${summary.valuesImported} values imported, ` +
-          `${summary.criteriaMet}/${summary.criteriaEvaluated} criteria met`
-        );
+        const taskResults = data.importAdoptionPlanTelemetry.taskResults;
+        const totalCriteriaMet = taskResults.reduce((sum: number, task: any) => sum + task.criteriaMet, 0);
+        const errors = summary.errors || [];
+        
+        let message = `✅ Telemetry Import Successful!\n\n`;
+        message += `📊 Summary:\n`;
+        message += `  • Tasks Processed: ${summary.tasksProcessed}\n`;
+        message += `  • Attributes Updated: ${summary.attributesUpdated}\n`;
+        message += `  • Criteria Evaluated: ${summary.criteriaEvaluated}\n`;
+        message += `  • Criteria Met: ${totalCriteriaMet}/${summary.criteriaEvaluated}\n\n`;
+        
+        if (taskResults.length > 0) {
+          message += `📋 Task Details:\n`;
+          taskResults.forEach((task: any) => {
+            const percentage = task.completionPercentage || 0;
+            message += `  • ${task.taskName}: ${task.criteriaMet}/${task.criteriaTotal} criteria met (${percentage}%)\n`;
+          });
+          message += `\n`;
+        }
+        
+        if (errors.length > 0) {
+          message += `⚠️ Warnings:\n`;
+          errors.forEach((error: string) => {
+            message += `  • ${error}\n`;
+          });
+          message += `\n`;
+        }
+        
+        message += `🔄 Task statuses have been automatically evaluated and updated.`;
+        
+        setSuccess(message);
         refetchPlan();
         refetch();
       } else {
-        setError(data.importAdoptionPlanTelemetry.message || 'Telemetry import failed');
+        const errors = data.importAdoptionPlanTelemetry.summary?.errors || [];
+        let errorMessage = '❌ Telemetry import failed';
+        if (errors.length > 0) {
+          errorMessage += ':\n\n';
+          errors.forEach((error: string) => {
+            errorMessage += `  • ${error}\n`;
+          });
+        }
+        setError(errorMessage);
       }
     },
-    onError: (err) => setError(`Failed to import telemetry: ${err.message}`),
+    onError: (err) => setError(`❌ Failed to import telemetry: ${err.message}`),
   });
 
   // Auto-update task status when all telemetry criteria are met
@@ -757,20 +857,17 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
           }
         }).then(() => {
           console.log('Task status updated successfully via telemetry');
-          // Update the selectedTask in state to reflect the change
-          setSelectedTask({
-            ...selectedTask,
-            status: 'DONE',
-            statusUpdateSource: 'TELEMETRY',
-            statusUpdatedAt: new Date().toISOString()
-          });
+          // Don't call setSelectedTask here to avoid infinite loop
+          // The task data will be refetched automatically via refetchPlan
           setSuccess('Task automatically marked as DONE via telemetry criteria ✓');
+          refetchPlan();
         }).catch((err) => {
           console.error('Failed to auto-update task status:', err);
           setError(`Failed to auto-update task: ${err.message}`);
         });
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTask?.telemetryAttributes, selectedTask?.id, selectedTask?.status, updateTaskStatus]);
 
   const handleProductChange = (customerProductId: string) => {
@@ -860,6 +957,12 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     }
   };
 
+  const handleEvaluateTasks = () => {
+    if (adoptionPlanId) {
+      evaluateAllTasksTelemetry({ variables: { adoptionPlanId } });
+    }
+  };
+
   const handleRemoveProduct = () => {
     if (selectedCustomerProduct) {
       removeProduct({ variables: { id: selectedCustomerProduct.id } });
@@ -887,30 +990,40 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     }
     
     try {
-      // Use REST endpoint for file upload instead of GraphQL
+      // Use REST API for file upload (simpler than GraphQL file uploads)
+      // Use relative path - Vite proxy will forward to backend
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch(`http://localhost:4000/api/telemetry/import/${adoptionPlanId}`, {
+      const response = await fetch(`/api/telemetry/import/${adoptionPlanId}`, {
         method: 'POST',
+        headers: {
+          'Authorization': 'admin',
+        },
         body: formData,
       });
       
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+      
       const result = await response.json();
       
+      // Show result in dialog
+      setImportResultDialog({
+        open: true,
+        success: result.success,
+        summary: result.summary,
+        taskResults: result.taskResults,
+      });
+      
       if (result.success) {
-        const summary = result.summary;
-        setSuccess(
-          `Telemetry import successful: ${summary.valuesImported} values imported, ` +
-          `${summary.criteriaMet}/${summary.criteriaEvaluated} criteria met`
-        );
         refetchPlan();
         refetch();
-      } else {
-        setError(result.message || 'Telemetry import failed');
       }
     } catch (err: any) {
-      setError(`Failed to import telemetry: ${err.message}`);
+      console.error('Import error:', err);
+      setError(`❌ Failed to import telemetry: ${err.message}`);
     }
     
     // Reset the input so the same file can be re-uploaded
@@ -922,6 +1035,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       case 'DONE': return 'success';
       case 'IN_PROGRESS': return 'info';
       case 'NOT_APPLICABLE': return 'default';
+      case 'NO_LONGER_USING': return 'warning';
       default: return 'default';
     }
   };
@@ -932,6 +1046,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       case 'IN_PROGRESS': return <HourglassEmpty fontSize="small" />;
       case 'NOT_STARTED': return <TrendingUp fontSize="small" />;
       case 'NOT_APPLICABLE': return <NotInterested fontSize="small" />;
+      case 'NO_LONGER_USING': return <TrendingDown fontSize="small" />;
       default: return undefined;
     }
   };
@@ -964,21 +1079,14 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                   )}
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button startIcon={<Add />} variant="outlined" size="small" onClick={handleAddCustomer}>
+                  <Button startIcon={<Add />} variant="outlined" size="small" color="primary" onClick={handleAddCustomer}>
                     Add
                   </Button>
-                  <Button startIcon={<Edit />} variant="outlined" size="small" onClick={handleEditCustomer}>
+                  <Button startIcon={<Edit />} variant="outlined" size="small" color="primary" onClick={handleEditCustomer}>
                     Edit
                   </Button>
                   <Button startIcon={<Delete />} variant="outlined" size="small" color="error" onClick={handleDeleteCustomer}>
                     Delete
-                  </Button>
-                  <Button startIcon={<Download />} variant="outlined" size="small" onClick={handleExport} disabled={!selectedCustomerProductId}>
-                    Export
-                  </Button>
-                  <Button startIcon={<Upload />} variant="outlined" size="small" component="label" disabled={!selectedCustomerProductId}>
-                    Import
-                    <input type="file" hidden accept=".xlsx" onChange={handleImport} />
                   </Button>
                 </Box>
               </Box>
@@ -1002,6 +1110,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                 <Button
                   variant="outlined"
                   size="small"
+                  color="primary"
                   startIcon={<Add />}
                   onClick={() => setAssignProductDialogOpen(true)}
                 >
@@ -1013,6 +1122,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                       <Button
                         variant="outlined"
                         size="small"
+                        color="primary"
                         startIcon={<Edit />}
                         onClick={() => setEditEntitlementsDialogOpen(true)}
                       >
@@ -1041,6 +1151,47 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                         disabled={removeLoading}
                       >
                         Delete
+                      </Button>
+                    </Tooltip>
+                    <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
+                    <Tooltip title="Export Excel template for telemetry data entry">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="primary"
+                        startIcon={<Download />}
+                        onClick={handleExportTelemetry}
+                      >
+                        Export Template
+                      </Button>
+                    </Tooltip>
+                    <Tooltip title="Import completed telemetry Excel file">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="primary"
+                        startIcon={<Upload />}
+                        component="label"
+                      >
+                        Import Data
+                        <input
+                          type="file"
+                          hidden
+                          accept=".xlsx"
+                          onChange={handleImportTelemetry}
+                        />
+                      </Button>
+                    </Tooltip>
+                    <Tooltip title="Re-evaluate all task criteria based on current telemetry data">
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        color="primary"
+                        startIcon={<Assessment />}
+                        onClick={handleEvaluateTasks}
+                        disabled={evaluateLoading}
+                      >
+                        {evaluateLoading ? 'Evaluating...' : 'Re-evaluate'}
                       </Button>
                     </Tooltip>
                   </>
@@ -1150,47 +1301,6 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                           Last synced: {new Date(planData.adoptionPlan.lastSyncedAt).toLocaleString()}
                         </Typography>
                       )}
-                    </CardContent>
-                  </Card>
-
-                  {/* Telemetry Section */}
-                  <Card sx={{ mb: 2 }}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h6">Telemetry Management</Typography>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                          <Tooltip title="Export Excel template for telemetry data entry">
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              startIcon={<Download />}
-                              onClick={handleExportTelemetry}
-                            >
-                              Export Template
-                            </Button>
-                          </Tooltip>
-                          <Tooltip title="Import completed telemetry Excel file">
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              startIcon={<Upload />}
-                              component="label"
-                            >
-                              Import Data
-                              <input
-                                type="file"
-                                hidden
-                                accept=".xlsx"
-                                onChange={handleImportTelemetry}
-                              />
-                            </Button>
-                          </Tooltip>
-                        </Box>
-                      </Box>
-                      <Typography variant="body2" color="text.secondary">
-                        Export a telemetry template with all tasks and their telemetry attributes. 
-                        Fill in the values in Excel, then import the completed file to update telemetry data and evaluate success criteria.
-                      </Typography>
                     </CardContent>
                   </Card>
 
@@ -1373,30 +1483,33 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                       <TableContainer component={Paper} variant="outlined">
                         <Table size="small">
                           <TableHead>
-                            <TableRow sx={{ backgroundColor: 'grey.100' }}>
-                              <TableCell width={60}>
-                                <Typography variant="subtitle2" fontWeight="bold">#</Typography>
+                            <TableRow sx={{ 
+                              backgroundColor: '#eeeeee',
+                              borderBottom: '2px solid #d0d0d0'
+                            }}>
+                              <TableCell width={60} sx={{ whiteSpace: 'nowrap' }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>#</Typography>
                               </TableCell>
-                              <TableCell>
-                                <Typography variant="subtitle2" fontWeight="bold">Task Name</Typography>
+                              <TableCell sx={{ minWidth: 200, maxWidth: 300 }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Task Name</Typography>
                               </TableCell>
-                              <TableCell width={120}>
-                                <Typography variant="subtitle2" fontWeight="bold">Resources</Typography>
+                              <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
                               </TableCell>
-                              <TableCell width={100}>
-                                <Typography variant="subtitle2" fontWeight="bold">Weight</Typography>
+                              <TableCell width={80} sx={{ whiteSpace: 'nowrap' }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Weight</Typography>
                               </TableCell>
-                              <TableCell width={150}>
-                                <Typography variant="subtitle2" fontWeight="bold">Status</Typography>
+                              <TableCell width={130} sx={{ whiteSpace: 'nowrap' }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Status</Typography>
                               </TableCell>
-                              <TableCell width={120}>
-                                <Typography variant="subtitle2" fontWeight="bold">Telemetry</Typography>
+                              <TableCell width={160} sx={{ whiteSpace: 'nowrap' }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Telemetry</Typography>
                               </TableCell>
-                              <TableCell width={120}>
-                                <Typography variant="subtitle2" fontWeight="bold">Updated Via</Typography>
+                              <TableCell width={130} sx={{ whiteSpace: 'nowrap' }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Updated Via</Typography>
                               </TableCell>
-                              <TableCell width={100}>
-                                <Typography variant="subtitle2" fontWeight="bold">Actions</Typography>
+                              <TableCell width={160} sx={{ whiteSpace: 'nowrap' }}>
+                                <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Actions</Typography>
                               </TableCell>
                             </TableRow>
                           </TableHead>
@@ -1437,12 +1550,18 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     transition: 'all 0.2s ease-in-out', // Match product list transition
                                   }}
                                 >
-                                <TableCell>{task.sequenceNumber}</TableCell>
-                                <TableCell>
-                                  <Typography variant="body2">{task.name}</Typography>
+                                <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.sequenceNumber}</TableCell>
+                                <TableCell sx={{ maxWidth: 300 }}>
+                                  <Typography variant="body2" sx={{ 
+                                    overflow: 'hidden', 
+                                    textOverflow: 'ellipsis', 
+                                    whiteSpace: 'nowrap' 
+                                  }}>
+                                    {task.name}
+                                  </Typography>
                                 </TableCell>
                                 <TableCell>
-                                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                                  <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'center' }}>
                                     {/* How-to documentation links */}
                                     {task.howToDoc && task.howToDoc.length > 0 && (
                                       <Chip
@@ -1497,10 +1616,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                         }
                                       />
                                     )}
+                                    {!task.howToDoc && !task.howToVideo && (
+                                      <Typography variant="caption" color="text.secondary">-</Typography>
+                                    )}
                                   </Box>
                                 </TableCell>
-                                <TableCell>{task.weight}%</TableCell>
-                                <TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.weight}%</TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap' }}>
                                   <Chip
                                     icon={getStatusIcon(task.status)}
                                     label={task.status.replace('_', ' ')}
@@ -1515,9 +1637,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                       attr.values && attr.values.length > 0
                                     ).length || 0;
                                     
-                                    // Count attributes that have at least one value with criteriaMet === true
+                                    // Count attributes that have criteria met based on the latest evaluation (isMet field)
                                     const attributesWithCriteriaMet = task.telemetryAttributes?.filter((attr: any) => 
-                                      attr.values?.some((v: any) => v.criteriaMet === true)
+                                      attr.isMet === true
                                     ).length || 0;
                                     
                                     const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) => 
@@ -1532,7 +1654,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     const percentage = attributesWithCriteria > 0 ? Math.round((attributesWithCriteriaMet / attributesWithCriteria) * 100) : 0;
                                     
                                     return (
-                                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap' }}>
                                         <Tooltip 
                                           title={
                                             <Box>
@@ -1595,7 +1717,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     );
                                   })()}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap' }}>
                                   {task.statusUpdateSource ? (
                                     <Chip 
                                       label={task.statusUpdateSource}
@@ -1611,7 +1733,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                     <Typography variant="caption" color="text.secondary">-</Typography>
                                   )}
                                 </TableCell>
-                                <TableCell>
+                                <TableCell sx={{ whiteSpace: 'nowrap' }}>
                                   <FormControl size="small" sx={{ minWidth: 140 }}>
                                     <Select
                                       value={task.status}
@@ -1627,6 +1749,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                                       <MenuItem value="NOT_STARTED">Not Started</MenuItem>
                                       <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
                                       <MenuItem value="DONE">Done</MenuItem>
+                                      <MenuItem value="NO_LONGER_USING">No Longer Using</MenuItem>
                                       <MenuItem value="NOT_APPLICABLE">Not Applicable</MenuItem>
                                     </Select>
                                   </FormControl>
@@ -2285,6 +2408,146 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setTaskDetailsDialogOpen(false)}>
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Import Telemetry Result Dialog */}
+      <Dialog
+        open={importResultDialog.open}
+        onClose={() => setImportResultDialog({ ...importResultDialog, open: false })}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          {importResultDialog.success ? '✅ Telemetry Import Successful' : '❌ Telemetry Import Failed'}
+        </DialogTitle>
+        <DialogContent>
+          {importResultDialog.success && importResultDialog.summary && (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
+              {/* Summary Card */}
+              <Card variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                    📊 Import Summary
+                  </Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Tasks Processed</Typography>
+                      <Typography variant="h6">{importResultDialog.summary.tasksProcessed}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Attributes Updated</Typography>
+                      <Typography variant="h6">{importResultDialog.summary.attributesUpdated}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Criteria Evaluated</Typography>
+                      <Typography variant="h6">{importResultDialog.summary.criteriaEvaluated}</Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Criteria Met</Typography>
+                      <Typography variant="h6" color="success.main">
+                        {importResultDialog.taskResults?.reduce((sum, task) => sum + task.criteriaMet, 0) || 0}
+                        /{importResultDialog.summary.criteriaEvaluated}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+
+              {/* Task Results */}
+              {importResultDialog.taskResults && importResultDialog.taskResults.length > 0 && (
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600 }}>
+                      📋 Task Details
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {importResultDialog.taskResults.map((task, index) => (
+                        <Box 
+                          key={index}
+                          sx={{ 
+                            display: 'flex', 
+                            justifyContent: 'space-between', 
+                            alignItems: 'center',
+                            p: 1.5,
+                            bgcolor: 'grey.50',
+                            borderRadius: 1
+                          }}
+                        >
+                          <Box sx={{ flex: 1 }}>
+                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                              {task.taskName}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                              {task.criteriaMet}/{task.criteriaTotal} criteria met
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Chip 
+                              label={`${task.completionPercentage}%`}
+                              size="small"
+                              color={task.completionPercentage === 100 ? 'success' : task.completionPercentage > 0 ? 'info' : 'default'}
+                            />
+                            {task.completionPercentage === 100 && <span>✓</span>}
+                          </Box>
+                        </Box>
+                      ))}
+                    </Box>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Warnings/Errors */}
+              {importResultDialog.summary.errors && importResultDialog.summary.errors.length > 0 && (
+                <Alert severity="warning">
+                  <Typography variant="subtitle2" gutterBottom>⚠️ Warnings:</Typography>
+                  <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                    {importResultDialog.summary.errors.map((error, index) => (
+                      <li key={index}>
+                        <Typography variant="body2">{error}</Typography>
+                      </li>
+                    ))}
+                  </Box>
+                </Alert>
+              )}
+
+              <Alert severity="info" icon={false}>
+                <Typography variant="body2">
+                  🔄 Task statuses have been automatically evaluated and updated based on telemetry criteria.
+                </Typography>
+              </Alert>
+            </Box>
+          )}
+
+          {!importResultDialog.success && (
+            <Box sx={{ mt: 1 }}>
+              <Alert severity="error">
+                <Typography variant="body2">
+                  {importResultDialog.errorMessage || 'Import failed. Please check the file format and try again.'}
+                </Typography>
+              </Alert>
+              {importResultDialog.summary?.errors && importResultDialog.summary.errors.length > 0 && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="subtitle2" gutterBottom>Errors:</Typography>
+                  <Box component="ul" sx={{ m: 0, pl: 2 }}>
+                    {importResultDialog.summary.errors.map((error, index) => (
+                      <li key={index}>
+                        <Typography variant="body2">{error}</Typography>
+                      </li>
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setImportResultDialog({ ...importResultDialog, open: false })}
+            variant="contained"
+          >
             Close
           </Button>
         </DialogActions>

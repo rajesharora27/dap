@@ -134,11 +134,6 @@ export class CustomerTelemetryExportService {
           pattern: 'solid',
           fgColor: { argb: 'FFF2F2F2' }
         };
-        row.getCell('successCriteria').fill = {
-          type: 'pattern',
-          pattern: 'solid',
-          fgColor: { argb: 'FFF2F2F2' }
-        };
 
         rowIndex++;
       }

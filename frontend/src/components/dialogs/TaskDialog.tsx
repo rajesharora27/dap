@@ -155,6 +155,7 @@ export const TaskDialog: React.FC<Props> = ({
       const taskReleases = task.releases?.map(r => r.id) || task.releaseIds || [];
       setSelectedReleases(taskReleases.length > 0 ? taskReleases : [ALL_RELEASES_ID]);
       
+      console.log('[TaskDialog] Loading task telemetry attributes:', task.telemetryAttributes);
       setTelemetryAttributes(task.telemetryAttributes || []);
     } else {
       setName('');
@@ -224,6 +225,7 @@ export const TaskDialog: React.FC<Props> = ({
         releaseIds: filteredReleases,   // Send empty array [] if "All" selected, or array of IDs
         telemetryAttributes: telemetryAttributes.length > 0 ? telemetryAttributes : undefined
       });
+      console.log('[TaskDialog] Saving task with telemetry attributes:', telemetryAttributes);
       onClose();
     } catch (err: any) {
       setError(err.message || 'Failed to save task');

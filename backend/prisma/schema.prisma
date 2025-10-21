@@ -443,6 +443,7 @@ enum CustomerTaskStatus {
   COMPLETED
   DONE
   NOT_APPLICABLE
+  NO_LONGER_USING  // Feature was implemented but telemetry shows it's no longer being used
 }
 
 enum StatusUpdateSource {

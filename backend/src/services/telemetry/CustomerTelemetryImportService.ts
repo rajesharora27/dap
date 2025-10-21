@@ -104,12 +104,12 @@ export class CustomerTelemetryImportService {
         adoptionPlan.tasks.map((task: any) => [task.name, task])
       );
 
+      // Collect all import operations as promises
+      const importOperations: Promise<void>[] = [];
+      
       // Process each data row
-      let rowNumber = 1;
       worksheet.eachRow((row, rowNum) => {
         if (rowNum === 1) return; // Skip header
-
-        rowNumber = rowNum;
 
         try {
           const taskName = row.getCell(colIndices.taskName).value?.toString().trim();
@@ -132,7 +132,7 @@ export class CustomerTelemetryImportService {
           // Find matching task
           const task: any = taskMap.get(taskName);
           if (!task) {
-            errors.push(`Row ${rowNumber}: Task "${taskName}" not found in adoption plan`);
+            errors.push(`Row ${rowNum}: Task "${taskName}" not found in adoption plan`);
             return;
           }
 
@@ -141,7 +141,7 @@ export class CustomerTelemetryImportService {
             (attr: any) => attr.name === attributeName
           );
           if (!attribute) {
-            errors.push(`Row ${rowNumber}: Attribute "${attributeName}" not found for task "${taskName}"`);
+            errors.push(`Row ${rowNum}: Attribute "${attributeName}" not found for task "${taskName}"`);
             return;
           }
 
@@ -150,7 +150,7 @@ export class CustomerTelemetryImportService {
           try {
             parsedValue = this.parseValueByDataType(currentValueRaw, dataType || attribute.dataType);
           } catch (parseError: any) {
-            errors.push(`Row ${rowNumber}: ${parseError.message}`);
+            errors.push(`Row ${rowNum}: ${parseError.message}`);
             return;
           }
 
@@ -162,27 +162,27 @@ export class CustomerTelemetryImportService {
             } else if (typeof dateRaw === 'string') {
               recordDate = new Date(dateRaw);
               if (isNaN(recordDate.getTime())) {
-                errors.push(`Row ${rowNumber}: Invalid date format "${dateRaw}". Use YYYY-MM-DD`);
+                errors.push(`Row ${rowNum}: Invalid date format "${dateRaw}". Use YYYY-MM-DD`);
                 recordDate = new Date(); // Use current date as fallback
               }
             }
           }
 
-          // Store the import data for batch processing
+          // Initialize task result if not exists
           if (!taskResults.has(task.id)) {
             taskResults.set(task.id, {
               taskId: task.id,
               taskName: task.name,
               attributesUpdated: 0,
               criteriaMet: 0,
-              criteriaTotal: task.telemetryAttributes.length,
+              criteriaTotal: task.telemetryAttributes.filter((a: any) => a.successCriteria).length,
               completionPercentage: 0,
               errors: []
             });
           }
 
           // Create telemetry value and evaluate criteria
-          this.createTelemetryValueAndEvaluate(
+          const operation = this.createTelemetryValueAndEvaluate(
             attribute,
             parsedValue,
             batchId,
@@ -190,16 +190,18 @@ export class CustomerTelemetryImportService {
             notes,
             taskResults.get(task.id)!
           ).catch((error: any) => {
-            errors.push(`Row ${rowNumber}: Failed to create telemetry value - ${error.message}`);
+            errors.push(`Row ${rowNum}: Failed to create telemetry value - ${error.message}`);
           });
+          
+          importOperations.push(operation);
 
         } catch (rowError: any) {
-          errors.push(`Row ${rowNumber}: ${rowError.message}`);
+          errors.push(`Row ${rowNum}: ${rowError.message}`);
         }
       });
 
-      // Wait for all database operations to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Wait for all import operations to complete
+      await Promise.all(importOperations);
 
       // Calculate completion percentages
       for (const result of taskResults.values()) {
@@ -344,6 +346,7 @@ export class CustomerTelemetryImportService {
   ): Promise<void> {
     try {
       // Create the telemetry value
+      // Always use current timestamp for createdAt to ensure proper ordering of imports
       await prisma.customerTelemetryValue.create({
         data: {
           customerAttributeId: attribute.id,
@@ -351,7 +354,7 @@ export class CustomerTelemetryImportService {
           source: 'excel',
           batchId: batchId,
           notes: notes,
-          createdAt: recordDate
+          createdAt: new Date() // Use current timestamp, not recordDate from file
         }
       });
 
@@ -368,6 +371,13 @@ export class CustomerTelemetryImportService {
           };
           const evaluationResult = await evaluateTelemetryAttribute(attributeWithValue);
           isMet = evaluationResult.success;
+          
+          console.log(`Evaluated ${attribute.name}:`, {
+            value,
+            criteria: attribute.successCriteria,
+            isMet,
+            details: evaluationResult.details
+          });
         } catch (evalError) {
           console.error(`Failed to evaluate criteria for ${attribute.name}:`, evalError);
           isMet = false;

@@ -22,7 +22,9 @@ export enum SuccessCriteriaType {
   BOOLEAN_FLAG = 'boolean_flag',
   NUMBER_THRESHOLD = 'number_threshold', 
   STRING_MATCH = 'string_match',
+  STRING_NOT_NULL = 'string_not_null',
   TIMESTAMP_COMPARISON = 'timestamp_comparison',
+  TIMESTAMP_NOT_NULL = 'timestamp_not_null',
   COMPOSITE_AND = 'composite_and',
   COMPOSITE_OR = 'composite_or'
 }
@@ -92,6 +94,13 @@ export interface StringMatchCriteria extends BaseSuccessCriteria {
 }
 
 /**
+ * String not-null success criteria
+ */
+export interface StringNotNullCriteria extends BaseSuccessCriteria {
+  type: SuccessCriteriaType.STRING_NOT_NULL;
+}
+
+/**
  * Timestamp comparison success criteria
  */
 export interface TimestampComparisonCriteria extends BaseSuccessCriteria {
@@ -99,6 +108,13 @@ export interface TimestampComparisonCriteria extends BaseSuccessCriteria {
   mode: TimestampMode;
   referenceTime?: string; // ISO string or relative like "now"
   withinDays?: number; // for within_days mode
+}
+
+/**
+ * Timestamp not-null success criteria
+ */
+export interface TimestampNotNullCriteria extends BaseSuccessCriteria {
+  type: SuccessCriteriaType.TIMESTAMP_NOT_NULL;
 }
 
 /**
@@ -124,7 +140,9 @@ export type SuccessCriteria =
   | BooleanFlagCriteria
   | NumberThresholdCriteria
   | StringMatchCriteria
+  | StringNotNullCriteria
   | TimestampComparisonCriteria
+  | TimestampNotNullCriteria
   | CompositeAndCriteria
   | CompositeOrCriteria;
 

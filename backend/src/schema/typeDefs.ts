@@ -7,7 +7,7 @@ export const typeDefs = gql`
 
   enum Role { ADMIN USER }
   enum LicenseLevel { Essential Advantage Signature }
-  enum CustomerTaskStatus { NOT_STARTED IN_PROGRESS COMPLETED DONE NOT_APPLICABLE }
+  enum CustomerTaskStatus { NOT_STARTED IN_PROGRESS COMPLETED DONE NOT_APPLICABLE NO_LONGER_USING }
   enum StatusUpdateSource { MANUAL TELEMETRY IMPORT SYSTEM }
 
   interface Node { id: ID! }
@@ -597,7 +597,7 @@ export const typeDefs = gql`
     description: String
     dataType: TelemetryDataType!
     isRequired: Boolean!
-    successCriteria: JSON!
+    successCriteria: JSON
     order: Int!
     isActive: Boolean!
     isMet: Boolean!
