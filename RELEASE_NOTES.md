@@ -1,5 +1,109 @@
 # 🚀 DAP Release Notes
 
+## Version 2.1.0 - Telemetry Enhancements & Task Status Improvements
+**Release Date**: January 20, 2025  
+**Tag**: `v2.1.0`  
+**Status**: Production Ready ✅
+
+### 🎯 Release Highlights
+
+- 🔄 **NEW: NO_LONGER_USING Status** - Polite status for completed tasks no longer being used based on telemetry
+- 🎯 **NEW: Re-evaluate Button** - Manual trigger for telemetry evaluation across all tasks
+- 💾 **Auto-Save Telemetry Criteria** - No more lost threshold values, everything saves automatically
+- 📊 **Enhanced Telemetry Display** - Real-time isMet status in UI chips, improved feedback dialogs
+- 🎨 **UI Consistency** - Unified button styling, table layouts for product tasks, telemetry column
+- 🐛 **Critical Fixes** - Async import, infinite loop, status persistence, connection issues
+
+### 🌟 New Features
+
+#### NO_LONGER_USING Task Status
+- **New status type** for tasks completed but telemetry shows no longer in use
+- **Automatic status updates** based on failed telemetry criteria evaluation
+- **Status persistence** - doesn't revert to NOT_STARTED on re-evaluation
+- **Visual indicator** - Warning color (orange) with TrendingDown icon
+- **Polite naming** - More user-friendly than "Adoption Declined"
+
+#### Re-evaluate All Tasks Button
+- **Manual trigger** for telemetry evaluation across entire adoption plan
+- **Assessment icon** for clear visual indication
+- **Loading state** feedback during evaluation
+- **Automatic updates** for all task statuses based on current telemetry data
+- **Positioned in header** next to Export/Import buttons for easy access
+
+#### Telemetry Auto-Save
+- **Automatic saving** of success criteria as user makes changes
+- **No intermediate save** button required - modern UX pattern
+- **Change detection** to prevent infinite loops
+- **Visual feedback** with "✓ Changes are saved automatically" message
+- **Works for all criteria types** - boolean, number, string, timestamp
+
+### 🔧 Technical Improvements
+
+#### Backend Enhancements
+- **New Evaluation Types**: STRING_NOT_NULL and TIMESTAMP_NOT_NULL criteria
+- **Fixed Import Logic**: Promise.all() for proper async/await handling
+- **Current Timestamps**: Telemetry imports use current time (not file date)
+- **Status Persistence**: NO_LONGER_USING preserved on re-evaluation
+- **Removed Debug Logging**: Cleaned up console.log statements from evaluation code
+
+#### Frontend Enhancements
+- **GraphQL Mutations**: EVALUATE_ALL_TASKS_TELEMETRY mutation added
+- **isMet Field**: All telemetry queries include evaluation status
+- **Telemetry Column**: Product task list shows configured attributes with chips
+- **Table Layout**: Product tasks now use professional table structure
+- **Consistent Buttons**: All action buttons have consistent styling
+- **Import Dialog**: Rich feedback with summary, task details, and warnings
+
+#### UI/UX Improvements
+- **Button Consistency**: All outlined, small size, with color props
+- **Shortened Labels**: "Export Template", "Import Data", "Re-evaluate"
+- **Table Headers**: Consistent styling across product and adoption task lists
+- **Column Optimization**: Fixed widths, no text wrapping, professional appearance
+- **Telemetry Chips**: Color-coded (green/orange/gray) based on configuration status
+
+### 🐛 Bug Fixes
+
+- ✅ **Async Import Fixed**: Promise.all() ensures all operations complete before calculating results
+- ✅ **Infinite Loop Fixed**: Change detection prevents auto-save from triggering re-renders
+- ✅ **Status Revert Fixed**: NO_LONGER_USING no longer changes to NOT_STARTED on re-evaluation
+- ✅ **Connection Fixed**: Relative URL for telemetry import (Vite proxy)
+- ✅ **Criteria Lost Fixed**: Auto-save ensures threshold values persist
+- ✅ **Timestamp Fixed**: Imports use current time for proper ordering
+- ✅ **String Evaluation Fixed**: STRING_NOT_NULL criteria properly handles type conversion
+
+### 📝 Documentation
+
+Nine comprehensive documentation files added:
+- `TELEMETRY_AUTO_SAVE_UX_IMPROVEMENT.md` - Auto-save implementation details
+- `TELEMETRY_INFINITE_LOOP_FIX.md` - Change detection pattern explanation
+- `TASK_LIST_COLUMN_OPTIMIZATION.md` - Column width and layout decisions
+- `TASK_LIST_HEADER_CONSISTENCY.md` - Visual design standardization
+- `TELEMETRY_STATUS_UPDATE_LOGIC.md` - Status update rules and precedence
+- `TELEMETRY_IMPORT_FIXES.md` - Async/await and criteria evaluation fixes
+- `TELEMETRY_IMPORT_FILE_UPLOAD_FIX.md` - REST API switch explanation
+- `TELEMETRY_IMPORT_CONNECTION_FIX.md` - Vite proxy configuration
+- `TELEMETRY_UI_IMPROVEMENTS.md` - Dialog and button improvements
+
+### 🔄 Migration Notes
+
+#### Database Changes
+- **Enum Update**: Added NO_LONGER_USING to CustomerTaskStatus enum
+- **Data Migration**: Updated 2 existing ADOPTION_DECLINED records
+- **Method**: Manual ALTER TYPE command (documented in session notes)
+- **No Scripts Needed**: Schema changes applied via Prisma db push --accept-data-loss
+
+#### Breaking Changes
+None - fully backward compatible
+
+#### Upgrade Steps
+1. Pull latest code from main branch
+2. Backend restarts automatically (enum changes in schema)
+3. Frontend rebuilds via Vite HMR
+4. Clear browser cache for UI updates
+5. No additional migration scripts required
+
+---
+
 ## Version 2.0.0 - Customer Adoption Planning & UI Modernization
 **Release Date**: October 18, 2025  
 **Tag**: `v2.0.0`  
