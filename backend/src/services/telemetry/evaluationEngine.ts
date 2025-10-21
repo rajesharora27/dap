@@ -106,8 +106,14 @@ export class TelemetryEvaluationEngine {
       case SuccessCriteriaType.STRING_MATCH:
         return this.evaluateStringMatch(criteria as StringMatchCriteria, value);
         
+      case SuccessCriteriaType.STRING_NOT_NULL:
+        return this.evaluateStringNotNull(value);
+        
       case SuccessCriteriaType.TIMESTAMP_COMPARISON:
         return this.evaluateTimestampComparison(criteria as TimestampComparisonCriteria, value);
+        
+      case SuccessCriteriaType.TIMESTAMP_NOT_NULL:
+        return this.evaluateTimestampNotNull(value);
         
       case SuccessCriteriaType.COMPOSITE_AND:
         return this.evaluateCompositeAnd(criteria as CompositeAndCriteria, value, dataType);
@@ -242,6 +248,39 @@ export class TelemetryEvaluationEngine {
   }
 
   /**
+   * Evaluates string not-null criteria
+   */
+  private static evaluateStringNotNull(value: TelemetryValue): EvaluationResult {
+    try {
+      const stringValue = value.value;
+      
+      // Handle different value types
+      if (stringValue === null || stringValue === undefined) {
+        return {
+          success: false,
+          details: 'String value is null or undefined'
+        };
+      }
+      
+      // Convert to string if needed
+      const strVal = typeof stringValue === 'string' ? stringValue : String(stringValue);
+      const success = strVal.trim() !== '';
+      
+      return {
+        success,
+        details: success 
+          ? `String value is not null/empty: "${strVal}"`
+          : 'String value is empty'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `String not-null evaluation error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  /**
    * Evaluates timestamp comparison criteria
    */
   private static evaluateTimestampComparison(criteria: TimestampComparisonCriteria, value: TelemetryValue): EvaluationResult {
@@ -302,6 +341,35 @@ export class TelemetryEvaluationEngine {
       return {
         success: false,
         error: `Timestamp comparison evaluation error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  /**
+   * Evaluates timestamp not-null criteria
+   */
+  private static evaluateTimestampNotNull(value: TelemetryValue): EvaluationResult {
+    try {
+      if (!value.value || value.value === null || value.value === undefined) {
+        return {
+          success: false,
+          details: 'Timestamp value is null or undefined'
+        };
+      }
+      
+      const timestamp = new Date(value.value);
+      const success = !isNaN(timestamp.getTime());
+      
+      return {
+        success,
+        details: success 
+          ? `Timestamp is valid: ${timestamp.toISOString()}`
+          : `Timestamp is invalid: ${value.value}`
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Timestamp not-null evaluation error: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
     }
   }

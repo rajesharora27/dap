@@ -61,7 +61,17 @@ export async function createApp() {
         return res.status(400).json({ success: false, message: 'Adoption plan ID is required' });
       }
 
+      // Import the telemetry values
       const result = await CustomerTelemetryImportService.importTelemetryValues(adoptionPlanId, file.buffer);
+
+      // Evaluate all task statuses immediately after import (same as GraphQL mutation)
+      // Import the resolver dynamically to avoid circular dependencies
+      const { CustomerAdoptionMutationResolvers } = await import('./schema/resolvers/customerAdoption');
+      await CustomerAdoptionMutationResolvers.evaluateAllTasksTelemetry(
+        {}, 
+        { adoptionPlanId }, 
+        { user: { id: 'system', role: 'ADMIN' } }
+      );
 
       res.json(result);
     } catch (error: any) {

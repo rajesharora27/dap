@@ -30,7 +30,13 @@ import {
   Fab,
   Collapse,
   Menu,
-  Tooltip
+  Tooltip,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow
 } from '@mui/material';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
 import { ProductDialog } from '../components/dialogs/ProductDialog';
@@ -412,218 +418,248 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
   };
 
   return (
-    <Box ref={setNodeRef} style={style} sx={{ mb: 1 }}>
-      <ListItemButton
+    <>
+      <TableRow
+        ref={setNodeRef}
+        style={style}
+        hover
         onDoubleClick={() => onDoubleClick(task)}
         title={task.description || 'No description available'}
         sx={{
-          border: '1px solid #e0e0e0',
-          borderRadius: '8px',
-          '&:hover': {
-            backgroundColor: 'rgba(25, 118, 210, 0.08)',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          },
           cursor: 'pointer',
           transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            backgroundColor: 'rgba(25, 118, 210, 0.08)',
+          }
         }}
       >
-        <ListItemIcon
-          sx={{ minWidth: '32px', cursor: 'grab' }}
-          {...attributes}
-          {...listeners}
-        >
-          <DragIndicator sx={{ color: 'text.secondary' }} />
-        </ListItemIcon>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          {/* Primary content - structured grid layout */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-            {/* Sequence number - fixed width, editable */}
-            <Box sx={{ minWidth: '70px', flexShrink: 0 }}>
-              {task.sequenceNumber && (
-                <input
-                  key={`seq-${task.id}-${task.sequenceNumber}`}
-                  type="number"
-                  defaultValue={task.sequenceNumber || 0}
-                  onBlur={(e) => {
-                    e.stopPropagation();
-                    const newSeq = parseInt(e.target.value) || 1;
-                    if (newSeq >= 1 && newSeq !== task.sequenceNumber) {
-                      if (onSequenceChange) {
-                        onSequenceChange(task.id, task.name, newSeq);
-                      }
-                    } else {
-                      // Reset to original value if invalid
-                      e.target.value = task.sequenceNumber.toString();
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.currentTarget.blur(); // Trigger save on Enter
-                    }
-                    if (e.key === 'Escape') {
-                      e.currentTarget.value = task.sequenceNumber.toString(); // Reset on Escape
-                      e.currentTarget.blur();
-                    }
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  onFocus={(e) => {
-                    e.stopPropagation();
-                    e.target.select();
-                  }}
-                  step="1"
-                  min="1"
-                  className="sequence-input-spinner"
-                  style={{
-                    width: '60px',
-                    padding: '4px 8px',
-                    border: '1px solid #9c27b0',
-                    borderRadius: '16px',
-                    textAlign: 'center',
-                    fontSize: '0.8125rem',
-                    fontWeight: 'bold',
-                    color: '#9c27b0',
-                    backgroundColor: 'transparent',
-                    cursor: 'text'
-                  }}
-                  title="Click to edit sequence (≥1), press Enter to save"
-                />
-              )}
-            </Box>
-            
-            {/* Task name with inline HowTo chips - flexible width */}
-            <Box sx={{ flex: 1, minWidth: 200, display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="subtitle1" component="div" sx={{ 
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis', 
-                whiteSpace: 'nowrap',
-                fontWeight: 500
-              }}>
-                {task.name}
-              </Typography>
-              
-              {/* HowTo chips inline with task name */}
-              {task.howToDoc && task.howToDoc.length > 0 && (
-                <Chip
-                  size="small"
-                  label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
-                  color="primary"
-                  variant="outlined"
-                  sx={{ 
-                    fontSize: '0.65rem', 
-                    height: '20px',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    '&:hover': { backgroundColor: 'primary.light', color: 'white' }
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (task.howToDoc.length === 1) {
-                      window.open(task.howToDoc[0], '_blank');
-                    } else {
-                      setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
-                    }
-                  }}
-                  title={task.howToDoc.length === 1 
-                    ? `Documentation: ${task.howToDoc[0]}`
-                    : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
+        {/* Drag handle */}
+        <TableCell sx={{ width: 32, padding: '8px 4px', cursor: 'grab' }} {...attributes} {...listeners}>
+          <DragIndicator sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+        </TableCell>
+
+        {/* Sequence number - editable */}
+        <TableCell sx={{ whiteSpace: 'nowrap', padding: '8px' }}>
+          {task.sequenceNumber && (
+            <input
+              key={`seq-${task.id}-${task.sequenceNumber}`}
+              type="number"
+              defaultValue={task.sequenceNumber || 0}
+              onBlur={(e) => {
+                e.stopPropagation();
+                const newSeq = parseInt(e.target.value) || 1;
+                if (newSeq >= 1 && newSeq !== task.sequenceNumber) {
+                  if (onSequenceChange) {
+                    onSequenceChange(task.id, task.name, newSeq);
                   }
-                />
-              )}
-              
-              {task.howToVideo && task.howToVideo.length > 0 && (
-                <Chip
-                  size="small"
-                  label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
-                  color="primary"
-                  variant="outlined"
-                  sx={{ 
-                    fontSize: '0.65rem', 
-                    height: '20px',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    '&:hover': { backgroundColor: 'primary.light', color: 'white' }
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (task.howToVideo.length === 1) {
-                      window.open(task.howToVideo[0], '_blank');
-                    } else {
-                      setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
-                    }
-                  }}
-                  title={task.howToVideo.length === 1 
-                    ? `Video: ${task.howToVideo[0]}`
-                    : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
-                  }
-                />
-              )}
-            </Box>
-            
-            {/* Weight - fixed width, editable */}
-            <Box sx={{ minWidth: '110px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-              <input
-                key={`weight-${task.id}-${task.weight}`}
-                type="number"
-                defaultValue={task.weight || 0}
-                onBlur={(e) => {
+                } else {
+                  e.target.value = task.sequenceNumber.toString();
+                }
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.currentTarget.blur();
+                }
+                if (e.key === 'Escape') {
+                  e.currentTarget.value = task.sequenceNumber.toString();
+                  e.currentTarget.blur();
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              onFocus={(e) => {
+                e.stopPropagation();
+                e.target.select();
+              }}
+              step="1"
+              min="1"
+              className="sequence-input-spinner"
+              style={{
+                width: '50px',
+                padding: '4px 6px',
+                border: '1px solid #9c27b0',
+                borderRadius: '4px',
+                textAlign: 'center',
+                fontSize: '0.875rem',
+                fontWeight: 'bold',
+                color: '#9c27b0',
+                backgroundColor: 'transparent',
+                cursor: 'text'
+              }}
+              title="Click to edit sequence (≥1), press Enter to save"
+            />
+          )}
+        </TableCell>
+
+        {/* Task name */}
+        <TableCell sx={{ maxWidth: 400 }}>
+          <Typography variant="body2" sx={{ 
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis', 
+            whiteSpace: 'nowrap' 
+          }}>
+            {task.name}
+          </Typography>
+        </TableCell>
+
+        {/* Resources */}
+        <TableCell>
+          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'center' }}>
+            {task.howToDoc && task.howToDoc.length > 0 && (
+              <Chip
+                size="small"
+                label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
+                color="primary"
+                variant="outlined"
+                sx={{ 
+                  fontSize: '0.7rem', 
+                  height: '20px',
+                  cursor: 'pointer',
+                  '&:hover': { backgroundColor: 'primary.light' }
+                }}
+                onClick={(e) => {
                   e.stopPropagation();
-                  const newWeight = parseFloat(e.target.value) || 0;
-                  if (newWeight >= 0 && newWeight <= 100) {
-                    // Only update if weight changed
-                    if (Math.abs(newWeight - task.weight) > 0.001) {
-                      if (onWeightChange) {
-                        onWeightChange(task.id, task.name, newWeight);
-                      }
-                    }
+                  if (task.howToDoc.length === 1) {
+                    window.open(task.howToDoc[0], '_blank');
                   } else {
-                    // Reset to original value if invalid
-                    e.target.value = task.weight.toString();
+                    setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
                   }
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.currentTarget.blur(); // Trigger save on Enter
-                  }
-                  if (e.key === 'Escape') {
-                    e.currentTarget.value = task.weight.toString(); // Reset on Escape
-                    e.currentTarget.blur();
-                  }
-                }}
-                onClick={(e) => e.stopPropagation()}
-                onFocus={(e) => {
-                  e.stopPropagation();
-                  e.target.select();
-                }}
-                step="0.01"
-                min="0"
-                max="100"
-                className="weight-input-spinner"
-                style={{
-                  width: '85px',
-                  padding: '4px 8px',
-                  border: '1px solid #1976d2',
-                  borderRadius: '16px',
-                  textAlign: 'center',
-                  fontSize: '0.8125rem',
-                  fontWeight: 'bold',
-                  color: '#1976d2',
-                  backgroundColor: 'transparent',
-                  cursor: 'text'
-                }}
-                title="Click to edit weight (0-100), press Enter to save"
+                title={task.howToDoc.length === 1 
+                  ? `Documentation: ${task.howToDoc[0]}`
+                  : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
+                }
               />
-            </Box>
+            )}
+            
+            {task.howToVideo && task.howToVideo.length > 0 && (
+              <Chip
+                size="small"
+                label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
+                color="error"
+                variant="outlined"
+                sx={{ 
+                  fontSize: '0.7rem', 
+                  height: '20px',
+                  cursor: 'pointer',
+                  '&:hover': { backgroundColor: 'error.light' }
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (task.howToVideo.length === 1) {
+                    window.open(task.howToVideo[0], '_blank');
+                  } else {
+                    setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
+                  }
+                }}
+                title={task.howToVideo.length === 1 
+                  ? `Video: ${task.howToVideo[0]}`
+                  : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
+                }
+              />
+            )}
+            {!task.howToDoc && !task.howToVideo && (
+              <Typography variant="caption" color="text.secondary">-</Typography>
+            )}
           </Box>
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        </TableCell>
+
+        {/* Weight - editable */}
+        <TableCell sx={{ whiteSpace: 'nowrap', padding: '8px' }}>
+          <input
+            key={`weight-${task.id}-${task.weight}`}
+            type="number"
+            defaultValue={task.weight || 0}
+            onBlur={(e) => {
+              e.stopPropagation();
+              const newWeight = parseFloat(e.target.value) || 0;
+              if (newWeight >= 0 && newWeight <= 100) {
+                if (Math.abs(newWeight - task.weight) > 0.001) {
+                  if (onWeightChange) {
+                    onWeightChange(task.id, task.name, newWeight);
+                  }
+                }
+              } else {
+                e.target.value = task.weight.toString();
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.currentTarget.blur();
+              }
+              if (e.key === 'Escape') {
+                e.currentTarget.value = task.weight.toString();
+                e.currentTarget.blur();
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onFocus={(e) => {
+              e.stopPropagation();
+              e.target.select();
+            }}
+            step="0.01"
+            min="0"
+            max="100"
+            className="weight-input-spinner"
+            style={{
+              width: '70px',
+              padding: '4px 6px',
+              border: '1px solid #1976d2',
+              borderRadius: '4px',
+              textAlign: 'center',
+              fontSize: '0.875rem',
+              fontWeight: 'bold',
+              color: '#1976d2',
+              backgroundColor: 'transparent',
+              cursor: 'text'
+            }}
+            title="Click to edit weight (0-100), press Enter to save"
+          />
+        </TableCell>
+
+        {/* Telemetry */}
+        <TableCell>
+          {(() => {
+            const totalAttributes = task.telemetryAttributes?.length || 0;
+            const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) => 
+              attr.successCriteria && attr.successCriteria !== null
+            ).length || 0;
+            
+            if (totalAttributes === 0) {
+              return <Typography variant="caption" color="text.secondary">-</Typography>;
+            }
+            
+            return (
+              <Tooltip 
+                title={
+                  <Box>
+                    <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Telemetry Attributes</Typography>
+                    <Typography variant="caption" display="block">
+                      {attributesWithCriteria} of {totalAttributes} attributes have success criteria configured
+                    </Typography>
+                  </Box>
+                }
+              >
+                <Chip
+                  label={`${attributesWithCriteria}/${totalAttributes}`}
+                  size="small"
+                  color={attributesWithCriteria === totalAttributes ? 'success' : attributesWithCriteria > 0 ? 'warning' : 'default'}
+                  sx={{ fontSize: '0.7rem', height: 20 }}
+                />
+              </Tooltip>
+            );
+          })()}
+        </TableCell>
+
+        {/* Actions */}
+        <TableCell sx={{ whiteSpace: 'nowrap' }}>
           <IconButton size="small" onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
             <Edit fontSize="small" />
           </IconButton>
           <IconButton size="small" onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} color="error">
             <Delete fontSize="small" />
           </IconButton>
-        </Box>
-      </ListItemButton>
+        </TableCell>
+      </TableRow>
 
       {/* Menu for multiple documentation links */}
       <Menu
@@ -688,7 +724,7 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
           Open All ({videoMenuAnchor?.links.length})
         </MenuItem>
       </Menu>
-    </Box>
+    </>
   );
 }
 
@@ -5524,70 +5560,61 @@ export function App() {
                     {/* Tasks List */}
                     {!tasksLoading && !tasksError && tasks.length > 0 ? (
                       <>
-                        {/* Column Headers - Using ListItemButton for perfect alignment */}
-                        <ListItemButton
-                          sx={{
-                            border: '1px solid #e0e0e0',
-                            borderRadius: 1,
-                            backgroundColor: '#f5f5f5',
-                            mb: 1,
-                            cursor: 'default',
-                            '&:hover': {
-                              backgroundColor: '#f5f5f5'
-                            }
-                          }}
-                          disableRipple
-                        >
-                          <ListItemIcon sx={{ minWidth: '32px' }}>
-                            {/* Empty space for drag handle */}
-                          </ListItemIcon>
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: '100%' }}>
-                              {/* Sequence number */}
-                              <Box sx={{ minWidth: '70px', flexShrink: 0 }}>
-                                <Typography variant="caption" fontWeight="bold" color="text.secondary">#</Typography>
-                              </Box>
-                              
-                              {/* Task name with HowTo chips */}
-                              <Box sx={{ flex: 1, minWidth: 200 }}>
-                                <Typography variant="caption" fontWeight="bold" color="text.secondary">Task Name & Resources</Typography>
-                              </Box>
-                              
-                              {/* Weight */}
-                              <Box sx={{ minWidth: '110px', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-                                <Typography variant="caption" fontWeight="bold" color="text.secondary">Weight (%)</Typography>
-                              </Box>
-                            </Box>
-                          </Box>
-                          {/* Spacer for Edit and Delete buttons - matching task row structure */}
-                          <Box sx={{ display: 'flex', gap: 1, width: '80px', justifyContent: 'flex-end' }}>
-                            {/* Empty space to align with Edit/Delete buttons */}
-                          </Box>
-                        </ListItemButton>
-
                         <DndContext
                           sensors={sensors}
                           collisionDetection={closestCenter}
                           onDragEnd={handleDragEnd}
                         >
-                          <SortableContext
-                            items={tasks.filter((task: any) => !task.deletedAt).map((task: any) => task.id)}
-                            strategy={verticalListSortingStrategy}
-                          >
-                            <Box>
-                              {tasks.filter((task: any) => !task.deletedAt).map((task: any, index: number) => (
-                                <SortableTaskItem
-                                  key={task.id}
-                                  task={task}
-                                  onEdit={handleEditTask}
-                                  onDelete={handleDeleteTask}
-                                  onDoubleClick={handleTaskDoubleClick}
-                                  onWeightChange={handleTaskWeightChange}
-                                  onSequenceChange={handleTaskSequenceChange}
-                                />
-                              ))}
-                            </Box>
-                          </SortableContext>
+                          <TableContainer component={Paper} variant="outlined">
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow sx={{ 
+                                  backgroundColor: '#eeeeee',
+                                  borderBottom: '2px solid #d0d0d0'
+                                }}>
+                                  <TableCell width={32} sx={{ whiteSpace: 'nowrap' }}>
+                                    {/* Drag handle column */}
+                                  </TableCell>
+                                  <TableCell width={60} sx={{ whiteSpace: 'nowrap' }}>
+                                    <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>#</Typography>
+                                  </TableCell>
+                                  <TableCell sx={{ minWidth: 200, maxWidth: 400 }}>
+                                    <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Task Name</Typography>
+                                  </TableCell>
+                                  <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
+                                    <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
+                                  </TableCell>
+                                  <TableCell width={100} sx={{ whiteSpace: 'nowrap' }}>
+                                    <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Weight</Typography>
+                                  </TableCell>
+                                  <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
+                                    <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Telemetry</Typography>
+                                  </TableCell>
+                                  <TableCell width={120} sx={{ whiteSpace: 'nowrap' }}>
+                                    <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Actions</Typography>
+                                  </TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                <SortableContext
+                                  items={tasks.filter((task: any) => !task.deletedAt).map((task: any) => task.id)}
+                                  strategy={verticalListSortingStrategy}
+                                >
+                                  {tasks.filter((task: any) => !task.deletedAt).map((task: any, index: number) => (
+                                    <SortableTaskItem
+                                      key={task.id}
+                                      task={task}
+                                      onEdit={handleEditTask}
+                                      onDelete={handleDeleteTask}
+                                      onDoubleClick={handleTaskDoubleClick}
+                                      onWeightChange={handleTaskWeightChange}
+                                      onSequenceChange={handleTaskSequenceChange}
+                                    />
+                                  ))}
+                                </SortableContext>
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
                         </DndContext>
                       </>
                     ) : !tasksLoading && !tasksError ? (

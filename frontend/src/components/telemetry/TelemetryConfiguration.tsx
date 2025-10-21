@@ -199,12 +199,51 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
 
     const [operator, setOperator] = useState(getInitialOperator());
     const [value, setValue] = useState(getInitialValue());
+    const [lastSavedCriteria, setLastSavedCriteria] = useState<string>('');
+    const [isInitializing, setIsInitializing] = useState(true);
 
     // Update states when attribute changes (e.g., when reopening dialog with existing data)
     useEffect(() => {
-      setOperator(getInitialOperator());
-      setValue(getInitialValue());
-    }, [attribute.successCriteria, attribute.dataType]);
+      console.log('[SimpleCriteriaBuilder] useEffect triggered', {
+        attributeName: attribute.name,
+        successCriteria: attribute.successCriteria,
+        dataType: attribute.dataType
+      });
+      const newOperator = getInitialOperator();
+      const newValue = getInitialValue();
+      console.log('[SimpleCriteriaBuilder] Setting:', { newOperator, newValue });
+      setOperator(newOperator);
+      setValue(newValue);
+      // Store the current criteria to compare against later
+      setLastSavedCriteria(JSON.stringify(attribute.successCriteria || null));
+      setIsInitializing(false); // Mark initialization as complete
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [attribute.id, attribute.dataType]); // Only run when attribute ID or dataType changes, not on every criteria update
+
+    // Auto-save criteria when operator or value changes
+    useEffect(() => {
+      // Skip auto-save during initialization or on initial render
+      if (isInitializing || !operator) return;
+      
+      let criteria = null;
+      
+      // For operators that don't need a value, auto-save immediately
+      if (operator === 'not_null' || attribute.dataType === 'BOOLEAN') {
+        criteria = buildSimpleCriteria(attribute.dataType, operator, value);
+      } else if (value.trim()) {
+        // For operators that need a value, only auto-save if value is provided
+        criteria = buildSimpleCriteria(attribute.dataType, operator, value);
+      }
+      
+      // Only update if criteria has actually changed (prevents infinite loop)
+      const newCriteriaString = JSON.stringify(criteria);
+      if (criteria && newCriteriaString !== lastSavedCriteria) {
+        console.log('[SimpleCriteriaBuilder] Auto-saving criteria:', { operator, value, criteria });
+        setLastSavedCriteria(newCriteriaString);
+        updateAttribute(index, { successCriteria: criteria });
+      }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [operator, value]); // Only trigger when user changes operator or value
 
     const getOperatorOptions = () => {
       switch (attribute.dataType) {
@@ -234,20 +273,6 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
           ];
         default:
           return [];
-      }
-    };
-
-    const handleSave = () => {
-      // Validate that value is provided when needed
-      if (operator !== 'not_null' && attribute.dataType !== 'BOOLEAN' && !value.trim()) {
-        alert('Please provide a value for the success criteria');
-        return;
-      }
-      
-      const criteria = buildSimpleCriteria(attribute.dataType, operator, value);
-      if (criteria) {
-        updateAttribute(index, { successCriteria: criteria });
-        onSave();
       }
     };
 
@@ -334,12 +359,16 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
           </Box>
         ) : null}
 
-        <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
-          <Button variant="contained" size="small" onClick={handleSave}>
-            Save Criteria
-          </Button>
-          <Button size="small" onClick={onSave}>
-            Cancel
+        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+            ✓ Changes are saved automatically
+          </Typography>
+          <Button 
+            variant="outlined" 
+            size="small" 
+            onClick={onSave}
+          >
+            Close
           </Button>
         </Box>
       </Box>

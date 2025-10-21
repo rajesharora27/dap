@@ -4,6 +4,7 @@ import { logAudit } from '../../lib/audit';
 import { LicenseLevel } from '@prisma/client';
 import { CustomerTelemetryExportService } from '../../services/telemetry/CustomerTelemetryExportService';
 import { CustomerTelemetryImportService } from '../../services/telemetry/CustomerTelemetryImportService';
+import { evaluateTelemetryAttribute } from '../../services/telemetry/evaluationEngine';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -539,15 +540,12 @@ export const CustomerAdoptionMutationResolvers = {
       },
     });
     
-    // If adoption plan exists, DELETE and RECREATE it with new filters
-    // This is different from sync - we're regenerating based on new entitlements
+    // If adoption plan exists, update it intelligently to preserve status and telemetry
+    // Instead of deleting and recreating, we'll add/remove tasks as needed (like sync does)
     if (before.adoptionPlan) {
-      console.log(`Regenerating adoption plan for customer product ${id} due to entitlement changes`);
+      console.log(`Updating adoption plan for customer product ${id} due to entitlement changes`);
       
-      // Delete existing adoption plan and all related data (cascades to tasks, telemetry, etc.)
-      await prisma.adoptionPlan.delete({
-        where: { id: before.adoptionPlan.id },
-      });
+      const adoptionPlanId = before.adoptionPlan.id;
       
       // Get the new license level, outcomes, and releases from the updated product
       const newLicenseLevel = updated.licenseLevel;
@@ -555,36 +553,33 @@ export const CustomerAdoptionMutationResolvers = {
       const newSelectedReleaseIds = updated.selectedReleases as string[] || [];
       
       // Filter tasks based on NEW license level, outcomes, and releases
-      const eligibleTasks = updated.product.tasks.filter((task: any) =>
+      const eligibleProductTasks = updated.product.tasks.filter((task: any) =>
         shouldIncludeTask(task, newLicenseLevel, newSelectedOutcomeIds, newSelectedReleaseIds)
       );
       
-      // Calculate initial progress
-      const progress = calculateProgress(eligibleTasks.map((t: any) => ({ ...t, status: 'NOT_STARTED' })));
+      const eligibleProductTaskIds = eligibleProductTasks.map((t: any) => t.id);
+      const currentCustomerTaskOriginalIds = before.adoptionPlan.tasks.map((t: any) => t.originalTaskId);
       
-      // Create NEW adoption plan
-      const newAdoptionPlan = await prisma.adoptionPlan.create({
-        data: {
-          customerProductId: id,
-          productId: updated.productId,
-          productName: updated.product.name,
-          licenseLevel: newLicenseLevel,
-          selectedOutcomes: newSelectedOutcomeIds,
-          selectedReleases: newSelectedReleaseIds,
-          totalTasks: progress.totalTasks,
-          completedTasks: 0,
-          totalWeight: progress.totalWeight,
-          completedWeight: 0,
-          progressPercentage: 0,
-          lastSyncedAt: new Date(),
-        },
-      });
+      // Find tasks to remove (no longer eligible)
+      const tasksToRemove = before.adoptionPlan.tasks.filter(
+        (ct: any) => !eligibleProductTaskIds.includes(ct.originalTaskId)
+      );
       
-      // Create customer tasks (snapshots of product tasks)
-      for (const task of eligibleTasks) {
+      // Find tasks to add (newly eligible)
+      const tasksToAdd = eligibleProductTasks.filter(
+        (pt: any) => !currentCustomerTaskOriginalIds.includes(pt.id)
+      );
+      
+      // Remove tasks that are no longer eligible
+      for (const task of tasksToRemove) {
+        await prisma.customerTask.delete({ where: { id: task.id } });
+      }
+      
+      // Add new eligible tasks
+      for (const task of tasksToAdd) {
         const customerTask = await prisma.customerTask.create({
           data: {
-            adoptionPlanId: newAdoptionPlan.id,
+            adoptionPlanId: adoptionPlanId,
             originalTaskId: task.id,
             name: task.name,
             description: task.description,
@@ -638,7 +633,26 @@ export const CustomerAdoptionMutationResolvers = {
         }
       }
       
-      console.log(`Created ${eligibleTasks.length} tasks in regenerated adoption plan`);
+      // Recalculate progress based on remaining tasks
+      const updatedTasks = await prisma.customerTask.findMany({
+        where: { adoptionPlanId },
+      });
+      
+      const progress = calculateProgress(updatedTasks);
+      
+      // Update adoption plan metadata
+      await prisma.adoptionPlan.update({
+        where: { id: adoptionPlanId },
+        data: {
+          licenseLevel: newLicenseLevel,
+          selectedOutcomes: newSelectedOutcomeIds,
+          selectedReleases: newSelectedReleaseIds,
+          ...progress,
+          lastSyncedAt: new Date(),
+        },
+      });
+      
+      console.log(`Updated adoption plan: removed ${tasksToRemove.length} tasks, added ${tasksToAdd.length} tasks`);
     }
     
     await logAudit('UPDATE_CUSTOMER_PRODUCT', 'CustomerProduct', id, { before: { licenseLevel: before.licenseLevel, selectedOutcomes: before.selectedOutcomes }, after: { licenseLevel: updated.licenseLevel, selectedOutcomes: updated.selectedOutcomes } }, ctx.user?.id);
@@ -950,7 +964,11 @@ export const CustomerAdoptionMutationResolvers = {
         customerTask.licenseLevel !== productTask.licenseLevel;
       
       if (hasChanges) {
-        // Update customer task with product task data (preserve status and status-related fields)
+        // Update customer task with product task data
+        // IMPORTANT: This update preserves all status-related fields:
+        // - status, isComplete, completedAt, completedBy
+        // - statusUpdatedAt, statusUpdatedBy, statusUpdateSource, statusNotes
+        // These are NOT included in the data object, so they remain unchanged
         await prisma.customerTask.update({
           where: { id: customerTask.id },
           data: {
@@ -963,14 +981,14 @@ export const CustomerAdoptionMutationResolvers = {
             howToVideo: productTask.howToVideo,
             notes: productTask.notes,
             licenseLevel: productTask.licenseLevel,
-            // Note: Status, statusUpdatedAt, statusUpdatedBy, etc. are preserved
           },
         });
         tasksUpdated++;
       }
       
       // Update telemetry attributes
-      // Delete removed attributes
+      // Note: This preserves existing telemetry values and evaluation state (isMet, lastCheckedAt)
+      // Delete removed attributes (and their values will cascade delete)
       const productAttrIds = productTask.telemetryAttributes.map((a: any) => a.id);
       await prisma.customerTelemetryAttribute.deleteMany({
         where: {
@@ -989,7 +1007,12 @@ export const CustomerAdoptionMutationResolvers = {
         });
         
         if (existingAttr) {
-          // Update existing attribute
+          // Update existing attribute with product changes
+          // IMPORTANT: This preserves telemetry evaluation state:
+          // - isMet (whether criteria are met)
+          // - lastCheckedAt (when last evaluated)
+          // - values (all historical telemetry values via foreign key)
+          // Only configuration fields are updated to match product
           await prisma.customerTelemetryAttribute.update({
             where: { id: existingAttr.id },
             data: {
@@ -1348,7 +1371,7 @@ export const CustomerAdoptionMutationResolvers = {
         telemetryAttributes: {
           include: {
             values: {
-              orderBy: { createdAt: 'desc' },
+              orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
               take: 1,
             },
           },
@@ -1360,16 +1383,16 @@ export const CustomerAdoptionMutationResolvers = {
       throw new Error('Customer task not found');
     }
     
-    // Skip if status was manually set by a user
-    if (task.statusUpdatedBy && task.statusUpdatedBy !== 'telemetry') {
-      // Don't override manual status changes
-      return task;
-    }
-    
     const attributes = task.telemetryAttributes;
     const requiredAttributes = attributes.filter((a: any) => a.isRequired && a.isActive);
     
-    // Evaluate each attribute
+    // Manual status takes precedence over telemetry (except for NOT_STARTED)
+    // If user manually set status to IN_PROGRESS, DONE, or NOT_APPLICABLE, respect that
+    const hasManualStatus = task.statusUpdatedBy && 
+                           task.statusUpdatedBy !== 'telemetry' && 
+                           task.status !== 'NOT_STARTED';
+    
+    // Evaluate each attribute (always evaluate to update isMet status for display)
     let metCount = 0;
     let metRequiredCount = 0;
     
@@ -1379,7 +1402,17 @@ export const CustomerAdoptionMutationResolvers = {
       const latestValue = attr.values[0];
       if (!latestValue) continue;
       
-      const isMet = evaluateCriteria(attr.successCriteria, latestValue.value);
+      // Use the proper evaluation engine that handles the criteria structure from SimpleCriteriaBuilder
+      let isMet = false;
+      if (attr.successCriteria) {
+        try {
+          const evaluationResult = await evaluateTelemetryAttribute(attr);
+          isMet = evaluationResult.success;
+        } catch (evalError) {
+          console.error(`Failed to evaluate criteria for ${attr.name}:`, evalError);
+          isMet = false;
+        }
+      }
       
       // Update attribute isMet status
       await prisma.customerTelemetryAttribute.update({
@@ -1396,7 +1429,7 @@ export const CustomerAdoptionMutationResolvers = {
       }
     }
     
-    // Determine new status
+    // Determine new status based on telemetry
     let newStatus: CustomerTaskStatus = task.status;
     
     if (requiredAttributes.length > 0) {
@@ -1404,13 +1437,23 @@ export const CustomerAdoptionMutationResolvers = {
         newStatus = 'DONE';
       } else if (metCount > 0) {
         newStatus = 'IN_PROGRESS';
+      } else if (metCount === 0 && (task.status === 'DONE' || task.status === 'COMPLETED' || task.status === 'NO_LONGER_USING')) {
+        // Feature was done but telemetry shows it's no longer being used
+        // This is a critical status change that overrides manual status
+        // Keep NO_LONGER_USING if already set, or set it if coming from DONE/COMPLETED
+        newStatus = 'NO_LONGER_USING';
       } else {
         newStatus = 'NOT_STARTED';
       }
     }
     
-    // Update task status if changed
-    if (newStatus !== task.status) {
+    // Special case: NO_LONGER_USING overrides manual status because it indicates regression
+    const shouldOverrideManual = newStatus === 'NO_LONGER_USING' && (task.status === 'DONE' || task.status === 'COMPLETED' || task.status === 'NO_LONGER_USING');
+    
+    // Only update task status if:
+    // 1. Status has changed, AND
+    // 2. Either no manual status was set, OR current status is NOT_STARTED, OR it's NO_LONGER_USING override
+    if (newStatus !== task.status && (!hasManualStatus || shouldOverrideManual)) {
       const updated = await prisma.customerTask.update({
         where: { id: customerTaskId },
         data: {
@@ -1455,6 +1498,7 @@ export const CustomerAdoptionMutationResolvers = {
       return updated;
     }
     
+    // Status not updated - either no change or manual status takes precedence
     return task;
   },
 
@@ -1482,15 +1526,13 @@ export const CustomerAdoptionMutationResolvers = {
     }
     
     // Evaluate each task
+    // Note: evaluateTaskTelemetry handles manual vs telemetry status precedence internally
     for (const task of plan.tasks) {
-      // Only update tasks with telemetry-driven status
-      if (!task.statusUpdatedBy || task.statusUpdatedBy === 'telemetry') {
-        await CustomerAdoptionMutationResolvers.evaluateTaskTelemetry(
-          _,
-          { customerTaskId: task.id },
-          ctx
-        );
-      }
+      await CustomerAdoptionMutationResolvers.evaluateTaskTelemetry(
+        _,
+        { customerTaskId: task.id },
+        ctx
+      );
     }
     
     // Return updated plan
@@ -1910,6 +1952,9 @@ export const CustomerAdoptionMutationResolvers = {
     // Import the telemetry values
     const result = await CustomerTelemetryImportService.importTelemetryValues(adoptionPlanId, fileBuffer);
     
+    // Evaluate all task statuses immediately after import
+    await CustomerAdoptionMutationResolvers.evaluateAllTasksTelemetry(_, { adoptionPlanId }, ctx);
+    
     await logAudit('IMPORT_TELEMETRY_DATA', 'AdoptionPlan', adoptionPlanId, result.summary, ctx.user?.id);
     
     return result;
@@ -2119,8 +2164,17 @@ export const CustomerTelemetryValueResolvers = {
       ? JSON.parse(attribute.successCriteria)
       : attribute.successCriteria;
 
-    // Evaluate based on criteria type
-    const value = typeof parent.value === 'string' ? JSON.parse(parent.value) : parent.value;
+    // Get the value - for STRING datatype, value is already a string in the DB
+    // For other types, it may be stored as JSON
+    let value = parent.value;
+    if (typeof parent.value === 'string' && attribute.dataType !== 'STRING') {
+      try {
+        value = JSON.parse(parent.value);
+      } catch {
+        // If parsing fails, use the raw value
+        value = parent.value;
+      }
+    }
 
     if (criteria.type === 'boolean_equals') {
       return value === criteria.expectedValue;
