@@ -1,0 +1,49 @@
+{
+  // Cursor AI Auto-Approval Settings
+  "cursor.general.autoApprove": true,
+  "cursor.aiChat.autoApprove": true,
+  "cursor.terminal.autoApprove": true,
+  "cursor.composer.autoApprove": true,
+  "cursor.chat.autoApprove": true,
+  "cursor.ai.autoApprove": true,
+  "cursor.codeActions.autoApprove": true,
+  
+  // Terminal Confirmation Disabling
+  "terminal.integrated.confirmOnExit": false,
+  "terminal.integrated.confirmOnKill": false,
+  "terminal.integrated.allowChords": false,
+  "terminal.integrated.allowMnemonics": false,
+  "terminal.integrated.confirmOnRun": false,
+  
+  // Git/Source Control Auto-Approval
+  "git.confirmSync": false,
+  "git.enableSmartCommit": true,
+  "git.autofetch": true,
+  "scm.defaultViewMode": "list",
+  
+  // General IDE Confirmations
+  "explorer.confirmDelete": false,
+  "explorer.confirmDragAndDrop": false,
+  "workbench.editor.enablePreview": false,
+  "files.defaultLanguage": "",
+  "extensions.ignoreRecommendations": true,
+  
+  // Auto-reply to common prompts
+  "terminal.integrated.autoReplies": {
+    "Do you want to continue?": "y",
+    "Are you sure?": "yes", 
+    "Confirm": "y",
+    "Press any key to continue": " ",
+    "Continue?": "y",
+    "Proceed?": "yes",
+    "OK to continue?": "y",
+    "Execute command?": "y",
+    "Run command?": "yes",
+    "Allow execution?": "y"
+  },
+  
+  // Cursor-specific overrides
+  "cursor.privacy.anonymousTelemetryEnabled": false,
+  "cursor.general.enableLogging": false,
+  "cursor.general.showInlineDiff": true
+}

@@ -326,12 +326,12 @@ clean_database() {
     log_info "Loading enhanced sample data from SQL file..."
     
     # Execute the comprehensive sample data SQL file
-    if ! docker exec -i $DB_CONTAINER psql -U postgres -d dap < "$PROJECT_DIR/create-enhanced-sample-data.sql" >/dev/null 2>&1; then
-        log_error "Failed to create enhanced sample data."
+    if ! docker exec -i $DB_CONTAINER psql -U postgres -d dap < "$PROJECT_DIR/create-complete-sample-data.sql" >/dev/null 2>&1; then
+        log_error "Failed to create complete sample data."
         return 1
     fi
     
-    log_success "Enhanced sample data created successfully!"
+    log_success "Complete sample data created successfully!"
 
     # Verify
     local products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Product\";" 2>/dev/null | tr -d ' ')
@@ -520,10 +520,10 @@ clean_restart() {
     log_info "🔄 Press Ctrl+Shift+R in your browser to see the enhanced sample data!"
 }
 
-# Add sample data without affecting user-created data
+# Add complete networking/security sample data  
 add_sample_data() {
-    log_header "ADDING COMPREHENSIVE SAMPLE DATA"
-    log_info "This will add sample data WITHOUT removing existing user data"
+    log_header "ADDING COMPLETE NETWORKING & SECURITY SAMPLE DATA"
+    log_info "This will add comprehensive sample data including customers and adoption plans"
     
     # Check if database container is running
     if [ -z "$DB_CONTAINER" ]; then
@@ -536,64 +536,214 @@ add_sample_data() {
         exit 1
     fi
     
-    # Check if backend directory exists
-    if [ ! -d "$BACKEND_DIR" ]; then
-        log_error "Backend directory not found at $BACKEND_DIR"
+    # Check if complete sample data file exists
+    if [ ! -f "$PROJECT_DIR/create-complete-sample-data.sql" ]; then
+        log_error "❌ create-complete-sample-data.sql not found."
         exit 1
     fi
     
-    # Navigate to backend directory
-    cd "$BACKEND_DIR"
+    # Execute the complete sample data script
+    log_info "📝 Loading complete networking & security sample data..."
+    log_info "   • 5 Products (Firewall, Routing, MFA/SSO, SD-WAN, Cloud Security)"
+    log_info "   • 3 Customers with realistic scenarios" 
+    log_info "   • 6 Customer product assignments"
+    log_info "   • 75+ Tasks with telemetry attributes"
     
-    # Check if node_modules exists
-    if [ ! -d "node_modules" ]; then
-        log_info "Installing backend dependencies..."
-        npm install
-    fi
-    
-    # Run the seed script (non-destructive)
-    log_info "📝 Adding comprehensive sample data via TypeScript seed script..."
-    log_info "   This uses upsert logic to preserve existing data"
-    
-    if npm run seed 2>&1 | tee /tmp/dap_seed.log; then
+    if docker exec -i "$DB_CONTAINER" psql -U postgres -d dap < "$PROJECT_DIR/create-complete-sample-data.sql" 2>&1 | tee /tmp/dap_sample.log; then
         echo ""
-        log_success "✅ Sample data added successfully!"
+        log_success "✅ Complete sample data created successfully!"
         
         # Count what was created
-        local products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Product\";" 2>/dev/null | tr -d ' ')
-        local tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\";" 2>/dev/null | tr -d ' ')
-        local licenses=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"License\";" 2>/dev/null | tr -d ' ')
-        local outcomes=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Outcome\";" 2>/dev/null | tr -d ' ')
+        local products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Product\" WHERE id LIKE 'prod-%';" 2>/dev/null | tr -d ' ')
+        local customers=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Customer\" WHERE id LIKE 'customer-%';" 2>/dev/null | tr -d ' ')
+        local customer_products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"CustomerProduct\";" 2>/dev/null | tr -d ' ')
+        local tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\" WHERE \"productId\" LIKE 'prod-%';" 2>/dev/null | tr -d ' ')
+        local telemetry=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"TelemetryAttribute\" WHERE \"taskId\" LIKE 'task-%';" 2>/dev/null | tr -d ' ')
         
         echo ""
-        log_info "📊 Current database contains:"
-        log_info "  📦 $products Products"
-        log_info "  📋 $tasks Tasks"
-        log_info "  🏷️ $licenses Licenses"
-        log_info "  🎯 $outcomes Outcomes"
+        log_info "📊 Sample data created:"
+        log_info "  🔐 $products Products (Firewall, Routing, MFA, SD-WAN, Cloud Security)"
+        log_info "  🏢 $customers Customers (Acme Corp, TechStart Inc, Meridian Financial)"
+        log_info "  📋 $customer_products Customer Product Assignments"
+        log_info "  ⚙️  $tasks Product Tasks (10-18 per product)"
+        log_info "  📊 $telemetry Telemetry Attributes with success criteria"
         echo ""
-        log_info "Sample products added (if not already present):"
-        log_info "  • Retail Management App (15 tasks)"
-        log_info "  • Financial Services App (14 tasks)"
-        log_info "  • IT Operations App (expanding to 12+ tasks)"
-        log_info "  • AI-Powered Analytics App (expanding to 12+ tasks)"
-        log_info "  • Network Management App (expanding to 12+ tasks)"
-        echo ""
-        log_info "Each product includes:"
-        log_info "  ✓ 3 license tiers (Essential, Advantage, Signature)"
-        log_info "  ✓ 5 outcomes with success metrics"
-        log_info "  ✓ 5 progressive releases"
-        log_info "  ✓ Comprehensive tasks with multiple documentation links"
-        log_info "  ✓ All fields populated (howToDoc, howToVideo arrays)"
+        log_info "✅ Sample data loaded! Now creating adoption plans..."
+        
+        # Create adoption plans for all customer product assignments
+        create_adoption_plans
     else
         echo ""
-        log_error "❌ Failed to add sample data"
-        log_info "Check /tmp/dap_seed.log for error details"
+        log_error "❌ Failed to create complete sample data"
+        log_info "Check /tmp/dap_sample.log for error details"
         exit 1
     fi
     
     echo ""
-    log_info "🔄 Refresh your browser (Ctrl+Shift+R) to see the sample data!"
+    log_info "🔄 Refresh your browser (Ctrl+Shift+R) to see the complete networking & security sample data!"
+}
+
+# Create adoption plans for all customer product assignments (ROBUST VERSION)
+create_adoption_plans() {
+    log_info "🚀 Creating adoption plans for customer product assignments..."
+    
+    local backend_url="http://localhost:4000/graphql"
+    
+    # Step 1: Wait for backend to be fully ready with GraphQL health check
+    log_info "⏳ Waiting for backend GraphQL to be fully ready..."
+    local max_wait_attempts=30
+    local wait_attempt=1
+    
+    while [ $wait_attempt -le $max_wait_attempts ]; do
+        # Test with a simple GraphQL query to ensure the API is fully functional
+        local health_response=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: admin" \
+            -d '{"query": "query { __typename }"}' \
+            "$backend_url" 2>/dev/null)
+        
+        if echo "$health_response" | jq -e '.data.__typename' >/dev/null 2>&1; then
+            log_success "✅ Backend GraphQL is ready!"
+            break
+        fi
+        
+        if [ $wait_attempt -eq $max_wait_attempts ]; then
+            log_error "❌ Backend GraphQL not responding after 60 seconds. Aborting adoption plan creation."
+            return 1
+        fi
+        
+        echo -n "."
+        sleep 2
+        wait_attempt=$((wait_attempt + 1))
+    done
+    
+    # Step 2: Verify prerequisites - customer products and telemetry exist
+    log_info "🔍 Verifying prerequisites..."
+    
+    local customer_products_count=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"CustomerProduct\";" 2>/dev/null | tr -d ' ')
+    local telemetry_count=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"TelemetryAttribute\" WHERE \"taskId\" LIKE 'task-%';" 2>/dev/null | tr -d ' ')
+    local task_outcomes_count=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"TaskOutcome\";" 2>/dev/null | tr -d ' ')
+    
+    log_info "  📋 Customer Products: $customer_products_count"
+    log_info "  📊 Telemetry Attributes: $telemetry_count" 
+    log_info "  🎯 Task-Outcome Relationships: $task_outcomes_count"
+    
+    if [ "$customer_products_count" -eq "0" ]; then
+        log_error "❌ No customer products found. Sample data may not have loaded correctly."
+        return 1
+    fi
+    
+    if [ "$telemetry_count" -eq "0" ]; then
+        log_warning "⚠️  No telemetry attributes found. Adding essential telemetry..."
+        # Add minimal telemetry to ensure adoption plans work
+        docker exec -i "$DB_CONTAINER" psql -U postgres -d dap -c "
+            INSERT INTO \"TelemetryAttribute\" (id, \"taskId\", name, description, \"dataType\", \"isRequired\", \"successCriteria\", \"order\", \"isActive\", \"createdAt\", \"updatedAt\") VALUES
+            ('tel-sample-1', 'task-fw-001', 'sample_metric', 'Sample telemetry for adoption plans', 'NUMBER', true, '{\"operator\": \">=\", \"value\": 1}', 1, true, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            ON CONFLICT (id) DO NOTHING;
+        " >/dev/null 2>&1
+    fi
+    
+    # Step 3: Get actual customer product IDs from database
+    log_info "📋 Fetching customer product assignments from database..."
+    local cp_ids=($(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT id FROM \"CustomerProduct\" ORDER BY id;" 2>/dev/null | tr -d ' ' | grep -v '^$'))
+    
+    if [ ${#cp_ids[@]} -eq 0 ]; then
+        log_error "❌ No customer product assignments found in database."
+        return 1
+    fi
+    
+    log_info "📋 Found ${#cp_ids[@]} customer product assignments: ${cp_ids[*]}"
+    
+    # Step 4: Create adoption plans with retry logic
+    local plans_created=0
+    local plans_existed=0
+    
+    for cp_id in "${cp_ids[@]}"; do
+        log_info "   🔄 Processing adoption plan for $cp_id..."
+        
+        local retry_attempts=3
+        local retry=1
+        local success=false
+        
+        while [ $retry -le $retry_attempts ] && [ "$success" = false ]; do
+            if [ $retry -gt 1 ]; then
+                log_info "     🔄 Retry attempt $retry for $cp_id..."
+                sleep 3
+            fi
+            
+            local response=$(curl -s -X POST \
+                -H "Content-Type: application/json" \
+                -H "Authorization: admin" \
+                -d "{\"query\": \"mutation { createAdoptionPlan(customerProductId: \\\"$cp_id\\\") { id totalTasks completedTasks progressPercentage } }\"}" \
+                "$backend_url" 2>/dev/null)
+            
+            # Check for successful creation
+            if echo "$response" | jq -e '.data.createAdoptionPlan.id' >/dev/null 2>&1; then
+                local adoption_id=$(echo "$response" | jq -r '.data.createAdoptionPlan.id')
+                local total_tasks=$(echo "$response" | jq -r '.data.createAdoptionPlan.totalTasks')
+                log_success "     ✅ Created adoption plan $adoption_id with $total_tasks tasks"
+                plans_created=$((plans_created + 1))
+                success=true
+                
+            # Check if already exists
+            elif echo "$response" | grep -q "already exists\|Adoption plan already exists"; then
+                log_info "     ℹ️  Adoption plan already exists for $cp_id"
+                plans_existed=$((plans_existed + 1))
+                success=true
+                
+            # Handle errors
+            else
+                log_warning "     ⚠️  Attempt $retry failed for $cp_id"
+                if [ $retry -eq $retry_attempts ]; then
+                    log_error "     ❌ All retry attempts failed for $cp_id"
+                    echo "Response: $response" | head -3
+                fi
+            fi
+            
+            retry=$((retry + 1))
+        done
+    done
+    
+    # Step 5: Final verification and summary
+    sleep 2
+    local final_plans=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"AdoptionPlan\";" 2>/dev/null | tr -d ' ')
+    local final_tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"CustomerTask\";" 2>/dev/null | tr -d ' ')
+    local final_telemetry=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"CustomerTelemetryAttribute\";" 2>/dev/null | tr -d ' ')
+    
+    echo ""
+    log_success "🎉 Adoption Plan Creation Complete!"
+    log_info "📊 Results:"
+    log_info "  🆕 Newly Created: $plans_created adoption plans"
+    log_info "  📋 Already Existed: $plans_existed adoption plans"
+    log_info "  📊 Total Adoption Plans: $final_plans"
+    log_info "  ⚙️  Total Customer Tasks: $final_tasks"
+    log_info "  📈 Customer Telemetry Attributes: $final_telemetry"
+    
+    if [ $final_plans -eq ${#cp_ids[@]} ]; then
+        echo ""
+        log_success "✅ SUCCESS: All $final_plans adoption plans created successfully!"
+        log_success "🚀 Complete sample data ready for testing and demonstrations!"
+        
+        # Show detailed breakdown
+        echo ""
+        log_info "📋 Customer Adoption Plan Details:"
+        docker exec $DB_CONTAINER psql -U postgres -d dap -c "
+            SELECT 
+                c.name as \"Customer\",
+                p.name as \"Product\", 
+                ap.\"totalTasks\" as \"Tasks\"
+            FROM \"AdoptionPlan\" ap
+            JOIN \"CustomerProduct\" cp ON ap.\"customerProductId\" = cp.id
+            JOIN \"Customer\" c ON cp.\"customerId\" = c.id
+            JOIN \"Product\" p ON cp.\"productId\" = p.id
+            ORDER BY c.name, p.name;
+        " 2>/dev/null | grep -v "^$"
+        
+    else
+        echo ""
+        log_warning "⚠️  Only $final_plans out of ${#cp_ids[@]} adoption plans were created."
+        log_info "💡 You can create missing plans manually in the frontend or run this command again."
+    fi
 }
 
 # Remove sample data while preserving user-created data
@@ -629,12 +779,11 @@ reset_sample_data() {
         
         echo ""
         log_info "📊 Removed sample products:"
-        log_info "  • retail-app-001 (Retail Management App)"
-        log_info "  • financial-app-001 (Financial Services App)"
-        log_info "  • it-app-001 (IT Operations App)"
-        log_info "  • ai-app-001 (AI-Powered Analytics App)"
-        log_info "  • networking-app-001 (Network Management App)"
-        log_info "  • test-product-1 (Test E-Commerce Platform)"
+        log_info "  • prod-firewall-ngfw (Next-Generation Firewall)"
+        log_info "  • prod-routing-switching (Enterprise Routing & Switching)"
+        log_info "  • prod-mfa-sso (Multi-Factor Authentication & SSO)"
+        log_info "  • prod-sdwan-platform (SD-WAN Platform)"
+        log_info "  • prod-cloud-security (Cloud Security Platform)"
         echo ""
         log_info "📊 Removed ALL customer adoption data:"
         log_info "  • All customer product assignments"
