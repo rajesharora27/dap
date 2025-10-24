@@ -1,5 +1,6 @@
 import { prisma, fallbackActive } from '../context';
 import * as fallbackStore from '../lib/fallbackStore';
+import { connectionFromArraySlice, cursorToOffset } from 'graphql-relay';
 
 interface DecodedCursor { id: string; createdAt?: string }
 
@@ -223,6 +224,49 @@ export async function fetchTasksPaginated(productId?: string, args?: ConnectionA
 }
 
 export async function fetchSolutionsPaginated(args: ConnectionArgs) {
-  // Still placeholder using products
-  return fetchProductsPaginated(args);
+  const { first = 20, after, last, before } = args;
+  
+  // Determine pagination parameters
+  let skip = 0;
+  let take = first || 20;
+  
+  if (after) {
+    const offset = cursorToOffset(after);
+    skip = offset + 1;
+  }
+  
+  if (before) {
+    const offset = cursorToOffset(before);
+    skip = Math.max(0, offset - (last || 20));
+    take = last || 20;
+  }
+  
+  // Fetch solutions from database
+  const solutions = await prisma.solution.findMany({
+    where: { deletedAt: null },
+    orderBy: { name: 'asc' },
+    skip,
+    take,
+    include: {
+      products: {
+        include: {
+          product: true
+        }
+      }
+    }
+  });
+  
+  const totalCount = await prisma.solution.count({
+    where: { deletedAt: null }
+  });
+  
+  // Create connection from array
+  return connectionFromArraySlice(
+    solutions,
+    args,
+    {
+      sliceStart: skip,
+      arrayLength: totalCount,
+    }
+  );
 }

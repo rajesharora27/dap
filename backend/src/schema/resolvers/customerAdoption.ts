@@ -1225,6 +1225,45 @@ export const CustomerAdoptionMutationResolvers = {
       data: progress,
     });
     
+    // Check if this product is part of a solution and trigger solution sync
+    const adoptionPlan = await prisma.adoptionPlan.findUnique({
+      where: { id: task.adoptionPlanId },
+      include: {
+        customerProduct: true
+      }
+    });
+    
+    if (adoptionPlan?.customerProduct) {
+      // Check if this product name indicates it's part of a solution (format: "{SolutionName} - {ProductName}")
+      const productName = adoptionPlan.customerProduct.name;
+      if (productName.includes(' - ')) {
+        // This product is part of a solution, find the solution adoption plan
+        const solutionName = productName.split(' - ')[0];
+        
+        // Find the customer solution with this name
+        const customerSolution = await prisma.customerSolution.findFirst({
+          where: {
+            customerId: adoptionPlan.customerProduct.customerId,
+            name: solutionName
+          },
+          include: {
+            adoptionPlan: true
+          }
+        });
+        
+        // If solution adoption plan exists, trigger sync
+        if (customerSolution?.adoptionPlan) {
+          // Import the sync function
+          const { SolutionAdoptionMutationResolvers } = require('./solutionAdoption');
+          await SolutionAdoptionMutationResolvers.syncSolutionAdoptionPlan(
+            _,
+            { solutionAdoptionPlanId: customerSolution.adoptionPlan.id },
+            ctx
+          );
+        }
+      }
+    }
+    
     await logAudit('UPDATE_CUSTOMER_TASK_STATUS', 'CustomerTask', customerTaskId, { status, notes }, ctx.user?.id);
     
     return updated;
@@ -1300,6 +1339,45 @@ export const CustomerAdoptionMutationResolvers = {
       where: { id: adoptionPlanId },
       data: progress,
     });
+    
+    // Check if this product is part of a solution and trigger solution sync
+    const adoptionPlan = await prisma.adoptionPlan.findUnique({
+      where: { id: adoptionPlanId },
+      include: {
+        customerProduct: true
+      }
+    });
+    
+    if (adoptionPlan?.customerProduct) {
+      // Check if this product name indicates it's part of a solution (format: "{SolutionName} - {ProductName}")
+      const productName = adoptionPlan.customerProduct.name;
+      if (productName.includes(' - ')) {
+        // This product is part of a solution, find the solution adoption plan
+        const solutionName = productName.split(' - ')[0];
+        
+        // Find the customer solution with this name
+        const customerSolution = await prisma.customerSolution.findFirst({
+          where: {
+            customerId: adoptionPlan.customerProduct.customerId,
+            name: solutionName
+          },
+          include: {
+            adoptionPlan: true
+          }
+        });
+        
+        // If solution adoption plan exists, trigger sync
+        if (customerSolution?.adoptionPlan) {
+          // Import the sync function
+          const { SolutionAdoptionMutationResolvers } = require('./solutionAdoption');
+          await SolutionAdoptionMutationResolvers.syncSolutionAdoptionPlan(
+            _,
+            { solutionAdoptionPlanId: customerSolution.adoptionPlan.id },
+            ctx
+          );
+        }
+      }
+    }
     
     await logAudit('BULK_UPDATE_CUSTOMER_TASK_STATUS', 'AdoptionPlan', adoptionPlanId, { taskIds, status, notes }, ctx.user?.id);
     

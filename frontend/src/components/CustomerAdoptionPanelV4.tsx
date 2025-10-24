@@ -63,6 +63,7 @@ import {
 import { CustomerDialog } from './dialogs/CustomerDialog';
 import { AssignProductDialog } from './dialogs/AssignProductDialog';
 import { EditEntitlementsDialog } from './dialogs/EditEntitlementsDialog';
+import { CustomerSolutionPanel } from './CustomerSolutionPanel';
 import { getApiUrl } from '../config/frontend.config';
 
 // GraphQL Queries
@@ -413,6 +414,7 @@ interface CustomerAdoptionPanelV4Props {
 }
 
 export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoptionPanelV4Props) {
+  const [activeTab, setActiveTab] = useState<'products' | 'solutions'>('products');
   const [selectedCustomerProductId, setSelectedCustomerProductId] = useState<string | null>(null);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [assignProductDialogOpen, setAssignProductDialogOpen] = useState(false);
@@ -545,21 +547,30 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     return Array.from(outcomes.values()).sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [planData?.adoptionPlan?.tasks, planData?.adoptionPlan?.selectedOutcomes]);
 
-  // Calculate progress based on filtered tasks (excluding NOT_APPLICABLE)
+  // Calculate progress based on filtered tasks using WEIGHTS (excluding NOT_APPLICABLE)
   const filteredProgress = React.useMemo(() => {
     // Filter out NOT_APPLICABLE tasks - they should not count towards progress
     const applicableTasks = filteredTasks.filter((task: any) => task.status !== 'NOT_APPLICABLE');
     
-    if (!applicableTasks.length) return { totalTasks: 0, completedTasks: 0, percentage: 0 };
+    if (!applicableTasks.length) return { totalTasks: 0, completedTasks: 0, totalWeight: 0, completedWeight: 0, percentage: 0 };
     
     const completedTasks = applicableTasks.filter((task: any) => 
       task.status === 'COMPLETED' || task.status === 'DONE'
     ).length;
-    const percentage = (completedTasks / applicableTasks.length) * 100;
+    
+    // Calculate WEIGHT-BASED progress (not task count)
+    const totalWeight = applicableTasks.reduce((sum: number, task: any) => sum + (Number(task.weight) || 0), 0);
+    const completedWeight = applicableTasks
+      .filter((task: any) => task.status === 'COMPLETED' || task.status === 'DONE')
+      .reduce((sum: number, task: any) => sum + (Number(task.weight) || 0), 0);
+    
+    const percentage = totalWeight > 0 ? (completedWeight / totalWeight) * 100 : 0;
     
     return {
       totalTasks: applicableTasks.length,
       completedTasks,
+      totalWeight,
+      completedWeight,
       percentage: Math.round(percentage * 10) / 10, // Round to 1 decimal
     };
   }, [filteredTasks]);
@@ -1091,10 +1102,23 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                 </Box>
               </Box>
 
-              {/* Product Selection */}
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                <FormControl sx={{ minWidth: 300 }} size="small">
-                  <InputLabel>Select Product</InputLabel>
+              {/* Tabs for Products and Solutions */}
+              <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2 }}>
+                <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
+                  <Tab label="Products" value="products" />
+                  <Tab label="Solutions" value="solutions" />
+                </Tabs>
+              </Box>
+            </Box>
+
+            {/* Tab Content */}
+            {activeTab === 'products' && (
+              <>
+                {/* Product Selection */}
+                <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                    <FormControl sx={{ minWidth: 300 }} size="small">
+                      <InputLabel>Select Product</InputLabel>
                   <Select
                     value={selectedCustomerProductId || ''}
                     onChange={(e) => handleProductChange(e.target.value)}
@@ -1248,7 +1272,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                   <Card sx={{ mb: 2 }}>
                     <CardContent>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h6">Adoption Progress</Typography>
+                        <Typography variant="h6">
+                          Adoption Progress for {selectedCustomerProduct.name || selectedCustomerProduct.product?.name || 'Product'}
+                        </Typography>
                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                           <Chip 
                             label={selectedCustomerProduct.licenseLevel} 
@@ -1353,31 +1379,28 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                               )}
                             >
                               {[
-                                // Only show "All Releases" if customer has entitlement to all releases
-                                // (selectedReleases is empty in adoption plan)
-                                ...((!planData?.adoptionPlan?.selectedReleases || planData.adoptionPlan.selectedReleases.length === 0) ? [
-                                  <MenuItem
-                                    key={ALL_RELEASES_ID}
-                                    value={ALL_RELEASES_ID}
-                                    sx={{
-                                      backgroundColor: filterReleases.includes(ALL_RELEASES_ID) ? 'rgba(33, 150, 243, 0.08)' : 'inherit',
-                                      borderBottom: '1px solid',
-                                      borderColor: 'divider',
-                                      '&:hover': {
-                                        backgroundColor: 'rgba(33, 150, 243, 0.12)',
-                                      },
-                                    }}
-                                  >
-                                    <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID)} sx={{ color: 'primary.main' }} />
-                                    <ListItemText 
-                                      primary="All Releases" 
-                                      primaryTypographyProps={{ 
-                                        fontWeight: 600,
-                                        color: 'primary.main'
-                                      }} 
-                                    />
-                                  </MenuItem>
-                                ] : []),
+                                // Always show "All Releases" option
+                                <MenuItem
+                                  key={ALL_RELEASES_ID}
+                                  value={ALL_RELEASES_ID}
+                                  sx={{
+                                    backgroundColor: filterReleases.includes(ALL_RELEASES_ID) ? 'rgba(33, 150, 243, 0.08)' : 'inherit',
+                                    borderBottom: '1px solid',
+                                    borderColor: 'divider',
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(33, 150, 243, 0.12)',
+                                    },
+                                  }}
+                                >
+                                  <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID)} sx={{ color: 'primary.main' }} />
+                                  <ListItemText 
+                                    primary="All Releases" 
+                                    primaryTypographyProps={{ 
+                                      fontWeight: 600,
+                                      color: 'primary.main'
+                                    }} 
+                                  />
+                                </MenuItem>,
                                 ...availableReleases.map((release: any) => (
                                   <MenuItem key={release.id} value={release.id}>
                                     <Checkbox checked={filterReleases.includes(release.id)} />
@@ -1431,31 +1454,28 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                               )}
                             >
                               {[
-                                // Only show "All Outcomes" if customer has entitlement to all outcomes
-                                // (selectedOutcomes is empty in adoption plan)
-                                ...((!planData?.adoptionPlan?.selectedOutcomes || planData.adoptionPlan.selectedOutcomes.length === 0) ? [
-                                  <MenuItem
-                                    key={ALL_OUTCOMES_ID}
-                                    value={ALL_OUTCOMES_ID}
-                                    sx={{
-                                      backgroundColor: filterOutcomes.includes(ALL_OUTCOMES_ID) ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
-                                      borderBottom: '1px solid',
-                                      borderColor: 'divider',
-                                      '&:hover': {
-                                        backgroundColor: 'rgba(76, 175, 80, 0.12)',
-                                      },
-                                    }}
-                                  >
-                                    <Checkbox checked={filterOutcomes.includes(ALL_OUTCOMES_ID)} sx={{ color: 'success.main' }} />
-                                    <ListItemText 
-                                      primary="All Outcomes" 
-                                      primaryTypographyProps={{ 
-                                        fontWeight: 600,
-                                        color: 'success.main'
-                                      }} 
-                                    />
-                                  </MenuItem>
-                                ] : []),
+                                // Always show "All Outcomes" option
+                                <MenuItem
+                                  key={ALL_OUTCOMES_ID}
+                                  value={ALL_OUTCOMES_ID}
+                                  sx={{
+                                    backgroundColor: filterOutcomes.includes(ALL_OUTCOMES_ID) ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
+                                    borderBottom: '1px solid',
+                                    borderColor: 'divider',
+                                    '&:hover': {
+                                      backgroundColor: 'rgba(76, 175, 80, 0.12)',
+                                    },
+                                  }}
+                                >
+                                  <Checkbox checked={filterOutcomes.includes(ALL_OUTCOMES_ID)} sx={{ color: 'success.main' }} />
+                                  <ListItemText 
+                                    primary="All Outcomes" 
+                                    primaryTypographyProps={{ 
+                                      fontWeight: 600,
+                                      color: 'success.main'
+                                    }} 
+                                  />
+                                </MenuItem>,
                                 ...availableOutcomes.map((outcome: any) => (
                                   <MenuItem key={outcome.id} value={outcome.id}>
                                     <Checkbox checked={filterOutcomes.includes(outcome.id)} />
@@ -1788,6 +1808,15 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                 </Alert>
               )}
             </Box>
+              </>
+            )}
+
+            {/* Solutions Tab Content */}
+            {activeTab === 'solutions' && (
+              <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+                <CustomerSolutionPanel customerId={selectedCustomerId || ''} />
+              </Box>
+            )}
           </>
         ) : (
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>

@@ -9,6 +9,8 @@ export const typeDefs = gql`
   enum LicenseLevel { Essential Advantage Signature }
   enum CustomerTaskStatus { NOT_STARTED IN_PROGRESS COMPLETED DONE NOT_APPLICABLE NO_LONGER_USING }
   enum StatusUpdateSource { MANUAL TELEMETRY IMPORT SYSTEM }
+  enum TaskSourceType { SOLUTION PRODUCT }
+  enum SolutionProductStatus { NOT_STARTED IN_PROGRESS COMPLETED BLOCKED SKIPPED }
 
   interface Node { id: ID! }
 
@@ -22,7 +24,10 @@ export const typeDefs = gql`
     id: ID!
     name: String!
     description: String
-    product: Product!
+    product: Product
+    solution: Solution
+    productId: ID
+    solutionId: ID
   }
 
   type Release implements Node {
@@ -63,6 +68,7 @@ export const typeDefs = gql`
     customers: [Customer!]!
     licenses: [License!]!
     releases: [Release!]!
+    outcomes: [Outcome!]!
   }
 
   type Customer implements Node {
@@ -70,7 +76,7 @@ export const typeDefs = gql`
     name: String!
     description: String
     products: [CustomerProductWithPlan!]!
-    solutions: [Solution!]!
+    solutions: [CustomerSolutionWithPlan!]!
   }
 
   type Task implements Node {
@@ -156,6 +162,8 @@ export const typeDefs = gql`
   type TaskConnection { edges: [TaskEdge!]! pageInfo: PageInfo! totalCount: Int! }
   type ProductEdge { cursor: String! node: Product! }
   type ProductConnection { edges: [ProductEdge!]! pageInfo: PageInfo! totalCount: Int! }
+  type SolutionEdge { cursor: String! node: Solution! }
+  type SolutionConnection { edges: [SolutionEdge!]! pageInfo: PageInfo! totalCount: Int! }
 
   enum TaskImportMode { APPEND OVERWRITE }
 
@@ -180,17 +188,112 @@ export const typeDefs = gql`
 
 
 
+  # Solution Reporting Types
+  type SolutionAdoptionReport {
+    solutionAdoptionPlanId: ID!
+    customerName: String!
+    solutionName: String!
+    licenseLevel: String!
+    overallProgress: Float!
+    taskCompletionPercentage: Float!
+    estimatedCompletionDate: String
+    daysInProgress: Int!
+    totalTasks: Int!
+    completedTasks: Int!
+    inProgressTasks: Int!
+    notStartedTasks: Int!
+    blockedTasks: Int!
+    productProgress: [ProductProgressReport!]!
+    bottlenecks: [BottleneckReport!]!
+    healthScore: Float!
+    telemetryHealthScore: Float!
+    riskLevel: RiskLevel!
+    onTrack: Boolean!
+    estimatedDaysRemaining: Int
+    recommendations: [String!]!
+  }
+
+  type ProductProgressReport {
+    productId: ID!
+    productName: String!
+    status: SolutionProductStatus!
+    progress: Float!
+    completedTasks: Int!
+    totalTasks: Int!
+    averageTaskCompletionTime: Float
+    estimatedCompletionDate: String
+  }
+
+  type BottleneckReport {
+    type: BottleneckType!
+    severity: Severity!
+    title: String!
+    description: String!
+    affectedTaskIds: [ID!]!
+    affectedProductIds: [ID!]!
+    suggestedAction: String!
+    estimatedImpactDays: Int
+  }
+
+  type SolutionComparisonReport {
+    solutionId: ID!
+    solutionName: String!
+    totalCustomers: Int!
+    averageProgress: Float!
+    averageTimeToComplete: Float
+    successRate: Float!
+    commonBottlenecks: [BottleneckSummary!]!
+    bestPerformingCustomers: [CustomerPerformance!]!
+    strugglingCustomers: [CustomerPerformance!]!
+  }
+
+  type BottleneckSummary {
+    bottleneckType: String!
+    occurrenceCount: Int!
+    averageResolutionTime: Float
+    affectedCustomerPercentage: Float!
+  }
+
+  type CustomerPerformance {
+    customerId: ID!
+    customerName: String!
+    progress: Float!
+    daysInProgress: Int!
+    healthScore: Float!
+  }
+
+  enum BottleneckType {
+    TASK
+    PRODUCT
+    DEPENDENCY
+    TELEMETRY
+  }
+
+  enum Severity {
+    LOW
+    MEDIUM
+    HIGH
+    CRITICAL
+  }
+
+  enum RiskLevel {
+    LOW
+    MEDIUM
+    HIGH
+    CRITICAL
+  }
+
   type Query {
     node(id: ID!): Node
     product(id: ID!): Product
     products(first: Int, after: String, last: Int, before: String): ProductConnection!
-    solutions(first: Int, after: String, last: Int, before: String): ProductConnection! # simplified
+    solutions(first: Int, after: String, last: Int, before: String): SolutionConnection!
     tasks(first: Int, after: String, last: Int, before: String, productId: ID, solutionId: ID): TaskConnection!
     customers: [Customer!]!
     licenses: [License!]!
     releases(productId: ID): [Release!]!
     taskStatuses: [TaskStatus!]!
-    outcomes(productId: ID): [Outcome!]!
+    outcomes(productId: ID, solutionId: ID): [Outcome!]!
     auditLogs(limit: Int = 50): [AuditLog!]!
     changeSets(limit: Int = 50): [ChangeSet!]!
     changeSet(id: ID!): ChangeSet
@@ -213,6 +316,16 @@ export const typeDefs = gql`
     customerTask(id: ID!): CustomerTask
     customerTasksForPlan(adoptionPlanId: ID!, status: CustomerTaskStatus): [CustomerTask!]!
     customerTelemetryDatabase(customerId: ID, customerProductId: ID): [CustomerTelemetryRecord!]!
+    
+    # Solution Adoption queries
+    solutionAdoptionPlan(id: ID!): SolutionAdoptionPlan
+    solutionAdoptionPlansForCustomer(customerId: ID!): [SolutionAdoptionPlan!]!
+    customerSolutionTask(id: ID!): CustomerSolutionTask
+    customerSolutionTasksForPlan(solutionAdoptionPlanId: ID!, status: CustomerTaskStatus): [CustomerSolutionTask!]!
+    
+    # Solution Reporting queries
+    solutionAdoptionReport(solutionAdoptionPlanId: ID!): SolutionAdoptionReport!
+    solutionComparisonReport(solutionId: ID!): SolutionComparisonReport!
     
     # Excel Export
     exportProductToExcel(productName: String!): ExcelExportResult!
@@ -330,7 +443,7 @@ export const typeDefs = gql`
     productId: ID!              # Product this release belongs to
   }
   input TaskStatusInput { code: String! label: String! }
-  input OutcomeInput { name: String! description: String productId: ID! }
+  input OutcomeInput { name: String! description: String productId: ID solutionId: ID }
   input TaskCreateInput { 
     productId: ID
     solutionId: ID
@@ -428,7 +541,7 @@ export const typeDefs = gql`
   removeProductFromCustomer(customerId: ID!, productId: ID!): Boolean!
   addSolutionToCustomer(customerId: ID!, solutionId: ID!): Boolean!
   removeSolutionFromCustomer(customerId: ID!, solutionId: ID!): Boolean!
-  reorderTasks(productId: ID!, order: [ID!]!): Boolean!
+  reorderTasks(productId: ID, solutionId: ID, order: [ID!]!): Boolean!
     createTask(input: TaskCreateInput!): Task!
     updateTask(id: ID!, input: TaskUpdateInput!): Task!
     markTaskDone(id: ID!, reason: String): Task!
@@ -485,6 +598,22 @@ export const typeDefs = gql`
   # Telemetry Import/Export
   exportAdoptionPlanTelemetryTemplate(adoptionPlanId: ID!): TelemetryTemplateExport!
   importAdoptionPlanTelemetry(adoptionPlanId: ID!, file: Upload!): TelemetryImportResult!
+  
+  # Solution Adoption mutations
+  assignSolutionToCustomer(input: AssignSolutionToCustomerInput!): CustomerSolutionWithPlan!
+  updateCustomerSolution(id: ID!, input: UpdateCustomerSolutionInput!): CustomerSolutionWithPlan!
+  removeSolutionFromCustomerEnhanced(id: ID!): DeleteResult!
+  createSolutionAdoptionPlan(customerSolutionId: ID!): SolutionAdoptionPlan!
+  syncSolutionAdoptionPlan(solutionAdoptionPlanId: ID!): SolutionAdoptionPlan!
+  updateCustomerSolutionTaskStatus(input: UpdateCustomerSolutionTaskStatusInput!): CustomerSolutionTask!
+  bulkUpdateCustomerSolutionTaskStatus(solutionAdoptionPlanId: ID!, taskIds: [ID!]!, status: CustomerTaskStatus!, notes: String): [CustomerSolutionTask!]!
+  evaluateSolutionTaskTelemetry(customerSolutionTaskId: ID!): CustomerSolutionTask!
+  evaluateAllSolutionTasksTelemetry(solutionAdoptionPlanId: ID!): SolutionAdoptionPlan!
+  
+  # Solution product management
+  addProductToSolutionEnhanced(solutionId: ID!, productId: ID!, order: Int): Boolean!
+  removeProductFromSolutionEnhanced(solutionId: ID!, productId: ID!): Boolean!
+  reorderProductsInSolution(solutionId: ID!, productOrders: [ProductOrderInput!]!): Boolean!
   }
 
   # Telemetry Import/Export Types
@@ -633,6 +762,94 @@ export const typeDefs = gql`
     message: String
   }
 
+  # Solution Adoption Types
+  type CustomerSolutionWithPlan {
+    id: ID!
+    customer: Customer!
+    solution: Solution!
+    name: String!
+    licenseLevel: LicenseLevel!
+    selectedOutcomes: [Outcome!]!
+    selectedReleases: [Release!]!
+    adoptionPlan: SolutionAdoptionPlan
+    purchasedAt: String!
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type SolutionAdoptionPlan {
+    id: ID!
+    customerSolution: CustomerSolutionWithPlan!
+    solutionId: ID!
+    solutionName: String!
+    licenseLevel: LicenseLevel!
+    selectedOutcomes: [Outcome!]!
+    selectedReleases: [Release!]!
+    includedProductIds: [ID!]!
+    totalTasks: Int!
+    completedTasks: Int!
+    totalWeight: Float!
+    completedWeight: Float!
+    progressPercentage: Float!
+    solutionTasksTotal: Int!
+    solutionTasksComplete: Int!
+    products: [SolutionAdoptionProduct!]!
+    tasks: [CustomerSolutionTask!]!
+    tasksByStatus(status: CustomerTaskStatus): [CustomerSolutionTask!]!
+    createdAt: String!
+    updatedAt: String!
+    lastSyncedAt: String
+    needsSync: Boolean!
+  }
+
+  type SolutionAdoptionProduct {
+    id: ID!
+    solutionAdoptionPlan: SolutionAdoptionPlan!
+    productId: ID!
+    productName: String!
+    sequenceNumber: Int!
+    status: SolutionProductStatus!
+    totalTasks: Int!
+    completedTasks: Int!
+    totalWeight: Float!
+    completedWeight: Float!
+    progressPercentage: Float!
+    productAdoptionPlan: AdoptionPlan
+    createdAt: String!
+    updatedAt: String!
+  }
+
+  type CustomerSolutionTask {
+    id: ID!
+    solutionAdoptionPlan: SolutionAdoptionPlan!
+    originalTaskId: ID!
+    sourceType: TaskSourceType!
+    sourceProductId: ID
+    name: String!
+    description: String
+    estMinutes: Int!
+    weight: Float!
+    sequenceNumber: Int!
+    howToDoc: [String!]!
+    howToVideo: [String!]!
+    notes: String
+    licenseLevel: LicenseLevel!
+    status: CustomerTaskStatus!
+    statusUpdatedAt: String
+    statusUpdatedBy: String
+    statusUpdateSource: StatusUpdateSource
+    statusNotes: String
+    isComplete: Boolean!
+    completedAt: String
+    completedBy: String
+    telemetryAttributes: [CustomerTelemetryAttribute!]!
+    outcomes: [Outcome!]!
+    releases: [Release!]!
+    telemetryProgress: TelemetryProgress!
+    createdAt: String!
+    updatedAt: String!
+  }
+
   # Customer Adoption Input Types
   input AssignProductToCustomerInput {
     customerId: ID!
@@ -663,6 +880,35 @@ export const typeDefs = gql`
     source: String
     batchId: String
     notes: String
+  }
+
+  # Solution Adoption Input Types
+  input AssignSolutionToCustomerInput {
+    customerId: ID!
+    solutionId: ID!
+    name: String!
+    licenseLevel: LicenseLevel!
+    selectedOutcomeIds: [ID!]!
+    selectedReleaseIds: [ID!]!
+  }
+
+  input UpdateCustomerSolutionInput {
+    name: String
+    licenseLevel: LicenseLevel
+    selectedOutcomeIds: [ID!]
+    selectedReleaseIds: [ID!]
+  }
+
+  input UpdateCustomerSolutionTaskStatusInput {
+    customerSolutionTaskId: ID!
+    status: CustomerTaskStatus!
+    notes: String
+    updateSource: StatusUpdateSource
+  }
+
+  input ProductOrderInput {
+    productId: ID!
+    order: Int!
   }
 
   type Subscription {

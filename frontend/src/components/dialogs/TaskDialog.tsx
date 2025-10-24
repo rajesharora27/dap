@@ -235,22 +235,11 @@ export const TaskDialog: React.FC<Props> = ({
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="lg" 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="lg"
       fullWidth
-      keepMounted
-      disableEnforceFocus
-      container={document.getElementById('root')}
-      BackdropProps={{
-        onClick: onClose
-      }}
-      slotProps={{
-        backdrop: {
-          invisible: false
-        }
-      }}
       sx={{
         '& .MuiDialog-container': {
           alignItems: 'flex-start',
@@ -302,6 +291,7 @@ export const TaskDialog: React.FC<Props> = ({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
+                  autoFocus
                   placeholder="e.g., Implement user authentication"
                   size="small"
                 />

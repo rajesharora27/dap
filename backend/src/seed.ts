@@ -1,6 +1,7 @@
 import { prisma } from './context';
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { seedSolutions } from './seed-solutions';
 
 async function main() {
   const nodeEnv = process.env.NODE_ENV || 'development';
@@ -864,11 +865,10 @@ async function main() {
             data: {
               name: taskInfo.name,
               description: taskInfo.description,
-              productId: product.id,
+              product: { connect: { id: product.id } },
               estMinutes: taskInfo.estMinutes,
               weight: new Prisma.Decimal(taskInfo.weight),
               sequenceNumber: sequenceNumber,
-              priority: taskInfo.priority,
               notes: taskInfo.notes,
               howToDoc: taskInfo.howToDoc || [],
               howToVideo: taskInfo.howToVideo || [],
@@ -1154,6 +1154,10 @@ async function main() {
     console.log('[seed]   3. Code Quality (STRING) - with 3 historical values');
     console.log('[seed]   4. Last Updated (TIMESTAMP) - with 3 historical values');
     console.log('[seed]   5. Composite Health Check (BOOLEAN) - with 3 historical values');
+
+    // Seed solution data
+    console.log('[seed] Seeding solution adoption data...');
+    await seedSolutions();
   } else {
     console.log('[seed] Skipping sample data');
   }

@@ -71,17 +71,6 @@ export const ReleaseDialog: React.FC<Props> = ({ open, onClose, onSave, release,
       onClose={onClose} 
       maxWidth="sm" 
       fullWidth
-      keepMounted
-      disableEnforceFocus
-      container={document.getElementById('root')}
-      BackdropProps={{
-        onClick: onClose
-      }}
-      slotProps={{
-        backdrop: {
-          invisible: false
-        }
-      }}
     >
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
@@ -92,6 +81,7 @@ export const ReleaseDialog: React.FC<Props> = ({ open, onClose, onSave, release,
             value={name}
             onChange={(e) => setName(e.target.value)}
             margin="normal"
+            autoFocus
             placeholder="e.g. Alpha, Beta, Version 1.0"
           />
           

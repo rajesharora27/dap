@@ -313,8 +313,58 @@ clean_database() {
         return 1
     fi
 
-    # Clean tables
-    docker exec $DB_CONTAINER psql -U postgres -d dap -c "DELETE FROM \"TaskOutcome\"; DELETE FROM \"Task\"; DELETE FROM \"Outcome\"; DELETE FROM \"License\"; DELETE FROM \"CustomerProduct\"; DELETE FROM \"CustomerSolution\"; DELETE FROM \"Product\"; DELETE FROM \"AuditLog\"; DELETE FROM \"ChangeItem\"; DELETE FROM \"ChangeSet\"; DELETE FROM \"Telemetry\";" 2>&1 | tee /tmp/dap_db_cleanup.log
+    # Clean tables (in proper order to handle foreign key constraints)
+    # Based on actual Prisma schema models - deleting from most dependent to least
+    docker exec $DB_CONTAINER psql -U postgres -d dap -c "
+      -- Level 1: Deepest dependencies (telemetry values, task relationships)
+      DELETE FROM \"CustomerTelemetryValue\";
+      DELETE FROM \"TelemetryValue\";
+      DELETE FROM \"CustomerTaskOutcome\";
+      DELETE FROM \"CustomerTaskRelease\";
+      
+      -- Level 2: Customer adoption tasks and telemetry attributes
+      DELETE FROM \"CustomerTelemetryAttribute\";
+      DELETE FROM \"CustomerSolutionTask\";
+      DELETE FROM \"CustomerTask\";
+      DELETE FROM \"TelemetryAttribute\";
+      
+      -- Level 3: Solution and product adoption plans
+      DELETE FROM \"SolutionAdoptionProduct\";
+      DELETE FROM \"SolutionAdoptionPlan\";
+      DELETE FROM \"AdoptionPlan\";
+      
+      -- Level 4: Customer assignments (solutions and products)
+      DELETE FROM \"CustomerSolution\";
+      DELETE FROM \"CustomerProduct\";
+      
+      -- Level 5: Junction tables (must be before parent tables)
+      DELETE FROM \"SolutionProduct\";
+      DELETE FROM \"SolutionTaskOrder\";
+      DELETE FROM \"TaskOutcome\";
+      DELETE FROM \"TaskRelease\";
+      
+      -- Level 6: Core entities (tasks, outcomes, licenses, releases)
+      DELETE FROM \"Task\";
+      DELETE FROM \"Outcome\";
+      DELETE FROM \"License\";
+      DELETE FROM \"Release\";
+      DELETE FROM \"CustomAttribute\";
+      DELETE FROM \"Telemetry\";
+      
+      -- Level 7: Top-level entities (products, solutions, customers)
+      DELETE FROM \"Product\";
+      DELETE FROM \"Solution\";
+      DELETE FROM \"Customer\";
+      
+      -- Level 8: Audit, change tracking, and system tables
+      DELETE FROM \"ChangeItem\";
+      DELETE FROM \"ChangeSet\";
+      DELETE FROM \"AuditLog\";
+      DELETE FROM \"LockedEntity\";
+      DELETE FROM \"Session\";
+      
+      -- Note: User table intentionally NOT deleted to preserve admin accounts
+    " 2>&1 | tee /tmp/dap_db_cleanup.log
     if grep -qE 'ERROR|FATAL' /tmp/dap_db_cleanup.log; then
         log_error "Failed to clean database tables. See /tmp/dap_db_cleanup.log for details."
         cat /tmp/dap_db_cleanup.log
@@ -346,6 +396,18 @@ clean_database() {
     log_info "  🏷️ $licenses Licenses (Essential, Advantage, Signature tiers)"
     log_info "  🎯 $outcomes Outcomes (Success metrics and KPIs)"
     log_info "  🏢 $customers Customers (Enterprise clients)"
+    
+    # Also seed solution data if backend is running
+    log_info ""
+    log_info "🌱 Now seeding solution bundles..."
+    cd "$BACKEND_DIR"
+    if npm run seed >/dev/null 2>&1; then
+        local solutions=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Solution\";" 2>/dev/null | tr -d ' ')
+        log_success "✅ Solution data seeded: $solutions Solutions"
+    else
+        log_warning "⚠️  Solution seeding skipped (run './dap add-sample' to add solutions)"
+    fi
+    cd "$PROJECT_DIR"
 }
 
 # Start all services
@@ -514,6 +576,7 @@ clean_restart() {
     echo ""
     log_success "Clean restart completed!"
     log_info "✅ Database: Clean with 5 products and 40 tasks (comprehensive attributes)"
+    log_info "✅ Solutions: 2 solution bundles with test data"
     log_info "✅ Backend API: http://localhost:$BACKEND_PORT/graphql"
     log_info "✅ Frontend App: http://localhost:$FRONTEND_PORT"
     echo ""
@@ -522,8 +585,8 @@ clean_restart() {
 
 # Add complete networking/security sample data  
 add_sample_data() {
-    log_header "ADDING COMPLETE NETWORKING & SECURITY SAMPLE DATA"
-    log_info "This will add comprehensive sample data including customers and adoption plans"
+    log_header "ADDING COMPLETE SAMPLE DATA (PRODUCTS + SOLUTIONS)"
+    log_info "This will add comprehensive sample data including customers, adoption plans, and solution bundles"
     
     # Check if database container is running
     if [ -z "$DB_CONTAINER" ]; then
@@ -545,6 +608,7 @@ add_sample_data() {
     # Execute the complete sample data script
     log_info "📝 Loading complete networking & security sample data..."
     log_info "   • 5 Products (Firewall, Routing, MFA/SSO, SD-WAN, Cloud Security)"
+    log_info "   • 2 Solutions (Enterprise Security Bundle, Digital Transformation)"
     log_info "   • 3 Customers with realistic scenarios" 
     log_info "   • 6 Customer product assignments"
     log_info "   • 75+ Tasks with telemetry attributes"
@@ -572,6 +636,9 @@ add_sample_data() {
         
         # Create adoption plans for all customer product assignments
         create_adoption_plans
+        
+        # Seed solution data
+        seed_solution_data
     else
         echo ""
         log_error "❌ Failed to create complete sample data"
@@ -580,7 +647,60 @@ add_sample_data() {
     fi
     
     echo ""
-    log_info "🔄 Refresh your browser (Ctrl+Shift+R) to see the complete networking & security sample data!"
+    log_info "🔄 Refresh your browser (Ctrl+Shift+R) to see the complete sample data!"
+    log_success "🎉 All sample data loaded successfully - Products, Solutions, Customers, and Adoption Plans!"
+}
+
+# Seed solution data using backend seed script
+seed_solution_data() {
+    log_header "SEEDING SOLUTION DATA"
+    log_info "📦 Creating solution bundles and test data..."
+    
+    # Check if backend is accessible
+    if ! check_port $BACKEND_PORT; then
+        log_warning "⚠️  Backend is not running. Starting backend first..."
+        start_backend || {
+            log_error "❌ Failed to start backend. Cannot seed solution data."
+            return 1
+        }
+        # Give it a moment to fully initialize
+        sleep 5
+    fi
+    
+    # Run the seed script which includes solution seeding
+    log_info "🌱 Running backend seed script with solution data..."
+    cd "$BACKEND_DIR"
+    
+    if npm run seed 2>&1 | tee /tmp/dap_solution_seed.log; then
+        echo ""
+        log_success "✅ Solution data seeded successfully!"
+        
+        # Count what was created
+        local solutions=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Solution\";" 2>/dev/null | tr -d ' ')
+        local solution_products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"SolutionProduct\";" 2>/dev/null | tr -d ' ')
+        local solution_tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\" WHERE \"solutionId\" IS NOT NULL;" 2>/dev/null | tr -d ' ')
+        local customer_solutions=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"CustomerSolution\";" 2>/dev/null | tr -d ' ')
+        
+        echo ""
+        log_info "📊 Solution data created:"
+        log_info "  📦 $solutions Solutions (Enterprise Security Bundle, Digital Transformation)"
+        log_info "  🔗 $solution_products Product-Solution Links"
+        log_info "  ⚙️  $solution_tasks Solution-specific Tasks"
+        log_info "  🏢 $customer_solutions Customer Solution Assignments"
+        echo ""
+        log_success "🎉 Solution adoption system is ready for testing!"
+    else
+        echo ""
+        log_error "❌ Failed to seed solution data"
+        log_info "Check /tmp/dap_solution_seed.log for error details"
+        if grep -q "already exists\|duplicate" /tmp/dap_solution_seed.log; then
+            log_info "ℹ️  Some solution data may already exist - this is normal"
+            return 0
+        fi
+        return 1
+    fi
+    
+    cd "$PROJECT_DIR"
 }
 
 # Create adoption plans for all customer product assignments (ROBUST VERSION)
@@ -840,12 +960,14 @@ show_help() {
     echo ""
     echo "The clean-restart command provides:"
     echo "  • 5 comprehensive products with mandatory attributes"
+    echo "  • 2 solution bundles (Security, Digital Transformation)"
     echo "  • Tasks with howToDoc and howToVideo fields"
     echo "  • Complete data relationships and constraints"
     echo "  • Essential licenses, outcomes, and releases for each product"
+    echo "  • Customer solution assignments and adoption tracking"
     echo ""
     echo "Sample data management:"
-    echo "  • add-sample: Adds sample data without affecting existing user data"
+    echo "  • add-sample: Adds sample data (products + solutions) without affecting existing user data"
     echo "  • reset-sample: Removes only sample data, preserves user-created data"
     echo "  • clean-restart: Completely resets database and adds fresh sample data"
     echo ""

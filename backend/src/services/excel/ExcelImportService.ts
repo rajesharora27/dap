@@ -451,7 +451,6 @@ export class ExcelImportService {
               weight: task.weight || 1,
               sequenceNumber: task.sequenceNumber || 1,
               licenseLevel,
-              priority: task.priority || 'Medium',
               howToDoc: task.howToDoc ? task.howToDoc.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
               howToVideo: task.howToVideo ? task.howToVideo.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
               productId,
@@ -497,7 +496,6 @@ export class ExcelImportService {
                 weight: task.weight || 1,
                 sequenceNumber: task.sequenceNumber || 1,
                 licenseLevel,
-                priority: task.priority || 'Medium',
                 howToDoc: task.howToDoc ? task.howToDoc.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
                 howToVideo: task.howToVideo ? task.howToVideo.split(',').map((s: string) => s.trim()).filter(Boolean) : []
               }

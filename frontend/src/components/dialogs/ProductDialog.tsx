@@ -9,26 +9,45 @@ import {
   TextField,
   Box,
   Typography,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
   IconButton,
   List,
-  ListItem,
-  ListItemText,
   ListItemButton,
-  Divider,
-  FormControlLabel,
-  Checkbox
+  ListItemText,
+  Tabs,
+  Tab
 } from '@mui/material';
 import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
-import { ExpandMore } from '@mui/icons-material';
 import { License, Outcome, Product, CustomAttribute, Release } from '../../types/shared';
 import { ValidationUtils } from '../../utils/sharedHandlers';
 import { CustomAttributeDialog } from './CustomAttributeDialog';
 import { LicenseDialog } from './LicenseDialog';
 import { OutcomeDialog } from './OutcomeDialog';
 import { ReleaseDialog } from './ReleaseDialog';
+
+interface TabPanelProps {
+  children?: React.ReactNode;
+  index: number;
+  value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+  const { children, value, index, ...other } = props;
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`product-tabpanel-${index}`}
+      aria-labelledby={`product-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ py: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
+}
 
 interface Props {
   open: boolean;
@@ -44,11 +63,18 @@ interface Props {
   product?: Product | null;
   title: string;
   availableReleases: Release[];
+  initialTab?: 'general' | 'outcomes' | 'licenses' | 'releases' | 'customAttributes';
 }
 
-
-
-export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product, title, availableReleases }) => {
+export const ProductDialog: React.FC<Props> = ({ 
+  open, 
+  onClose, 
+  onSave, 
+  product, 
+  title, 
+  availableReleases,
+  initialTab = 'general'
+}) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [customAttrs, setCustomAttrs] = useState<{ [key: string]: any }>({});
@@ -57,6 +83,7 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
   const [releases, setReleases] = useState<Array<{ id?: string; name: string; level: number; description?: string; isNew?: boolean; delete?: boolean }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [tabValue, setTabValue] = useState(0);
 
   // Dialog states
   const [addCustomAttributeDialog, setAddCustomAttributeDialog] = useState(false);
@@ -92,49 +119,48 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
       })));
       setCustomAttrs(product.customAttrs || {});
     } else {
-      // New product - set defaults for mandatory attributes
+      // New product - set defaults
       setName('');
       setDescription('');
       setOutcomes([{
-        name: '', // Will be set to product name when product name is entered
+        name: '',
         description: '',
         isNew: true
       }]);
       setLicenses([{
         name: 'Essential',
-        description: 'Default essential license',
+        description: 'Basic features',
         level: 1,
         isActive: true,
         isNew: true
       }]);
       setReleases([{
         name: '1.0',
-        level: 1.0,
         description: 'Initial release',
+        level: 1,
         isNew: true
       }]);
-      setCustomAttrs({
-        priority: "medium",
-        owner: "",
-        department: ""
-      });
+      setCustomAttrs({});
     }
     setError('');
   }, [product, open]);
 
-  // Update default outcome name when product name changes (for new products only)
+  // Set initial tab based on prop
   useEffect(() => {
-    if (!product && name.trim() && outcomes.length === 1 && outcomes[0].isNew && !outcomes[0].name) {
-      setOutcomes([{
-        ...outcomes[0],
-        name: name.trim(),
-        description: `Primary outcome for ${name.trim()}`
-      }]);
+    if (open) {
+      const tabMap: Record<string, number> = {
+        general: 0,
+        outcomes: 1,
+        licenses: 2,
+        releases: 3,
+        customAttributes: 4
+      };
+      setTabValue(tabMap[initialTab] || 0);
     }
-  }, [name, product, outcomes]);
+  }, [open, initialTab]);
 
-  // License dialog handlers
-  const handleAddLicense = (licenseData: Omit<License, 'id'>) => {
+  // License handlers
+  const handleAddLicense = (licenseData: { name: string; description?: string; level: number; isActive: boolean }) => {
     setLicenses([...licenses, {
       ...licenseData,
       isNew: true
@@ -142,7 +168,7 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
     setAddLicenseDialog(false);
   };
 
-  const handleEditLicense = (licenseData: Omit<License, 'id'>) => {
+  const handleEditLicense = (licenseData: { name: string; description?: string; level: number; isActive: boolean }) => {
     if (editingLicense) {
       const updatedLicenses = licenses.map(license => 
         license.id === editingLicense.id || license === editingLicense
@@ -158,10 +184,8 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
   const handleDeleteLicense = (index: number) => {
     const updatedLicenses = [...licenses];
     if (updatedLicenses[index].id) {
-      // Mark existing license for deletion
       updatedLicenses[index] = { ...updatedLicenses[index], delete: true };
     } else {
-      // Remove new license that wasn't saved yet
       updatedLicenses.splice(index, 1);
     }
     setLicenses(updatedLicenses);
@@ -172,8 +196,8 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
     setEditLicenseDialog(true);
   };
 
-  // Outcome dialog handlers
-  const handleAddOutcome = (outcomeData: Omit<Outcome, 'id'>) => {
+  // Outcome handlers
+  const handleAddOutcome = (outcomeData: { name: string; description?: string }) => {
     setOutcomes([...outcomes, {
       ...outcomeData,
       isNew: true
@@ -181,7 +205,7 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
     setAddOutcomeDialog(false);
   };
 
-  const handleEditOutcome = (outcomeData: Omit<Outcome, 'id'>) => {
+  const handleEditOutcome = (outcomeData: { name: string; description?: string }) => {
     if (editingOutcome) {
       const updatedOutcomes = outcomes.map(outcome => 
         outcome.id === editingOutcome.id || outcome === editingOutcome
@@ -197,10 +221,8 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
   const handleDeleteOutcome = (index: number) => {
     const updatedOutcomes = [...outcomes];
     if (updatedOutcomes[index].id) {
-      // Mark existing outcome for deletion
       updatedOutcomes[index] = { ...updatedOutcomes[index], delete: true };
     } else {
-      // Remove new outcome that wasn't saved yet
       updatedOutcomes.splice(index, 1);
     }
     setOutcomes(updatedOutcomes);
@@ -224,12 +246,10 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
   const handleEditCustomAttribute = (attributeData: CustomAttribute) => {
     const updatedCustomAttrs = { ...customAttrs };
 
-    // Remove old key if key was changed
     if (editingCustomAttribute && editingCustomAttribute.key !== attributeData.key) {
       delete updatedCustomAttrs[editingCustomAttribute.key];
     }
 
-    // Add/update with new key and value
     updatedCustomAttrs[attributeData.key] = attributeData.value;
 
     setCustomAttrs(updatedCustomAttrs);
@@ -243,7 +263,7 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
     setCustomAttrs(updatedCustomAttrs);
   };
 
-  // Release dialog handlers
+  // Release handlers
   const handleAddRelease = (releaseData: { name: string; level: number; description?: string }) => {
     setReleases([...releases, {
       ...releaseData,
@@ -268,10 +288,8 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
   const handleDeleteRelease = (index: number) => {
     const updatedReleases = [...releases];
     if (updatedReleases[index].id) {
-      // Mark existing release for deletion
       updatedReleases[index] = { ...updatedReleases[index], delete: true };
     } else {
-      // Remove new release that wasn't saved yet
       updatedReleases.splice(index, 1);
     }
     setReleases(updatedReleases);
@@ -283,36 +301,30 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
   };
 
   const handleSave = async () => {
-    // Validate mandatory fields
     if (!name.trim()) {
       setError('Product name is required');
       return;
     }
 
-    // Validate mandatory attributes for new products
     if (!product) {
-      // Check for at least one active license
       const activeLicenses = licenses.filter(license => !license.delete);
       if (activeLicenses.length === 0) {
-        setError('At least one license is required. Default "Essential" license has been added.');
+        setError('At least one license is required');
         return;
       }
 
-      // Check for at least one outcome
       const activeOutcomes = outcomes.filter(outcome => !outcome.delete);
       if (activeOutcomes.length === 0) {
-        setError('At least one outcome is required. Default outcome with product name has been added.');
+        setError('At least one outcome is required');
         return;
       }
 
-      // Check for at least one release
       const activeReleases = releases.filter(release => !release.delete);
       if (activeReleases.length === 0) {
-        setError('At least one release is required. Default "1.0" release has been added.');
+        setError('At least one release is required');
         return;
       }
 
-      // Validate outcome names are not empty
       for (const outcome of activeOutcomes) {
         if (!outcome.name.trim()) {
           setError('All outcome names must be specified');
@@ -320,7 +332,6 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         }
       }
 
-      // Validate license names are not empty
       for (const license of activeLicenses) {
         if (!license.name.trim()) {
           setError('All license names must be specified');
@@ -328,7 +339,6 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         }
       }
 
-      // Validate release names are not empty
       for (const release of activeReleases) {
         if (!release.name.trim()) {
           setError('All release names must be specified');
@@ -337,10 +347,8 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
       }
     }
 
-    // customAttrs is already an object, no need to parse
     const parsedAttrs = customAttrs;
 
-    // Use shared validation for the product
     const productValidationErrors = ValidationUtils.validateProduct({
       name: name.trim(),
       description: description.trim() || undefined,
@@ -348,7 +356,7 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
     });
 
     if (productValidationErrors.length > 0) {
-      setError(productValidationErrors[0]); // Show first error
+      setError(productValidationErrors.join(', '));
       return;
     }
 
@@ -360,12 +368,9 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         name: name.trim(),
         description: description.trim() || undefined,
         customAttrs: Object.keys(parsedAttrs).length > 0 ? parsedAttrs : undefined,
-        outcomes: outcomes.length > 0 ? outcomes : undefined,
-        licenses: licenses.length > 0 ? licenses.map(license => ({
-          ...license,
-          level: license.level.toString() // Convert level to string
-        })) : undefined,
-        releases: releases.length > 0 ? releases : undefined
+        outcomes,
+        licenses,
+        releases
       });
       onClose();
     } catch (err: any) {
@@ -375,250 +380,333 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
     }
   };
 
-  return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="md" 
-      fullWidth
-      keepMounted
-      disableEnforceFocus
-      container={document.getElementById('root')}
-      BackdropProps={{
-        onClick: onClose
-      }}
-      slotProps={{
-        backdrop: {
-          invisible: false
-        }
-      }}
-    >
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent>
-        <Box sx={{ pt: 1 }}>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <Box sx={{ flex: '2 1 300px' }}>
-              <TextField
-                fullWidth
-                label="Product Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                margin="normal"
-                required
-              />
-            </Box>
-          </Box>
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
 
+  return (
+    <>
+      <Dialog 
+        open={open} 
+        onClose={onClose} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: { height: '90vh' }
+        }}
+      >
+      <DialogTitle>{title}</DialogTitle>
+      <DialogContent dividers>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={tabValue} onChange={handleTabChange} aria-label="product tabs">
+            <Tab label="General" />
+            <Tab label={`Outcomes (${outcomes.filter(o => !o.delete).length})`} />
+            <Tab label={`Licenses (${licenses.filter(l => !l.delete).length})`} />
+            <Tab label={`Releases (${releases.filter(r => !r.delete).length})`} />
+            <Tab label={`Attributes (${Object.keys(customAttrs).length})`} />
+          </Tabs>
+        </Box>
+
+        {/* General Tab */}
+        <TabPanel value={tabValue} index={0}>
+          <TextField
+            fullWidth
+            label="Product Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            sx={{ mb: 2 }}
+          />
           <TextField
             fullWidth
             label="Description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            margin="normal"
             multiline
-            rows={3}
+            rows={6}
             placeholder="Describe the product's purpose, features, and benefits..."
           />
+        </TabPanel>
 
-          {/* Outcomes Management */}
-          <Accordion sx={{ mt: 2 }}>
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              <Typography>Outcomes ({outcomes.filter(o => !o.delete).length})</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Manage outcomes for this product
-                </Typography>
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={() => setAddOutcomeDialog(true)}
-                  size="small"
-                >
-                  Add Outcome
-                </Button>
-              </Box>
+        {/* Outcomes Tab */}
+        <TabPanel value={tabValue} index={1}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Manage outcomes for this product
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setAddOutcomeDialog(true)}
+              size="small"
+            >
+              Add Outcome
+            </Button>
+          </Box>
 
-              {outcomes.filter(o => !o.delete).length > 0 ? (
-                <List dense>
-                  {outcomes.map((outcome, index) =>
-                    !outcome.delete && (
-                      <ListItemButton
-                        key={index}
-                        sx={{
-                          border: '1px solid #e0e0e0',
-                          borderRadius: 1,
-                          mb: 1,
-                          '&:hover': {
-                            backgroundColor: '#f5f5f5',
-                          },
-                        }}
-                        onClick={() => handleEditOutcomeClick(outcome, index)}
-                      >
-                        <ListItemText
-                          primary={outcome.name}
-                          secondary={outcome.description}
-                          sx={{
-                            '& .MuiListItemText-primary': {
-                              fontWeight: outcome.isNew ? 'bold' : 'normal'
-                            }
-                          }}
-                        />
-                        <IconButton
-                          edge="end"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditOutcomeClick(outcome, index);
-                          }}
-                          size="small"
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          edge="end"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteOutcome(index);
-                          }}
-                          color="error"
-                          size="small"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </ListItemButton>
-                    )
-                  )}
-                </List>
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                  No outcomes added yet. Click "Add Outcome" to get started.
-                </Typography>
-              )}
-            </AccordionDetails>
-          </Accordion>
-
-          {/* Licenses Management */}
-          <Accordion sx={{ mt: 2 }}>
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              <Typography>Licenses ({licenses.filter(l => !l.delete).length})</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Manage licenses for this product
-                </Typography>
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={() => setAddLicenseDialog(true)}
-                  size="small"
-                >
-                  Add License
-                </Button>
-              </Box>
-
-              {licenses.filter(l => !l.delete).length > 0 ? (
-                <List dense>
-                  {licenses.map((license, index) =>
-                    !license.delete && (
-                      <ListItemButton
-                        key={index}
-                        sx={{
-                          border: '1px solid #e0e0e0',
-                          borderRadius: 1,
-                          mb: 1,
-                          '&:hover': {
-                            backgroundColor: '#f5f5f5',
-                          },
-                        }}
-                        onClick={() => handleEditLicenseClick(license, index)}
-                      >
-                        <ListItemText
-                          primary={`${license.name} (Level ${license.level})`}
-                          secondary={
-                            <Box>
-                              <Typography variant="body2">
-                                {license.description}
-                              </Typography>
-                              <Typography variant="caption" color={license.isActive ? 'success.main' : 'error.main'}>
-                                {license.isActive ? 'Active' : 'Inactive'}
-                              </Typography>
-                            </Box>
-                          }
-                          secondaryTypographyProps={{ component: 'div' }}
-                          sx={{
-                            '& .MuiListItemText-primary': {
-                              fontWeight: license.isNew ? 'bold' : 'normal'
-                            }
-                          }}
-                        />
-                        <IconButton
-                          edge="end"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditLicenseClick(license, index);
-                          }}
-                          size="small"
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          edge="end"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteLicense(index);
-                          }}
-                          color="error"
-                          size="small"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </ListItemButton>
-                    )
-                  )}
-                </List>
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                  No licenses added yet. Click "Add License" to get started.
-                </Typography>
-              )}
-            </AccordionDetails>
-          </Accordion>
-
-          <Accordion sx={{ mt: 2 }}>
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              <Typography>Other Product Attributes ({Object.keys(customAttrs).length})</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Manage additional metadata for this product
-                </Typography>
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={() => setAddCustomAttributeDialog(true)}
-                  size="small"
-                >
-                  Add Attribute
-                </Button>
-              </Box>
-
-              {Object.keys(customAttrs).length > 0 ? (
-                <List dense>
-                  {Object.entries(customAttrs).map(([key, value]: [string, any]) => (
-                    <ListItemButton
-                      key={key}
+          {outcomes.filter(o => !o.delete).length > 0 ? (
+            <List dense>
+              {outcomes.map((outcome, index) =>
+                !outcome.delete && (
+                  <ListItemButton
+                    key={index}
+                    sx={{
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 1,
+                      mb: 1,
+                      '&:hover': {
+                        backgroundColor: '#f5f5f5',
+                      },
+                    }}
+                    onClick={() => handleEditOutcomeClick(outcome, index)}
+                  >
+                    <ListItemText
+                      primary={outcome.name}
+                      secondary={outcome.description}
                       sx={{
-                        border: '1px solid #e0e0e0',
-                        borderRadius: 1,
-                        mb: 1,
-                        '&:hover': {
-                          backgroundColor: '#f5f5f5'
+                        '& .MuiListItemText-primary': {
+                          fontWeight: outcome.isNew ? 'bold' : 'normal'
                         }
                       }}
-                      onDoubleClick={() => {
+                    />
+                    <IconButton
+                      edge="end"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditOutcomeClick(outcome, index);
+                      }}
+                      size="small"
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      edge="end"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteOutcome(index);
+                      }}
+                      color="error"
+                      size="small"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </ListItemButton>
+                )
+              )}
+            </List>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+              No outcomes added yet. Click "Add Outcome" to get started.
+            </Typography>
+          )}
+        </TabPanel>
+
+        {/* Licenses Tab */}
+        <TabPanel value={tabValue} index={2}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Manage licenses for this product
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setAddLicenseDialog(true)}
+              size="small"
+            >
+              Add License
+            </Button>
+          </Box>
+
+          {licenses.filter(l => !l.delete).length > 0 ? (
+            <List dense>
+              {licenses.map((license, index) =>
+                !license.delete && (
+                  <ListItemButton
+                    key={index}
+                    sx={{
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 1,
+                      mb: 1,
+                      '&:hover': {
+                        backgroundColor: '#f5f5f5',
+                      },
+                    }}
+                    onClick={() => handleEditLicenseClick(license, index)}
+                  >
+                    <ListItemText
+                      primary={`${license.name} (Level ${license.level})`}
+                      secondary={
+                        <Box>
+                          <Typography variant="body2">
+                            {license.description}
+                          </Typography>
+                          <Typography variant="caption" color={license.isActive ? 'success.main' : 'error.main'}>
+                            {license.isActive ? 'Active' : 'Inactive'}
+                          </Typography>
+                        </Box>
+                      }
+                      secondaryTypographyProps={{ component: 'div' }}
+                      sx={{
+                        '& .MuiListItemText-primary': {
+                          fontWeight: license.isNew ? 'bold' : 'normal'
+                        }
+                      }}
+                    />
+                    <IconButton
+                      edge="end"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditLicenseClick(license, index);
+                      }}
+                      size="small"
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      edge="end"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteLicense(index);
+                      }}
+                      color="error"
+                      size="small"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </ListItemButton>
+                )
+              )}
+            </List>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+              No licenses added yet. Click "Add License" to get started.
+            </Typography>
+          )}
+        </TabPanel>
+
+        {/* Releases Tab */}
+        <TabPanel value={tabValue} index={3}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Manage releases for this product
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setAddReleaseDialog(true)}
+              size="small"
+            >
+              Add Release
+            </Button>
+          </Box>
+
+          {releases.filter(r => !r.delete).length > 0 ? (
+            <List dense>
+              {releases.map((release, index) =>
+                !release.delete && (
+                  <ListItemButton
+                    key={index}
+                    sx={{
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 1,
+                      mb: 1,
+                      '&:hover': {
+                        backgroundColor: '#f5f5f5',
+                      },
+                    }}
+                    onClick={() => handleEditReleaseClick(release, index)}
+                  >
+                    <ListItemText
+                      primary={release.name}
+                      secondary={`Level: ${release.level}${release.description ? ` - ${release.description}` : ''}`}
+                      sx={{
+                        '& .MuiListItemText-primary': {
+                          fontWeight: release.isNew ? 'bold' : 'normal'
+                        }
+                      }}
+                    />
+                    <IconButton
+                      edge="end"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditReleaseClick(release, index);
+                      }}
+                      size="small"
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      edge="end"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteRelease(index);
+                      }}
+                      color="error"
+                      size="small"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </ListItemButton>
+                )
+              )}
+            </List>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+              No releases defined for this product.
+            </Typography>
+          )}
+        </TabPanel>
+
+        {/* Custom Attributes Tab */}
+        <TabPanel value={tabValue} index={4}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Manage additional metadata for this product
+            </Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setAddCustomAttributeDialog(true)}
+              size="small"
+            >
+              Add Attribute
+            </Button>
+          </Box>
+
+          {Object.keys(customAttrs).length > 0 ? (
+            <List dense>
+              {Object.entries(customAttrs).map(([key, value]: [string, any]) => (
+                <ListItemButton
+                  key={key}
+                  sx={{
+                    border: '1px solid #e0e0e0',
+                    borderRadius: 1,
+                    mb: 1,
+                    '&:hover': {
+                      backgroundColor: '#f5f5f5'
+                    }
+                  }}
+                  onDoubleClick={() => {
+                    setEditingCustomAttribute({
+                      key,
+                      value,
+                      type: Array.isArray(value) ? 'array' :
+                        typeof value === 'object' && value !== null ? 'object' :
+                          typeof value === 'number' ? 'number' :
+                            typeof value === 'boolean' ? 'boolean' : 'string'
+                    });
+                    setEditCustomAttributeDialog(true);
+                  }}
+                >
+                  <ListItemText
+                    primary={key}
+                    secondary={typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                  />
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setEditingCustomAttribute({
                           key,
                           value,
@@ -630,136 +718,36 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
                         setEditCustomAttributeDialog(true);
                       }}
                     >
-                      <ListItemText
-                        primary={key}
-                        secondary={typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                      />
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <IconButton
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingCustomAttribute({
-                              key,
-                              value,
-                              type: Array.isArray(value) ? 'array' :
-                                typeof value === 'object' && value !== null ? 'object' :
-                                  typeof value === 'number' ? 'number' :
-                                    typeof value === 'boolean' ? 'boolean' : 'string'
-                            });
-                            setEditCustomAttributeDialog(true);
-                          }}
-                        >
-                          <EditIcon fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm(`Are you sure you want to delete the attribute "${key}"?`)) {
-                              handleDeleteCustomAttribute(key);
-                            }
-                          }}
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    </ListItemButton>
-                  ))}
-                </List>
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                  No additional attributes defined for this product.
-                </Typography>
-              )}
-            </AccordionDetails>
-          </Accordion>
-
-          {/* Releases Section */}
-          <Accordion sx={{ mt: 2 }}>
-            <AccordionSummary expandIcon={<ExpandMore />}>
-              <Typography>Releases ({releases.filter(r => !r.delete).length})</Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Manage releases for this product
-                </Typography>
-                <Button
-                  variant="outlined"
-                  startIcon={<AddIcon />}
-                  onClick={() => setAddReleaseDialog(true)}
-                  size="small"
-                >
-                  Add Release
-                </Button>
-              </Box>
-
-              {releases.filter(r => !r.delete).length > 0 ? (
-                <List dense>
-                  {releases.map((release, index) =>
-                    !release.delete && (
-                      <ListItemButton
-                        key={index}
-                        sx={{
-                          border: '1px solid #e0e0e0',
-                          borderRadius: 1,
-                          mb: 1,
-                          '&:hover': {
-                            backgroundColor: '#f5f5f5',
-                          },
-                        }}
-                        onClick={() => handleEditReleaseClick(release, index)}
-                      >
-                        <ListItemText
-                          primary={release.name}
-                          secondary={`Level: ${release.level}`}
-                          sx={{
-                            '& .MuiListItemText-primary': {
-                              fontWeight: release.isNew ? 'bold' : 'normal'
-                            }
-                          }}
-                        />
-                        <IconButton
-                          edge="end"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditReleaseClick(release, index);
-                          }}
-                          size="small"
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          edge="end"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteRelease(index);
-                          }}
-                          color="error"
-                          size="small"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </ListItemButton>
-                    )
-                  )}
-                </List>
-              ) : (
-                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                  No releases defined for this product.
-                </Typography>
-              )}
-            </AccordionDetails>
-          </Accordion>
-
-          {error && (
-            <Typography color="error" variant="body2" sx={{ mt: 1 }}>
-              {error}
+                      <EditIcon fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Are you sure you want to delete the attribute "${key}"?`)) {
+                          handleDeleteCustomAttribute(key);
+                        }
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </ListItemButton>
+              ))}
+            </List>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+              No additional attributes defined for this product.
             </Typography>
           )}
-        </Box>
+        </TabPanel>
+
+        {error && (
+          <Typography color="error" variant="body2" sx={{ mt: 1 }}>
+            {error}
+          </Typography>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
@@ -771,8 +759,9 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
           {loading ? 'Saving...' : 'Save Product'}
         </Button>
       </DialogActions>
+      </Dialog>
 
-      {/* Add Custom Attribute Dialog */}
+      {/* Sub-Dialogs - Rendered outside parent dialog to avoid z-index issues */}
       <CustomAttributeDialog
         open={addCustomAttributeDialog}
         onClose={() => setAddCustomAttributeDialog(false)}
@@ -781,7 +770,6 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         existingKeys={Object.keys(customAttrs)}
       />
 
-      {/* Edit Custom Attribute Dialog */}
       <CustomAttributeDialog
         open={editCustomAttributeDialog}
         onClose={() => {
@@ -793,26 +781,6 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         existingKeys={Object.keys(customAttrs)}
       />
 
-      {/* Add License Dialog */}
-      <LicenseDialog
-        open={addLicenseDialog}
-        onClose={() => setAddLicenseDialog(false)}
-        onSave={handleAddLicense}
-        license={null}
-      />
-
-      {/* Edit License Dialog */}
-      <LicenseDialog
-        open={editLicenseDialog}
-        onClose={() => {
-          setEditLicenseDialog(false);
-          setEditingLicense(null);
-        }}
-        onSave={handleEditLicense}
-        license={editingLicense}
-      />
-
-      {/* Add Outcome Dialog */}
       <OutcomeDialog
         open={addOutcomeDialog}
         onClose={() => setAddOutcomeDialog(false)}
@@ -820,7 +788,6 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         outcome={null}
       />
 
-      {/* Edit Outcome Dialog */}
       <OutcomeDialog
         open={editOutcomeDialog}
         onClose={() => {
@@ -831,7 +798,23 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         outcome={editingOutcome}
       />
 
-      {/* Add Release Dialog */}
+      <LicenseDialog
+        open={addLicenseDialog}
+        onClose={() => setAddLicenseDialog(false)}
+        onSave={handleAddLicense}
+        license={null}
+      />
+
+      <LicenseDialog
+        open={editLicenseDialog}
+        onClose={() => {
+          setEditLicenseDialog(false);
+          setEditingLicense(null);
+        }}
+        onSave={handleEditLicense}
+        license={editingLicense}
+      />
+
       <ReleaseDialog
         open={addReleaseDialog}
         onClose={() => setAddReleaseDialog(false)}
@@ -840,7 +823,6 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         title="Add Release"
       />
 
-      {/* Edit Release Dialog */}
       <ReleaseDialog
         open={editReleaseDialog}
         onClose={() => {
@@ -851,6 +833,6 @@ export const ProductDialog: React.FC<Props> = ({ open, onClose, onSave, product,
         release={editingRelease}
         title="Edit Release"
       />
-    </Dialog>
+    </>
   );
 };
