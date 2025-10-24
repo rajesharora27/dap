@@ -25,6 +25,15 @@ import {
   CustomerTelemetryAttributeResolvers,
   CustomerTelemetryValueResolvers
 } from './customerAdoption';
+import {
+  SolutionAdoptionQueryResolvers,
+  SolutionAdoptionMutationResolvers,
+  CustomerSolutionWithPlanResolvers,
+  SolutionAdoptionPlanResolvers,
+  SolutionAdoptionProductResolvers,
+  CustomerSolutionTaskResolvers
+} from './solutionAdoption';
+import { solutionReportingService } from '../../services/solutionReportingService';
 import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../lib/pagination';
 import { logAudit } from '../../lib/audit';
 import { ensureRole, requireUser } from '../../lib/auth';
@@ -243,6 +252,12 @@ export const resolvers = {
         where: { solutionId: parent.id, deletedAt: null }, 
         orderBy: { level: 'asc' } 
       });
+    },
+    outcomes: async (parent: any) => {
+      if (fallbackActive) {
+        return [];
+      }
+      return prisma.outcome.findMany({ where: { solutionId: parent.id } });
     }
   },
   Customer: {
@@ -261,8 +276,19 @@ export const resolvers = {
       });
     },
     solutions: (parent: any) => {
-      if (fallbackActive) { const { solutions } = require('../../lib/fallbackStore'); return solutions.filter((s: any) => parent.solutionIds?.includes(s.id)); }
-      return prisma.customerSolution.findMany({ where: { customerId: parent.id }, include: { solution: true } }).then((rows: any) => rows.map((r: any) => r.solution));
+      if (fallbackActive) { 
+        const { solutions } = require('../../lib/fallbackStore'); 
+        return solutions.filter((s: any) => parent.solutionIds?.includes(s.id)); 
+      }
+      // Return CustomerSolutionWithPlan instead of just Solution
+      return prisma.customerSolution.findMany({ 
+        where: { customerId: parent.id }, 
+        include: { 
+          solution: true,
+          customer: true,
+          adoptionPlan: true
+        } 
+      });
     }
   },
   Task: {
@@ -414,13 +440,28 @@ export const resolvers = {
   CustomerTelemetryAttribute: CustomerTelemetryAttributeResolvers,
   CustomerTelemetryValue: CustomerTelemetryValueResolvers,
   
+  // Solution Adoption field resolvers
+  CustomerSolutionWithPlan: CustomerSolutionWithPlanResolvers,
+  SolutionAdoptionPlan: SolutionAdoptionPlanResolvers,
+  SolutionAdoptionProduct: SolutionAdoptionProductResolvers,
+  CustomerSolutionTask: CustomerSolutionTaskResolvers,
+  
   Outcome: {
     product: (parent: any) => {
+      if (!parent.productId) return null;
       if (fallbackActive) {
         const { products } = require('../../lib/fallbackStore');
         return products.find((p: any) => p.id === parent.productId);
       }
       return prisma.product.findUnique({ where: { id: parent.productId } });
+    },
+    solution: (parent: any) => {
+      if (!parent.solutionId) return null;
+      if (fallbackActive) {
+        const { solutions } = require('../../lib/fallbackStore');
+        return solutions.find((s: any) => s.id === parent.solutionId);
+      }
+      return prisma.solution.findUnique({ where: { id: parent.solutionId } });
     }
   },
   License: {
@@ -549,9 +590,12 @@ export const resolvers = {
       }); 
     },
 
-    outcomes: async (_: any, { productId }: any) => {
+    outcomes: async (_: any, { productId, solutionId }: any) => {
       if (fallbackActive) return productId ? fbListOutcomesForProduct(productId) : fbListOutcomes();
-      return productId ? prisma.outcome.findMany({ where: { productId } }) : prisma.outcome.findMany({});
+      const where: any = {};
+      if (productId) where.productId = productId;
+      if (solutionId) where.solutionId = solutionId;
+      return prisma.outcome.findMany({ where });
     },
     auditLogs: async (_: any, { limit = 50 }: any) => prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: Math.min(limit, 200) })
     , changeSets: async (_: any, { limit = 50 }: any) => listChangeSets(limit).then(async sets => Promise.all(sets.map(async (s: any) => ({ ...s, items: await prisma.changeItem.findMany({ where: { changeSetId: s.id } }) })))),
@@ -581,6 +625,22 @@ export const resolvers = {
     , customerTask: CustomerAdoptionQueryResolvers.customerTask
     , customerTasksForPlan: CustomerAdoptionQueryResolvers.customerTasksForPlan
     , customerTelemetryDatabase: CustomerAdoptionQueryResolvers.customerTelemetryDatabase
+    
+    // Solution Adoption queries
+    , solutionAdoptionPlan: SolutionAdoptionQueryResolvers.solutionAdoptionPlan
+    , solutionAdoptionPlansForCustomer: SolutionAdoptionQueryResolvers.solutionAdoptionPlansForCustomer
+    , customerSolutionTask: SolutionAdoptionQueryResolvers.customerSolutionTask
+    , customerSolutionTasksForPlan: SolutionAdoptionQueryResolvers.customerSolutionTasksForPlan
+    
+    // Solution Reporting queries
+    , solutionAdoptionReport: async (_: any, { solutionAdoptionPlanId }: any, ctx: any) => {
+      requireUser(ctx);
+      return await solutionReportingService.generateSolutionAdoptionReport(solutionAdoptionPlanId);
+    }
+    , solutionComparisonReport: async (_: any, { solutionId }: any, ctx: any) => {
+      requireUser(ctx);
+      return await solutionReportingService.generateSolutionComparisonReport(solutionId);
+    }
     
     // Excel Export
     , exportProductToExcel: async (_: any, { productName }: any) => {
@@ -875,12 +935,23 @@ export const resolvers = {
 
     createOutcome: async (_: any, { input }: any, ctx: any) => {
       requireUser(ctx);
+      
+      // Validate that either productId or solutionId is provided (but not both)
+      if (!input.productId && !input.solutionId) {
+        throw new Error('Either productId or solutionId must be provided');
+      }
+      if (input.productId && input.solutionId) {
+        throw new Error('Cannot provide both productId and solutionId');
+      }
+      
       if (fallbackActive) {
         try {
           // Check for duplicate names in the same product
-          const existing = fbListOutcomesForProduct(input.productId).find(o => o.name === input.name);
-          if (existing) {
-            throw new Error(`An outcome with the name "${input.name}" already exists for this product. Please choose a different name.`);
+          if (input.productId) {
+            const existing = fbListOutcomesForProduct(input.productId).find(o => o.name === input.name);
+            if (existing) {
+              throw new Error(`An outcome with the name "${input.name}" already exists for this product. Please choose a different name.`);
+            }
           }
           return fbCreateOutcome(input);
         } catch (error: any) {
@@ -892,7 +963,8 @@ export const resolvers = {
           data: {
             name: input.name,
             description: input.description,
-            productId: input.productId
+            productId: input.productId || null,
+            solutionId: input.solutionId || null
           }
         });
         await logAudit('CREATE_OUTCOME', 'Outcome', outcome.id, { input }, ctx.user?.id);
@@ -900,7 +972,8 @@ export const resolvers = {
       } catch (error: any) {
         // Handle unique constraint violation for outcome name
         if (error.code === 'P2002' && error.meta?.target?.includes('name')) {
-          throw new Error(`An outcome with the name "${input.name}" already exists for this product. Please choose a different name.`);
+          const target = input.productId ? 'product' : 'solution';
+          throw new Error(`An outcome with the name "${input.name}" already exists for this ${target}. Please choose a different name.`);
         }
         // Re-throw other errors
         throw error;
@@ -948,11 +1021,19 @@ export const resolvers = {
     removeProductFromCustomer: async (_: any, { customerId, productId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbRemoveProductFromCustomer(customerId, productId); await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; } await prisma.customerProduct.deleteMany({ where: { customerId, productId } }); await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; },
     addSolutionToCustomer: async (_: any, { customerId, solutionId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbAddSolutionToCustomer(customerId, solutionId); await logAudit('ADD_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; } await prisma.customerSolution.upsert({ where: { customerId_solutionId: { customerId, solutionId } }, update: {}, create: { customerId, solutionId } }); await logAudit('ADD_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; },
     removeSolutionFromCustomer: async (_: any, { customerId, solutionId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbRemoveSolutionFromCustomer(customerId, solutionId); await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; } await prisma.customerSolution.deleteMany({ where: { customerId, solutionId } }); await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; },
-    reorderTasks: async (_: any, { productId, order }: any, ctx: any) => {
+    reorderTasks: async (_: any, { productId, solutionId, order }: any, ctx: any) => {
       ensureRole(ctx, 'ADMIN');
+      
+      const entityType = productId ? 'Product' : 'Solution';
+      const entityId = productId || solutionId;
+      
+      if (!entityId) {
+        throw new Error('Either productId or solutionId must be provided');
+      }
+      
       if (fallbackActive) {
-        const ok = fbReorderTasks(productId, order);
-        await logAudit('REORDER_TASKS', 'Product', productId, { order }, ctx.user?.id);
+        const ok = fbReorderTasks(entityId, order);
+        await logAudit('REORDER_TASKS', entityType, entityId, { order }, ctx.user?.id);
         return ok;
       }
 
@@ -977,7 +1058,7 @@ export const resolvers = {
           }
         });
 
-        await logAudit('REORDER_TASKS', 'Product', productId, { order }, ctx.user?.id);
+        await logAudit('REORDER_TASKS', entityType, entityId, { order }, ctx.user?.id);
         return true;
       } catch (error) {
         console.error('Failed to reorder tasks in database:', error);
@@ -2048,6 +2129,20 @@ export const resolvers = {
     importCustomerAdoptionFromExcel: CustomerAdoptionMutationResolvers.importCustomerAdoptionFromExcel,
     exportAdoptionPlanTelemetryTemplate: CustomerAdoptionMutationResolvers.exportAdoptionPlanTelemetryTemplate,
     importAdoptionPlanTelemetry: CustomerAdoptionMutationResolvers.importAdoptionPlanTelemetry,
+    
+    // Solution Adoption mutations
+    assignSolutionToCustomer: SolutionAdoptionMutationResolvers.assignSolutionToCustomer,
+    updateCustomerSolution: SolutionAdoptionMutationResolvers.updateCustomerSolution,
+    removeSolutionFromCustomerEnhanced: SolutionAdoptionMutationResolvers.removeSolutionFromCustomerEnhanced,
+    createSolutionAdoptionPlan: SolutionAdoptionMutationResolvers.createSolutionAdoptionPlan,
+    syncSolutionAdoptionPlan: SolutionAdoptionMutationResolvers.syncSolutionAdoptionPlan,
+    updateCustomerSolutionTaskStatus: SolutionAdoptionMutationResolvers.updateCustomerSolutionTaskStatus,
+    bulkUpdateCustomerSolutionTaskStatus: SolutionAdoptionMutationResolvers.bulkUpdateCustomerSolutionTaskStatus,
+    evaluateSolutionTaskTelemetry: SolutionAdoptionMutationResolvers.evaluateSolutionTaskTelemetry,
+    evaluateAllSolutionTasksTelemetry: SolutionAdoptionMutationResolvers.evaluateAllSolutionTasksTelemetry,
+    addProductToSolutionEnhanced: SolutionAdoptionMutationResolvers.addProductToSolutionEnhanced,
+    removeProductFromSolutionEnhanced: SolutionAdoptionMutationResolvers.removeProductFromSolutionEnhanced,
+    reorderProductsInSolution: SolutionAdoptionMutationResolvers.reorderProductsInSolution,
 
     // Excel Import
     importProductFromExcel: async (_: any, { content, mode }: any, ctx: any) => {

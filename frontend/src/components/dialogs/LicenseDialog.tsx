@@ -78,17 +78,6 @@ export const LicenseDialog: React.FC<LicenseDialogProps> = ({
       onClose={onClose}
       maxWidth="sm"
       fullWidth
-      keepMounted
-      disableEnforceFocus
-      container={document.getElementById('root')}
-      BackdropProps={{
-        onClick: onClose
-      }}
-      slotProps={{
-        backdrop: {
-          invisible: false
-        }
-      }}
     >
       <DialogTitle>
         {license ? 'Edit License' : 'Add New License'}
@@ -102,6 +91,7 @@ export const LicenseDialog: React.FC<LicenseDialogProps> = ({
             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             margin="normal"
             required
+            autoFocus
             helperText="Enter a descriptive name for this license"
           />
 

@@ -45,6 +45,8 @@ import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
 import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
 import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
+import { SolutionManagement } from '../components/SolutionManagement';
+import { SolutionManagementMain } from '../components/SolutionManagementMain';
 import { LicenseHandlers, ReleaseHandlers, OutcomeHandlers, ProductHandlers } from '../utils/sharedHandlers';
 import { resolveImportTarget, type ResolveImportAbortReason } from '../utils/excelImportTarget';
 import { License, Outcome } from '../types/shared';
@@ -134,6 +136,15 @@ const SOLUTIONS = gql`
           id
           name
           description
+          customAttrs
+          products {
+            edges {
+              node {
+                id
+                name
+              }
+            }
+          }
         }
       }
     }
@@ -150,6 +161,17 @@ const CUSTOMERS = gql`
         id
         name
         product {
+          id
+          name
+        }
+        adoptionPlan {
+          id
+        }
+      }
+      solutions {
+        id
+        name
+        solution {
           id
           name
         }
@@ -216,7 +238,60 @@ const TASKS_FOR_PRODUCT = gql`
   }
 `;
 
-
+const TASKS_FOR_SOLUTION = gql`
+  query TasksForSolution($solutionId: ID!) {
+    tasks(solutionId: $solutionId, first: 100) {
+      edges {
+        node {
+          id
+          name
+          description
+          estMinutes
+          weight
+          sequenceNumber
+          licenseLevel
+          notes
+          howToDoc
+          howToVideo
+          license {
+            id
+            name
+            level
+          }
+          outcomes {
+            id
+            name
+          }
+          releases {
+            id
+            name
+            level
+            description
+          }
+          telemetryAttributes {
+            id
+            name
+            description
+            dataType
+            isRequired
+            successCriteria
+            order
+            isActive
+            isSuccessful
+            currentValue {
+              id
+              value
+              source
+              createdAt
+            }
+          }
+          isCompleteBasedOnTelemetry
+          telemetryCompletionPercentage
+        }
+      }
+    }
+  }
+`;
 
 const OUTCOMES = gql`
   query Outcomes($productId: ID) {
@@ -746,13 +821,17 @@ export function App() {
   const [selectedTask, setSelectedTask] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [detailProduct, setDetailProduct] = useState<any>(null);
-  const [selectedProductSubSection, setSelectedProductSubSection] = useState<'main' | 'tasks' | 'licenses' | 'releases' | 'outcomes' | 'customAttributes'>('main');
+  const [selectedProductSubSection, setSelectedProductSubSection] = useState<'main' | 'tasks'>('main');
+  const [selectedSolutionSubSection, setSelectedSolutionSubSection] = useState<'main' | 'tasks'>('main');
   const [productsExpanded, setProductsExpanded] = useState(true);
+  const [solutionsExpanded, setSolutionsExpanded] = useState(true);
   const [customersExpanded, setCustomersExpanded] = useState(true);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(() => {
     // Initialize from localStorage
     return localStorage.getItem('lastSelectedCustomerId');
   });
+  const [productDialogInitialTab, setProductDialogInitialTab] = useState<'general' | 'outcomes' | 'licenses' | 'releases' | 'customAttributes'>('general');
+  const [solutionDialogInitialTab, setSolutionDialogInitialTab] = useState<'general' | 'products' | 'outcomes' | 'releases' | 'customAttributes'>('general');
 
   // Dialog states
   const [addProductDialog, setAddProductDialog] = useState(false);
@@ -812,7 +891,7 @@ export function App() {
     // }
   });
 
-  const { data: solutionsData, loading: solutionsLoading, error: solutionsError } = useQuery(SOLUTIONS, {
+  const { data: solutionsData, loading: solutionsLoading, error: solutionsError, refetch: refetchSolutions } = useQuery(SOLUTIONS, {
     errorPolicy: 'all'
   });
 
@@ -823,6 +902,12 @@ export function App() {
   const { data: tasksData, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useQuery(TASKS_FOR_PRODUCT, {
     variables: { productId: selectedProduct },
     skip: !selectedProduct,
+    errorPolicy: 'all'
+  });
+
+  const { data: solutionTasksData, loading: solutionTasksLoading, error: solutionTasksError, refetch: refetchSolutionTasks } = useQuery(TASKS_FOR_SOLUTION, {
+    variables: { solutionId: selectedSolution },
+    skip: !selectedSolution,
     errorPolicy: 'all'
   });
 
@@ -882,6 +967,29 @@ export function App() {
     return node;
   }) || [])]
     .sort((a: any, b: any) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
+  
+  const solutionTasks = [...(solutionTasksData?.tasks?.edges?.map((edge: any) => {
+    const node = edge.node;
+    // Parse successCriteria from JSON string to object for each telemetry attribute
+    // Create new objects to avoid mutating Apollo cache
+    if (node.telemetryAttributes && Array.isArray(node.telemetryAttributes)) {
+      const parsedAttributes = node.telemetryAttributes.map((attr: any) => {
+        if (attr.successCriteria && typeof attr.successCriteria === 'string' && attr.successCriteria.trim()) {
+          try {
+            return { ...attr, successCriteria: JSON.parse(attr.successCriteria) };
+          } catch (e) {
+            console.error(`Failed to parse successCriteria for attribute "${attr.name}":`, e);
+            return attr; // Return original if parsing fails
+          }
+        }
+        return attr;
+      });
+      return { ...node, telemetryAttributes: parsedAttributes };
+    }
+    return node;
+  }) || [])]
+    .sort((a: any, b: any) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
+  
   const outcomes = outcomesData?.outcomes || [];
 
   // Initialize shared handlers
@@ -1012,9 +1120,14 @@ export function App() {
     }
   };
 
-  const handleProductSubSectionChange = (subSection: 'main' | 'licenses' | 'releases' | 'outcomes' | 'customAttributes' | 'tasks') => {
+  const handleProductSubSectionChange = (subSection: 'main' | 'tasks') => {
     setSelectedProductSubSection(subSection);
     setSelectedSection('products');
+  };
+
+  const handleSolutionSubSectionChange = (subSection: 'main' | 'tasks') => {
+    setSelectedSolutionSubSection(subSection);
+    setSelectedSection('solutions');
   };
 
   // Helper function to calculate total weight of tasks for a product
@@ -1064,6 +1177,44 @@ export function App() {
 
         // Refetch tasks to get updated sequence numbers
         await refetchTasks();
+      } catch (error: any) {
+        console.error('Error reordering tasks:', error);
+        alert('Failed to reorder tasks: ' + (error?.message || 'Unknown error'));
+      }
+    }
+  };
+
+  const handleTaskDragEnd = async (event: any) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      // Determine if we're reordering product or solution tasks
+      const isProductTask = selectedProductSubSection === 'tasks' && selectedProduct;
+      const isSolutionTask = selectedSolutionSubSection === 'tasks' && selectedSolution;
+
+      const tasksArray = isSolutionTask ? solutionTasks : tasks;
+      const oldIndex = tasksArray.findIndex((task: any) => task.id === active.id);
+      const newIndex = tasksArray.findIndex((task: any) => task.id === over.id);
+
+      const newTasks = arrayMove(tasksArray, oldIndex, newIndex);
+      const newOrder = newTasks.map((task: any) => task.id);
+
+      try {
+        await client.mutate({
+          mutation: REORDER_TASKS,
+          variables: {
+            productId: isProductTask ? selectedProduct : undefined,
+            solutionId: isSolutionTask ? selectedSolution : undefined,
+            order: newOrder
+          }
+        });
+
+        // Refetch tasks to get updated sequence numbers
+        if (isProductTask) {
+          await refetchTasks();
+        } else if (isSolutionTask) {
+          await refetchSolutionTasks();
+        }
       } catch (error: any) {
         console.error('Error reordering tasks:', error);
         alert('Failed to reorder tasks: ' + (error?.message || 'Unknown error'));
@@ -1660,7 +1811,12 @@ export function App() {
     const taskIdToUse = taskId || editingTask?.id;
 
     if (isEdit && !taskIdToUse) return;
-    if (!isEdit && !selectedProduct) return;
+    // For new tasks, require either selectedProduct or selectedSolution
+    if (!isEdit && !selectedProduct && !selectedSolution) return;
+    
+    // Determine if we're working with a product or solution
+    const isProductTask = selectedProductSubSection === 'tasks' && selectedProduct;
+    const isSolutionTask = selectedSolutionSubSection === 'tasks' && selectedSolution;
 
     try {
       // Create input with task fields
@@ -1670,9 +1826,13 @@ export function App() {
         weight: taskData.weight
       };
 
-      // Add productId for new tasks only
+      // Add productId or solutionId for new tasks only
       if (!isEdit) {
-        input.productId = selectedProduct;
+        if (isProductTask) {
+          input.productId = selectedProduct;
+        } else if (isSolutionTask) {
+          input.solutionId = selectedSolution;
+        }
       }
 
       // Only add optional fields if they have values
@@ -1722,7 +1882,7 @@ export function App() {
             id: taskIdToUse,
             input
           },
-          refetchQueries: ['TasksForProduct'],
+          refetchQueries: isProductTask ? ['TasksForProduct'] : ['TasksForSolution'],
           awaitRefetchQueries: true
         });
         finalTaskId = taskIdToUse;
@@ -1730,7 +1890,7 @@ export function App() {
         // Create new task
         const taskResult = await client.mutate({
           mutation: gql`
-            mutation CreateTask($input: TaskInput!) {
+            mutation CreateTask($input: TaskCreateInput!) {
               createTask(input: $input) {
                 id
                 name
@@ -1870,7 +2030,11 @@ export function App() {
       } else {
         setAddTaskDialog(false);
       }
-      await refetchTasks();
+      if (isProductTask) {
+        await refetchTasks();
+      } else if (isSolutionTask) {
+        await refetchSolutionTasks();
+      }
       
       // console.log(`Task ${isEdit ? 'updated' : 'created'} successfully`);
     } catch (error: any) {
@@ -1889,6 +2053,10 @@ export function App() {
       return;
     }
 
+    // Determine if we're deleting a product or solution task
+    const isProductTask = selectedProductSubSection === 'tasks' && selectedProduct;
+    const isSolutionTask = selectedSolutionSubSection === 'tasks' && selectedSolution;
+
     try {
       // First, queue the task for deletion
       await client.mutate({
@@ -1899,14 +2067,18 @@ export function App() {
       // Then, process the deletion queue to actually remove it and reorder sequences
       await client.mutate({
         mutation: PROCESS_DELETION_QUEUE,
-        refetchQueries: ['TasksForProduct', 'Products'],
+        refetchQueries: isProductTask ? ['TasksForProduct', 'Products'] : ['TasksForSolution', 'Solutions'],
         awaitRefetchQueries: true
       });
 
       // console.log('Task deleted successfully');
       
       // Force a complete refetch to ensure sequence numbers are updated in UI
-      await refetchTasks();
+      if (isProductTask) {
+        await refetchTasks();
+      } else if (isSolutionTask) {
+        await refetchSolutionTasks();
+      }
       
       // Also evict the deleted task from Apollo cache
       client.cache.evict({ id: `Task:${taskId}` });
@@ -2418,7 +2590,7 @@ export function App() {
 
               await client.mutate({
                 mutation: gql`
-                  mutation CreateTask($input: TaskInput!) {
+                  mutation CreateTask($input: TaskCreateInput!) {
                     createTask(input: $input) {
                       id
                       name
@@ -2944,7 +3116,7 @@ export function App() {
 
                 await client.mutate({
                   mutation: gql`
-                    mutation CreateTask($input: TaskInput!) {
+                    mutation CreateTask($input: TaskCreateInput!) {
                       createTask(input: $input) {
                         id
                         name
@@ -2953,7 +3125,6 @@ export function App() {
                         weight
                         sequenceNumber
                         licenseLevel
-                        priority
                         notes
                         howToDoc
                         howToVideo
@@ -4188,7 +4359,7 @@ export function App() {
 
                 const createResult = await client.mutate({
                   mutation: gql`
-                    mutation CreateTask($input: TaskInput!) {
+                    mutation CreateTask($input: TaskCreateInput!) {
                       createTask(input: $input) {
                         id
                         name
@@ -4197,7 +4368,6 @@ export function App() {
                         weight
                         sequenceNumber
                         licenseLevel
-                        priority
                         notes
                         howToDoc
                         howToVideo
@@ -4583,7 +4753,7 @@ export function App() {
                       position: 'absolute',
                       left: '16px',
                       top: 0,
-                      bottom: 0,
+                      bottom: '50%',
                       width: '2px',
                       backgroundColor: '#e0e0e0',
                     },
@@ -4605,7 +4775,25 @@ export function App() {
                   </ListItemIcon>
                   <ListItemText primary="Tasks" />
                 </ListItemButton>
+              </List>
+            </Collapse>
 
+            <ListItemButton
+              selected={selectedSection === 'solutions'}
+              onClick={() => {
+                setSelectedSection('solutions');
+                setSolutionsExpanded(true); // Always expand when clicked
+              }}
+            >
+              <ListItemIcon>
+                <SolutionIcon />
+              </ListItemIcon>
+              <ListItemText primary="Solutions" />
+              {solutionsExpanded ? <ExpandLess /> : <ExpandMore />}
+            </ListItemButton>
+
+            <Collapse in={solutionsExpanded && selectedSection === 'solutions'} timeout="auto" unmountOnExit>
+              <List component="div" disablePadding>
                 <ListItemButton
                   sx={{ 
                     pl: 6,
@@ -4629,77 +4817,13 @@ export function App() {
                       backgroundColor: '#e0e0e0',
                     }
                   }}
-                  selected={selectedProductSubSection === 'licenses'}
-                  onClick={() => handleProductSubSectionChange('licenses')}
+                  selected={selectedSolutionSubSection === 'main'}
+                  onClick={() => handleSolutionSubSectionChange('main')}
                 >
                   <ListItemIcon>
-                    <LicenseIcon />
+                    <MainIcon />
                   </ListItemIcon>
-                  <ListItemText primary="Licenses" />
-                </ListItemButton>
-
-                <ListItemButton
-                  sx={{ 
-                    pl: 6,
-                    position: 'relative',
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '16px',
-                      top: 0,
-                      bottom: 0,
-                      width: '2px',
-                      backgroundColor: '#e0e0e0',
-                    },
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '16px',
-                      top: '50%',
-                      width: '12px',
-                      height: '2px',
-                      backgroundColor: '#e0e0e0',
-                    }
-                  }}
-                  selected={selectedProductSubSection === 'releases'}
-                  onClick={() => handleProductSubSectionChange('releases')}
-                >
-                  <ListItemIcon>
-                    <ReleaseIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Releases" />
-                </ListItemButton>
-
-                <ListItemButton
-                  sx={{ 
-                    pl: 6,
-                    position: 'relative',
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '16px',
-                      top: 0,
-                      bottom: 0,
-                      width: '2px',
-                      backgroundColor: '#e0e0e0',
-                    },
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '16px',
-                      top: '50%',
-                      width: '12px',
-                      height: '2px',
-                      backgroundColor: '#e0e0e0',
-                    }
-                  }}
-                  selected={selectedProductSubSection === 'outcomes'}
-                  onClick={() => handleProductSubSectionChange('outcomes')}
-                >
-                  <ListItemIcon>
-                    <OutcomeIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Outcomes" />
+                  <ListItemText primary="Main" />
                 </ListItemButton>
 
                 <ListItemButton
@@ -4725,26 +4849,16 @@ export function App() {
                       backgroundColor: '#e0e0e0',
                     }
                   }}
-                  selected={selectedProductSubSection === 'customAttributes'}
-                  onClick={() => handleProductSubSectionChange('customAttributes')}
+                  selected={selectedSolutionSubSection === 'tasks'}
+                  onClick={() => handleSolutionSubSectionChange('tasks')}
                 >
                   <ListItemIcon>
-                    <CustomAttributeIcon />
+                    <TaskIcon />
                   </ListItemIcon>
-                  <ListItemText primary="Custom Attributes" />
+                  <ListItemText primary="Tasks" />
                 </ListItemButton>
               </List>
             </Collapse>
-
-            <ListItemButton
-              selected={selectedSection === 'solutions'}
-              onClick={() => handleSectionChange('solutions')}
-            >
-              <ListItemIcon>
-                <SolutionIcon />
-              </ListItemIcon>
-              <ListItemText primary="Solutions" />
-            </ListItemButton>
 
             <ListItemButton
               selected={selectedSection === 'customers'}
@@ -4795,7 +4909,7 @@ export function App() {
                     </ListItemIcon>
                     <ListItemText 
                       primary={customer.name}
-                      secondary={`${customer.products?.length || 0} products`}
+                      secondary={`${customer.products?.length || 0} products, ${customer.solutions?.length || 0} solutions`}
                     />
                   </ListItemButton>
                 ))}
@@ -4969,13 +5083,20 @@ export function App() {
                       const customAttrEntries = Object.entries(customAttrs);
 
                       const tileData = [
-                        { key: 'outcomes' as const, title: 'Outcomes', items: outcomeNames, type: 'list' },
-                        { key: 'licenses' as const, title: 'Licenses', items: licenseNames, type: 'list' },
-                        { key: 'releases' as const, title: 'Releases', items: releases, type: 'releaseWithLevel' },
-                        { key: 'customAttributes' as const, title: 'Custom Attributes', items: customAttrEntries, type: 'keyValue' }
+                        { key: 'outcomes' as const, title: 'Outcomes', items: outcomeNames, type: 'list', tab: 'outcomes' as const },
+                        { key: 'licenses' as const, title: 'Licenses', items: licenseNames, type: 'list', tab: 'licenses' as const },
+                        { key: 'releases' as const, title: 'Releases', items: releases, type: 'releaseWithLevel', tab: 'releases' as const },
+                        { key: 'customAttributes' as const, title: 'Custom Attributes', items: customAttrEntries, type: 'keyValue', tab: 'customAttributes' as const }
                       ];
 
                       const NAME_DISPLAY_LIMIT = 12;
+
+                      const handleTileClick = (tabName: 'outcomes' | 'licenses' | 'releases' | 'customAttributes') => {
+                        // Open the edit dialog with the appropriate tab focused
+                        setProductDialogInitialTab(tabName);
+                        setEditingProduct(currentProduct);
+                        setEditProductDialog(true);
+                      };
 
                       return (
                         <Box
@@ -4989,7 +5110,7 @@ export function App() {
                             <Paper
                               key={tile.key}
                               elevation={1}
-                              onClick={() => handleProductSubSectionChange(tile.key)}
+                              onClick={() => handleTileClick(tile.tab)}
                               sx={{
                                 p: 3,
                                 cursor: 'pointer',
@@ -5090,8 +5211,10 @@ export function App() {
                   </Box>
                 )}
 
-                {/* Outcomes Sub-section */}
-                {selectedProductSubSection === 'outcomes' && selectedProduct && (
+                {/* Outcomes, Licenses, Releases, and Custom Attributes removed - now managed via Product Edit Dialog */}
+
+                {/* Outcomes Sub-section - REMOVED */}
+                {false && (
                   <Paper sx={{ p: 2, ml: 3, borderLeft: '4px solid #1976d2' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Typography variant="h6">
@@ -5186,8 +5309,8 @@ export function App() {
                   </Paper>
                 )}
 
-                {/* Licenses Sub-section */}
-                {selectedProductSubSection === 'licenses' && selectedProduct && (
+                {/* Licenses Sub-section - REMOVED */}
+                {false && (
                   <Paper sx={{ p: 2, ml: 3, borderLeft: '4px solid #1976d2' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Typography variant="h6">
@@ -5298,8 +5421,8 @@ export function App() {
                   </Paper>
                 )}
 
-                {/* Releases Sub-section */}
-                {selectedProductSubSection === 'releases' && selectedProduct && (
+                {/* Releases Sub-section - REMOVED */}
+                {false && (
                   <Paper sx={{ p: 2, ml: 3, borderLeft: '4px solid #1976d2' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                       <Typography variant="h6">
@@ -5410,114 +5533,7 @@ export function App() {
                   </Paper>
                 )}
 
-                {/* Custom Attributes Sub-section */}
-                {selectedProductSubSection === 'customAttributes' && selectedProduct && (
-                  <Paper sx={{ p: 2 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                      <Typography variant="h6">
-                        Custom Attributes for {products.find((p: any) => p.id === selectedProduct)?.name}
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                        <Typography variant="caption" color="text.secondary">
-                          Double-click to edit
-                        </Typography>
-                        <Button variant="contained" startIcon={<Add />} onClick={() => setAddCustomAttributeDialog(true)}>
-                          Add Attribute
-                        </Button>
-                      </Box>
-                    </Box>
-
-                    {(() => {
-                      const currentProduct = products.find((p: any) => p.id === selectedProduct);
-                      const customAttrs = currentProduct?.customAttrs || {};
-                      const attrEntries = Object.entries(customAttrs);
-
-                      return attrEntries.length > 0 ? (
-                        <List>
-                          {attrEntries.map(([key, value]: [string, any]) => (
-                            <ListItemButton
-                              key={key}
-                              sx={{
-                                border: '1px solid #e0e0e0',
-                                borderRadius: 1,
-                                mb: 1,
-                                '&:hover': {
-                                  backgroundColor: '#f5f5f5'
-                                }
-                              }}
-                              onDoubleClick={() => {
-                                setEditingCustomAttribute({
-                                  key,
-                                  value,
-                                  type: Array.isArray(value) ? 'array' :
-                                    typeof value === 'object' && value !== null ? 'object' :
-                                      typeof value === 'number' ? 'number' :
-                                        typeof value === 'boolean' ? 'boolean' : 'string'
-                                });
-                                setEditCustomAttributeDialog(true);
-                              }}
-                            >
-                              <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', gap: 2 }}>
-                                <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                                  <Typography
-                                    variant="subtitle1"
-                                    sx={{
-                                      fontWeight: 600,
-                                      whiteSpace: 'nowrap',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis'
-                                    }}
-                                  >
-                                    {key}
-                                  </Typography>
-                                  <Typography
-                                    variant="body2"
-                                    color="text.secondary"
-                                    sx={{
-                                      whiteSpace: 'nowrap',
-                                      overflow: 'hidden',
-                                      textOverflow: 'ellipsis'
-                                    }}
-                                  >
-                                    {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                  </Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                  <IconButton size="small" onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingCustomAttribute({
-                                      key,
-                                      value,
-                                      type: Array.isArray(value) ? 'array' :
-                                        typeof value === 'object' && value !== null ? 'object' :
-                                          typeof value === 'number' ? 'number' :
-                                            typeof value === 'boolean' ? 'boolean' : 'string'
-                                    });
-                                    setEditCustomAttributeDialog(true);
-                                  }}>
-                                    <Edit fontSize="small" />
-                                  </IconButton>
-                                  <IconButton size="small" color="error" onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (confirm(`Are you sure you want to delete the attribute "${key}"?`)) {
-                                      handleDeleteCustomAttribute(key);
-                                    }
-                                  }}>
-                                    <Delete fontSize="small" />
-                                  </IconButton>
-                                </Box>
-                              </Box>
-                            </ListItemButton>
-                          ))}
-                        </List>
-                      ) : (
-                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-                          No additional product attributes found for this product.
-                        </Typography>
-                      );
-                    })()}
-                  </Paper>
-                )}
+                {/* Custom Attributes Sub-section - REMOVED */}
 
                 {/* Tasks Sub-section */}
                 {selectedProductSubSection === 'tasks' && selectedProduct && (
@@ -5629,13 +5645,7 @@ export function App() {
                 {!selectedProduct && !productsLoading && (
                   <Paper sx={{ p: 4, textAlign: 'center' }}>
                     <Typography variant="h6" color="text.secondary">
-                      Select a product to view {
-                        selectedProductSubSection === 'tasks' ? 'tasks' :
-                            selectedProductSubSection === 'licenses' ? 'licenses' :
-                              selectedProductSubSection === 'outcomes' ? 'outcomes' :
-                                selectedProductSubSection === 'customAttributes' ? 'custom attributes' :
-                                  selectedProductSubSection === 'releases' ? 'releases' : 'details'
-                      }
+                      Select a product to view {selectedProductSubSection === 'tasks' ? 'tasks' : 'details'}
                     </Typography>
                   </Paper>
                 )}
@@ -5645,34 +5655,144 @@ export function App() {
             {/* Solutions Section */}
             {selectedSection === 'solutions' && (
               <Box>
-                <Typography variant="h4" gutterBottom>
-                  Solution Management
-                </Typography>
+                {/* Main Sub-section - Solution Management */}
+                {selectedSolutionSubSection === 'main' && (
+                  <>
+                    {solutionsLoading && <LinearProgress />}
+                    {solutionsError && (
+                      <Typography color="error">Error: {solutionsError.message}</Typography>
+                    )}
 
-                {solutionsLoading && <LinearProgress />}
-                {solutionsError && (
-                  <Typography color="error">Error: {solutionsError.message}</Typography>
+                    {!solutionsLoading && !solutionsError && (
+                      <SolutionManagementMain
+                        solutions={solutions}
+                        allProducts={products}
+                        onRefetch={refetchSolutions}
+                        onProductClick={(productId) => {
+                          setSelectedSection('products');
+                          setSelectedProduct(productId);
+                          setViewMode('detail');
+                        }}
+                        onSolutionSelect={(solutionId) => setSelectedSolution(solutionId)}
+                      />
+                    )}
+                  </>
                 )}
 
-                <Paper sx={{ p: 2, mt: 2 }}>
-                  <Typography variant="h6" gutterBottom>Solutions</Typography>
-                  {solutions.length > 0 ? (
-                    <List>
-                      {solutions.map((solution: any) => (
-                        <ListItemButton key={solution.id}>
-                          <ListItemText
-                            primary={solution.name}
-                            secondary={solution.description}
-                          />
-                        </ListItemButton>
-                      ))}
-                    </List>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      No solutions found
+                {/* Tasks Sub-section */}
+                {selectedSolutionSubSection === 'tasks' && selectedSolution && (
+                  <Paper sx={{ p: 2, ml: 3, borderLeft: '4px solid #1976d2' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="h6">
+                        Solution Tasks for {solutions.find((s: any) => s.id === selectedSolution)?.name}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Typography variant="caption" color="text.secondary">
+                          Drag to reorder • Double-click for details
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          startIcon={<Add />}
+                          onClick={() => setAddTaskDialog(true)}
+                        >
+                          Add Task
+                        </Button>
+                      </Box>
+                    </Box>
+
+                    {/* Tasks Loading */}
+                    {solutionTasksLoading && (
+                      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                        <LinearProgress sx={{ width: '100%' }} />
+                        <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                          Loading tasks...
+                        </Typography>
+                      </Box>
+                    )}
+
+                    {/* Tasks Error */}
+                    {solutionTasksError && (
+                      <Typography variant="body2" color="error" sx={{ textAlign: 'center', py: 4 }}>
+                        Error loading tasks: {solutionTasksError.message}
+                      </Typography>
+                    )}
+
+                    {/* Tasks List */}
+                    {!solutionTasksLoading && !solutionTasksError && solutionTasks.length > 0 ? (
+                      <>
+                        <DndContext
+                          sensors={sensors}
+                          collisionDetection={closestCenter}
+                          onDragEnd={handleTaskDragEnd}
+                        >
+                          <TableContainer component={Paper} variant="outlined">
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow sx={{ 
+                                  backgroundColor: '#eeeeee',
+                                  borderBottom: '2px solid #d0d0d0'
+                                }}>
+                                  <TableCell width={32} sx={{ whiteSpace: 'nowrap' }}>
+                                    {/* Drag handle column */}
+                                  </TableCell>
+                                  <TableCell width={60} sx={{ whiteSpace: 'nowrap' }}>
+                                    <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>#</Typography>
+                                  </TableCell>
+                                  <TableCell sx={{ minWidth: 200, maxWidth: 400 }}>
+                                    <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Task Name</Typography>
+                                  </TableCell>
+                                  <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
+                                    <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
+                                  </TableCell>
+                                  <TableCell width={100} sx={{ whiteSpace: 'nowrap' }}>
+                                    <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Weight</Typography>
+                                  </TableCell>
+                                  <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
+                                    <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Telemetry</Typography>
+                                  </TableCell>
+                                  <TableCell width={120} sx={{ whiteSpace: 'nowrap' }}>
+                                    <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Actions</Typography>
+                                  </TableCell>
+                                </TableRow>
+                              </TableHead>
+                              <TableBody>
+                                <SortableContext
+                                  items={solutionTasks.filter((task: any) => !task.deletedAt).map((task: any) => task.id)}
+                                  strategy={verticalListSortingStrategy}
+                                >
+                                  {solutionTasks.filter((task: any) => !task.deletedAt).map((task: any, index: number) => (
+                                    <SortableTaskItem
+                                      key={task.id}
+                                      task={task}
+                                      onEdit={handleEditTask}
+                                      onDelete={handleDeleteTask}
+                                      onDoubleClick={handleTaskDoubleClick}
+                                      onWeightChange={handleTaskWeightChange}
+                                      onSequenceChange={handleTaskSequenceChange}
+                                    />
+                                  ))}
+                                </SortableContext>
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        </DndContext>
+                      </>
+                    ) : !solutionTasksLoading && !solutionTasksError ? (
+                      <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                        No tasks found for this solution. Click "Add Task" to create one.
+                      </Typography>
+                    ) : null}
+                  </Paper>
+                )}
+
+                {/* No solution selected message for Tasks submenu */}
+                {selectedSolutionSubSection === 'tasks' && !selectedSolution && (
+                  <Paper sx={{ p: 4, textAlign: 'center' }}>
+                    <Typography variant="h6" color="text.secondary">
+                      Please select a solution from the Main submenu to manage its tasks
                     </Typography>
-                  )}
-                </Paper>
+                  </Paper>
+                )}
               </Box>
             )}
 
@@ -5698,21 +5818,35 @@ export function App() {
               onSave={handleAddTaskSave}
               task={null}
               title="Task Details"
-              productId={selectedProduct}
-              existingTasks={tasks.filter((t: any) => !t.deletedAt)}
-              outcomes={outcomes.filter((o: any) => o.product?.id === selectedProduct)}
-              availableLicenses={selectedProduct ? products.find((p: any) => p.id === selectedProduct)?.licenses || [] : []}
-              availableReleases={selectedProduct ? products.find((p: any) => p.id === selectedProduct)?.releases || [] : []}
+              productId={selectedProductSubSection === 'tasks' ? selectedProduct : undefined}
+              solutionId={selectedSolutionSubSection === 'tasks' ? selectedSolution : undefined}
+              existingTasks={selectedProductSubSection === 'tasks' ? tasks.filter((t: any) => !t.deletedAt) : solutionTasks.filter((t: any) => !t.deletedAt)}
+              outcomes={selectedProductSubSection === 'tasks' 
+                ? outcomes.filter((o: any) => o.product?.id === selectedProduct)
+                : (selectedSolution ? solutions.find((s: any) => s.id === selectedSolution)?.outcomes || [] : [])
+              }
+              availableLicenses={selectedProductSubSection === 'tasks' && selectedProduct 
+                ? products.find((p: any) => p.id === selectedProduct)?.licenses || [] 
+                : (selectedSolution ? solutions.find((s: any) => s.id === selectedSolution)?.licenses || [] : [])
+              }
+              availableReleases={selectedProductSubSection === 'tasks' && selectedProduct 
+                ? products.find((p: any) => p.id === selectedProduct)?.releases || [] 
+                : (selectedSolution ? solutions.find((s: any) => s.id === selectedSolution)?.releases || [] : [])
+              }
             />
 
             {/* Edit Product Dialog */}
             <ProductDialog
               open={editProductDialog}
-              onClose={() => setEditProductDialog(false)}
+              onClose={() => {
+                setEditProductDialog(false);
+                setProductDialogInitialTab('general');
+              }}
               onSave={handleUpdateProduct}
               product={editingProduct}
               title="Edit Product"
               availableReleases={editingProduct?.releases || []}
+              initialTab={productDialogInitialTab}
             />
 
             {/* Edit Task Dialog */}
@@ -5722,11 +5856,21 @@ export function App() {
               onSave={handleEditTaskSave}
               task={editingTask}
               title="Task Details"
-              productId={selectedProduct}
-              existingTasks={tasks.filter((t: any) => !t.deletedAt)}
-              outcomes={outcomes.filter((o: any) => o.product?.id === selectedProduct)}
-              availableLicenses={selectedProduct ? products.find((p: any) => p.id === selectedProduct)?.licenses || [] : []}
-              availableReleases={selectedProduct ? products.find((p: any) => p.id === selectedProduct)?.releases || [] : []}
+              productId={selectedProductSubSection === 'tasks' ? selectedProduct : undefined}
+              solutionId={selectedSolutionSubSection === 'tasks' ? selectedSolution : undefined}
+              existingTasks={selectedProductSubSection === 'tasks' ? tasks.filter((t: any) => !t.deletedAt) : solutionTasks.filter((t: any) => !t.deletedAt)}
+              outcomes={selectedProductSubSection === 'tasks' 
+                ? outcomes.filter((o: any) => o.product?.id === selectedProduct)
+                : (selectedSolution ? solutions.find((s: any) => s.id === selectedSolution)?.outcomes || [] : [])
+              }
+              availableLicenses={selectedProductSubSection === 'tasks' && selectedProduct 
+                ? products.find((p: any) => p.id === selectedProduct)?.licenses || [] 
+                : (selectedSolution ? solutions.find((s: any) => s.id === selectedSolution)?.licenses || [] : [])
+              }
+              availableReleases={selectedProductSubSection === 'tasks' && selectedProduct 
+                ? products.find((p: any) => p.id === selectedProduct)?.releases || [] 
+                : (selectedSolution ? solutions.find((s: any) => s.id === selectedSolution)?.releases || [] : [])
+              }
             />
 
             {/* Task Detail Dialog */}

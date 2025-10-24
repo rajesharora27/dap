@@ -66,17 +66,6 @@ export const OutcomeDialog: React.FC<OutcomeDialogProps> = ({
             onClose={onClose}
             maxWidth="sm"
             fullWidth
-            keepMounted
-            disableEnforceFocus
-            container={document.getElementById('root')}
-            BackdropProps={{
-                onClick: onClose
-            }}
-            slotProps={{
-                backdrop: {
-                    invisible: false
-                }
-            }}
         >
             <DialogTitle>
                 {outcome ? 'Edit Outcome' : 'Add New Outcome'}
@@ -90,6 +79,7 @@ export const OutcomeDialog: React.FC<OutcomeDialogProps> = ({
                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                         margin="normal"
                         required
+                        autoFocus
                         helperText="Enter a descriptive name for this outcome"
                     />
 

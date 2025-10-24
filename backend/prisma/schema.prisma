@@ -62,18 +62,20 @@ model Product {
 }
 
 model Solution {
-  id          String             @id @default(cuid())
+  id          String              @id @default(cuid())
   name        String
   description String?
   customAttrs Json?
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
   deletedAt   DateTime?
   customers   CustomerSolution[]
   licenses    License[]
   products    SolutionProduct[]
   tasks       Task[]
   releases    Release[]
+  outcomes    Outcome[]
+  taskOrders  SolutionTaskOrder[]
 }
 
 model SolutionProduct {
@@ -124,12 +126,26 @@ model CustomerProduct {
 }
 
 model CustomerSolution {
-  id         String   @id @default(cuid())
-  customerId String
-  solutionId String
-  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  solution   Solution @relation(fields: [solutionId], references: [id], onDelete: Cascade)
-
+  id                String                @id @default(cuid())
+  customerId        String
+  solutionId        String
+  name              String                // Required name/identifier (e.g., "Enterprise Security Bundle", "Branch Office Package")
+  
+  // License and Selections
+  licenseLevel      LicenseLevel          @default(ESSENTIAL)
+  selectedOutcomes  Json?                 // Array of outcome IDs (both solution AND product outcomes)
+  selectedReleases  Json?                 // Array of release IDs (both solution AND product releases)
+  
+  // Metadata
+  purchasedAt       DateTime              @default(now())
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  
+  // Relations
+  customer          Customer              @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  solution          Solution              @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+  adoptionPlan      SolutionAdoptionPlan? // One adoption plan per solution assignment
+  
   @@unique([customerId, solutionId])
   @@index([customerId])
   @@index([solutionId])
@@ -210,8 +226,9 @@ model CustomerTask {
 }
 
 model CustomerTelemetryAttribute {
-  id                String                      @id @default(cuid())
-  customerTaskId    String
+  id                    String                      @id @default(cuid())
+  customerTaskId        String?
+  customerSolutionTaskId String?
   
   // Snapshot of original telemetry attribute
   originalAttributeId String?                   // Reference to product telemetry attribute
@@ -232,11 +249,14 @@ model CustomerTelemetryAttribute {
   updatedAt         DateTime                    @updatedAt
   
   // Relations
-  customerTask      CustomerTask                @relation(fields: [customerTaskId], references: [id], onDelete: Cascade)
-  values            CustomerTelemetryValue[]
+  customerTask          CustomerTask?            @relation(fields: [customerTaskId], references: [id], onDelete: Cascade)
+  customerSolutionTask  CustomerSolutionTask?    @relation(fields: [customerSolutionTaskId], references: [id], onDelete: Cascade)
+  values                CustomerTelemetryValue[]
   
   @@unique([customerTaskId, name])
+  @@unique([customerSolutionTaskId, name])
   @@index([customerTaskId])
+  @@index([customerSolutionTaskId])
 }
 
 model CustomerTelemetryValue {
@@ -261,26 +281,34 @@ model CustomerTelemetryValue {
 }
 
 model CustomerTaskOutcome {
-  id              String        @id @default(cuid())
-  customerTaskId  String
-  outcomeId       String
-  customerTask    CustomerTask  @relation(fields: [customerTaskId], references: [id], onDelete: Cascade)
-  outcome         Outcome       @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+  id                      String                @id @default(cuid())
+  customerTaskId          String?
+  customerSolutionTaskId  String?
+  outcomeId               String
+  customerTask            CustomerTask?         @relation(fields: [customerTaskId], references: [id], onDelete: Cascade)
+  customerSolutionTask    CustomerSolutionTask? @relation(fields: [customerSolutionTaskId], references: [id], onDelete: Cascade)
+  outcome                 Outcome               @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
   
   @@unique([customerTaskId, outcomeId])
+  @@unique([customerSolutionTaskId, outcomeId])
   @@index([customerTaskId])
+  @@index([customerSolutionTaskId])
   @@index([outcomeId])
 }
 
 model CustomerTaskRelease {
-  id              String        @id @default(cuid())
-  customerTaskId  String
-  releaseId       String
-  customerTask    CustomerTask  @relation(fields: [customerTaskId], references: [id], onDelete: Cascade)
-  release         Release       @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  id                      String                @id @default(cuid())
+  customerTaskId          String?
+  customerSolutionTaskId  String?
+  releaseId               String
+  customerTask            CustomerTask?         @relation(fields: [customerTaskId], references: [id], onDelete: Cascade)
+  customerSolutionTask    CustomerSolutionTask? @relation(fields: [customerSolutionTaskId], references: [id], onDelete: Cascade)
+  release                 Release               @relation(fields: [releaseId], references: [id], onDelete: Cascade)
   
   @@unique([customerTaskId, releaseId])
+  @@unique([customerSolutionTaskId, releaseId])
   @@index([customerTaskId])
+  @@index([customerSolutionTaskId])
   @@index([releaseId])
 }
 
@@ -453,6 +481,19 @@ enum StatusUpdateSource {
   SYSTEM      // Updated by system (e.g., adoption plan creation)
 }
 
+enum TaskSourceType {
+  SOLUTION    // Task belongs to solution itself
+  PRODUCT     // Task comes from a product within solution
+}
+
+enum SolutionProductStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+  SKIPPED
+}
+
 model CustomAttribute {
   id             String                  @id @default(cuid())
   productId      String
@@ -475,16 +516,21 @@ model CustomAttribute {
 
 model Outcome {
   id            String                @id @default(cuid())
-  productId     String
+  productId     String?               // Make optional - can be product OR solution
+  solutionId    String?               // Add solution support
   name          String
   description   String?
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
-  product       Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product       Product?              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  solution      Solution?             @relation(fields: [solutionId], references: [id], onDelete: Cascade)
   tasks         TaskOutcome[]
   customerTasks CustomerTaskOutcome[]
 
   @@unique([productId, name])
+  @@unique([solutionId, name])
+  @@index([productId])
+  @@index([solutionId])
 }
 
 model TaskOutcome {
@@ -525,4 +571,137 @@ model TaskRelease {
   release   Release @relation(fields: [releaseId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, releaseId])
+}
+
+model SolutionAdoptionPlan {
+  id                    String              @id @default(cuid())
+  customerSolutionId    String              @unique
+  
+  // Snapshot of solution details at time of creation
+  solutionId            String              // Reference to original solution
+  solutionName          String              // Snapshot of solution name
+  licenseLevel          LicenseLevel        // License level when created
+  selectedOutcomes      Json?               // Outcome IDs when created (solution + product)
+  selectedReleases      Json?               // Release IDs when created (solution + product)
+  
+  // Product inclusion tracking
+  includedProductIds    Json                // Array of product IDs included in this solution plan
+  
+  // Progress tracking (aggregated)
+  totalTasks            Int                 @default(0)   // All tasks (solution + all products)
+  completedTasks        Int                 @default(0)   // All completed tasks
+  totalWeight           Decimal             @default(0) @db.Decimal(10, 2)
+  completedWeight       Decimal             @default(0) @db.Decimal(10, 2)
+  progressPercentage    Decimal             @default(0) @db.Decimal(5, 2)
+  
+  // Solution-specific task progress
+  solutionTasksTotal    Int                 @default(0)   // Only solution's own tasks
+  solutionTasksComplete Int                 @default(0)   // Only solution's own completed tasks
+  
+  // Metadata
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  lastSyncedAt          DateTime?           // Last time synced with solution/product changes
+  
+  // Relations
+  customerSolution      CustomerSolution    @relation(fields: [customerSolutionId], references: [id], onDelete: Cascade)
+  tasks                 CustomerSolutionTask[]
+  products              SolutionAdoptionProduct[]  // Track each product's progress within solution
+  
+  @@index([customerSolutionId])
+  @@index([solutionId])
+}
+
+model SolutionAdoptionProduct {
+  id                    String                  @id @default(cuid())
+  solutionAdoptionPlanId String
+  productId             String
+  productName           String                  // Snapshot
+  
+  // Ordering and sequencing
+  sequenceNumber        Int                     // Order of this product in the solution
+  
+  // Progress tracking for this product within solution
+  totalTasks            Int                     @default(0)
+  completedTasks        Int                     @default(0)
+  totalWeight           Decimal                 @default(0) @db.Decimal(10, 2)
+  completedWeight       Decimal                 @default(0) @db.Decimal(10, 2)
+  progressPercentage    Decimal                 @default(0) @db.Decimal(5, 2)
+  
+  // Status
+  status                SolutionProductStatus   @default(NOT_STARTED)  // NOT_STARTED, IN_PROGRESS, COMPLETED, BLOCKED
+  
+  // Metadata
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  
+  // Relations
+  solutionAdoptionPlan  SolutionAdoptionPlan    @relation(fields: [solutionAdoptionPlanId], references: [id], onDelete: Cascade)
+  
+  @@unique([solutionAdoptionPlanId, productId])
+  @@index([solutionAdoptionPlanId])
+  @@index([productId])
+}
+
+model CustomerSolutionTask {
+  id                      String                    @id @default(cuid())
+  solutionAdoptionPlanId  String
+  
+  // Task source (either solution task OR product task)
+  originalTaskId          String                    // Reference to task (could be solution OR product task)
+  sourceType              TaskSourceType            // SOLUTION or PRODUCT
+  sourceProductId         String?                   // If source is PRODUCT, which product?
+  
+  // Snapshot of original task
+  name                    String
+  description             String?
+  estMinutes              Int
+  weight                  Decimal                   @db.Decimal(5, 2)
+  sequenceNumber          Int                       // Overall sequence in solution (interleaved)
+  howToDoc                String[]
+  howToVideo              String[]
+  notes                   String?
+  licenseLevel            LicenseLevel
+  
+  // Customer-specific status (same as CustomerTask)
+  status                  CustomerTaskStatus        @default(NOT_STARTED)
+  statusUpdatedAt         DateTime?
+  statusUpdatedBy         String?
+  statusUpdateSource      StatusUpdateSource?
+  statusNotes             String?
+  
+  // Completion tracking
+  isComplete              Boolean                   @default(false)
+  completedAt             DateTime?
+  completedBy             String?
+  
+  // Metadata
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+  
+  // Relations
+  solutionAdoptionPlan    SolutionAdoptionPlan      @relation(fields: [solutionAdoptionPlanId], references: [id], onDelete: Cascade)
+  telemetryAttributes     CustomerTelemetryAttribute[]
+  outcomes                CustomerTaskOutcome[]
+  releases                CustomerTaskRelease[]
+  
+  @@index([solutionAdoptionPlanId])
+  @@index([originalTaskId])
+  @@index([sourceProductId])
+}
+
+model SolutionTaskOrder {
+  id              String   @id @default(cuid())
+  solutionId      String
+  taskId          String
+  sourceType      TaskSourceType  // SOLUTION or PRODUCT
+  sourceProductId String?         // If PRODUCT, which product
+  sequenceNumber  Int             // Global sequence within solution
+  
+  solution        Solution @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+  
+  @@unique([solutionId, sequenceNumber])
+  @@unique([solutionId, taskId])
+  @@index([solutionId])
+  @@index([taskId])
 }

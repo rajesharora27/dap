@@ -145,17 +145,6 @@ export const CustomAttributeDialog: React.FC<CustomAttributeDialogProps> = ({
             onClose={onClose}
             maxWidth="md"
             fullWidth
-            keepMounted
-            disableEnforceFocus
-            container={document.getElementById('root')}
-            BackdropProps={{
-                onClick: onClose
-            }}
-            slotProps={{
-                backdrop: {
-                    invisible: false
-                }
-            }}
         >
             <DialogTitle>
                 {attribute ? 'Edit Product Attribute' : 'Add Product Attribute'}
@@ -169,6 +158,7 @@ export const CustomAttributeDialog: React.FC<CustomAttributeDialogProps> = ({
                         onChange={(e) => handleKeyChange(e.target.value)}
                         margin="normal"
                         required
+                        autoFocus
                         error={!!keyError}
                         helperText={keyError || 'Unique identifier for this attribute'}
                         disabled={!!attribute} // Don't allow editing key of existing attributes
