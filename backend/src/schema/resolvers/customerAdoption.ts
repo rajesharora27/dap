@@ -891,31 +891,10 @@ export const CustomerAdoptionMutationResolvers = {
     
     const { customerProduct } = plan;
     
-    // Track original selections for audit
-    const originalOutcomeIds = (customerProduct.selectedOutcomes as string[]) || [];
-    const originalReleaseIds = (customerProduct.selectedReleases as string[]) || [];
-    
-    // STEP 1: Update customer's selected outcomes and releases with all available from product
-    // This ensures new outcomes/releases added to product are automatically included
-    const allProductOutcomeIds = customerProduct.product.outcomes.map((o: any) => o.id);
-    const allProductReleaseIds = customerProduct.product.releases.map((r: any) => r.id);
-    
-    // Calculate what's new
-    const newOutcomes = allProductOutcomeIds.filter((id: string) => !originalOutcomeIds.includes(id));
-    const newReleases = allProductReleaseIds.filter((id: string) => !originalReleaseIds.includes(id));
-    
-    // Update customer product selections to include all product outcomes and releases
-    await prisma.customerProduct.update({
-      where: { id: customerProduct.id },
-      data: {
-        selectedOutcomes: allProductOutcomeIds,
-        selectedReleases: allProductReleaseIds,
-      },
-    });
-    
-    // Use updated selections for task filtering
-    const selectedOutcomeIds = allProductOutcomeIds;
-    const selectedReleaseIds = allProductReleaseIds;
+    // Use customer's ORIGINAL selections - do NOT modify assignment parameters
+    // Sync should only update tasks, not customer's outcome/release selections
+    const selectedOutcomeIds = (customerProduct.selectedOutcomes as string[]) || [];
+    const selectedReleaseIds = (customerProduct.selectedReleases as string[]) || [];
     
     // STEP 2: Get current eligible tasks from product
     const eligibleProductTasks = customerProduct.product.tasks.filter((task: any) =>
@@ -1122,13 +1101,12 @@ export const CustomerAdoptionMutationResolvers = {
     
     const progress = calculateProgress(updatedTasks);
     
-    // Update adoption plan
+    // Update adoption plan - ONLY update progress and sync time
+    // Do NOT update licenseLevel or selectedOutcomes - those are assignment parameters
     const updatedPlan = await prisma.adoptionPlan.update({
       where: { id: adoptionPlanId },
       data: {
         ...progress,
-        licenseLevel: customerProduct.licenseLevel,
-        selectedOutcomes: selectedOutcomeIds,
         lastSyncedAt: new Date(),
       },
       include: {
@@ -1152,9 +1130,7 @@ export const CustomerAdoptionMutationResolvers = {
     await logAudit('SYNC_ADOPTION_PLAN', 'AdoptionPlan', adoptionPlanId, { 
       tasksRemoved: tasksToRemove.length, 
       tasksAdded: tasksToAdd.length,
-      tasksUpdated,
-      outcomesAdded: newOutcomes.length,
-      releasesAdded: newReleases.length
+      tasksUpdated
     }, ctx.user?.id);
     
     return updatedPlan;

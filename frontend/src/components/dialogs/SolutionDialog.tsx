@@ -58,18 +58,20 @@ const UPDATE_SOLUTION = gql`
 `;
 
 const ADD_PRODUCT_TO_SOLUTION = gql`
-  mutation AddProductToSolutionEnhanced($solutionId: ID!, $productId: ID!) {
-    addProductToSolutionEnhanced(solutionId: $solutionId, productId: $productId) {
-      id
-    }
+  mutation AddProductToSolutionEnhanced($solutionId: ID!, $productId: ID!, $order: Int) {
+    addProductToSolutionEnhanced(solutionId: $solutionId, productId: $productId, order: $order)
   }
 `;
 
 const REMOVE_PRODUCT_FROM_SOLUTION = gql`
   mutation RemoveProductFromSolutionEnhanced($solutionId: ID!, $productId: ID!) {
-    removeProductFromSolutionEnhanced(solutionId: $solutionId, productId: $productId) {
-      id
-    }
+    removeProductFromSolutionEnhanced(solutionId: $solutionId, productId: $productId)
+  }
+`;
+
+const REORDER_PRODUCTS_IN_SOLUTION = gql`
+  mutation ReorderProductsInSolution($solutionId: ID!, $productOrders: [ProductOrderInput!]!) {
+    reorderProductsInSolution(solutionId: $solutionId, productOrders: $productOrders)
   }
 `;
 
@@ -152,6 +154,7 @@ export const SolutionDialog: React.FC<Props> = ({
   const [updateSolution] = useMutation(UPDATE_SOLUTION);
   const [addProduct] = useMutation(ADD_PRODUCT_TO_SOLUTION);
   const [removeProduct] = useMutation(REMOVE_PRODUCT_FROM_SOLUTION);
+  const [reorderProducts] = useMutation(REORDER_PRODUCTS_IN_SOLUTION);
 
   useEffect(() => {
     if (solution) {
@@ -161,6 +164,7 @@ export const SolutionDialog: React.FC<Props> = ({
       setLicenseLevel(attrs.licenseLevel || 'Essential');
       const { licenseLevel: _, ...otherAttrs } = attrs;
       setCustomAttrs(otherAttrs);
+      // Preserve product order from backend - products are already sorted by order
       const productIds = (solution.products?.edges || []).map((edge: any) => edge.node.id);
       setSelectedProductIds(productIds);
       setSolutionOutcomes((solution.outcomes || []).map(o => ({ ...o })));
@@ -233,14 +237,7 @@ export const SolutionDialog: React.FC<Props> = ({
       if (solutionId) {
         const existingProductIds = (solution?.products?.edges || []).map((edge: any) => edge.node.id);
         
-        for (const productId of selectedProductIds) {
-          if (!existingProductIds.includes(productId)) {
-            await addProduct({
-              variables: { solutionId, productId }
-            });
-          }
-        }
-
+        // First, remove products that are no longer selected
         for (const productId of existingProductIds) {
           if (!selectedProductIds.includes(productId)) {
             await removeProduct({
@@ -248,6 +245,32 @@ export const SolutionDialog: React.FC<Props> = ({
             });
           }
         }
+
+        // Then, add new products with explicit order based on their position in selectedProductIds
+        // First product = order 1, second = order 2, etc. (first come, first serve)
+        for (let i = 0; i < selectedProductIds.length; i++) {
+          const productId = selectedProductIds[i];
+          if (!existingProductIds.includes(productId)) {
+            await addProduct({
+              variables: { 
+                solutionId, 
+                productId,
+                order: i + 1  // Explicit order: first product = 1, second = 2, etc.
+              }
+            });
+          }
+        }
+
+        // Finally, reorder ALL products to match their position in selectedProductIds
+        // This ensures correct order even when only deleting/re-adding products
+        const productOrders = selectedProductIds.map((productId, index) => ({
+          productId,
+          order: index + 1  // First product = 1, second = 2, etc.
+        }));
+        
+        await reorderProducts({
+          variables: { solutionId, productOrders }
+        });
       }
 
       onSave();
@@ -382,7 +405,10 @@ export const SolutionDialog: React.FC<Props> = ({
     setTabValue(newValue);
   };
 
-  const selectedProducts = allProducts.filter(p => selectedProductIds.includes(p.id));
+  // Map over selectedProductIds to preserve order (filter() would use allProducts order)
+  const selectedProducts = selectedProductIds
+    .map(id => allProducts.find(p => p.id === id))
+    .filter((p): p is NonNullable<typeof p> => p !== undefined);
   const availableProducts = allProducts.filter(p => !selectedProductIds.includes(p.id));
 
   const allProductReleases = selectedProductIds.flatMap(productId => {
