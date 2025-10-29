@@ -4,10 +4,11 @@
 
 The DAP (Digital Adoption Platform) application is now accessible via multiple methods:
 
-### 1. Hostname Access (NEW)
+### 1. Hostname Access ✅ (VERIFIED WORKING)
 - **URL**: http://centos1.rajarora.csslab:5173
 - **Backend API**: http://centos1.rajarora.csslab:4000
 - **GraphQL Endpoint**: http://centos1.rajarora.csslab:4000/graphql
+- **Status**: Accessible from local subnet and external networks
 
 ### 2. IP Address Access
 - **URL**: http://172.22.156.32:5173
