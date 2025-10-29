@@ -28,21 +28,19 @@ export async function seedSolutions() {
       return;
     }
 
-    // Create Solution 1: Enterprise Security Bundle
-    console.log('[seed-solutions] Creating Enterprise Security Bundle...');
+    // Create Solution 1: Hybrid Private Access
+    console.log('[seed-solutions] Creating Hybrid Private Access solution...');
     const securitySolution = await prisma.solution.findFirst({
-      where: { name: 'Enterprise Security Bundle' }
+      where: { name: 'Hybrid Private Access' }
     }) || await prisma.solution.create({
       data: {
-        name: 'Enterprise Security Bundle',
-        description: 'Comprehensive security solution combining firewall, MFA, and security monitoring',
+        name: 'Hybrid Private Access',
+        description: 'Comprehensive secure access solution combining ZTNA, MFA, and firewall protection for hybrid workforce',
         customAttrs: {
-          type: 'security-package',
-          pricing_model: 'subscription',
-          duration_months: 12,
-          support_level: 'premium',
-          target_audience: 'enterprise',
-          deployment: 'cloud-hybrid'
+          type: 'security-bundle',
+          target: 'hybrid-workforce',
+          deployment: 'cloud-hybrid',
+          duration_months: 12
         }
       }
     });
@@ -65,19 +63,19 @@ export async function seedSolutions() {
       });
     }
 
-    // Create solution-specific outcomes
+    // Create solution-specific outcomes for Hybrid Private Access
     const securityOutcome1 = await prisma.outcome.upsert({
       where: {
         solutionId_name: {
           solutionId: securitySolution.id,
-          name: 'Complete Security Posture'
+          name: 'Secure Hybrid Work'
         }
       },
       update: {},
       create: {
         solutionId: securitySolution.id,
-        name: 'Complete Security Posture',
-        description: 'Achieve comprehensive security across all enterprise systems'
+        name: 'Secure Hybrid Work',
+        description: 'Enable secure access for hybrid workforce from any location'
       }
     });
 
@@ -85,28 +83,28 @@ export async function seedSolutions() {
       where: {
         solutionId_name: {
           solutionId: securitySolution.id,
-          name: 'Compliance Achievement'
+          name: 'Zero Trust Architecture'
         }
       },
       update: {},
       create: {
         solutionId: securitySolution.id,
-        name: 'Compliance Achievement',
-        description: 'Meet SOC2, ISO27001, and industry regulatory requirements'
+        name: 'Zero Trust Architecture',
+        description: 'Implement complete zero trust security framework'
       }
     });
 
-    // Create solution-specific licenses
+    // Create solution-specific licenses for Hybrid Private Access
     await prisma.license.upsert({
       where: {
-        id: 'sec-sol-lic-ess'
+        id: 'hpa-sol-lic-ess'
       },
       update: {},
       create: {
-        id: 'sec-sol-lic-ess',
+        id: 'hpa-sol-lic-ess',
         solutionId: securitySolution.id,
-        name: 'Security Essential',
-        description: 'Basic security features',
+        name: 'Hybrid Access Essential',
+        description: 'Basic secure access features for hybrid work',
         level: 1,
         isActive: true
       }
@@ -114,65 +112,65 @@ export async function seedSolutions() {
 
     await prisma.license.upsert({
       where: {
-        id: 'sec-sol-lic-adv'
+        id: 'hpa-sol-lic-adv'
       },
       update: {},
       create: {
-        id: 'sec-sol-lic-adv',
+        id: 'hpa-sol-lic-adv',
         solutionId: securitySolution.id,
-        name: 'Security Advantage',
-        description: 'Advanced security features with threat intelligence',
+        name: 'Hybrid Access Advantage',
+        description: 'Advanced features with zero trust and threat protection',
         level: 2,
         isActive: true
       }
     });
 
-    // Create solution-specific releases
+    // Create solution-specific releases for Hybrid Private Access
     const securityRelease = await prisma.release.upsert({
       where: {
-        id: 'sec-sol-rel-1'
+        id: 'hpa-sol-rel-1'
       },
       update: {},
       create: {
-        id: 'sec-sol-rel-1',
+        id: 'hpa-sol-rel-1',
         solutionId: securitySolution.id,
-        name: 'Security Bundle v1.0',
-        description: 'Initial security bundle release',
+        name: 'Hybrid Private Access v1.0',
+        description: 'Initial hybrid private access bundle release',
         level: 1.0,
         isActive: true
       }
     });
 
-    // Create solution-specific tasks
+    // Create solution-specific tasks for Hybrid Private Access
     const securityTasks = [
       {
-        name: 'Security Architecture Review',
-        description: 'Comprehensive review of current security architecture and gap analysis',
+        name: 'Hybrid Work Security Assessment',
+        description: 'Assess current hybrid work security posture and identify gaps',
         estMinutes: 480,
         weight: 10.0,
         sequenceNumber: 1,
         licenseLevel: LicenseLevel.ESSENTIAL,
-        howToDoc: ['https://docs.example.com/security-review'],
-        howToVideo: ['https://video.example.com/security-review']
+        howToDoc: ['https://docs.cisco.com/hybrid-assessment'],
+        howToVideo: ['https://videos.cisco.com/security-assessment']
       },
       {
-        name: 'Integration Testing',
-        description: 'Test integration between all security components',
-        estMinutes: 240,
-        weight: 8.0,
+        name: 'Zero Trust Implementation',
+        description: 'Implement zero trust framework across all access points',
+        estMinutes: 600,
+        weight: 15.0,
         sequenceNumber: 2,
-        licenseLevel: LicenseLevel.ESSENTIAL,
-        howToDoc: ['https://docs.example.com/integration-testing'],
-        howToVideo: []
+        licenseLevel: LicenseLevel.ADVANTAGE,
+        howToDoc: ['https://docs.cisco.com/zero-trust'],
+        howToVideo: ['https://videos.cisco.com/zero-trust-impl']
       },
       {
-        name: 'Security Audit & Compliance Verification',
-        description: 'Final security audit and compliance verification',
+        name: 'Integrated Security Testing',
+        description: 'Test integration between Secure Access, Duo, and Firewall',
         estMinutes: 360,
         weight: 12.0,
         sequenceNumber: 3,
-        licenseLevel: LicenseLevel.ADVANTAGE,
-        howToDoc: ['https://docs.example.com/security-audit'],
+        licenseLevel: LicenseLevel.ESSENTIAL,
+        howToDoc: ['https://docs.cisco.com/integration-testing'],
         howToVideo: []
       }
     ];
@@ -223,21 +221,19 @@ export async function seedSolutions() {
       });
     }
 
-    // Create Solution 2: Digital Transformation Package
-    console.log('[seed-solutions] Creating Digital Transformation Package...');
+    // Create Solution 2: SASE
+    console.log('[seed-solutions] Creating SASE solution...');
     const digitalSolution = await prisma.solution.findFirst({
-      where: { name: 'Digital Transformation Package' }
+      where: { name: 'SASE' }
     }) || await prisma.solution.create({
       data: {
-        name: 'Digital Transformation Package',
-        description: 'Complete digital transformation solution with AI, analytics, and cloud migration',
+        name: 'SASE',
+        description: 'Complete SASE platform integrating SD-WAN, secure access, and multi-factor authentication',
         customAttrs: {
-          type: 'transformation-package',
-          pricing_model: 'milestone-based',
-          duration_months: 18,
-          support_level: 'enterprise',
-          target_audience: 'large-enterprise',
-          deployment: 'cloud-native'
+          type: 'sase-platform',
+          target: 'distributed-enterprise',
+          deployment: 'cloud-native',
+          duration_months: 24
         }
       }
     });
@@ -260,43 +256,68 @@ export async function seedSolutions() {
       });
     }
 
-    // Create outcomes for digital solution
+    // Create outcomes for SASE solution
     const digitalOutcome1 = await prisma.outcome.upsert({
       where: {
         solutionId_name: {
           solutionId: digitalSolution.id,
-          name: 'Digital Excellence'
+          name: 'Cloud-Native Network'
         }
       },
       update: {},
       create: {
         solutionId: digitalSolution.id,
-        name: 'Digital Excellence',
-        description: 'Achieve digital excellence with modern technology stack'
+        name: 'Cloud-Native Network',
+        description: 'Modern cloud-first networking with integrated security'
       }
     });
 
-    // Create digital solution tasks
+    const digitalOutcome2 = await prisma.outcome.upsert({
+      where: {
+        solutionId_name: {
+          solutionId: digitalSolution.id,
+          name: 'Global Performance'
+        }
+      },
+      update: {},
+      create: {
+        solutionId: digitalSolution.id,
+        name: 'Global Performance',
+        description: 'Optimized performance for distributed workforce'
+      }
+    });
+
+    // Create SASE solution tasks
     const digitalTasks = [
       {
-        name: 'Digital Readiness Assessment',
-        description: 'Assess organization readiness for digital transformation',
+        name: 'SASE Architecture Design',
+        description: 'Design comprehensive SASE architecture for distributed enterprise',
         estMinutes: 600,
         weight: 15.0,
         sequenceNumber: 1,
         licenseLevel: LicenseLevel.ESSENTIAL,
-        howToDoc: ['https://docs.example.com/digital-assessment'],
-        howToVideo: []
+        howToDoc: ['https://docs.cisco.com/sase-design'],
+        howToVideo: ['https://videos.cisco.com/sase-architecture']
       },
       {
-        name: 'Change Management Training',
-        description: 'Train staff on new digital processes and tools',
-        estMinutes: 720,
+        name: 'Network Transformation',
+        description: 'Transform traditional WAN to cloud-native SASE platform',
+        estMinutes: 900,
         weight: 20.0,
         sequenceNumber: 2,
+        licenseLevel: LicenseLevel.ADVANTAGE,
+        howToDoc: ['https://docs.cisco.com/network-transformation'],
+        howToVideo: ['https://videos.cisco.com/wan-to-sase']
+      },
+      {
+        name: 'SASE Integration Validation',
+        description: 'Validate integration between SD-WAN, Secure Access, and Duo',
+        estMinutes: 480,
+        weight: 12.0,
+        sequenceNumber: 3,
         licenseLevel: LicenseLevel.ESSENTIAL,
-        howToDoc: ['https://docs.example.com/change-management'],
-        howToVideo: ['https://video.example.com/training']
+        howToDoc: ['https://docs.cisco.com/sase-validation'],
+        howToVideo: []
       }
     ];
 
@@ -315,19 +336,37 @@ export async function seedSolutions() {
         }
       });
 
-      await prisma.taskOutcome.upsert({
-        where: {
-          taskId_outcomeId: {
+        // Link to both outcomes
+        await prisma.taskOutcome.upsert({
+          where: {
+            taskId_outcomeId: {
+              taskId: task.id,
+              outcomeId: digitalOutcome1.id
+            }
+          },
+          update: {},
+          create: {
             taskId: task.id,
             outcomeId: digitalOutcome1.id
           }
-        },
-        update: {},
-        create: {
-          taskId: task.id,
-          outcomeId: digitalOutcome1.id
+        });
+
+        if (taskData.sequenceNumber === 2) {
+          // Link transformation task to global performance outcome
+          await prisma.taskOutcome.upsert({
+            where: {
+              taskId_outcomeId: {
+                taskId: task.id,
+                outcomeId: digitalOutcome2.id
+              }
+            },
+            update: {},
+            create: {
+              taskId: task.id,
+              outcomeId: digitalOutcome2.id
+            }
+          });
         }
-      });
     }
 
     // Create test customers and assign solutions
@@ -372,10 +411,10 @@ export async function seedSolutions() {
 
     console.log('[seed-solutions] ✅ Solution seeding completed successfully!');
     console.log(`[seed-solutions] Created:`);
-    console.log(`  - 2 Solutions (Security Bundle, Digital Transformation)`);
-    console.log(`  - ${products.length} Products bundled`);
-    console.log(`  - 5 Solution-specific tasks`);
-    console.log(`  - 3 Solution outcomes`);
+    console.log(`  - 2 Solutions (Hybrid Private Access, SASE)`);
+    console.log(`  - ${products.length} Cisco Products bundled`);
+    console.log(`  - 6 Solution-specific tasks`);
+    console.log(`  - 4 Solution outcomes`);
     console.log(`  - 2 Solution licenses`);
     console.log(`  - Customer solution assignments`);
 

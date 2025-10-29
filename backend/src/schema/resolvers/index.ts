@@ -216,8 +216,14 @@ export const resolvers = {
         const list = products.filter((p: any) => parent.productIds?.includes(p.id));
         return { edges: list.map((p: any) => ({ cursor: Buffer.from(JSON.stringify({ id: p.id }), 'utf8').toString('base64'), node: p })), pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null }, totalCount: list.length };
       }
-      const prods = await prisma.solutionProduct.findMany({ where: { solutionId: parent.id }, include: { product: true } });
-      const list = prods.map((sp: any) => sp.product);
+      // Fetch SolutionProduct records with order, then include the product
+      const prods = await prisma.solutionProduct.findMany({ 
+        where: { solutionId: parent.id }, 
+        include: { product: true },
+        orderBy: { order: 'asc' }  // Order by SolutionProduct.order field
+      });
+      // Map to products and attach order metadata
+      const list = prods.map((sp: any) => ({ ...sp.product, _solutionProductOrder: sp.order }));
       return { edges: list.map((p: any) => ({ cursor: Buffer.from(JSON.stringify({ id: p.id }), 'utf8').toString('base64'), node: p })), pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: list.length };
     },
     tasks: async (parent: any, args: any) => {
@@ -1015,7 +1021,28 @@ export const resolvers = {
       await logAudit('DELETE_OUTCOME', 'Outcome', id, {}, ctx.user?.id);
       return true;
     },
-    addProductToSolution: async (_: any, { solutionId, productId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbAddProductToSolution(solutionId, productId); await logAudit('ADD_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); return true; } await prisma.solutionProduct.upsert({ where: { productId_solutionId: { productId, solutionId } }, update: {}, create: { productId, solutionId } }); await logAudit('ADD_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); return true; },
+    addProductToSolution: async (_: any, { solutionId, productId }: any, ctx: any) => { 
+      ensureRole(ctx, 'ADMIN'); 
+      if (fallbackActive) { 
+        fbAddProductToSolution(solutionId, productId); 
+        await logAudit('ADD_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); 
+        return true; 
+      } 
+      // Calculate next order number automatically (first added product = lowest order number)
+      const maxOrderProduct = await prisma.solutionProduct.findFirst({
+        where: { solutionId },
+        orderBy: { order: 'desc' }
+      });
+      const nextOrder = (maxOrderProduct?.order || 0) + 1;
+      
+      await prisma.solutionProduct.upsert({ 
+        where: { productId_solutionId: { productId, solutionId } }, 
+        update: {}, 
+        create: { productId, solutionId, order: nextOrder } 
+      }); 
+      await logAudit('ADD_PRODUCT_SOLUTION', 'Solution', solutionId, { productId, order: nextOrder }, ctx.user?.id); 
+      return true; 
+    },
     removeProductFromSolution: async (_: any, { solutionId, productId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbRemoveProductFromSolution(solutionId, productId); await logAudit('REMOVE_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); return true; } await prisma.solutionProduct.deleteMany({ where: { solutionId, productId } }); await logAudit('REMOVE_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); return true; },
     addProductToCustomer: async (_: any, { customerId, productId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbAddProductToCustomer(customerId, productId); await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; } await prisma.customerProduct.upsert({ where: { customerId_productId: { customerId, productId } }, update: {}, create: { customerId, productId } }); await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; },
     removeProductFromCustomer: async (_: any, { customerId, productId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbRemoveProductFromCustomer(customerId, productId); await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; } await prisma.customerProduct.deleteMany({ where: { customerId, productId } }); await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; },

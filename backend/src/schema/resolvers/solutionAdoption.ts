@@ -556,19 +556,14 @@ export const SolutionAdoptionMutationResolvers = {
     }
     
     // Create product progress records for tracking (tasks are in separate AdoptionPlans)
-    // We'll update these records when syncing
-    let productSeq = 1;
-    for (const productId of includedProductIds) {
-      const product = customerSolution.solution.products.find(
-        (sp: any) => sp.product.id === productId
-      );
-      
+    // Preserve the original order from SolutionProduct
+    for (const solutionProduct of customerSolution.solution.products) {
       await prisma.solutionAdoptionProduct.create({
         data: {
           solutionAdoptionPlanId: adoptionPlan.id,
-          productId,
-          productName: product?.product.name || 'Unknown',
-          sequenceNumber: productSeq++,
+          productId: solutionProduct.product.id,
+          productName: solutionProduct.product.name || 'Unknown',
+          sequenceNumber: solutionProduct.order, // Use original order from SolutionProduct
           status: 'NOT_STARTED',
           totalTasks: 0, // Will be populated from AdoptionPlan during sync
           completedTasks: 0,
@@ -732,6 +727,69 @@ export const SolutionAdoptionMutationResolvers = {
       }
     }
     
+    // STEP: Aggregate product adoption plan progress into solution adoption plan
+    // Re-fetch customer products with their newly created adoption plans
+    const customerProductsWithPlans = await prisma.customerProduct.findMany({
+      where: {
+        customerId: customerSolution.customerId,
+        name: {
+          startsWith: `${customerSolution.name} - `
+        }
+      },
+      include: {
+        adoptionPlan: {
+          include: {
+            tasks: true
+          }
+        }
+      }
+    });
+    
+    // Calculate aggregated totals: solution tasks + product tasks
+    let totalTasksWithProducts = progress.totalTasks; // Solution tasks
+    let totalWeightWithProducts = Number(progress.totalWeight); // Solution weight
+    
+    for (const cp of customerProductsWithPlans) {
+      if (cp.adoptionPlan) {
+        totalTasksWithProducts += cp.adoptionPlan.totalTasks;
+        totalWeightWithProducts += Number(cp.adoptionPlan.totalWeight);
+      }
+    }
+    
+    // Update solution adoption plan with aggregated totals
+    await prisma.solutionAdoptionPlan.update({
+      where: { id: adoptionPlan.id },
+      data: {
+        totalTasks: totalTasksWithProducts,
+        totalWeight: totalWeightWithProducts
+      }
+    });
+    
+    // Update SolutionAdoptionProduct records with actual product adoption plan data
+    for (const cp of customerProductsWithPlans) {
+      if (cp.adoptionPlan) {
+        const solutionProduct = await prisma.solutionAdoptionProduct.findFirst({
+          where: {
+            solutionAdoptionPlanId: adoptionPlan.id,
+            productId: cp.productId
+          }
+        });
+        
+        if (solutionProduct) {
+          await prisma.solutionAdoptionProduct.update({
+            where: { id: solutionProduct.id },
+            data: {
+              totalTasks: cp.adoptionPlan.totalTasks,
+              totalWeight: Number(cp.adoptionPlan.totalWeight),
+              status: cp.adoptionPlan.totalTasks > 0 ? 'NOT_STARTED' : 'NOT_STARTED'
+            }
+          });
+        }
+      }
+    }
+    
+    console.log(`Solution adoption plan created with ${progress.totalTasks} solution tasks + ${totalTasksWithProducts - progress.totalTasks} product tasks = ${totalTasksWithProducts} total tasks`);
+    
     return prisma.solutionAdoptionPlan.findUnique({
       where: { id: adoptionPlan.id },
       include: {
@@ -768,13 +826,7 @@ export const SolutionAdoptionMutationResolvers = {
       throw new Error('Solution adoption plan not found');
     }
     
-    // Calculate progress ONLY from solution-specific tasks (not product tasks)
-    const solutionSpecificTasks = plan.tasks.filter(t => t.sourceType === 'SOLUTION');
-    const progress = calculateSolutionProgress(solutionSpecificTasks);
-    const solutionTasksComplete = solutionSpecificTasks.filter(
-      t => (t.status === 'COMPLETED' || t.status === 'DONE')
-    ).length;
-    
+    // STEP 1: First, sync all underlying product adoption plans
     // Get underlying product adoption plans
     const customerProducts = await prisma.customerProduct.findMany({
       where: {
@@ -792,13 +844,67 @@ export const SolutionAdoptionMutationResolvers = {
       }
     });
     
-    // Calculate aggregated progress: solution-specific tasks + product adoption plans
+    // Sync each product adoption plan to ensure they reflect latest product changes
+    const { CustomerAdoptionMutationResolvers } = require('./customerAdoption');
+    const syncResults: { productId: string; productName: string; synced: boolean; error?: string }[] = [];
+    
+    for (const cp of customerProducts) {
+      if (cp.adoptionPlan) {
+        try {
+          await CustomerAdoptionMutationResolvers.syncAdoptionPlan(
+            _,
+            { adoptionPlanId: cp.adoptionPlan.id },
+            ctx
+          );
+          syncResults.push({
+            productId: cp.productId,
+            productName: cp.name,
+            synced: true
+          });
+        } catch (error: any) {
+          console.error(`Failed to sync product adoption plan for ${cp.name}:`, error.message);
+          syncResults.push({
+            productId: cp.productId,
+            productName: cp.name,
+            synced: false,
+            error: error.message
+          });
+        }
+      }
+    }
+    
+    // STEP 2: Re-fetch customer products with updated adoption plans after sync
+    const updatedCustomerProducts = await prisma.customerProduct.findMany({
+      where: {
+        customerId: plan.customerSolution.customerId,
+        name: {
+          startsWith: `${plan.customerSolution.name} - `
+        }
+      },
+      include: {
+        adoptionPlan: {
+          include: {
+            tasks: true
+          }
+        }
+      }
+    });
+    
+    // STEP 3: Calculate progress from solution-specific tasks
+    const solutionSpecificTasks = plan.tasks.filter(t => t.sourceType === 'SOLUTION');
+    const progress = calculateSolutionProgress(solutionSpecificTasks);
+    const solutionTasksComplete = solutionSpecificTasks.filter(
+      t => (t.status === 'COMPLETED' || t.status === 'DONE')
+    ).length;
+    
+    // STEP 4: Calculate aggregated progress: solution tasks + synced product adoption plans
     let totalTasksWithProducts = progress.totalTasks; // Solution tasks only
     let completedTasksWithProducts = progress.completedTasks; // Solution tasks only
     let totalWeightWithProducts = Number(progress.totalWeight); // Solution tasks only
     let completedWeightWithProducts = Number(progress.completedWeight); // Solution tasks only
     
-    for (const cp of customerProducts) {
+    // Use the updated customer products (post-sync)
+    for (const cp of updatedCustomerProducts) {
       if (cp.adoptionPlan) {
         totalTasksWithProducts += cp.adoptionPlan.totalTasks;
         completedTasksWithProducts += cp.adoptionPlan.completedTasks;
@@ -827,12 +933,29 @@ export const SolutionAdoptionMutationResolvers = {
       }
     });
     
-    // Update product progress tracking in SolutionAdoptionProduct
-    // Note: Product tasks within solution are tracked via separate AdoptionPlan records
-    // We aggregate progress from the underlying product adoption plans
+    // STEP 5: Update product order and progress tracking in SolutionAdoptionProduct
+    // Fetch current product order from Solution
+    const solution = await prisma.solution.findUnique({
+      where: { id: plan.solutionId },
+      include: {
+        products: {
+          orderBy: { order: 'asc' }
+        }
+      }
+    });
+    
+    // Create a map of productId -> order from the solution
+    const productOrderMap = new Map<string, number>();
+    if (solution) {
+      solution.products.forEach((sp: any) => {
+        productOrderMap.set(sp.productId, sp.order);
+      });
+    }
+    
+    // Update each SolutionAdoptionProduct with current order and progress
     for (const product of plan.products) {
-      // Find the corresponding CustomerProduct adoption plan
-      const customerProduct = customerProducts.find(cp => cp.productId === product.productId);
+      // Find the corresponding CustomerProduct adoption plan (use updated data)
+      const customerProduct = updatedCustomerProducts.find(cp => cp.productId === product.productId);
       
       let finalTotalTasks = 0;
       let finalCompletedTasks = 0;
@@ -857,9 +980,13 @@ export const SolutionAdoptionMutationResolvers = {
         ? 'COMPLETED' 
         : 'IN_PROGRESS';
       
+      // Get the current order from the solution (if it changed)
+      const currentOrder = productOrderMap.get(product.productId) || product.sequenceNumber;
+      
       await prisma.solutionAdoptionProduct.update({
         where: { id: product.id },
         data: {
+          sequenceNumber: currentOrder, // ✅ Update order from solution
           totalTasks: finalTotalTasks,
           completedTasks: finalCompletedTasks,
           totalWeight: finalTotalWeight,
@@ -870,7 +997,11 @@ export const SolutionAdoptionMutationResolvers = {
       });
     }
     
-    await logAudit('SYNC_SOLUTION_ADOPTION_PLAN', 'SolutionAdoptionPlan', solutionAdoptionPlanId, {}, ctx.user?.id);
+    await logAudit('SYNC_SOLUTION_ADOPTION_PLAN', 'SolutionAdoptionPlan', solutionAdoptionPlanId, {
+      productsSynced: syncResults.filter(r => r.synced).length,
+      productsTotal: syncResults.length,
+      syncResults
+    }, ctx.user?.id);
     
     return prisma.solutionAdoptionPlan.findUnique({
       where: { id: solutionAdoptionPlanId },

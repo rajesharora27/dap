@@ -286,8 +286,9 @@ show_status() {
 # Clean database and add sample data
 clean_database() {
     log_header "CLEAN DATABASE SETUP"
-    log_warning "This will DELETE all existing data and create clean sample data!"
-    echo "(Confirmation prompt removed for automation)"
+    log_warning "⚠️  This will DELETE ALL existing data including user-created products!"
+    log_warning "⚠️  All products, solutions, customers, and relationships will be removed!"
+    echo ""
     
     log_info "Cleaning database..."
     
@@ -372,42 +373,44 @@ clean_database() {
     fi
     log_success "Database cleaned"
 
-    log_info "Creating 5 comprehensive products with full attributes..."
-    log_info "Loading enhanced sample data from SQL file..."
+    log_info "Creating 5 Cisco products with full attributes..."
+    log_info "Loading enhanced Cisco sample data from SQL file..."
     
-    # Execute the comprehensive sample data SQL file
-    if ! docker exec -i $DB_CONTAINER psql -U postgres -d dap < "$PROJECT_DIR/create-complete-sample-data.sql" >/dev/null 2>&1; then
+    # Execute the comprehensive sample data SQL file (showing errors for debugging)
+    if ! docker exec -i $DB_CONTAINER psql -U postgres -d dap < "$PROJECT_DIR/create-complete-sample-data.sql" 2>&1 | tee /tmp/dap_sample_load.log; then
         log_error "Failed to create complete sample data."
+        log_error "Check /tmp/dap_sample_load.log for details"
+        cat /tmp/dap_sample_load.log
+        return 1
+    fi
+    
+    # Check for SQL errors
+    if grep -qE 'ERROR|FATAL' /tmp/dap_sample_load.log; then
+        log_error "SQL errors detected during sample data creation"
+        grep -E 'ERROR|FATAL' /tmp/dap_sample_load.log
         return 1
     fi
     
     log_success "Complete sample data created successfully!"
 
-    # Verify
+    # Verify what was created
     local products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Product\";" 2>/dev/null | tr -d ' ')
     local tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\";" 2>/dev/null | tr -d ' ')
     local licenses=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"License\";" 2>/dev/null | tr -d ' ')
     local outcomes=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Outcome\";" 2>/dev/null | tr -d ' ')
+    local solutions=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Solution\";" 2>/dev/null | tr -d ' ')
     local customers=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Customer\";" 2>/dev/null | tr -d ' ')
     
-    log_info "Created comprehensive sample data:"
-    log_info "  📦 $products Products (E-Commerce, FinTech, Healthcare, Logistics, EdTech)"
-    log_info "  📋 $tasks Tasks (5-10 tasks per product with full attributes)"
-    log_info "  🏷️ $licenses Licenses (Essential, Advantage, Signature tiers)"
-    log_info "  🎯 $outcomes Outcomes (Success metrics and KPIs)"
-    log_info "  🏢 $customers Customers (Enterprise clients)"
+    log_info "Created comprehensive Cisco sample data:"
+    log_info "  📦 $products Products (Duo, SD-WAN, Secure Firewall, ISE, Secure Access Sample)"
+    log_info "  📋 $tasks Tasks (10-15 tasks per product with full attributes)"
+    log_info "  🏷️ $licenses Licenses (Essential, Advantage, Signature/Premier/Beyond tiers)"
+    log_info "  🎯 $outcomes Outcomes (Security, performance, and compliance metrics)"
+    log_info "  🎯 $solutions Solutions (Hybrid Private Access, SASE)"
+    log_info "  🏢 $customers Customers (ACME and Chase)"
     
-    # Also seed solution data if backend is running
-    log_info ""
-    log_info "🌱 Now seeding solution bundles..."
-    cd "$BACKEND_DIR"
-    if npm run seed >/dev/null 2>&1; then
-        local solutions=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Solution\";" 2>/dev/null | tr -d ' ')
-        log_success "✅ Solution data seeded: $solutions Solutions"
-    else
-        log_warning "⚠️  Solution seeding skipped (run './dap add-sample' to add solutions)"
-    fi
-    cd "$PROJECT_DIR"
+    # Note: Solutions are already created in the SQL file above
+    # No need to run npm run seed here as it would duplicate data
 }
 
 # Start all services
@@ -553,6 +556,13 @@ run_comprehensive_test() {
 clean_restart() {
     log_header "CLEAN RESTART WITH SAMPLE DATA"
     
+    log_warning "⚠️  WARNING: This will DELETE ALL DATA including user-created products!"
+    log_warning "⚠️  To preserve user data, use './dap add-sample' instead"
+    echo ""
+    echo "This command is for complete database reset only."
+    echo "Press Ctrl+C now to cancel, or wait 5 seconds to continue..."
+    sleep 5
+    
     stop_all
     echo ""
     sleep 2
@@ -573,9 +583,19 @@ clean_restart() {
     start_backend || exit 1
     start_frontend || exit 1
     
+    # Wait for backend to be ready and create adoption plans
+    echo ""
+    log_info "Creating adoption plans for all customer assignments..."
+    sleep 3  # Give backend time to fully initialize
+    
+    if ! create_adoption_plans; then
+        log_warning "⚠️  Failed to create adoption plans automatically"
+        log_info "You can create them manually by running: ./dap add-sample"
+    fi
+    
     echo ""
     log_success "Clean restart completed!"
-    log_info "✅ Database: Clean with 5 products and 40 tasks (comprehensive attributes)"
+    log_info "✅ Database: Clean with 5 Cisco products and 62 tasks (comprehensive telemetry)"
     log_info "✅ Solutions: 2 solution bundles with test data"
     log_info "✅ Backend API: http://localhost:$BACKEND_PORT/graphql"
     log_info "✅ Frontend App: http://localhost:$FRONTEND_PORT"
@@ -607,11 +627,11 @@ add_sample_data() {
     
     # Execute the complete sample data script
     log_info "📝 Loading complete networking & security sample data..."
-    log_info "   • 5 Products (Firewall, Routing, MFA/SSO, SD-WAN, Cloud Security)"
-    log_info "   • 2 Solutions (Enterprise Security Bundle, Digital Transformation)"
-    log_info "   • 3 Customers with realistic scenarios" 
-    log_info "   • 6 Customer product assignments"
-    log_info "   • 75+ Tasks with telemetry attributes"
+    log_info "   • 5 Cisco Products (Duo, SD-WAN, Secure Firewall, ISE, Secure Access Sample)"
+    log_info "   • 2 Solutions (Hybrid Private Access, SASE)"
+    log_info "   • 2 Customers (ACME with Hybrid Private Access, Chase with SASE)" 
+    log_info "   • 2 Customer solution assignments"
+    log_info "   • 62+ Tasks with comprehensive telemetry attributes"
     
     if docker exec -i "$DB_CONTAINER" psql -U postgres -d dap < "$PROJECT_DIR/create-complete-sample-data.sql" 2>&1 | tee /tmp/dap_sample.log; then
         echo ""
@@ -620,25 +640,30 @@ add_sample_data() {
         # Count what was created
         local products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Product\" WHERE id LIKE 'prod-%';" 2>/dev/null | tr -d ' ')
         local customers=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Customer\" WHERE id LIKE 'customer-%';" 2>/dev/null | tr -d ' ')
-        local customer_products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"CustomerProduct\";" 2>/dev/null | tr -d ' ')
+        local customer_solutions=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"CustomerSolution\";" 2>/dev/null | tr -d ' ')
+        local solutions=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Solution\";" 2>/dev/null | tr -d ' ')
         local tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\" WHERE \"productId\" LIKE 'prod-%';" 2>/dev/null | tr -d ' ')
         local telemetry=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"TelemetryAttribute\" WHERE \"taskId\" LIKE 'task-%';" 2>/dev/null | tr -d ' ')
         
         echo ""
         log_info "📊 Sample data created:"
-        log_info "  🔐 $products Products (Firewall, Routing, MFA, SD-WAN, Cloud Security)"
-        log_info "  🏢 $customers Customers (Acme Corp, TechStart Inc, Meridian Financial)"
-        log_info "  📋 $customer_products Customer Product Assignments"
-        log_info "  ⚙️  $tasks Product Tasks (10-18 per product)"
-        log_info "  📊 $telemetry Telemetry Attributes with success criteria"
+        log_info "  🔐 $products Cisco Products (Duo, SD-WAN, Secure Firewall, ISE, Secure Access Sample)"
+        log_info "  📦 $solutions Solutions (Hybrid Private Access, SASE)"
+        log_info "  🏢 $customers Customers (ACME, Chase)"
+        log_info "  🔗 $customer_solutions Customer Solution Assignments"
+        log_info "  ⚙️  $tasks Product Tasks (10-14 per product with telemetry)"
+        log_info "  📊 $telemetry Telemetry Attributes with detailed success criteria"
         echo ""
         log_info "✅ Sample data loaded! Now creating adoption plans..."
         
-        # Create adoption plans for all customer product assignments
-        create_adoption_plans
-        
-        # Seed solution data
-        seed_solution_data
+        # Create adoption plans for all customer assignments (products and solutions)
+        # Note: Backend must be started first for adoption plan creation to work
+        if check_port $BACKEND_PORT; then
+            create_adoption_plans
+        else
+            log_warning "⚠️  Backend not running. Start backend and run './dap add-sample' again to create adoption plans"
+            log_info "💡 Or run: cd backend && npm run seed"
+        fi
     else
         echo ""
         log_error "❌ Failed to create complete sample data"
@@ -683,8 +708,8 @@ seed_solution_data() {
         
         echo ""
         log_info "📊 Solution data created:"
-        log_info "  📦 $solutions Solutions (Enterprise Security Bundle, Digital Transformation)"
-        log_info "  🔗 $solution_products Product-Solution Links"
+        log_info "  📦 $solutions Solutions (Hybrid Private Access, SASE)"
+        log_info "  🔗 $solution_products Product-Solution Links (3 products per solution)"
         log_info "  ⚙️  $solution_tasks Solution-specific Tasks"
         log_info "  🏢 $customer_solutions Customer Solution Assignments"
         echo ""
@@ -737,19 +762,22 @@ create_adoption_plans() {
         wait_attempt=$((wait_attempt + 1))
     done
     
-    # Step 2: Verify prerequisites - customer products and telemetry exist
+    # Step 2: Verify prerequisites - customer solutions and telemetry exist
     log_info "🔍 Verifying prerequisites..."
     
+    local customer_solutions_count=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"CustomerSolution\";" 2>/dev/null | tr -d ' ')
     local customer_products_count=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"CustomerProduct\";" 2>/dev/null | tr -d ' ')
     local telemetry_count=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"TelemetryAttribute\" WHERE \"taskId\" LIKE 'task-%';" 2>/dev/null | tr -d ' ')
     local task_outcomes_count=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"TaskOutcome\";" 2>/dev/null | tr -d ' ')
     
+    log_info "  📦 Customer Solutions: $customer_solutions_count"
     log_info "  📋 Customer Products: $customer_products_count"
     log_info "  📊 Telemetry Attributes: $telemetry_count" 
     log_info "  🎯 Task-Outcome Relationships: $task_outcomes_count"
     
-    if [ "$customer_products_count" -eq "0" ]; then
-        log_error "❌ No customer products found. Sample data may not have loaded correctly."
+    if [ "$customer_solutions_count" -eq "0" ] && [ "$customer_products_count" -eq "0" ]; then
+        log_error "❌ No customer solutions or products found. Sample data may not have loaded correctly."
+        log_info "💡 Check /tmp/dap_sample.log for SQL errors"
         return 1
     fi
     
@@ -763,23 +791,32 @@ create_adoption_plans() {
         " >/dev/null 2>&1
     fi
     
-    # Step 3: Get actual customer product IDs from database
-    log_info "📋 Fetching customer product assignments from database..."
+    # Step 3: Get actual customer product and solution IDs from database
+    log_info "📋 Fetching customer assignments from database..."
     local cp_ids=($(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT id FROM \"CustomerProduct\" ORDER BY id;" 2>/dev/null | tr -d ' ' | grep -v '^$'))
+    local cs_ids=($(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT id FROM \"CustomerSolution\" ORDER BY id;" 2>/dev/null | tr -d ' ' | grep -v '^$'))
     
-    if [ ${#cp_ids[@]} -eq 0 ]; then
-        log_error "❌ No customer product assignments found in database."
+    if [ ${#cp_ids[@]} -eq 0 ] && [ ${#cs_ids[@]} -eq 0 ]; then
+        log_error "❌ No customer product or solution assignments found in database."
         return 1
     fi
     
-    log_info "📋 Found ${#cp_ids[@]} customer product assignments: ${cp_ids[*]}"
+    if [ ${#cp_ids[@]} -gt 0 ]; then
+        log_info "📋 Found ${#cp_ids[@]} customer product assignments: ${cp_ids[*]}"
+    fi
+    if [ ${#cs_ids[@]} -gt 0 ]; then
+        log_info "📦 Found ${#cs_ids[@]} customer solution assignments: ${cs_ids[*]}"
+    fi
     
     # Step 4: Create adoption plans with retry logic
     local plans_created=0
     local plans_existed=0
+    local solution_plans_created=0
+    local solution_plans_existed=0
     
+    # Create product adoption plans
     for cp_id in "${cp_ids[@]}"; do
-        log_info "   🔄 Processing adoption plan for $cp_id..."
+        log_info "   🔄 Processing product adoption plan for $cp_id..."
         
         local retry_attempts=3
         local retry=1
@@ -801,13 +838,13 @@ create_adoption_plans() {
             if echo "$response" | jq -e '.data.createAdoptionPlan.id' >/dev/null 2>&1; then
                 local adoption_id=$(echo "$response" | jq -r '.data.createAdoptionPlan.id')
                 local total_tasks=$(echo "$response" | jq -r '.data.createAdoptionPlan.totalTasks')
-                log_success "     ✅ Created adoption plan $adoption_id with $total_tasks tasks"
+                log_success "     ✅ Created product adoption plan $adoption_id with $total_tasks tasks"
                 plans_created=$((plans_created + 1))
                 success=true
                 
             # Check if already exists
             elif echo "$response" | grep -q "already exists\|Adoption plan already exists"; then
-                log_info "     ℹ️  Adoption plan already exists for $cp_id"
+                log_info "     ℹ️  Product adoption plan already exists for $cp_id"
                 plans_existed=$((plans_existed + 1))
                 success=true
                 
@@ -824,24 +861,82 @@ create_adoption_plans() {
         done
     done
     
+    # Create solution adoption plans
+    for cs_id in "${cs_ids[@]}"; do
+        log_info "   🔄 Processing solution adoption plan for $cs_id..."
+        
+        local retry_attempts=3
+        local retry=1
+        local success=false
+        
+        while [ $retry -le $retry_attempts ] && [ "$success" = false ]; do
+            if [ $retry -gt 1 ]; then
+                log_info "     🔄 Retry attempt $retry for $cs_id..."
+                sleep 3
+            fi
+            
+            local response=$(curl -s -X POST \
+                -H "Content-Type: application/json" \
+                -H "Authorization: admin" \
+                -d "{\"query\": \"mutation { createSolutionAdoptionPlan(customerSolutionId: \\\"$cs_id\\\") { id totalTasks completedTasks progressPercentage } }\"}" \
+                "$backend_url" 2>/dev/null)
+            
+            # Check for successful creation
+            if echo "$response" | jq -e '.data.createSolutionAdoptionPlan.id' >/dev/null 2>&1; then
+                local adoption_id=$(echo "$response" | jq -r '.data.createSolutionAdoptionPlan.id')
+                local total_tasks=$(echo "$response" | jq -r '.data.createSolutionAdoptionPlan.totalTasks')
+                log_success "     ✅ Created solution adoption plan $adoption_id with $total_tasks tasks"
+                solution_plans_created=$((solution_plans_created + 1))
+                success=true
+                
+            # Check if already exists
+            elif echo "$response" | grep -q "already exists\|Solution adoption plan already exists"; then
+                log_info "     ℹ️  Solution adoption plan already exists for $cs_id"
+                solution_plans_existed=$((solution_plans_existed + 1))
+                success=true
+                
+            # Handle errors
+            else
+                log_warning "     ⚠️  Attempt $retry failed for $cs_id"
+                if [ $retry -eq $retry_attempts ]; then
+                    log_error "     ❌ All retry attempts failed for $cs_id"
+                    echo "Response: $response" | head -3
+                fi
+            fi
+            
+            retry=$((retry + 1))
+        done
+    done
+    
     # Step 5: Final verification and summary
     sleep 2
-    local final_plans=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"AdoptionPlan\";" 2>/dev/null | tr -d ' ')
+    local final_product_plans=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"AdoptionPlan\";" 2>/dev/null | tr -d ' ')
+    local final_solution_plans=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"SolutionAdoptionPlan\";" 2>/dev/null | tr -d ' ')
     local final_tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"CustomerTask\";" 2>/dev/null | tr -d ' ')
+    local final_solution_tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"CustomerSolutionTask\";" 2>/dev/null | tr -d ' ')
     local final_telemetry=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"CustomerTelemetryAttribute\";" 2>/dev/null | tr -d ' ')
     
     echo ""
     log_success "🎉 Adoption Plan Creation Complete!"
-    log_info "📊 Results:"
-    log_info "  🆕 Newly Created: $plans_created adoption plans"
-    log_info "  📋 Already Existed: $plans_existed adoption plans"
-    log_info "  📊 Total Adoption Plans: $final_plans"
-    log_info "  ⚙️  Total Customer Tasks: $final_tasks"
-    log_info "  📈 Customer Telemetry Attributes: $final_telemetry"
+    log_info "📊 Product Plans:"
+    log_info "  🆕 Newly Created: $plans_created"
+    log_info "  📋 Already Existed: $plans_existed"
+    log_info "  📊 Total: $final_product_plans"
+    log_info "📦 Solution Plans:"
+    log_info "  🆕 Newly Created: $solution_plans_created"
+    log_info "  📋 Already Existed: $solution_plans_existed"
+    log_info "  📊 Total: $final_solution_plans"
+    log_info "⚙️  Tasks:"
+    log_info "  📋 Customer Product Tasks: $final_tasks"
+    log_info "  📦 Customer Solution Tasks: $final_solution_tasks"
+    log_info "  📈 Telemetry Attributes: $final_telemetry"
     
-    if [ $final_plans -eq ${#cp_ids[@]} ]; then
+    local total_expected=$((${#cp_ids[@]} + ${#cs_ids[@]}))
+    local total_actual=$((final_product_plans + final_solution_plans))
+    
+    if [ $total_actual -eq $total_expected ]; then
         echo ""
-        log_success "✅ SUCCESS: All $final_plans adoption plans created successfully!"
+        log_success "✅ SUCCESS: All $total_actual adoption plans created successfully!"
         log_success "🚀 Complete sample data ready for testing and demonstrations!"
         
         # Show detailed breakdown
@@ -898,10 +993,12 @@ reset_sample_data() {
         local tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\" WHERE \"deletedAt\" IS NULL;" 2>/dev/null | tr -d ' ')
         
         echo ""
-        log_info "📊 Removed sample products:"
-        log_info "  • prod-firewall-ngfw (Next-Generation Firewall)"
-        log_info "  • prod-routing-switching (Enterprise Routing & Switching)"
-        log_info "  • prod-mfa-sso (Multi-Factor Authentication & SSO)"
+        log_info "📊 Removed sample products (if they existed):"
+        log_info "  • prod-cisco-duo (Cisco Duo MFA)"
+        log_info "  • prod-cisco-sdwan (Cisco SD-WAN)"
+        log_info "  • prod-cisco-firewall (Cisco Secure Firewall)"
+        log_info "  • prod-cisco-ise (Cisco ISE)"
+        log_info "  • prod-cisco-secure-access-sample (Cisco Secure Access Sample)"
         log_info "  • prod-sdwan-platform (SD-WAN Platform)"
         log_info "  • prod-cloud-security (Cloud Security Platform)"
         echo ""
@@ -937,18 +1034,18 @@ show_help() {
     echo -e "  ${GREEN}start${NC}         - Start all application services"
     echo -e "  ${RED}stop${NC}          - Stop all application services" 
     echo -e "  ${YELLOW}restart${NC}       - Restart all services (keeps existing data)"
-    echo -e "  ${CYAN}clean-restart${NC} - Stop, clean database, add sample data, restart"
-    echo -e "  ${BLUE}add-sample${NC}    - Add sample data to existing database (preserves user data)"
-    echo -e "  ${PURPLE}reset-sample${NC}  - Remove sample data only (preserves user data)"
+    echo -e "  ${CYAN}clean-restart${NC} - ⚠️  WIPES ALL DATA, then loads fresh sample data"
+    echo -e "  ${BLUE}add-sample${NC}    - ✅ Add sample data (preserves existing user data)"
+    echo -e "  ${PURPLE}reset-sample${NC}  - ✅ Remove sample data only (preserves user data)"
     echo -e "  ${PURPLE}test${NC}          - Run comprehensive end-user test suite"
     echo -e "  ${BLUE}status${NC}        - Show status of all services and data"
     echo -e "  ${PURPLE}help${NC}          - Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0 start           # Start for daily development"
-    echo "  $0 clean-restart   # Fresh start with clean sample data"
-    echo "  $0 add-sample      # Add sample data to existing database"
-    echo "  $0 reset-sample    # Remove sample data, keep user data"
+    echo "  $0 add-sample      # ✅ Add sample data (preserves your data)"
+    echo "  $0 reset-sample    # ✅ Remove sample data (preserves your data)"
+    echo "  $0 clean-restart   # ⚠️  DANGER: Wipes everything, fresh start"
     echo "  $0 test            # Validate all functionality with comprehensive test"
     echo "  $0 status          # Check what's running"
     echo "  $0 stop            # End development session"
@@ -967,9 +1064,12 @@ show_help() {
     echo "  • Customer solution assignments and adoption tracking"
     echo ""
     echo "Sample data management:"
-    echo "  • add-sample: Adds sample data (products + solutions) without affecting existing user data"
-    echo "  • reset-sample: Removes only sample data, preserves user-created data"
-    echo "  • clean-restart: Completely resets database and adds fresh sample data"
+    echo "  • add-sample: ✅ RECOMMENDED - Adds sample data, preserves your existing data"
+    echo "  • reset-sample: ✅ SAFE - Removes only sample data, keeps your products/customers"
+    echo "  • clean-restart: ⚠️  DESTRUCTIVE - Wipes EVERYTHING (use only for complete reset)"
+    echo ""
+    echo "⚠️  IMPORTANT: clean-restart deletes ALL data including manually created products!"
+    echo "   To preserve your 'Cisco Secure Access' or other custom data, use 'add-sample' instead."
     echo ""
     echo "The test command runs comprehensive validation:"
     echo "  • Simulates complete end-user workflows"

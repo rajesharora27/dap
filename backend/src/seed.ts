@@ -42,84 +42,78 @@ async function main() {
     return nodeEnv !== 'production';
   })();
   if (seedSampleData) {
-    // Create multiple sample products with comprehensive attributes
+    // Create Cisco sample products with comprehensive attributes
+    // Note: The SQL file create-complete-sample-data.sql handles the bulk of sample data creation
+    // This TypeScript seed is kept minimal and aligned with the SQL data
     const productData = [
       {
-        id: 'retail-app-001',
-        name: 'Retail Management App',
-        description: 'Comprehensive retail management system with POS, inventory, and customer analytics',
-        customAttrs: { 
-          priority: 'high', 
-          category: 'retail-application',
-          technology: 'React/Node.js/PostgreSQL',
-          businessValue: 'revenue-optimization',
-          complexity: 'high',
-          timeline: '9-months',
-          targetMarket: 'small-to-medium-retail',
-          deployment: 'cloud-hybrid'
+        id: 'prod-cisco-duo',
+        name: 'Cisco Duo',
+        description: 'Multi-factor authentication and zero-trust access platform with adaptive security policies',
+        customAttrs: {
+          vendor: 'Cisco',
+          category: 'Identity & Access',
+          deployment: 'Cloud-Native',
+          authentication_methods: ['Push', 'SMS', 'TOTP', 'WebAuthn', 'Biometric'],
+          integrations: '1000+',
+          compliance: ['SOC 2', 'FedRAMP', 'HIPAA'],
+          management: 'Admin Panel'
         }
       },
       {
-        id: 'financial-app-001', 
-        name: 'Financial Services App',
-        description: 'Enterprise financial management platform with trading, portfolio management, and compliance',
+        id: 'prod-cisco-sdwan',
+        name: 'Cisco SD-WAN',
+        description: 'Software-defined wide area network solution with cloud-first architecture and security integration',
         customAttrs: {
-          priority: 'critical',
-          category: 'fintech-application', 
-          technology: 'React/Java/Kafka',
-          businessValue: 'regulatory-compliance',
-          compliance: 'SOX, PCI-DSS, GDPR',
-          complexity: 'very-high',
-          timeline: '12-months',
-          security: 'enterprise-grade',
-          deployment: 'private-cloud'
+          vendor: 'Cisco',
+          category: 'Networking',
+          architecture: 'Cloud-First',
+          encryption: 'AES-256',
+          orchestration: 'vManage',
+          analytics: 'Real-time',
+          scalability: '10K+ sites',
+          management: 'Centralized'
         }
       },
       {
-        id: 'it-app-001',
-        name: 'IT Operations App',
-        description: 'Unified IT operations and monitoring platform with incident management and automation',
+        id: 'prod-cisco-firewall',
+        name: 'Cisco Secure Firewall',
+        description: 'Next-generation firewall with advanced threat protection, deep packet inspection, and application control',
         customAttrs: {
-          priority: 'high',
-          category: 'enterprise-it',
-          technology: 'Angular/Python/Kubernetes',
-          businessValue: 'operational-excellence',
-          complexity: 'high',
-          timeline: '8-months',
-          integration: 'ServiceNow, Splunk, Jira',
-          deployment: 'on-premise-cloud-hybrid'
+          vendor: 'Cisco',
+          category: 'Security',
+          model: 'Firepower',
+          throughput: '10Gbps+',
+          features: ['IPS', 'Malware Defense', 'URL Filtering', 'Application Control'],
+          management: 'FMC/FDM',
+          certifications: ['Common Criteria', 'FIPS 140-2']
         }
       },
       {
-        id: 'ai-app-001',
-        name: 'AI-Powered Analytics App',
-        description: 'Machine learning platform with predictive analytics, NLP, and computer vision capabilities',
+        id: 'prod-cisco-ise',
+        name: 'Cisco ISE',
+        description: 'Identity Services Engine for network access control, policy enforcement, and guest management',
         customAttrs: {
-          priority: 'strategic',
-          category: 'ai-ml-platform',
-          technology: 'Python/TensorFlow/PyTorch/FastAPI',
-          businessValue: 'competitive-advantage',
-          complexity: 'very-high',
-          timeline: '18-months',
-          aiCapabilities: 'NLP, Computer Vision, Predictive Analytics',
-          deployment: 'cloud-native',
-          infrastructure: 'GPU-accelerated'
+          vendor: 'Cisco',
+          category: 'Network Security',
+          features: ['802.1X', 'MAB', 'Guest Access', 'BYOD', 'TrustSec'],
+          integration: ['Active Directory', 'LDAP', 'MFA'],
+          deployment: 'On-Premise/Cloud',
+          scalability: '100K+ endpoints'
         }
       },
       {
-        id: 'networking-app-001',
-        name: 'Network Management App',
-        description: 'Enterprise network monitoring and management system with SD-WAN and security integration',
+        id: 'prod-cisco-secure-access-sample',
+        name: 'Cisco Secure Access Sample',
+        description: 'Secure access service edge (SASE) platform combining SD-WAN, security, and zero trust network access',
         customAttrs: {
-          priority: 'critical',
-          category: 'network-infrastructure',
-          technology: 'React/Go/gRPC/TimescaleDB',
-          businessValue: 'infrastructure-reliability',
-          complexity: 'very-high',
-          timeline: '10-months',
-          protocols: 'SNMP, NetFlow, BGP, OSPF',
-          security: 'zero-trust-architecture',
-          deployment: 'distributed-hybrid'
+          vendor: 'Cisco',
+          category: 'SASE',
+          features: ['ZTNA', 'SWG', 'CASB', 'FWaaS', 'DLP'],
+          deployment: 'Cloud-Native',
+          coverage: 'Global PoPs',
+          performance: 'Low Latency',
+          management: 'Unified Dashboard'
         }
       }
     ];
@@ -135,42 +129,37 @@ async function main() {
       console.log(`[seed] Created/updated product: ${product.name}`);
     }
 
-    // Create sample outcomes for each product
+    // Create sample outcomes for each Cisco product
     const outcomesByProduct = {
-      'retail-app-001': [
-        { name: 'POS System', description: 'Cloud-based point-of-sale system with offline mode and receipt printing' },
-        { name: 'Inventory Management', description: 'Real-time inventory tracking with automated reordering and barcode scanning' },
-        { name: 'Customer Loyalty', description: 'Customer loyalty program with rewards, points, and personalized offers' },
-        { name: 'Sales Analytics', description: 'Comprehensive sales reporting with trends, forecasting, and performance metrics' },
-        { name: 'Multi-Store Management', description: 'Centralized management for multiple retail locations with consolidated reporting' }
+      'prod-cisco-duo': [
+        { name: 'Enhanced Identity Security', description: 'Strong authentication and protection against credential theft' },
+        { name: 'User Productivity', description: 'Seamless authentication experience across all applications' },
+        { name: 'Compliance & Audit', description: 'Meet identity compliance requirements with detailed audit logs' },
+        { name: 'Zero Trust Access', description: 'Implement zero trust security with continuous verification' }
       ],
-      'financial-app-001': [
-        { name: 'Portfolio Management', description: 'Real-time portfolio tracking with risk analytics and rebalancing recommendations' },
-        { name: 'Trading Execution', description: 'High-frequency trading system with smart order routing and execution algorithms' },
-        { name: 'Compliance Reporting', description: 'Automated regulatory reporting for SOX, PCI-DSS, and GDPR compliance' },
-        { name: 'Risk Assessment', description: 'Advanced risk modeling with VaR, stress testing, and scenario analysis' },
-        { name: 'Client Portal', description: 'Secure client portal with account access, document sharing, and communication tools' }
+      'prod-cisco-sdwan': [
+        { name: 'Network Agility', description: 'Flexible and dynamic WAN connectivity' },
+        { name: 'Application Performance', description: 'Optimized application delivery across the WAN' },
+        { name: 'Integrated Security', description: 'Built-in security for all WAN connections' },
+        { name: 'Cost Optimization', description: 'Reduced networking costs with efficient bandwidth usage' }
       ],
-      'it-app-001': [
-        { name: 'Infrastructure Monitoring', description: 'Real-time monitoring of servers, networks, and applications with alerting' },
-        { name: 'Incident Management', description: 'ITIL-compliant incident tracking with SLA management and escalation workflows' },
-        { name: 'Automation Engine', description: 'Workflow automation for routine tasks, deployments, and remediation' },
-        { name: 'Asset Management', description: 'Comprehensive IT asset tracking with lifecycle management and compliance' },
-        { name: 'Service Catalog', description: 'Self-service portal for IT requests with approval workflows and fulfillment' }
+      'prod-cisco-firewall': [
+        { name: 'Threat Protection', description: 'Advanced protection against sophisticated threats' },
+        { name: 'Network Visibility', description: 'Complete visibility into network traffic and threats' },
+        { name: 'Security Compliance', description: 'Meet regulatory and security compliance requirements' },
+        { name: 'Application Control', description: 'Granular control over application usage' }
       ],
-      'ai-app-001': [
-        { name: 'Predictive Analytics', description: 'Machine learning models for forecasting, trend analysis, and anomaly detection' },
-        { name: 'Natural Language Processing', description: 'NLP capabilities for sentiment analysis, entity extraction, and text classification' },
-        { name: 'Computer Vision', description: 'Image recognition, object detection, and facial recognition systems' },
-        { name: 'Recommendation Engine', description: 'Personalized recommendation system using collaborative and content-based filtering' },
-        { name: 'Model Management', description: 'MLOps platform for model training, versioning, deployment, and monitoring' }
+      'prod-cisco-ise': [
+        { name: 'Network Access Control', description: 'Secure network access with policy enforcement' },
+        { name: 'Endpoint Visibility', description: 'Complete visibility into all network endpoints' },
+        { name: 'Network Segmentation', description: 'Micro-segmentation with TrustSec technology' },
+        { name: 'Guest Management', description: 'Secure and convenient guest network access' }
       ],
-      'networking-app-001': [
-        { name: 'Network Discovery', description: 'Automated network topology discovery with device fingerprinting and mapping' },
-        { name: 'Performance Monitoring', description: 'Real-time monitoring of bandwidth, latency, packet loss, and throughput' },
-        { name: 'Security Management', description: 'Firewall management, intrusion detection, and threat intelligence integration' },
-        { name: 'Configuration Management', description: 'Automated configuration backup, change tracking, and compliance auditing' },
-        { name: 'SD-WAN Orchestration', description: 'Software-defined WAN management with policy-based routing and optimization' }
+      'prod-cisco-secure-access-sample': [
+        { name: 'Zero Trust Network Access', description: 'Secure access to applications from anywhere' },
+        { name: 'Cloud Security', description: 'Comprehensive cloud and SaaS application security' },
+        { name: 'Global Performance', description: 'Low-latency access through global PoPs' },
+        { name: 'Unified Visibility', description: 'Single pane of glass for all security policies' }
       ]
     };
 
@@ -197,32 +186,32 @@ async function main() {
       }
     }
 
-    // Create comprehensive licenses for each product
+    // Create comprehensive licenses for each Cisco product
     const licensesByProduct = {
-      'retail-app-001': [
-        { name: 'Retail Management App Essential', level: 1, description: 'Single-location POS system with basic inventory and sales reporting' },
-        { name: 'Retail Management App Advantage', level: 2, description: 'Multi-location support with advanced inventory, loyalty programs, and analytics' },
-        { name: 'Retail Management App Signature', level: 3, description: 'Unlimited locations with API access, custom integrations, and 24/7 support' }
+      'prod-cisco-duo': [
+        { name: 'Duo MFA Essential', level: 1, description: 'Basic MFA with push and SMS authentication' },
+        { name: 'Duo MFA Advantage', level: 2, description: 'Advanced MFA with device trust and adaptive policies' },
+        { name: 'Duo Beyond', level: 3, description: 'Complete zero-trust access with SSO and device posture' }
       ],
-      'financial-app-001': [
-        { name: 'Financial Services App Essential', level: 1, description: 'Core portfolio management and basic trading capabilities for up to 100 clients' },
-        { name: 'Financial Services App Advantage', level: 2, description: 'Advanced trading, risk analytics, and compliance reporting for up to 1000 clients' },
-        { name: 'Financial Services App Signature', level: 3, description: 'Unlimited clients with algorithmic trading, real-time data feeds, and white-label options' }
+      'prod-cisco-sdwan': [
+        { name: 'SD-WAN Essentials', level: 1, description: 'Basic SD-WAN with secure connectivity' },
+        { name: 'SD-WAN Advantage', level: 2, description: 'Advanced routing with security and analytics' },
+        { name: 'SD-WAN Premier', level: 3, description: 'Full platform with AI operations and advanced security' }
       ],
-      'it-app-001': [
-        { name: 'IT Operations App Essential', level: 1, description: 'Monitor up to 50 devices with basic incident management and ticketing' },
-        { name: 'IT Operations App Advantage', level: 2, description: 'Monitor up to 500 devices with automation, asset management, and integrations' },
-        { name: 'IT Operations App Signature', level: 3, description: 'Unlimited devices with AI-powered automation, custom workflows, and premium support' }
+      'prod-cisco-firewall': [
+        { name: 'Firewall Essentials', level: 1, description: 'Core firewall with standard threat protection' },
+        { name: 'Firewall Advantage', level: 2, description: 'Advanced features with IPS and malware defense' },
+        { name: 'Firewall Premier', level: 3, description: 'Complete security suite with AI analytics' }
       ],
-      'ai-app-001': [
-        { name: 'AI-Powered Analytics App Essential', level: 1, description: 'Pre-built models for basic predictions and classifications with 10k API calls/month' },
-        { name: 'AI-Powered Analytics App Advantage', level: 2, description: 'Custom model training, NLP/CV capabilities with 100k API calls/month' },
-        { name: 'AI-Powered Analytics App Signature', level: 3, description: 'Unlimited models, GPU clusters, MLOps platform with unlimited API calls' }
+      'prod-cisco-ise': [
+        { name: 'ISE Base', level: 1, description: 'Basic network access control and 802.1X' },
+        { name: 'ISE Plus', level: 2, description: 'Advanced features with guest access and BYOD' },
+        { name: 'ISE Apex', level: 3, description: 'Complete platform with TrustSec and advanced segmentation' }
       ],
-      'networking-app-001': [
-        { name: 'Network Infrastructure App Essential', level: 1, description: 'Monitor up to 25 network devices with basic performance metrics' },
-        { name: 'Network Infrastructure App Advantage', level: 2, description: 'Monitor up to 250 devices with security management and SD-WAN support' },
-        { name: 'Network Infrastructure App Signature', level: 3, description: 'Unlimited devices with advanced automation, multi-tenancy, and API access' }
+      'prod-cisco-secure-access-sample': [
+        { name: 'Secure Access Essentials', level: 1, description: 'Basic ZTNA and secure web gateway' },
+        { name: 'Secure Access Advantage', level: 2, description: 'Advanced SASE with CASB and DLP' },
+        { name: 'Secure Access Premier', level: 3, description: 'Complete SASE platform with AI threat protection' }
       ]
     };
 
@@ -251,42 +240,31 @@ async function main() {
       }
     }
 
-    // Create comprehensive releases for each product
+    // Create comprehensive releases for each Cisco product
     const releasesByProduct = {
-      'retail-app-001': [
-        { name: 'Alpha - Core POS', level: 1.0, description: 'Basic POS functionality with cash register and receipt printing' },
-        { name: 'Beta - Inventory Added', level: 1.5, description: 'Inventory management with barcode scanning and stock alerts' },
-        { name: 'v2.0 - Multi-Store', level: 2.0, description: 'Multi-location support with centralized management' },
-        { name: 'v2.5 - Analytics', level: 2.5, description: 'Advanced sales analytics and customer insights' },
-        { name: 'v3.0 - Enterprise', level: 3.0, description: 'API access, custom integrations, and enterprise features' }
+      'prod-cisco-duo': [
+        { name: 'Duo v1.0', level: 1.0, description: 'Core MFA capabilities with push and SMS' },
+        { name: 'Duo v2.0', level: 2.0, description: 'Enhanced with device trust and adaptive authentication' },
+        { name: 'Duo v3.0', level: 3.0, description: 'Zero trust access with SSO and advanced policies' }
       ],
-      'financial-app-001': [
-        { name: 'v1.0 - Trading Core', level: 1.0, description: 'Basic trading execution and portfolio tracking' },
-        { name: 'v1.5 - Risk Module', level: 1.5, description: 'Risk assessment and compliance reporting added' },
-        { name: 'v2.0 - Algorithmic', level: 2.0, description: 'Algorithmic trading and smart order routing' },
-        { name: 'v2.5 - Real-time Data', level: 2.5, description: 'Real-time market data feeds and streaming' },
-        { name: 'v3.0 - AI Trading', level: 3.0, description: 'AI-powered trading strategies and predictions' }
+      'prod-cisco-sdwan': [
+        { name: 'SD-WAN 17.x', level: 17.0, description: 'Foundation release with core SD-WAN features' },
+        { name: 'SD-WAN 20.x', level: 20.0, description: 'Cloud integration and enhanced security' },
+        { name: 'SD-WAN 22.x', level: 22.0, description: 'AI-powered operations and advanced analytics' }
       ],
-      'it-app-001': [
-        { name: 'v1.0 - Monitoring', level: 1.0, description: 'Basic infrastructure monitoring and alerting' },
-        { name: 'v1.5 - ITSM Integration', level: 1.5, description: 'ServiceNow and Jira integration for ticketing' },
-        { name: 'v2.0 - Automation', level: 2.0, description: 'Workflow automation and runbook execution' },
-        { name: 'v2.5 - AI Insights', level: 2.5, description: 'AI-powered anomaly detection and root cause analysis' },
-        { name: 'v3.0 - AIOps Platform', level: 3.0, description: 'Full AIOps platform with predictive capabilities' }
+      'prod-cisco-firewall': [
+        { name: 'Firepower 7.0', level: 7.0, description: 'Core NGFW capabilities' },
+        { name: 'Firepower 7.2', level: 7.2, description: 'Enhanced threat intelligence and IPS' },
+        { name: 'Firepower 7.4', level: 7.4, description: 'AI-powered threat detection and automation' }
       ],
-      'ai-app-001': [
-        { name: 'v1.0 - ML Core', level: 1.0, description: 'Basic ML model training and inference APIs' },
-        { name: 'v1.5 - NLP Added', level: 1.5, description: 'Natural language processing capabilities' },
-        { name: 'v2.0 - Computer Vision', level: 2.0, description: 'Image recognition and object detection models' },
-        { name: 'v2.5 - MLOps', level: 2.5, description: 'Model versioning, deployment, and monitoring pipeline' },
-        { name: 'v3.0 - AutoML', level: 3.0, description: 'Automated machine learning with neural architecture search' }
+      'prod-cisco-ise': [
+        { name: 'ISE 3.0', level: 3.0, description: 'Core NAC and policy enforcement' },
+        { name: 'ISE 3.1', level: 3.1, description: 'Enhanced guest access and BYOD' },
+        { name: 'ISE 3.2', level: 3.2, description: 'Advanced TrustSec and segmentation' }
       ],
-      'networking-app-001': [
-        { name: 'v1.0 - Discovery', level: 1.0, description: 'Network discovery and topology mapping' },
-        { name: 'v1.5 - Monitoring', level: 1.5, description: 'Performance monitoring with SNMP and NetFlow' },
-        { name: 'v2.0 - Security', level: 2.0, description: 'Firewall management and security analytics' },
-        { name: 'v2.5 - SD-WAN', level: 2.5, description: 'Software-defined WAN orchestration and optimization' },
-        { name: 'v3.0 - Zero Trust', level: 3.0, description: 'Zero-trust network architecture with micro-segmentation' }
+      'prod-cisco-secure-access-sample': [
+        { name: 'Secure Access 1.0', level: 1.0, description: 'Initial SASE platform release' },
+        { name: 'Secure Access 2.0', level: 2.0, description: 'Enhanced ZTNA and cloud security' }
       ]
     };
 
@@ -926,13 +904,13 @@ async function main() {
     // Create comprehensive telemetry sample data for ALL sample product tasks
     console.log('[seed] Creating telemetry sample data...');
     
-    // Get all tasks for sample products only (not user-created tasks)
+    // Get all tasks for Cisco sample products only (not user-created tasks)
     const sampleProductIds = [
-      'retail-app-001',
-      'financial-app-001', 
-      'it-app-001',
-      'ai-app-001',
-      'networking-app-001'
+      'prod-cisco-duo',
+      'prod-cisco-sdwan',
+      'prod-cisco-firewall',
+      'prod-cisco-ise',
+      'prod-cisco-secure-access-sample'
     ];
     
     const allTasks = await prisma.task.findMany({ 

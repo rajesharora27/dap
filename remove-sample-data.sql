@@ -1,28 +1,37 @@
 -- Remove Sample Data Script for DAP Application
 -- This script removes ONLY the sample data created by the seeding scripts
--- It preserves any user-created data
+-- It preserves any user-created data, including manually created "Cisco Secure Access" product
 
 -- SAMPLE PRODUCT IDs TO REMOVE:
--- From create-complete-sample-data.sql:
+-- From old create-complete-sample-data.sql:
 --   'prod-firewall-ngfw', 'prod-routing-switching', 'prod-mfa-sso', 'prod-sdwan-platform', 'prod-cloud-security'
 -- From old seed scripts:
 --   'retail-app-001', 'financial-app-001', 'it-app-001', 'ai-app-001', 'networking-app-001', 'test-product-1'
+-- New sample products (will be created by updated script):
+--   'prod-cisco-duo', 'prod-cisco-sdwan', 'prod-cisco-firewall', 'prod-cisco-ise', 'prod-cisco-secure-access-sample'
 
 -- Define sample product IDs as a temporary set for easier management
 DO $$
 DECLARE
     sample_product_ids TEXT[] := ARRAY[
+        -- Old sample products
         'prod-firewall-ngfw', 
         'prod-routing-switching', 
         'prod-mfa-sso', 
         'prod-sdwan-platform', 
         'prod-cloud-security',
-    'retail-app-001', 
-    'financial-app-001', 
-    'it-app-001', 
-    'ai-app-001', 
-    'networking-app-001',
-    'test-product-1'
+        'retail-app-001', 
+        'financial-app-001', 
+        'it-app-001', 
+        'ai-app-001', 
+        'networking-app-001',
+        'test-product-1',
+        -- New sample products (for cleanup if needed)
+        'prod-cisco-duo',
+        'prod-cisco-sdwan',
+        'prod-cisco-firewall',
+        'prod-cisco-ise',
+        'prod-cisco-secure-access-sample'
     ];
 BEGIN
     -- Remove telemetry values for sample products
@@ -148,10 +157,20 @@ BEGIN
         'customer-techstart-inc', 
         'customer-financial-services',
         'customer-retail-corp',
-        'customer-health-system'
+        'customer-health-system',
+        'customer-acme',
+        'customer-chase'
     );
 
-    RAISE NOTICE 'Sample data removed successfully. User-created products and data preserved.';
+    -- Remove sample solutions
+    DELETE FROM "Solution" WHERE id IN (
+        'sol-security-bundle',
+        'sol-digital-transformation',
+        'sol-hybrid-private-access',
+        'sol-sase'
+    );
+
+    RAISE NOTICE 'Sample data removed successfully. User-created products (e.g., manually created Cisco Secure Access) preserved.';
 END $$;
 
 -- Note: AuditLog, ChangeItem, and ChangeSet are left untouched as they contain 
