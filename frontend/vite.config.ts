@@ -17,8 +17,10 @@ export default defineConfig(({ mode }) => {
         'dap.cxsaaslab.com',              // CNAME record
         '172.22.156.32',
         'localhost',
+        'centos1.rajarora.csslab',        // Direct hostname access
         '.ztna.sse.cisco.io',             // Allow all subdomains
-        '.cxsaaslab.com'                  // Allow all cxsaaslab.com subdomains
+        '.cxsaaslab.com',                 // Allow all cxsaaslab.com subdomains
+        '.rajarora.csslab'                // Allow all rajarora.csslab subdomains
       ],
       proxy: {
         '/graphql': {
