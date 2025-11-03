@@ -76,6 +76,7 @@ const GET_CUSTOMERS = gql`
       products {
         id
         name
+        customerSolutionId
         product {
           id
           name
@@ -96,6 +97,14 @@ const GET_CUSTOMERS = gql`
           progressPercentage
           totalTasks
           completedTasks
+        }
+      }
+      solutions {
+        id
+        name
+        solution {
+          id
+          name
         }
       }
     }
@@ -419,6 +428,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [assignProductDialogOpen, setAssignProductDialogOpen] = useState(false);
   const [editEntitlementsDialogOpen, setEditEntitlementsDialogOpen] = useState(false);
+  const [cannotEditProductDialogOpen, setCannotEditProductDialogOpen] = useState(false);
   const [deleteProductDialogOpen, setDeleteProductDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [taskDetailsDialogOpen, setTaskDetailsDialogOpen] = useState(false);
@@ -974,6 +984,26 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     }
   };
 
+  const handleEditProductEntitlements = () => {
+    if (selectedCustomerProduct?.customerSolutionId) {
+      // Product is part of a solution - show warning dialog
+      setCannotEditProductDialogOpen(true);
+    } else {
+      // Standalone product - allow editing
+      setEditEntitlementsDialogOpen(true);
+    }
+  };
+
+  const handleDeleteProduct = () => {
+    if (selectedCustomerProduct?.customerSolutionId) {
+      // Product is part of a solution - show warning dialog
+      setCannotEditProductDialogOpen(true);
+    } else {
+      // Standalone product - allow deletion
+      setDeleteProductDialogOpen(true);
+    }
+  };
+
   const handleRemoveProduct = () => {
     if (selectedCustomerProduct) {
       removeProduct({ variables: { id: selectedCustomerProduct.id } });
@@ -1126,7 +1156,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                   >
                     {selectedCustomer.products?.map((cp: any) => (
                       <MenuItem key={cp.id} value={cp.id}>
-                        {cp.product.name} ({cp.licenseLevel}){cp.name ? ` - ${cp.name}` : ''}
+                        {cp.customerSolutionId ? (
+                          // For products from solutions: name already has "Assignment - Solution - Product"
+                          `${cp.name} (${cp.licenseLevel})`
+                        ) : (
+                          // For standalone products: show "Assignment Name - Product Name"
+                          `${cp.name} - ${cp.product.name} (${cp.licenseLevel})`
+                        )}
                       </MenuItem>
                     ))}
                   </Select>
@@ -1148,7 +1184,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                         size="small"
                         color="primary"
                         startIcon={<Edit />}
-                        onClick={() => setEditEntitlementsDialogOpen(true)}
+                        onClick={handleEditProductEntitlements}
                       >
                         Edit
                       </Button>
@@ -1171,7 +1207,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                         size="small"
                         color="error"
                         startIcon={<Delete />}
-                        onClick={() => setDeleteProductDialogOpen(true)}
+                        onClick={handleDeleteProduct}
                         disabled={removeLoading}
                       >
                         Delete
@@ -1914,6 +1950,38 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
             });
           }}
         />
+      )}
+
+      {/* Cannot Edit Product Directly - Warning Dialog */}
+      {selectedCustomerProduct && (
+        <Dialog
+          open={cannotEditProductDialogOpen}
+          onClose={() => setCannotEditProductDialogOpen(false)}
+        >
+          <DialogTitle>Cannot Edit Product Directly</DialogTitle>
+          <DialogContent>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              <strong>{selectedCustomerProduct.product.name}</strong> was assigned as part of a solution and can only be edited through the solution adoption plan.
+            </Alert>
+            <Typography>
+              This product's entitlements (license level, outcomes, releases) are managed at the solution level. 
+              Any changes must be made through the <strong>Solutions</strong> tab by editing the solution assignment.
+            </Typography>
+            <Typography sx={{ mt: 2 }}>
+              To make changes:
+            </Typography>
+            <ol>
+              <li>Navigate to the <strong>Solutions</strong> tab</li>
+              <li>Find the solution that includes this product</li>
+              <li>Click <strong>Edit Solution Assignment</strong></li>
+            </ol>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setCannotEditProductDialogOpen(false)} variant="contained">
+              Got It
+            </Button>
+          </DialogActions>
+        </Dialog>
       )}
 
       {/* Delete Product Confirmation Dialog */}

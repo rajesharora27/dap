@@ -105,6 +105,7 @@ model CustomerProduct {
   customerId        String
   productId         String
   name              String              // Required name/identifier for this product assignment (e.g., "Production", "Development")
+  customerSolutionId String?            // Links to parent solution if assigned as part of a solution
   
   // License and Outcomes Selection
   licenseLevel      LicenseLevel        @default(ESSENTIAL)
@@ -119,10 +120,12 @@ model CustomerProduct {
   // Relations
   customer          Customer            @relation(fields: [customerId], references: [id], onDelete: Cascade)
   product           Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerSolution  CustomerSolution?   @relation(fields: [customerSolutionId], references: [id], onDelete: Cascade)
   adoptionPlan      AdoptionPlan?       // One adoption plan per product assignment
   
   @@index([customerId])
   @@index([productId])
+  @@index([customerSolutionId])
 }
 
 model CustomerSolution {
@@ -145,6 +148,7 @@ model CustomerSolution {
   customer          Customer              @relation(fields: [customerId], references: [id], onDelete: Cascade)
   solution          Solution              @relation(fields: [solutionId], references: [id], onDelete: Cascade)
   adoptionPlan      SolutionAdoptionPlan? // One adoption plan per solution assignment
+  products          CustomerProduct[]     // Products created from this solution
   
   @@unique([customerId, solutionId])
   @@index([customerId])

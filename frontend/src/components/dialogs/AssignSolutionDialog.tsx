@@ -334,13 +334,13 @@ export const AssignSolutionDialog: React.FC<Props> = ({
           )}
 
           {/* Solution Outcomes Selection */}
-          {selectedSolution && solutionOutcomes.length > 0 && (
+          {selectedSolution && solutionOutcomes.length > 0 ? (
             <Box>
               <FormLabel component="legend">
                 Solution Outcomes {selectedOutcomeIds.length > 0 && `(${selectedOutcomeIds.length} selected)`}
               </FormLabel>
               <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                Select outcomes for the solution
+                Select outcomes for the solution. If none selected, all tasks will be included.
               </Typography>
               <FormGroup>
                 {/* All Outcomes option */}
@@ -382,16 +382,25 @@ export const AssignSolutionDialog: React.FC<Props> = ({
                 ))}
               </FormGroup>
             </Box>
-          )}
+          ) : selectedSolution ? (
+            <Alert severity="info">
+              <Typography variant="body2" fontWeight="600">
+                No Solution-Level Outcomes
+              </Typography>
+              <Typography variant="caption">
+                This solution has no solution-level outcomes defined. All tasks will be included in the adoption plan regardless of their outcome associations.
+              </Typography>
+            </Alert>
+          ) : null}
 
           {/* Solution Releases Selection */}
-          {selectedSolution && solutionReleases.length > 0 && (
+          {selectedSolution && solutionReleases.length > 0 ? (
             <Box>
               <FormLabel component="legend">
                 Solution Releases {selectedReleaseIds.length > 0 && `(${selectedReleaseIds.length} selected)`}
               </FormLabel>
               <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
-                Select releases for the solution
+                Select releases for the solution. If none selected, all tasks will be included.
               </Typography>
               <FormGroup>
                 {/* All Releases option */}
@@ -433,7 +442,16 @@ export const AssignSolutionDialog: React.FC<Props> = ({
                 ))}
               </FormGroup>
             </Box>
-          )}
+          ) : selectedSolution ? (
+            <Alert severity="info">
+              <Typography variant="body2" fontWeight="600">
+                No Solution-Level Releases
+              </Typography>
+              <Typography variant="caption">
+                This solution has no solution-level releases defined. All tasks will be included in the adoption plan regardless of their release associations.
+              </Typography>
+            </Alert>
+          ) : null}
 
           {/* Info about underlying products */}
           {selectedSolution && underlyingProducts.length > 0 && (

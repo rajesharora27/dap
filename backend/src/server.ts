@@ -46,6 +46,10 @@ export async function createApp() {
   const telemetryExportsDir = path.join(process.cwd(), 'temp', 'telemetry-exports');
   app.use('/api/downloads/telemetry-exports', express.static(telemetryExportsDir));
 
+  // Serve backup files
+  const backupDir = path.join(process.cwd(), 'temp', 'backups');
+  app.use('/api/downloads/backups', express.static(backupDir));
+
   // REST endpoint for telemetry import (multipart file upload)
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
   app.post('/api/telemetry/import/:adoptionPlanId', upload.single('file'), async (req, res) => {

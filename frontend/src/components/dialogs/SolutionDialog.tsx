@@ -75,6 +75,60 @@ const REORDER_PRODUCTS_IN_SOLUTION = gql`
   }
 `;
 
+const CREATE_OUTCOME = gql`
+  mutation CreateOutcome($input: OutcomeInput!) {
+    createOutcome(input: $input) {
+      id
+      name
+      description
+    }
+  }
+`;
+
+const UPDATE_OUTCOME = gql`
+  mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
+    updateOutcome(id: $id, input: $input) {
+      id
+      name
+      description
+    }
+  }
+`;
+
+const DELETE_OUTCOME = gql`
+  mutation DeleteOutcome($id: ID!) {
+    deleteOutcome(id: $id)
+  }
+`;
+
+const CREATE_RELEASE = gql`
+  mutation CreateRelease($input: ReleaseInput!) {
+    createRelease(input: $input) {
+      id
+      name
+      description
+      level
+    }
+  }
+`;
+
+const UPDATE_RELEASE = gql`
+  mutation UpdateRelease($id: ID!, $input: ReleaseInput!) {
+    updateRelease(id: $id, input: $input) {
+      id
+      name
+      description
+      level
+    }
+  }
+`;
+
+const DELETE_RELEASE = gql`
+  mutation DeleteRelease($id: ID!) {
+    deleteRelease(id: $id)
+  }
+`;
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -155,6 +209,12 @@ export const SolutionDialog: React.FC<Props> = ({
   const [addProduct] = useMutation(ADD_PRODUCT_TO_SOLUTION);
   const [removeProduct] = useMutation(REMOVE_PRODUCT_FROM_SOLUTION);
   const [reorderProducts] = useMutation(REORDER_PRODUCTS_IN_SOLUTION);
+  const [createOutcome] = useMutation(CREATE_OUTCOME);
+  const [updateOutcome] = useMutation(UPDATE_OUTCOME);
+  const [deleteOutcome] = useMutation(DELETE_OUTCOME);
+  const [createRelease] = useMutation(CREATE_RELEASE);
+  const [updateRelease] = useMutation(UPDATE_RELEASE);
+  const [deleteRelease] = useMutation(DELETE_RELEASE);
 
   useEffect(() => {
     if (solution) {
@@ -273,6 +333,94 @@ export const SolutionDialog: React.FC<Props> = ({
         });
       }
 
+      // Save outcomes
+      if (solutionId) {
+        // Delete marked outcomes
+        for (const outcome of solutionOutcomes) {
+          if (outcome.delete && outcome.id) {
+            await deleteOutcome({
+              variables: { id: outcome.id }
+            });
+          }
+        }
+
+        // Create new outcomes
+        for (const outcome of solutionOutcomes) {
+          if (outcome.isNew && !outcome.delete) {
+            await createOutcome({
+              variables: {
+                input: {
+                  name: outcome.name,
+                  description: outcome.description || undefined,
+                  solutionId: solutionId
+                }
+              }
+            });
+          }
+        }
+
+        // Update existing outcomes (if they were edited and not new/deleted)
+        for (const outcome of solutionOutcomes) {
+          if (!outcome.isNew && !outcome.delete && outcome.id) {
+            await updateOutcome({
+              variables: {
+                id: outcome.id,
+                input: {
+                  name: outcome.name,
+                  description: outcome.description || undefined,
+                  solutionId: solutionId
+                }
+              }
+            });
+          }
+        }
+      }
+
+      // Save releases
+      if (solutionId) {
+        // Delete marked releases
+        for (const release of releases) {
+          if (release.delete && release.id) {
+            await deleteRelease({
+              variables: { id: release.id }
+            });
+          }
+        }
+
+        // Create new releases
+        for (const release of releases) {
+          if (release.isNew && !release.delete) {
+            await createRelease({
+              variables: {
+                input: {
+                  name: release.name,
+                  description: release.description || undefined,
+                  level: release.level,
+                  solutionId: solutionId
+                }
+              }
+            });
+          }
+        }
+
+        // Update existing releases (if they were edited and not new/deleted)
+        for (const release of releases) {
+          if (!release.isNew && !release.delete && release.id) {
+            await updateRelease({
+              variables: {
+                id: release.id,
+                input: {
+                  name: release.name,
+                  description: release.description || undefined,
+                  level: release.level,
+                  solutionId: solutionId
+                }
+              }
+            });
+          }
+        }
+      }
+
       onSave();
       onClose();
     } catch (err: any) {
@@ -310,7 +458,8 @@ export const SolutionDialog: React.FC<Props> = ({
     }));
   });
 
-  const allOutcomes = [...inheritedOutcomes, ...solutionOutcomes.filter(o => !o.delete)];
+  // Show solution-level outcomes FIRST, then inherited product outcomes
+  const allOutcomes = [...solutionOutcomes.filter(o => !o.delete), ...inheritedOutcomes];
 
   // Custom Attributes Handlers
   const handleAddCustomAttributeSave = (attribute: { key: string; value: any; type: string }) => {
@@ -579,48 +728,10 @@ export const SolutionDialog: React.FC<Props> = ({
             </Typography>
           ) : (
             <Box>
-              {inheritedOutcomes.length > 0 && (
-                <>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: 'primary.main' }}>
-                    Inherited from Products:
-                  </Typography>
-                  <List dense>
-                    {inheritedOutcomes.map((outcome, idx) => (
-                      <ListItem
-                        key={`inherited-${idx}`}
-                        sx={{
-                          border: '1px solid #e0e0e0',
-                          borderRadius: 1,
-                          mb: 1,
-                          bgcolor: '#f5f5f5'
-                        }}
-                      >
-                        <ListItemText
-                          primary={
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <Typography variant="body2">{outcome.name}</Typography>
-                              <Chip
-                                label={`From: ${outcome.sourceProductName}`}
-                                size="small"
-                                color="primary"
-                                variant="outlined"
-                              />
-                              <Chip label="Read-Only" size="small" color="default" variant="outlined" />
-                            </Box>
-                          }
-                          secondary={outcome.description}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                  <Divider sx={{ my: 2 }} />
-                </>
-              )}
-
               {solutionOutcomes.filter(o => !o.delete).length > 0 && (
                 <>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: 'secondary.main' }}>
-                    Solution-Specific:
+                    Solution-Specific Outcomes:
                   </Typography>
                   <List dense>
                     {solutionOutcomes.filter(o => !o.delete).map((outcome, idx) => (
@@ -659,6 +770,44 @@ export const SolutionDialog: React.FC<Props> = ({
                           <DeleteIcon />
                         </IconButton>
                       </ListItemButton>
+                    ))}
+                  </List>
+                  <Divider sx={{ my: 2 }} />
+                </>
+              )}
+
+              {inheritedOutcomes.length > 0 && (
+                <>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: 'primary.main' }}>
+                    Inherited from Products:
+                  </Typography>
+                  <List dense>
+                    {inheritedOutcomes.map((outcome, idx) => (
+                      <ListItem
+                        key={`inherited-${idx}`}
+                        sx={{
+                          border: '1px solid #e0e0e0',
+                          borderRadius: 1,
+                          mb: 1,
+                          bgcolor: '#f5f5f5'
+                        }}
+                      >
+                        <ListItemText
+                          primary={
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <Typography variant="body2">{outcome.name}</Typography>
+                              <Chip
+                                label={`From: ${outcome.sourceProductName}`}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                              />
+                              <Chip label="Read-Only" size="small" color="default" variant="outlined" />
+                            </Box>
+                          }
+                          secondary={outcome.description}
+                        />
+                      </ListItem>
                     ))}
                   </List>
                 </>

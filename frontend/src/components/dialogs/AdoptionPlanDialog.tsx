@@ -51,6 +51,18 @@ const GET_ADOPTION_PLAN = gql`
       lastSyncedAt
       createdAt
       updatedAt
+      customerProduct {
+        name
+        customerSolutionId
+        customerSolution {
+          id
+          name
+          solution {
+            id
+            name
+          }
+        }
+      }
       selectedOutcomes {
         id
         name
@@ -257,10 +269,20 @@ export const AdoptionPlanDialog: React.FC<Props> = ({ open, onClose, adoptionPla
         </Alert>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Box>
-            <Typography variant="h6">Customer Adoption Plan</Typography>
+            <Typography variant="h6">
+              {adoptionPlan && adoptionPlan.customerProduct.customerSolutionId ? (
+                // For products from solutions: customerProduct.name already has format "Assignment - Solution - Product"
+                adoptionPlan.customerProduct.name
+              ) : adoptionPlan ? (
+                // For standalone products: customerProduct.name is just the assignment name, so append product name
+                `${adoptionPlan.customerProduct.name} - ${adoptionPlan.productName}`
+              ) : (
+                'Customer Adoption Plan'
+              )}
+            </Typography>
             {adoptionPlan && (
               <Typography variant="caption" color="text.secondary">
-                {adoptionPlan.productName} • {adoptionPlan.licenseLevel}
+                {adoptionPlan.customerProduct.customerSolutionId ? 'Product Adoption Plan (via Solution)' : 'Product Adoption Plan'} • {adoptionPlan.licenseLevel}
               </Typography>
             )}
           </Box>

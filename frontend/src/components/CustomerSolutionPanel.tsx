@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -102,8 +102,40 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
 
   const { data, loading, error, refetch } = useQuery(GET_CUSTOMER_SOLUTIONS, {
     variables: { customerId },
-    skip: !customerId
+    skip: !customerId,
+    fetchPolicy: 'network-only'
   });
+
+  // Auto-select last used solution or first available solution
+  useEffect(() => {
+    if (!data?.customer?.solutions || data.customer.solutions.length === 0) {
+      setSelectedSolutionId(null);
+      return;
+    }
+
+    const solutions = data.customer.solutions;
+    
+    // Try to load last selected solution from localStorage
+    const lastSelectedKey = `lastSolutionAdoptionPlan_${customerId}`;
+    const lastSelectedId = localStorage.getItem(lastSelectedKey);
+    
+    // Check if last selected solution still exists
+    if (lastSelectedId && solutions.some((s: any) => s.id === lastSelectedId)) {
+      setSelectedSolutionId(lastSelectedId);
+    } else if (!selectedSolutionId) {
+      // Default to first solution with adoption plan, or just first solution
+      const solutionWithPlan = solutions.find((s: any) => s.adoptionPlan);
+      setSelectedSolutionId(solutionWithPlan?.id || solutions[0].id);
+    }
+  }, [data, customerId, selectedSolutionId]);
+
+  // Save selected solution to localStorage when it changes
+  useEffect(() => {
+    if (selectedSolutionId && customerId) {
+      const lastSelectedKey = `lastSolutionAdoptionPlan_${customerId}`;
+      localStorage.setItem(lastSelectedKey, selectedSolutionId);
+    }
+  }, [selectedSolutionId, customerId]);
 
   const { data: planData, refetch: refetchPlan } = useQuery(GET_SOLUTION_ADOPTION_PLAN, {
     variables: { id: data?.customer?.solutions?.find((cs: any) => cs.id === selectedSolutionId)?.adoptionPlan?.id },
@@ -111,6 +143,8 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   });
 
   const [createAdoptionPlan] = useMutation(CREATE_SOLUTION_ADOPTION_PLAN, {
+    refetchQueries: ['GetCustomers', 'GetCustomerSolutions'],
+    awaitRefetchQueries: true,
     onCompleted: () => {
       refetch();
     },
@@ -131,6 +165,8 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   });
 
   const [removeSolution, { loading: removeLoading }] = useMutation(REMOVE_SOLUTION_FROM_CUSTOMER, {
+    refetchQueries: ['GetCustomers', 'GetCustomerSolutions'],
+    awaitRefetchQueries: true,
     onCompleted: (result) => {
       if (result.removeSolutionFromCustomerEnhanced.success) {
         setSelectedSolutionId(null);
@@ -206,8 +242,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
             >
               {customerSolutions.map((cs: any) => (
                 <MenuItem key={cs.id} value={cs.id}>
-                  {cs.solution.name} ({cs.licenseLevel})
-                  {cs.name && ` - ${cs.name}`}
+                  {cs.name ? `${cs.name} - ${cs.solution.name}` : cs.solution.name} ({cs.licenseLevel})
                 </MenuItem>
               ))}
             </Select>

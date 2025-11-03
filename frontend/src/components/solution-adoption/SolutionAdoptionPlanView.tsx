@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -8,24 +8,65 @@ import {
   LinearProgress,
   Chip,
   Alert,
-  CircularProgress
+  CircularProgress,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  OutlinedInput,
+  Checkbox,
+  ListItemText
 } from '@mui/material';
-import { Sync, Assessment, FileDownload } from '@mui/icons-material';
+import { Sync, Assessment, FileDownload, FilterList } from '@mui/icons-material';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { ProductAdoptionGroup } from './ProductAdoptionGroup';
 import { SolutionTasksGroup } from './SolutionTasksGroup';
+
+const ALL_RELEASES_ID = '__ALL_RELEASES__';
+const ALL_OUTCOMES_ID = '__ALL_OUTCOMES__';
 
 const GET_SOLUTION_ADOPTION_PLAN = gql`
   query GetSolutionAdoptionPlan($id: ID!) {
     solutionAdoptionPlan(id: $id) {
       id
       solutionName
+      solutionId
       licenseLevel
+      selectedOutcomes {
+        id
+        name
+        description
+      }
+      selectedReleases {
+        id
+        name
+        description
+        level
+      }
       progressPercentage
       totalTasks
       completedTasks
       solutionTasksTotal
       solutionTasksComplete
+      customerSolution {
+        id
+        name
+        solution {
+          id
+          name
+          outcomes {
+            id
+            name
+            description
+          }
+          releases {
+            id
+            name
+            description
+            level
+          }
+        }
+      }
       products {
         id
         productId
@@ -75,6 +116,7 @@ const GET_SOLUTION_ADOPTION_PLAN = gql`
             releases {
               id
               name
+              level
             }
           }
         }
@@ -110,6 +152,15 @@ const GET_SOLUTION_ADOPTION_PLAN = gql`
             createdAt
             notes
           }
+        }
+        outcomes {
+          id
+          name
+        }
+        releases {
+          id
+          name
+          level
         }
       }
     }
@@ -158,6 +209,10 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
 }) => {
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Filter states for UI display filtering
+  const [filterReleases, setFilterReleases] = useState<string[]>([]);
+  const [filterOutcomes, setFilterOutcomes] = useState<string[]>([]);
 
   const { data, loading, error: queryError, refetch } = useQuery(GET_SOLUTION_ADOPTION_PLAN, {
     variables: { id: solutionAdoptionPlanId },
@@ -190,6 +245,60 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     onError: (err) => setError(err.message)
   });
 
+  // Extract solution tasks (must be called before any conditional returns - rules of hooks)
+  const allSolutionTasks = useMemo(() => {
+    if (!data?.solutionAdoptionPlan) return [];
+    const tasks: any[] = [];
+    data.solutionAdoptionPlan.tasks.forEach((task: any) => {
+      if (task.sourceType === 'SOLUTION') {
+        tasks.push(task);
+      }
+    });
+    return tasks;
+  }, [data]);
+
+  // Get available releases and outcomes for filters - use ALL solution outcomes/releases, not just those on tasks
+  const availableReleases = useMemo(() => {
+    if (!data?.solutionAdoptionPlan?.customerSolution?.solution?.releases) return [];
+    // Return all solution-level releases, sorted by level
+    return [...data.solutionAdoptionPlan.customerSolution.solution.releases]
+      .sort((a: any, b: any) => a.level - b.level);
+  }, [data]);
+
+  const availableOutcomes = useMemo(() => {
+    if (!data?.solutionAdoptionPlan?.customerSolution?.solution?.outcomes) return [];
+    // Return all solution-level outcomes, sorted by name
+    return [...data.solutionAdoptionPlan.customerSolution.solution.outcomes]
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }, [data]);
+  
+  // Apply UI filters to solution tasks
+  const solutionTasks = useMemo(() => {
+    let tasks = [...allSolutionTasks];
+    
+    // Filter by releases (multiple selection - task must have at least one selected release)
+    if (filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) {
+      tasks = tasks.filter((task: any) => {
+        const hasSelectedRelease = task.releases?.some((release: any) => 
+          filterReleases.includes(release.id)
+        );
+        return hasSelectedRelease;
+      });
+    }
+    
+    // Filter by outcomes (multiple selection - task must have at least one selected outcome)
+    if (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID)) {
+      tasks = tasks.filter((task: any) => {
+        const hasSelectedOutcome = task.outcomes?.some((outcome: any) => 
+          filterOutcomes.includes(outcome.id)
+        );
+        return hasSelectedOutcome;
+      });
+    }
+    
+    return tasks;
+  }, [allSolutionTasks, filterReleases, filterOutcomes]);
+
   if (!solutionAdoptionPlanId) {
     return (
       <Box sx={{ p: 4, textAlign: 'center' }}>
@@ -220,14 +329,6 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
   }
 
   const plan = data.solutionAdoptionPlan;
-
-  // Get solution-specific tasks (not product tasks)
-  const solutionTasks: any[] = [];
-  plan.tasks.forEach((task: any) => {
-    if (task.sourceType === 'SOLUTION') {
-      solutionTasks.push(task);
-    }
-  });
 
   // Get product tasks from their actual AdoptionPlans (not from stale CustomerSolutionTask entries)
   const productTasks: { [productId: string]: any[] } = {};
@@ -305,15 +406,16 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
           <Box>
             <Typography variant="h4" gutterBottom>
-              {plan.solutionName} - Adoption Plan
+              {plan.customerSolution.name} - {plan.customerSolution.solution.name}
             </Typography>
             <Typography variant="subtitle1" color="text.secondary">
-              Customer: {customerName}
+              Customer: {customerName} • Solution Adoption Plan
             </Typography>
           </Box>
           
           <Chip label={`License: ${plan.licenseLevel}`} color="primary" />
         </Box>
+
 
         {/* Overall Progress */}
         <Box sx={{ mt: 3 }}>
@@ -339,6 +441,150 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
             </Typography>
           </Box>
         </Box>
+        
+        {/* Interactive Filters for Solution Tasks */}
+        {allSolutionTasks.length > 0 && (
+          <Box sx={{ mt: 3, p: 2, bgcolor: 'primary.light', borderRadius: 1, border: '2px solid', borderColor: 'primary.main' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+              <FilterList fontSize="small" color="primary" />
+              <Typography variant="subtitle2" fontWeight="700" color="primary.dark">
+                Filter Solution Tasks
+              </Typography>
+              {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) || 
+                (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
+                <Chip 
+                  label={`Showing ${solutionTasks.length} of ${allSolutionTasks.length} tasks`}
+                  size="small" 
+                  color="info"
+                  sx={{ ml: 1 }}
+                />
+              )}
+            </Box>
+            
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              {/* License Level Display */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography variant="caption" fontWeight="600">
+                  License Level:
+                </Typography>
+                <Chip label={plan.licenseLevel} size="small" color="secondary" />
+                <Typography variant="caption" color="text.secondary">
+                  (Tasks filtered by license level at assignment)
+                </Typography>
+              </Box>
+            </Box>
+            
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
+              {/* Releases Filter */}
+              {availableReleases.length > 0 ? (
+                <FormControl sx={{ minWidth: 250 }} size="small">
+                  <InputLabel>Filter by Release</InputLabel>
+                  <Select
+                    multiple
+                    value={filterReleases}
+                    onChange={(e) => {
+                      const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                      if (value.includes(ALL_RELEASES_ID)) {
+                        if (filterReleases.includes(ALL_RELEASES_ID)) {
+                          setFilterReleases([]);
+                        } else {
+                          setFilterReleases([ALL_RELEASES_ID]);
+                        }
+                      } else {
+                        setFilterReleases(value);
+                      }
+                    }}
+                    input={<OutlinedInput label="Filter by Release" />}
+                    renderValue={(selected) => {
+                      if (selected.includes(ALL_RELEASES_ID)) return 'All Releases';
+                      if (selected.length === 0) return 'All Releases';
+                      return `${selected.length} selected`;
+                    }}
+                  >
+                    <MenuItem value={ALL_RELEASES_ID}>
+                      <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID) || filterReleases.length === 0} />
+                      <ListItemText primary="All Releases" />
+                    </MenuItem>
+                    {availableReleases.map((release: any) => (
+                      <MenuItem key={release.id} value={release.id}>
+                        <Checkbox checked={filterReleases.includes(release.id)} disabled={filterReleases.includes(ALL_RELEASES_ID)} />
+                        <ListItemText primary={`${release.name} (v${release.level})`} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              ) : (
+                <Alert severity="info" sx={{ flex: 1 }}>
+                  <Typography variant="caption">
+                    No releases tagged on solution tasks. Add releases to tasks to enable release filtering.
+                  </Typography>
+                </Alert>
+              )}
+
+              {/* Outcomes Filter */}
+              {availableOutcomes.length > 0 ? (
+                <FormControl sx={{ minWidth: 250 }} size="small">
+                  <InputLabel>Filter by Outcome</InputLabel>
+                  <Select
+                    multiple
+                    value={filterOutcomes}
+                    onChange={(e) => {
+                      const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                      if (value.includes(ALL_OUTCOMES_ID)) {
+                        if (filterOutcomes.includes(ALL_OUTCOMES_ID)) {
+                          setFilterOutcomes([]);
+                        } else {
+                          setFilterOutcomes([ALL_OUTCOMES_ID]);
+                        }
+                      } else {
+                        setFilterOutcomes(value);
+                      }
+                    }}
+                    input={<OutlinedInput label="Filter by Outcome" />}
+                    renderValue={(selected) => {
+                      if (selected.includes(ALL_OUTCOMES_ID)) return 'All Outcomes';
+                      if (selected.length === 0) return 'All Outcomes';
+                      return `${selected.length} selected`;
+                    }}
+                  >
+                    <MenuItem value={ALL_OUTCOMES_ID}>
+                      <Checkbox checked={filterOutcomes.includes(ALL_OUTCOMES_ID) || filterOutcomes.length === 0} />
+                      <ListItemText primary="All Outcomes" />
+                    </MenuItem>
+                    {availableOutcomes.map((outcome: any) => (
+                      <MenuItem key={outcome.id} value={outcome.id}>
+                        <Checkbox checked={filterOutcomes.includes(outcome.id)} disabled={filterOutcomes.includes(ALL_OUTCOMES_ID)} />
+                        <ListItemText primary={outcome.name} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              ) : (
+                <Alert severity="info" sx={{ flex: 1 }}>
+                  <Typography variant="caption">
+                    No outcomes tagged on solution tasks. Add outcomes to tasks to enable outcome filtering.
+                  </Typography>
+                </Alert>
+              )}
+              
+              {/* Clear Filters Button */}
+              {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) || 
+                (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => {
+                    setFilterReleases([]);
+                    setFilterOutcomes([]);
+                  }}
+                  sx={{ alignSelf: 'center' }}
+                >
+                  Clear Filters
+                </Button>
+              )}
+            </Box>
+          </Box>
+        )}
 
         {/* Action Buttons */}
         <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
@@ -367,7 +613,18 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
         </Box>
       </Paper>
 
-      {/* Product Groups */}
+      {/* Solution-Specific Tasks - Shown First */}
+      {solutionTasks.length > 0 && (
+        <SolutionTasksGroup
+          progress={solutionTasksProgress}
+          totalTasks={applicableSolutionTasks.length}
+          completedTasks={solutionTasksCompleted}
+          tasks={solutionTasks}
+          onUpdateTaskStatus={handleUpdateSolutionTaskStatus}
+        />
+      )}
+
+      {/* Product Groups - Shown After Solution Tasks */}
       {plan.products.map((product: any) => (
       <ProductAdoptionGroup
         key={product.id}
@@ -382,17 +639,6 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
           }}
         />
       ))}
-
-      {/* Solution-Specific Tasks */}
-      {solutionTasks.length > 0 && (
-        <SolutionTasksGroup
-          progress={solutionTasksProgress}
-          totalTasks={applicableSolutionTasks.length}
-          completedTasks={solutionTasksCompleted}
-          tasks={solutionTasks}
-          onUpdateTaskStatus={handleUpdateSolutionTaskStatus}
-        />
-      )}
 
       {plan.products.length === 0 && solutionTasks.length === 0 && (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
