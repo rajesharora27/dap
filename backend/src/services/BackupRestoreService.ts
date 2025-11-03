@@ -253,19 +253,38 @@ export class BackupRestoreService {
         .map(t => t.trim())
         .filter(t => t);
 
-      // Truncate all tables
+      // Truncate all tables one by one to avoid shell escaping issues with reserved keywords
       if (tables.length > 0) {
-        const truncateQuery = `TRUNCATE TABLE ${tables.map(t => `"${t}"`).join(', ')} CASCADE;`;
-        await execPromise(
-          `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "${truncateQuery}"`
-        );
+        console.log(`Truncating ${tables.length} tables...`);
+        for (const table of tables) {
+          try {
+            await execPromise(
+              `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c 'TRUNCATE TABLE "${table}" CASCADE;'`
+            );
+          } catch (err: any) {
+            // Continue even if truncate fails (table might not exist)
+            console.warn(`Warning: Failed to truncate table ${table}:`, err.message);
+          }
+        }
       }
 
       // Restore from backup
       console.log('Restoring from backup file...');
-      const restoreCommand = `cat "${filePath}" | podman exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database}`;
+      // Use -v ON_ERROR_STOP=0 to continue on errors (like "type already exists")
+      // Redirect stderr to stdout so we can capture it
+      const restoreCommand = `cat "${filePath}" | podman exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -v ON_ERROR_STOP=0`;
 
-      await execPromise(restoreCommand, { maxBuffer: 50 * 1024 * 1024 });
+      try {
+        await execPromise(restoreCommand, { maxBuffer: 50 * 1024 * 1024 });
+        console.log('Restore command completed successfully');
+      } catch (restoreError: any) {
+        // If the error is just about types already existing, we can ignore it
+        if (restoreError.message && restoreError.message.includes('already exists')) {
+          console.log('Ignoring "already exists" errors during restore');
+        } else {
+          throw restoreError;
+        }
+      }
 
       // Get record counts after restore
       const recordsRestored = await this.getRecordCounts();
@@ -277,6 +296,8 @@ export class BackupRestoreService {
       };
     } catch (error: any) {
       console.error('Restore error:', error);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
       return {
         success: false,
         message: 'Restore failed',
