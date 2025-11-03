@@ -253,18 +253,30 @@ export class BackupRestoreService {
         .map(t => t.trim())
         .filter(t => t);
 
-      // Truncate all tables one by one to avoid shell escaping issues with reserved keywords
+      // Truncate all tables at once - write SQL to temp file to avoid escaping issues
       if (tables.length > 0) {
         console.log(`Truncating ${tables.length} tables...`);
-        for (const table of tables) {
-          try {
-            await execPromise(
-              `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c 'TRUNCATE TABLE "${table}" CASCADE;'`
-            );
-          } catch (err: any) {
-            // Continue even if truncate fails (table might not exist)
-            console.warn(`Warning: Failed to truncate table ${table}:`, err.message);
-          }
+        // Build SQL command with proper quoting for each table
+        const truncateStatements = tables.map(t => `TRUNCATE TABLE "${t}" CASCADE;`).join('\n');
+        
+        // Write to temp file
+        const truncateSqlPath = path.join(this.BACKUP_DIR, 'temp_truncate.sql');
+        fs.writeFileSync(truncateSqlPath, truncateStatements);
+        
+        try {
+          // Execute SQL file via stdin
+          await execPromise(
+            `cat "${truncateSqlPath}" | podman exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database}`,
+            { maxBuffer: 10 * 1024 * 1024 }
+          );
+          console.log('All tables truncated successfully');
+          
+          // Clean up temp file
+          fs.unlinkSync(truncateSqlPath);
+        } catch (err: any) {
+          // Clean up temp file even on error
+          try { fs.unlinkSync(truncateSqlPath); } catch {}
+          console.warn('Warning: Some tables failed to truncate, continuing anyway:', err.message);
         }
       }
 
