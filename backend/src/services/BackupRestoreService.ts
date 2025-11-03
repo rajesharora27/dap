@@ -233,68 +233,80 @@ export class BackupRestoreService {
       const dbConfig = this.parseDatabaseUrl();
       const containerName = 'dap_db_1';
 
-      // Drop and recreate database (alternative: truncate all tables)
-      // For safety, we'll use TRUNCATE CASCADE instead of DROP DATABASE
+      // Fastest approach: Drop and recreate the public schema
+      // This avoids all the CASCADE locking issues with TRUNCATE
       console.log('Clearing database before restore...');
-
-      // Get list of all tables
-      const getTablesQuery = `
-        SELECT tablename FROM pg_tables 
-        WHERE schemaname = 'public' 
-        AND tablename != '_prisma_migrations';
-      `;
-
-      const { stdout: tablesOutput } = await execPromise(
-        `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -t -c "${getTablesQuery}"`
-      );
-
-      const tables = tablesOutput
-        .split('\n')
-        .map(t => t.trim())
-        .filter(t => t);
-
-      // Truncate all tables at once - write SQL to temp file to avoid escaping issues
-      if (tables.length > 0) {
-        console.log(`Truncating ${tables.length} tables...`);
-        // Build SQL command with proper quoting for each table
-        const truncateStatements = tables.map(t => `TRUNCATE TABLE "${t}" CASCADE;`).join('\n');
-        
-        // Write to temp file
-        const truncateSqlPath = path.join(this.BACKUP_DIR, 'temp_truncate.sql');
-        fs.writeFileSync(truncateSqlPath, truncateStatements);
-        
+      
+      try {
+        // First, terminate other connections (except ours)
+        console.log('Terminating active connections...');
         try {
-          // Execute SQL file via stdin
           await execPromise(
-            `cat "${truncateSqlPath}" | podman exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database}`,
-            { maxBuffer: 10 * 1024 * 1024 }
+            `podman exec ${containerName} psql -U ${dbConfig.user} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbConfig.database}' AND pid <> pg_backend_pid();"`,
+            { timeout: 5000 }
           );
-          console.log('All tables truncated successfully');
-          
-          // Clean up temp file
-          fs.unlinkSync(truncateSqlPath);
-        } catch (err: any) {
-          // Clean up temp file even on error
-          try { fs.unlinkSync(truncateSqlPath); } catch {}
-          console.warn('Warning: Some tables failed to truncate, continuing anyway:', err.message);
+        } catch {
+          // Ignore errors - might not have permission
+          console.log('Could not terminate connections (may lack permission), continuing...');
         }
+        
+        // Drop the public schema (this drops all tables, functions, etc.)
+        console.log('Dropping public schema...');
+        await execPromise(
+          `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "DROP SCHEMA IF EXISTS public CASCADE;"`,
+          { timeout: 15000 }
+        );
+        
+        // Recreate the public schema
+        console.log('Recreating public schema...');
+        await execPromise(
+          `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO ${dbConfig.user}; GRANT ALL ON SCHEMA public TO public;"`,
+          { timeout: 10000 }
+        );
+        
+        console.log('Database cleared successfully');
+      } catch (err: any) {
+        console.error('Failed to clear database:', err.message);
+        console.error('Full error:', err);
+        throw new Error(`Failed to clear database before restore: ${err.message}`);
       }
 
       // Restore from backup
       console.log('Restoring from backup file...');
-      // Use -v ON_ERROR_STOP=0 to continue on errors (like "type already exists")
-      // Redirect stderr to stdout so we can capture it
-      const restoreCommand = `cat "${filePath}" | podman exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -v ON_ERROR_STOP=0`;
+      console.log(`Backup file size: ${fs.statSync(filePath).size} bytes`);
+      
+      // Simpler restore command - pipe file directly into psql
+      // Set statement timeout to prevent hanging
+      const restoreCommand = `cat "${filePath}" | podman exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -q 2>&1`;
 
+      console.log('Starting restore execution...');
+      const startTime = Date.now();
+      
       try {
-        await execPromise(restoreCommand, { maxBuffer: 50 * 1024 * 1024 });
-        console.log('Restore command completed successfully');
+        await execPromise(restoreCommand, { 
+          maxBuffer: 50 * 1024 * 1024,
+          timeout: 120000 // 120 second timeout (2 minutes)
+        });
+        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+        console.log(`Restore command completed successfully in ${duration}s`);
       } catch (restoreError: any) {
-        // If the error is just about types already existing, we can ignore it
-        if (restoreError.message && restoreError.message.includes('already exists')) {
-          console.log('Ignoring "already exists" errors during restore');
+        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+        console.error(`Restore failed after ${duration}s:`, restoreError.message);
+        
+        // If timeout, provide helpful message
+        if (restoreError.killed && restoreError.signal === 'SIGTERM') {
+          throw new Error('Restore timed out after 60 seconds. Database may be too large or unresponsive.');
+        }
+        
+        // Check if it's just warnings we can ignore
+        if (restoreError.message && (
+          restoreError.message.includes('already exists') ||
+          restoreError.message.includes('NOTICE') ||
+          restoreError.message.includes('WARNING')
+        )) {
+          console.log('Ignoring non-critical restore warnings');
         } else {
-          throw restoreError;
+          throw new Error(`Restore failed: ${restoreError.message}`);
         }
       }
 
