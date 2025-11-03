@@ -28,7 +28,7 @@ import {
 } from '@mui/material';
 import {
   Backup,
-  RestoreBackup as Restore,
+  Restore,
   Delete,
   Download,
   Warning,
