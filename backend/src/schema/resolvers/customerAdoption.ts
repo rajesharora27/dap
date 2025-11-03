@@ -190,6 +190,28 @@ export const CustomerAdoptionQueryResolvers = {
     return customer;
   },
 
+  customerSolution: async (_: any, { id }: any, ctx: any) => {
+    const customerSolution = await prisma.customerSolution.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        solution: {
+          include: {
+            outcomes: true,
+            releases: true,
+            products: {
+              include: {
+                product: true
+              }
+            }
+          }
+        },
+        adoptionPlan: true
+      }
+    });
+    return customerSolution;
+  },
+
   adoptionPlan: async (_: any, { id }: any, ctx: any) => {
     const plan = await prisma.adoptionPlan.findUnique({
       where: { id },
@@ -688,11 +710,22 @@ export const CustomerAdoptionMutationResolvers = {
     
     const customerProduct = await prisma.customerProduct.findUnique({
       where: { id },
-      include: { adoptionPlan: { include: { tasks: true } } },
+      include: { 
+        adoptionPlan: { include: { tasks: true } },
+        customerSolution: true // Include the linked solution if it exists
+      },
     });
     
     if (!customerProduct) {
       throw new Error('Customer product assignment not found');
+    }
+    
+    // Check if this product was created from a solution assignment
+    if (customerProduct.customerSolutionId && customerProduct.customerSolution) {
+      return { 
+        success: false, 
+        message: `This product cannot be removed independently because it was assigned as part of solution "${customerProduct.customerSolution.name}". Please remove the solution instead.`
+      };
     }
     
     // Delete will cascade to adoption plan and tasks
@@ -2022,6 +2055,28 @@ export const CustomerProductWithPlanResolvers = {
     const level = parent.licenseLevel;
     if (!level) return null;
     return level.charAt(0) + level.slice(1).toLowerCase();
+  },
+  customerSolution: async (parent: any) => {
+    if (!parent.customerSolutionId) return null;
+    
+    return await prisma.customerSolution.findUnique({
+      where: { id: parent.customerSolutionId },
+      include: {
+        customer: true,
+        solution: {
+          include: {
+            outcomes: true,
+            releases: true,
+            products: {
+              include: {
+                product: true
+              }
+            }
+          }
+        },
+        adoptionPlan: true
+      }
+    });
   },
   selectedOutcomes: async (parent: any) => {
     const outcomeIds = parent.selectedOutcomes as string[] || [];

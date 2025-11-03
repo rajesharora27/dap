@@ -17,6 +17,7 @@ export interface Outcome {
     name: string;
     description: string;
     productId?: string;
+    solutionId?: string;
     // Tracking flags for product dialog
     isNew?: boolean;
     delete?: boolean;
@@ -34,6 +35,7 @@ export interface Release {
     level: number; // Decimal number representing version (e.g., 1.0, 1.1, 2.0)
     description?: string; // Optional description of the release
     productId?: string;
+    solutionId?: string;
     // Tracking flags for product dialog
     isNew?: boolean;
     delete?: boolean;

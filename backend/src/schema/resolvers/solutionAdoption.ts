@@ -276,23 +276,47 @@ export const SolutionAdoptionMutationResolvers = {
         where: {
           customerId,
           productId: product.id,
-          name: `${name} - ${product.name}` // Use solution name as identifier
+          name: `${name} - ${solution.name} - ${product.name}` // Format: assignmentName - solutionName - productName
         }
       });
       
       if (!existingProductAssignment) {
-        // Get all outcome and release IDs for this product at the solution's license level
-        const productOutcomeIds = product.outcomes.map((o: any) => o.id);
-        const productReleaseIds = product.releases.map((r: any) => r.id);
+        // Get all outcome and release IDs for this product
+        const allProductOutcomeIds = product.outcomes.map((o: any) => o.id);
+        const allProductReleaseIds = product.releases.map((r: any) => r.id);
+        
+        // Filter based on solution's selected outcomes/releases
+        // Only include outcomes/releases that BOTH:
+        // 1. Belong to this specific product
+        // 2. Are in the solution's selection
+        // If solution has empty selection, products will also have empty selection
+        
+        let productOutcomeIds: string[] = [];
+        let productReleaseIds: string[] = [];
+        
+        if (selectedOutcomeIds) {
+          // Only include outcomes that are both in the solution's selection AND belong to this product
+          productOutcomeIds = allProductOutcomeIds.filter((id: string) => 
+            selectedOutcomeIds.includes(id)
+          );
+        }
+        
+        if (selectedReleaseIds) {
+          // Only include releases that are both in the solution's selection AND belong to this product
+          productReleaseIds = allProductReleaseIds.filter((id: string) => 
+            selectedReleaseIds.includes(id)
+          );
+        }
         
         const customerProduct = await prisma.customerProduct.create({
           data: {
             customerId,
             productId: product.id,
-            name: `${name} - ${product.name}`, // Include solution name as identifier
+            name: `${name} - ${solution.name} - ${product.name}`, // Format: assignmentName - solutionName - productName
             licenseLevel: prismaLicenseLevel, // Same license level as solution
             selectedOutcomes: productOutcomeIds,
-            selectedReleases: productReleaseIds
+            selectedReleases: productReleaseIds,
+            customerSolutionId: customerSolution.id // Link to parent solution
           }
         });
         
@@ -315,6 +339,8 @@ export const SolutionAdoptionMutationResolvers = {
     ensureRole(ctx, 'ADMIN');
     
     const updateData: any = {};
+    const oldName = input.name ? (await prisma.customerSolution.findUnique({ where: { id }, select: { name: true } }))?.name : null;
+    
     if (input.name) updateData.name = input.name;
     if (input.licenseLevel) updateData.licenseLevel = input.licenseLevel.toUpperCase();
     if (input.selectedOutcomeIds !== undefined) updateData.selectedOutcomes = input.selectedOutcomeIds;
@@ -325,11 +351,117 @@ export const SolutionAdoptionMutationResolvers = {
       data: updateData,
       include: {
         customer: true,
-        solution: true
+        solution: {
+          include: {
+            products: {
+              include: {
+                product: {
+                  include: {
+                    outcomes: true,
+                    releases: true
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     });
     
     await logAudit('UPDATE_CUSTOMER_SOLUTION', 'CustomerSolution', id, { input }, ctx.user?.id);
+    
+    // Update all underlying products to match the solution settings
+    const underlyingProducts = await prisma.customerProduct.findMany({
+      where: { customerSolutionId: id },
+      include: {
+        product: {
+          include: {
+            outcomes: true,
+            releases: true
+          }
+        }
+      }
+    });
+    
+    for (const customerProduct of underlyingProducts) {
+      const productUpdateData: any = {};
+      
+      // Update license level if changed
+      if (input.licenseLevel) {
+        productUpdateData.licenseLevel = input.licenseLevel.toUpperCase();
+      }
+      
+      // Update name prefix if solution assignment name changed
+      // Format: {assignmentName} - {solutionName} - {productName}
+      if (input.name && oldName) {
+        // Parse the current product name to extract components
+        const nameParts = customerProduct.name.split(' - ');
+        
+        if (nameParts.length === 3) {
+          // Current format is correct: assignmentName - solutionName - productName
+          const [oldAssignmentName, solutionName, productName] = nameParts;
+          if (oldAssignmentName === oldName) {
+            // Update only the assignment name part
+            productUpdateData.name = `${input.name} - ${solutionName} - ${productName}`;
+          }
+        } else if (nameParts.length === 2) {
+          // Legacy format: assignmentName - productName (missing solutionName)
+          // Update to new format with solution name included
+          const [oldAssignmentName, productName] = nameParts;
+          if (oldAssignmentName === oldName) {
+            productUpdateData.name = `${input.name} - ${customerSolution.solution.name} - ${productName}`;
+          }
+        }
+      }
+      
+      // Update outcomes/releases if changed
+      if (input.selectedOutcomeIds !== undefined) {
+        // Filter: only include outcomes that BOTH belong to this product AND are in solution's selection
+        // If solution has empty selection, products will also have empty selection
+        const allProductOutcomeIds = customerProduct.product.outcomes.map((o: any) => o.id);
+        productUpdateData.selectedOutcomes = allProductOutcomeIds.filter((id: string) => 
+          input.selectedOutcomeIds.includes(id)
+        );
+      }
+      
+      if (input.selectedReleaseIds !== undefined) {
+        // Filter: only include releases that BOTH belong to this product AND are in solution's selection
+        // If solution has empty selection, products will also have empty selection
+        const allProductReleaseIds = customerProduct.product.releases.map((r: any) => r.id);
+        productUpdateData.selectedReleases = allProductReleaseIds.filter((id: string) => 
+          input.selectedReleaseIds.includes(id)
+        );
+      }
+      
+      if (Object.keys(productUpdateData).length > 0) {
+        await prisma.customerProduct.update({
+          where: { id: customerProduct.id },
+          data: productUpdateData
+        });
+        
+        await logAudit('UPDATE_PRODUCT_FROM_SOLUTION', 'CustomerProduct', customerProduct.id, { 
+          customerSolutionId: id,
+          updates: productUpdateData 
+        }, ctx.user?.id);
+      }
+    }
+
+    
+    // If license level, outcomes, or releases changed, re-sync the solution adoption plan
+    // to apply new filters to solution tasks
+    if (input.licenseLevel || input.selectedOutcomeIds !== undefined || input.selectedReleaseIds !== undefined) {
+      const adoptionPlan = await prisma.solutionAdoptionPlan.findFirst({
+        where: { customerSolutionId: id }
+      });
+      
+      if (adoptionPlan) {
+        await SolutionAdoptionMutationResolvers.syncSolutionAdoptionPlan(
+          _,
+          { solutionAdoptionPlanId: adoptionPlan.id },
+          ctx
+        );
+      }
+    }
     
     return customerSolution;
   },
@@ -338,10 +470,34 @@ export const SolutionAdoptionMutationResolvers = {
     ensureRole(ctx, 'ADMIN');
     
     try {
+      // Get the customer solution with its linked products
+      const customerSolution = await prisma.customerSolution.findUnique({
+        where: { id },
+        include: {
+          products: true // Get all linked customer products
+        }
+      });
+
+      if (!customerSolution) {
+        return { success: false, message: 'Customer solution not found' };
+      }
+
+      const productCount = customerSolution.products.length;
+
+      // Delete the customer solution
+      // This will CASCADE delete all linked products due to the foreign key relationship
       await prisma.customerSolution.delete({ where: { id } });
-      await logAudit('REMOVE_SOLUTION_FROM_CUSTOMER', 'CustomerSolution', id, {}, ctx.user?.id);
-      return { success: true, message: 'Solution removed successfully' };
+      
+      await logAudit('REMOVE_SOLUTION_FROM_CUSTOMER', 'CustomerSolution', id, { 
+        deletedProductsCount: productCount 
+      }, ctx.user?.id);
+      
+      return { 
+        success: true, 
+        message: `Solution and ${productCount} associated product(s) removed successfully` 
+      };
     } catch (error: any) {
+      console.error('Error removing solution:', error);
       return { success: false, message: error.message };
     }
   },
@@ -890,8 +1046,129 @@ export const SolutionAdoptionMutationResolvers = {
       }
     });
     
+    // STEP 2.5: Re-filter solution tasks based on current license level, outcomes, and releases
+    // Get the full customer solution with solution tasks
+    const customerSolutionFull = await prisma.customerSolution.findUnique({
+      where: { id: plan.customerSolutionId },
+      include: {
+        solution: {
+          include: {
+            tasks: {
+              where: { deletedAt: null },
+              include: {
+                outcomes: {
+                  include: {
+                    outcome: true
+                  }
+                },
+                releases: {
+                  include: {
+                    release: true
+                  }
+                }
+              },
+              orderBy: { sequenceNumber: 'asc' }
+            }
+          }
+        }
+      }
+    });
+    
+    if (customerSolutionFull && customerSolutionFull.solution.tasks.length > 0) {
+      const selectedOutcomes = (customerSolutionFull.selectedOutcomes as string[]) || [];
+      const selectedReleases = (customerSolutionFull.selectedReleases as string[]) || [];
+      
+      // Filter tasks based on license level, outcomes, and releases
+      const filterTasks = (tasks: any[]) => {
+        return tasks.filter(task => {
+          // Filter by license level (hierarchical)
+          const licenseMap: { [key: string]: number } = {
+            'ESSENTIAL': 1,
+            'ADVANTAGE': 2,
+            'SIGNATURE': 3
+          };
+          const customerLevel = licenseMap[customerSolutionFull.licenseLevel];
+          const taskLevel = licenseMap[task.licenseLevel];
+          if (taskLevel > customerLevel) return false;
+          
+          // Filter by outcomes (if any selected)
+          if (selectedOutcomes.length > 0) {
+            const taskOutcomeIds = task.outcomes.map((to: any) => to.outcome.id);
+            const hasMatchingOutcome = taskOutcomeIds.some((id: string) => selectedOutcomes.includes(id));
+            if (!hasMatchingOutcome) return false;
+          }
+          
+          // Filter by releases (if any selected)
+          if (selectedReleases.length > 0) {
+            const taskReleaseIds = task.releases.map((tr: any) => tr.release.id);
+            const hasMatchingRelease = taskReleaseIds.some((id: string) => selectedReleases.includes(id));
+            if (!hasMatchingRelease) return false;
+          }
+          
+          return true;
+        });
+      };
+      
+      const eligibleSolutionTasks = filterTasks(customerSolutionFull.solution.tasks);
+      const existingTaskMap = new Map(plan.tasks.map(t => [t.originalTaskId, t]));
+      
+      // Mark tasks as NOT_APPLICABLE if they no longer match criteria
+      for (const existingTask of plan.tasks.filter(t => t.sourceType === 'SOLUTION')) {
+        const originalTask = customerSolutionFull.solution.tasks.find(t => t.id === existingTask.originalTaskId);
+        if (originalTask) {
+          const isEligible = eligibleSolutionTasks.some(t => t.id === existingTask.originalTaskId);
+          if (!isEligible && existingTask.status !== 'NOT_APPLICABLE') {
+            await prisma.customerSolutionTask.update({
+              where: { id: existingTask.id },
+              data: { status: 'NOT_APPLICABLE' }
+            });
+          } else if (isEligible && existingTask.status === 'NOT_APPLICABLE') {
+            // Re-enable task if it now matches criteria
+            await prisma.customerSolutionTask.update({
+              where: { id: existingTask.id },
+              data: { status: 'NOT_STARTED' }
+            });
+          }
+        }
+      }
+      
+      // Add new tasks that are now eligible
+      let maxSequence = Math.max(...plan.tasks.map(t => t.sequenceNumber), 0);
+      for (const solutionTask of eligibleSolutionTasks) {
+        if (!existingTaskMap.has(solutionTask.id)) {
+          maxSequence++;
+          await prisma.customerSolutionTask.create({
+            data: {
+              solutionAdoptionPlanId: plan.id,
+              originalTaskId: solutionTask.id,
+              sourceType: 'SOLUTION',
+              sourceProductId: null,
+              name: solutionTask.name,
+              description: solutionTask.description,
+              notes: solutionTask.notes,
+              sequenceNumber: maxSequence,
+              weight: solutionTask.weight,
+              licenseLevel: solutionTask.licenseLevel,
+              status: 'NOT_STARTED',
+              howToDoc: solutionTask.howToDoc,
+              howToVideo: solutionTask.howToVideo,
+              createdBy: ctx.user?.id
+            }
+          });
+        }
+      }
+    }
+    
     // STEP 3: Calculate progress from solution-specific tasks
-    const solutionSpecificTasks = plan.tasks.filter(t => t.sourceType === 'SOLUTION');
+    // Re-fetch tasks after updates
+    const updatedPlan = await prisma.solutionAdoptionPlan.findUnique({
+      where: { id: solutionAdoptionPlanId },
+      include: {
+        tasks: true
+      }
+    });
+    
+    const solutionSpecificTasks = updatedPlan!.tasks.filter(t => t.sourceType === 'SOLUTION');
     const progress = calculateSolutionProgress(solutionSpecificTasks);
     const solutionTasksComplete = solutionSpecificTasks.filter(
       t => (t.status === 'COMPLETED' || t.status === 'DONE')
@@ -1285,6 +1562,82 @@ export const SolutionAdoptionMutationResolvers = {
     
     await logAudit('REORDER_PRODUCTS_IN_SOLUTION', 'Solution', solutionId, { productOrders }, ctx.user?.id);
     return true;
+  },
+
+  migrateProductNamesToNewFormat: async (_: any, args: any, ctx: any) => {
+    ensureRole(ctx, 'ADMIN');
+    
+    // Get all customer products that are part of a solution
+    const customerProducts = await prisma.customerProduct.findMany({
+      where: {
+        customerSolutionId: { not: null }
+      },
+      include: {
+        product: true,
+        customerSolution: {
+          include: {
+            solution: true
+          }
+        }
+      }
+    });
+    
+    let migratedCount = 0;
+    let alreadyCorrectCount = 0;
+    
+    for (const customerProduct of customerProducts) {
+      if (!customerProduct.customerSolution) continue;
+      
+      const assignmentName = customerProduct.customerSolution.name;
+      const solutionName = customerProduct.customerSolution.solution.name;
+      const productName = customerProduct.product.name;
+      
+      // Expected format: {assignmentName} - {solutionName} - {productName}
+      const expectedName = `${assignmentName} - ${solutionName} - ${productName}`;
+      
+      // Check if name is already in correct format
+      if (customerProduct.name === expectedName) {
+        alreadyCorrectCount++;
+        continue;
+      }
+      
+      // Parse current name to check format
+      const nameParts = customerProduct.name.split(' - ');
+      
+      if (nameParts.length === 2) {
+        // Legacy format: {assignmentName} - {productName}
+        // Update to new format with solution name
+        await prisma.customerProduct.update({
+          where: { id: customerProduct.id },
+          data: { name: expectedName }
+        });
+        
+        console.log(`Migrated product: "${customerProduct.name}" -> "${expectedName}"`);
+        migratedCount++;
+      } else if (nameParts.length === 3) {
+        // Has 3 parts but might be incorrect
+        // Force update to expected format
+        await prisma.customerProduct.update({
+          where: { id: customerProduct.id },
+          data: { name: expectedName }
+        });
+        
+        console.log(`Fixed product name: "${customerProduct.name}" -> "${expectedName}"`);
+        migratedCount++;
+      }
+    }
+    
+    const summary = {
+      totalChecked: customerProducts.length,
+      migratedCount,
+      alreadyCorrectCount,
+      message: `Migration complete: ${migratedCount} product names updated, ${alreadyCorrectCount} were already correct`
+    };
+    
+    console.log('Product name migration summary:', summary);
+    await logAudit('MIGRATE_PRODUCT_NAMES', 'CustomerProduct', 'bulk', summary, ctx.user?.id);
+    
+    return summary;
   }
 };
 

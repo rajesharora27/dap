@@ -351,7 +351,13 @@ export function CustomerDetailView({ customerId, onBack }: Props) {
               <CardContent>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                   <Typography variant="h6">
-                    Adoption Plan: {selectedCustomerProduct.product.name}
+                    {selectedCustomerProduct.customerSolutionId ? (
+                      // For products from solutions: name already has format "Assignment - Solution - Product"
+                      selectedCustomerProduct.name
+                    ) : (
+                      // For standalone products: name is assignment name, append product name
+                      `${selectedCustomerProduct.name} - ${selectedCustomerProduct.product.name}`
+                    )}
                   </Typography>
                   <Box sx={{ display: 'flex', gap: 1 }}>
                     <Chip label={selectedCustomerProduct.licenseLevel} color="primary" size="small" />

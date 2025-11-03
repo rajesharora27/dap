@@ -15,7 +15,31 @@ import {
 import { Add, Edit, Delete } from '@mui/icons-material';
 import { SolutionDialog } from './dialogs/SolutionDialog';
 
-const SOLUTIONS = gql`query Solutions{ solutions(first:20){ edges { node { id name description customAttrs } } } }`;
+const SOLUTIONS = gql`
+  query Solutions {
+    solutions(first: 20) {
+      edges {
+        node {
+          id
+          name
+          description
+          customAttrs
+          outcomes {
+            id
+            name
+            description
+          }
+          releases {
+            id
+            name
+            description
+            level
+          }
+        }
+      }
+    }
+  }
+`;
 const CREATE_SOLUTION = gql`mutation CreateSolution($input:SolutionInput!){ createSolution(input:$input){ id name description customAttrs } }`;
 const UPDATE_SOLUTION = gql`mutation UpdateSolution($id:ID!,$input:SolutionInput!){ updateSolution(id:$id,input:$input){ id name description customAttrs } }`;
 const DELETE_SOLUTION = gql`mutation DeleteSolution($id:ID!){ deleteSolution(id:$id) }`;

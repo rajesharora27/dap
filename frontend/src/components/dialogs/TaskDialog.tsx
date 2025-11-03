@@ -467,8 +467,17 @@ export const TaskDialog: React.FC<Props> = ({
                 </MenuItem>
                 
                 {/* Individual outcomes */}
-                {outcomes.map((outcome) => {
+                {[...outcomes]
+                  .sort((a, b) => {
+                    // Solution-level outcomes first, then product outcomes
+                    if (a.solutionId && !b.solutionId) return -1;
+                    if (!a.solutionId && b.solutionId) return 1;
+                    // Within same type, sort by name
+                    return a.name.localeCompare(b.name);
+                  })
+                  .map((outcome) => {
                   const isSelected = selectedOutcomes.includes(outcome.id);
+                  const isSolutionLevel = !!(outcome as any).solutionId;
                   return (
                     <MenuItem 
                       key={outcome.id} 
@@ -490,7 +499,12 @@ export const TaskDialog: React.FC<Props> = ({
                         }}
                       />
                       <ListItemText 
-                        primary={outcome.name}
+                        primary={
+                          <span>
+                            {outcome.name}
+                            {isSolutionLevel && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#1976d2' }}>🎯 Solution</span>}
+                          </span>
+                        }
                         sx={{
                           '& .MuiListItemText-primary': {
                             fontWeight: isSelected ? 600 : 400,
@@ -601,11 +615,18 @@ export const TaskDialog: React.FC<Props> = ({
                     />
                   </MenuItem>,
                   
-                  /* Individual releases */
+                  /* Individual releases - sort solution-level first */
                   ...[...availableReleases]
-                    .sort((a, b) => a.level - b.level)
+                    .sort((a, b) => {
+                      // Solution-level releases first, then product releases
+                      if (a.solutionId && !b.solutionId) return -1;
+                      if (!a.solutionId && b.solutionId) return 1;
+                      // Within same type, sort by level
+                      return a.level - b.level;
+                    })
                     .map((release) => {
                       const isSelected = release.id ? selectedReleases.includes(release.id) : false;
+                      const isSolutionLevel = !!(release as any).solutionId;
                       return (
                         <MenuItem 
                           key={release.id} 
@@ -627,7 +648,12 @@ export const TaskDialog: React.FC<Props> = ({
                             }}
                           />
                           <ListItemText 
-                            primary={`${release.name} (v${release.level})`}
+                            primary={
+                              <span>
+                                {`${release.name} (v${release.level})`}
+                                {isSolutionLevel && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#1976d2' }}>🎯 Solution</span>}
+                              </span>
+                            }
                             sx={{
                               '& .MuiListItemText-primary': {
                                 fontWeight: isSelected ? 600 : 400,

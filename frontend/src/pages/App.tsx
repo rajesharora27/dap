@@ -137,6 +137,17 @@ const SOLUTIONS = gql`
           name
           description
           customAttrs
+          outcomes {
+            id
+            name
+            description
+          }
+          releases {
+            id
+            name
+            description
+            level
+          }
           products {
             edges {
               node {

@@ -34,6 +34,7 @@ import {
   CustomerSolutionTaskResolvers
 } from './solutionAdoption';
 import { solutionReportingService } from '../../services/solutionReportingService';
+import { BackupQueryResolvers, BackupMutationResolvers } from './backup';
 import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../lib/pagination';
 import { logAudit } from '../../lib/audit';
 import { ensureRole, requireUser } from '../../lib/auth';
@@ -626,6 +627,7 @@ export const resolvers = {
     
     // Customer Adoption queries
     , customer: CustomerAdoptionQueryResolvers.customer
+    , customerSolution: CustomerAdoptionQueryResolvers.customerSolution
     , adoptionPlan: CustomerAdoptionQueryResolvers.adoptionPlan
     , adoptionPlansForCustomer: CustomerAdoptionQueryResolvers.adoptionPlansForCustomer
     , customerTask: CustomerAdoptionQueryResolvers.customerTask
@@ -647,6 +649,9 @@ export const resolvers = {
       requireUser(ctx);
       return await solutionReportingService.generateSolutionComparisonReport(solutionId);
     }
+    
+    // Backup queries
+    , listBackups: BackupQueryResolvers.listBackups
     
     // Excel Export
     , exportProductToExcel: async (_: any, { productName }: any) => {
@@ -878,6 +883,15 @@ export const resolvers = {
 
     createRelease: async (_: any, { input }: any, ctx: any) => {
       ensureRole(ctx, 'ADMIN');
+      
+      // Validate that either productId or solutionId is provided (but not both)
+      if (!input.productId && !input.solutionId) {
+        throw new Error('Either productId or solutionId must be provided');
+      }
+      if (input.productId && input.solutionId) {
+        throw new Error('Cannot provide both productId and solutionId');
+      }
+      
       if (fallbackActive) {
         // TODO: Add fallback support for releases if needed
         throw new Error('Release management not supported in fallback mode');
@@ -888,41 +902,58 @@ export const resolvers = {
             name: input.name,
             description: input.description,
             level: input.level,
-            isActive: input.isActive,
-            productId: input.productId
+            isActive: input.isActive ?? true,
+            productId: input.productId || null,
+            solutionId: input.solutionId || null
           }
         });
         await logAudit('CREATE_RELEASE', 'Release', r.id, { input }, ctx.user?.id);
         return r;
       } catch (error: any) {
         if (error.code === 'P2002') {
-          throw new Error('A release with this level already exists for this product');
+          const target = input.productId ? 'product' : 'solution';
+          throw new Error(`A release with this level already exists for this ${target}`);
         }
         throw error;
       }
     },
     updateRelease: async (_: any, { id, input }: any, ctx: any) => {
       ensureRole(ctx, 'ADMIN');
+      
+      // Validate that either productId or solutionId is provided (but not both) if either is specified
+      if (input.productId && input.solutionId) {
+        throw new Error('Cannot provide both productId and solutionId');
+      }
+      
       if (fallbackActive) {
         throw new Error('Release management not supported in fallback mode');
       }
       const before = await prisma.release.findUnique({ where: { id } });
       try {
+        const updateData: any = {
+          name: input.name,
+          description: input.description,
+          level: input.level,
+          isActive: input.isActive
+        };
+        
+        // Only update productId/solutionId if explicitly provided
+        if (input.productId !== undefined) {
+          updateData.productId = input.productId || null;
+        }
+        if (input.solutionId !== undefined) {
+          updateData.solutionId = input.solutionId || null;
+        }
+        
         const r = await prisma.release.update({
           where: { id },
-          data: {
-            name: input.name,
-            description: input.description,
-            level: input.level,
-            isActive: input.isActive,
-            productId: input.productId
-          }
+          data: updateData
         });
         await logAudit('UPDATE_RELEASE', 'Release', id, { before, after: r }, ctx.user?.id);
         return r;
       } catch (error: any) {
         if (error.code === 'P2002') {
-          throw new Error('A release with this level already exists for this product');
+          throw new Error('A release with this level already exists for this product or solution');
         }
         throw error;
       }
@@ -2170,6 +2201,7 @@ export const resolvers = {
     addProductToSolutionEnhanced: SolutionAdoptionMutationResolvers.addProductToSolutionEnhanced,
     removeProductFromSolutionEnhanced: SolutionAdoptionMutationResolvers.removeProductFromSolutionEnhanced,
     reorderProductsInSolution: SolutionAdoptionMutationResolvers.reorderProductsInSolution,
+    migrateProductNamesToNewFormat: SolutionAdoptionMutationResolvers.migrateProductNamesToNewFormat,
 
     // Excel Import
     importProductFromExcel: async (_: any, { content, mode }: any, ctx: any) => {
@@ -2228,6 +2260,11 @@ export const resolvers = {
         };
       }
     }
+    
+    // Backup mutations
+    , createBackup: BackupMutationResolvers.createBackup
+    , restoreBackup: BackupMutationResolvers.restoreBackup
+    , deleteBackup: BackupMutationResolvers.deleteBackup
   },
   Subscription: {
     productUpdated: {

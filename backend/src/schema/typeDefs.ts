@@ -314,6 +314,7 @@ export const typeDefs = gql`
     adoptionPlan(id: ID!): AdoptionPlan
     adoptionPlansForCustomer(customerId: ID!): [AdoptionPlan!]!
     customerTask(id: ID!): CustomerTask
+    customerSolution(id: ID!): CustomerSolutionWithPlan
     customerTasksForPlan(adoptionPlanId: ID!, status: CustomerTaskStatus): [CustomerTask!]!
     customerTelemetryDatabase(customerId: ID, customerProductId: ID): [CustomerTelemetryRecord!]!
     
@@ -440,7 +441,8 @@ export const typeDefs = gql`
     description: String
     level: Float!               # Decimal level (1.0, 1.1, 2.0, etc.)
     isActive: Boolean
-    productId: ID!              # Product this release belongs to
+    productId: ID               # Product this release belongs to (optional - either productId or solutionId)
+    solutionId: ID              # Solution this release belongs to (optional - either productId or solutionId)
   }
   input TaskStatusInput { code: String! label: String! }
   input OutcomeInput { name: String! description: String productId: ID solutionId: ID }
@@ -614,6 +616,9 @@ export const typeDefs = gql`
   addProductToSolutionEnhanced(solutionId: ID!, productId: ID!, order: Int): Boolean!
   removeProductFromSolutionEnhanced(solutionId: ID!, productId: ID!): Boolean!
   reorderProductsInSolution(solutionId: ID!, productOrders: [ProductOrderInput!]!): Boolean!
+  
+  # Data Migration
+  migrateProductNamesToNewFormat: ProductNameMigrationResult!
   }
 
   # Telemetry Import/Export Types
@@ -659,6 +664,8 @@ export const typeDefs = gql`
     customer: Customer!
     product: Product!
     name: String!
+    customerSolutionId: ID
+    customerSolution: CustomerSolutionWithPlan
     licenseLevel: LicenseLevel!
     selectedOutcomes: [Outcome!]!
     selectedReleases: [Release!]!
@@ -760,6 +767,13 @@ export const typeDefs = gql`
   type DeleteResult {
     success: Boolean!
     message: String
+  }
+
+  type ProductNameMigrationResult {
+    totalChecked: Int!
+    migratedCount: Int!
+    alreadyCorrectCount: Int!
+    message: String!
   }
 
   # Solution Adoption Types
@@ -914,5 +928,75 @@ export const typeDefs = gql`
   type Subscription {
     productUpdated: Product!
     taskUpdated: Task!
+  }
+
+  # Backup and Restore Types
+  type BackupMetadata {
+    id: String!
+    filename: String!
+    timestamp: DateTime!
+    size: Int!
+    databaseUrl: String!
+    recordCounts: BackupRecordCounts!
+  }
+
+  type BackupRecordCounts {
+    users: Int!
+    products: Int!
+    solutions: Int!
+    customers: Int!
+    customerProducts: Int!
+    customerSolutions: Int!
+    adoptionPlans: Int!
+    solutionAdoptionPlans: Int!
+    tasks: Int!
+    customerTasks: Int!
+    customerSolutionTasks: Int!
+  }
+
+  type BackupResult {
+    success: Boolean!
+    filename: String
+    size: Int
+    url: String
+    metadata: BackupMetadata
+    message: String
+    error: String
+  }
+
+  type RestoreResult {
+    success: Boolean!
+    message: String!
+    recordsRestored: BackupRecordCounts
+    error: String
+  }
+
+  type DeleteBackupResult {
+    success: Boolean!
+    message: String!
+  }
+
+  extend type Query {
+    """
+    List all available database backups
+    """
+    listBackups: [BackupMetadata!]!
+  }
+
+  extend type Mutation {
+    """
+    Create a new database backup (snapshot)
+    """
+    createBackup: BackupResult!
+
+    """
+    Restore database from a backup file
+    """
+    restoreBackup(filename: String!): RestoreResult!
+
+    """
+    Delete a backup file
+    """
+    deleteBackup(filename: String!): DeleteBackupResult!
   }
 `;

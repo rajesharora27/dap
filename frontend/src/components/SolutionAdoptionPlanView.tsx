@@ -233,10 +233,10 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
           <Box>
             <Typography variant="h5" gutterBottom>
-              {adoptionPlan.solutionName}
+              {adoptionPlan.customerSolution.name} - {adoptionPlan.solutionName}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              {adoptionPlan.customerSolution.customer.name} • {adoptionPlan.customerSolution.name}
+              Customer: {adoptionPlan.customerSolution.customer.name} • Solution Adoption Plan
             </Typography>
           </Box>
           <Box sx={{ display: 'flex', gap: 1 }}>
