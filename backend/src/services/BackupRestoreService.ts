@@ -163,15 +163,12 @@ export class BackupRestoreService {
       // Get record counts before backup
       const recordCounts = await this.getRecordCounts();
 
-      // Create backup using pg_dump
-      const env = {
-        ...process.env,
-        PGPASSWORD: dbConfig.password,
-      };
+      // Create backup using pg_dump from the container
+      // Use podman/docker to execute pg_dump inside the PostgreSQL container
+      const containerName = 'dap_db_1';
+      const command = `podman exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p > "${filePath}" 2>&1`;
 
-      const command = `pg_dump -h ${dbConfig.host} -p ${dbConfig.port} -U ${dbConfig.user} -d ${dbConfig.database} -F p -f "${filePath}"`;
-
-      await execPromise(command, { env, maxBuffer: 50 * 1024 * 1024 }); // 50MB buffer
+      await execPromise(command, { maxBuffer: 50 * 1024 * 1024 }); // 50MB buffer
 
       // Get file size
       const stats = fs.statSync(filePath);
@@ -234,30 +231,7 @@ export class BackupRestoreService {
       }
 
       const dbConfig = this.parseDatabaseUrl();
-
-      // Set environment for psql
-      const env = {
-        ...process.env,
-        PGPASSWORD: dbConfig.password,
-      };
-
-      // Drop all connections to the database (optional, for clean restore)
-      const terminateConnectionsQuery = `
-        SELECT pg_terminate_backend(pg_stat_activity.pid)
-        FROM pg_stat_activity
-        WHERE pg_stat_activity.datname = '${dbConfig.database}'
-        AND pid <> pg_backend_pid();
-      `;
-
-      // First, terminate existing connections (if running as superuser)
-      try {
-        await execPromise(
-          `psql -h ${dbConfig.host} -p ${dbConfig.port} -U ${dbConfig.user} -d postgres -c "${terminateConnectionsQuery}"`,
-          { env }
-        );
-      } catch (err) {
-        console.warn('Could not terminate connections (may require superuser):', err);
-      }
+      const containerName = 'dap_db_1';
 
       // Drop and recreate database (alternative: truncate all tables)
       // For safety, we'll use TRUNCATE CASCADE instead of DROP DATABASE
@@ -271,8 +245,7 @@ export class BackupRestoreService {
       `;
 
       const { stdout: tablesOutput } = await execPromise(
-        `psql -h ${dbConfig.host} -p ${dbConfig.port} -U ${dbConfig.user} -d ${dbConfig.database} -t -c "${getTablesQuery}"`,
-        { env }
+        `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -t -c "${getTablesQuery}"`
       );
 
       const tables = tablesOutput
@@ -284,16 +257,15 @@ export class BackupRestoreService {
       if (tables.length > 0) {
         const truncateQuery = `TRUNCATE TABLE ${tables.map(t => `"${t}"`).join(', ')} CASCADE;`;
         await execPromise(
-          `psql -h ${dbConfig.host} -p ${dbConfig.port} -U ${dbConfig.user} -d ${dbConfig.database} -c "${truncateQuery}"`,
-          { env }
+          `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "${truncateQuery}"`
         );
       }
 
       // Restore from backup
       console.log('Restoring from backup file...');
-      const restoreCommand = `psql -h ${dbConfig.host} -p ${dbConfig.port} -U ${dbConfig.user} -d ${dbConfig.database} -f "${filePath}"`;
+      const restoreCommand = `cat "${filePath}" | podman exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database}`;
 
-      await execPromise(restoreCommand, { env, maxBuffer: 50 * 1024 * 1024 });
+      await execPromise(restoreCommand, { maxBuffer: 50 * 1024 * 1024 });
 
       // Get record counts after restore
       const recordsRestored = await this.getRecordCounts();

@@ -47,6 +47,7 @@ import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDial
 import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
 import { SolutionManagement } from '../components/SolutionManagement';
 import { SolutionManagementMain } from '../components/SolutionManagementMain';
+import { BackupManagementPanel } from '../components/BackupManagementPanel';
 import { LicenseHandlers, ReleaseHandlers, OutcomeHandlers, ProductHandlers } from '../utils/sharedHandlers';
 import { resolveImportTarget, type ResolveImportAbortReason } from '../utils/excelImportTarget';
 import { License, Outcome } from '../types/shared';
@@ -54,6 +55,7 @@ import {
   Inventory2 as ProductIcon,
   Lightbulb as SolutionIcon,
   People as CustomerIcon,
+  Backup as BackupIcon,
   Edit,
   Delete,
   Add,
@@ -825,7 +827,7 @@ export function App() {
   const isAuthenticated = true; // Always authenticated for demo
 
   // State management
-  const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers'>('products');
+  const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers' | 'backup'>('products');
   const [selectedProduct, setSelectedProduct] = useState('');
   const [selectedSolution, setSelectedSolution] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState('');
@@ -4926,6 +4928,17 @@ export function App() {
                 ))}
               </List>
             </Collapse>
+
+            {/* Backup & Restore Section */}
+            <ListItemButton
+              selected={selectedSection === 'backup'}
+              onClick={() => setSelectedSection('backup')}
+            >
+              <ListItemIcon>
+                <BackupIcon />
+              </ListItemIcon>
+              <ListItemText primary="Backup & Restore" />
+            </ListItemButton>
           </List>
           <Divider />
         </Box>
@@ -5810,6 +5823,11 @@ export function App() {
             {/* Customers Section */}
             {selectedSection === 'customers' && (
               <CustomerAdoptionPanelV4 selectedCustomerId={selectedCustomerId} />
+            )}
+
+            {/* Backup & Restore Section */}
+            {selectedSection === 'backup' && (
+              <BackupManagementPanel />
             )}
 
             {/* Add Product Dialog */}
