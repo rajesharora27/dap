@@ -1147,11 +1147,12 @@ export const SolutionAdoptionMutationResolvers = {
               description: solutionTask.description,
               notes: solutionTask.notes,
               sequenceNumber: maxSequence,
+              estMinutes: solutionTask.estMinutes || 0,
               weight: solutionTask.weight,
               licenseLevel: solutionTask.licenseLevel,
               status: 'NOT_STARTED',
-              howToDoc: solutionTask.howToDoc,
-              howToVideo: solutionTask.howToVideo,
+              howToDoc: solutionTask.howToDoc || [],
+              howToVideo: solutionTask.howToVideo || [],
               createdBy: ctx.user?.id
             }
           });
@@ -1510,6 +1511,97 @@ export const SolutionAdoptionMutationResolvers = {
     });
   },
 
+  // Export telemetry template for solution adoption plan
+  exportSolutionAdoptionPlanTelemetryTemplate: async (_: any, { solutionAdoptionPlanId }: { solutionAdoptionPlanId: string }, ctx: any) => {
+    ensureRole(ctx, 'ADMIN');
+    
+    // Use the customer telemetry export service with solution-specific queries
+    const { CustomerTelemetryExportService } = require('../../services/telemetry/CustomerTelemetryExportService');
+    
+    // Get solution adoption plan details
+    const plan = await prisma.solutionAdoptionPlan.findUnique({
+      where: { id: solutionAdoptionPlanId },
+      include: {
+        customerSolution: {
+          include: {
+            customer: true,
+            solution: true
+          }
+        },
+        tasks: {
+          orderBy: { sequenceNumber: 'asc' },
+          include: {
+            telemetryAttributes: true
+          }
+        }
+      }
+    });
+    
+    if (!plan) {
+      throw new Error('Solution adoption plan not found');
+    }
+    
+    const metadata = {
+      customerName: plan.customerSolution.customer.name,
+      solutionName: plan.customerSolution.solution.name,
+      assignmentName: plan.customerSolution.name,
+      taskCount: plan.tasks.length,
+      attributeCount: plan.tasks.reduce((sum, task) => sum + task.telemetryAttributes.length, 0)
+    };
+    
+    // Generate the Excel template (reuse the same format as customer/product)
+    const buffer = await CustomerTelemetryExportService.generateSolutionTelemetryTemplate(solutionAdoptionPlanId);
+    
+    // Create temp directory if it doesn't exist
+    const path = require('path');
+    const fs = require('fs');
+    const tempDir = path.join(process.cwd(), 'temp', 'telemetry-exports');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    // Save to temp file
+    const filename = `${metadata.customerName.replace(/[^a-z0-9]/gi, '_')}_${metadata.solutionName.replace(/[^a-z0-9]/gi, '_')}_telemetry_${Date.now()}.xlsx`;
+    const filepath = path.join(tempDir, filename);
+    fs.writeFileSync(filepath, buffer);
+    
+    await logAudit('EXPORT_SOLUTION_TELEMETRY_TEMPLATE', 'SolutionAdoptionPlan', solutionAdoptionPlanId, metadata, ctx.user?.id);
+    
+    return {
+      url: `/api/telemetry/download/${filename}`,
+      filename,
+      taskCount: metadata.taskCount,
+      attributeCount: metadata.attributeCount
+    };
+  },
+
+  // Import telemetry data for solution adoption plan
+  importSolutionAdoptionPlanTelemetry: async (_: any, { solutionAdoptionPlanId, file }: { solutionAdoptionPlanId: string; file: any }, ctx: any) => {
+    ensureRole(ctx, 'ADMIN');
+    
+    // Handle file upload - file is an Upload scalar
+    const { createReadStream } = await file;
+    const stream = createReadStream();
+    
+    // Read stream into buffer
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    const fileBuffer = Buffer.concat(chunks);
+    
+    // Import the telemetry values (reuse customer service with solution-specific logic)
+    const { CustomerTelemetryImportService } = require('../../services/telemetry/CustomerTelemetryImportService');
+    const result = await CustomerTelemetryImportService.importSolutionTelemetryValues(solutionAdoptionPlanId, fileBuffer);
+    
+    // Evaluate all task statuses immediately after import
+    await SolutionAdoptionMutationResolvers.evaluateAllSolutionTasksTelemetry(_, { solutionAdoptionPlanId }, ctx);
+    
+    await logAudit('IMPORT_SOLUTION_TELEMETRY_DATA', 'SolutionAdoptionPlan', solutionAdoptionPlanId, result.summary, ctx.user?.id);
+    
+    return result;
+  },
+
   // Product management mutations
   addProductToSolutionEnhanced: async (_: any, { solutionId, productId, order }: any, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
@@ -1671,6 +1763,12 @@ export const CustomerSolutionWithPlanResolvers = {
       where: { id: { in: releaseIds } }
     });
   },
+  products: async (parent: any) => {
+    // Fetch all customer products linked to this solution
+    return parent.products || prisma.customerProduct.findMany({
+      where: { customerSolutionId: parent.id }
+    });
+  },
   adoptionPlan: (parent: any) => {
     return parent.adoptionPlan || prisma.solutionAdoptionPlan.findUnique({
       where: { customerSolutionId: parent.id }
@@ -1778,17 +1876,22 @@ export const SolutionAdoptionProductResolvers = {
   },
   productAdoptionPlan: async (parent: any) => {
     // Find the CustomerProduct for this product within the solution
-    // The CustomerProduct name follows the pattern: "{SolutionName} - {ProductName}"
+    // The CustomerProduct name follows the pattern: "{assignmentName} - {solutionName} - {productName}"
     const solutionAdoptionPlan = await prisma.solutionAdoptionPlan.findUnique({
       where: { id: parent.solutionAdoptionPlanId },
       include: {
-        customerSolution: true
+        customerSolution: {
+          include: {
+            solution: true
+          }
+        }
       }
     });
     
     if (!solutionAdoptionPlan) return null;
     
-    const expectedProductName = `${solutionAdoptionPlan.customerSolution.name} - ${parent.productName}`;
+    // Use the correct 3-part naming pattern: assignmentName - solutionName - productName
+    const expectedProductName = `${solutionAdoptionPlan.customerSolution.name} - ${solutionAdoptionPlan.customerSolution.solution.name} - ${parent.productName}`;
     
     // Find the CustomerProduct with this name
     const customerProduct = await prisma.customerProduct.findFirst({

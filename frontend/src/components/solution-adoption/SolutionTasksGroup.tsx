@@ -153,30 +153,42 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
   };
 
   return (
-    <Paper sx={{ mb: 2, border: '1px solid', borderColor: 'primary.main' }}>
+    <Paper 
+      elevation={1}
+      sx={{ 
+        mb: 2, 
+        border: '1.5px solid', 
+        borderColor: '#E0E0E0',
+        borderRadius: 2,
+        overflow: 'hidden'
+      }}
+    >
       {/* Header */}
       <Box
         sx={{
-          p: 2,
+          p: 2.5,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          bgcolor: 'primary.light',
+          bgcolor: '#F3E5F5',
           cursor: 'pointer',
+          borderLeft: '4px solid',
+          borderLeftColor: '#9C27B0',
+          transition: 'all 0.2s ease',
           '&:hover': {
-            bgcolor: 'primary.main',
-            '& *': { color: 'white' }
+            bgcolor: '#E1BEE7',
+            boxShadow: 2
           }
         }}
         onClick={() => setExpanded(!expanded)}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-          <IconButton size="small">
+          <IconButton size="small" sx={{ color: '#7B1FA2' }}>
             {expanded ? <ExpandLess /> : <ExpandMore />}
           </IconButton>
           
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h6">
+            <Typography variant="h6" sx={{ color: '#6A1B9A', fontWeight: 600 }}>
               🎯 Solution-Specific Tasks
             </Typography>
             
@@ -186,16 +198,23 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                   <LinearProgress
                     variant="determinate"
                     value={progress}
-                    sx={{ flex: 1, height: 8, borderRadius: 1 }}
-                    color="secondary"
+                    sx={{ 
+                      flex: 1, 
+                      height: 8, 
+                      borderRadius: 1,
+                      bgcolor: '#E1BEE7',
+                      '& .MuiLinearProgress-bar': {
+                        bgcolor: '#9C27B0'
+                      }
+                    }}
                   />
-                  <Typography variant="body2">
+                  <Typography variant="body2" fontWeight="600" sx={{ color: '#6A1B9A' }}>
                     {Math.round(progress)}%
                   </Typography>
                 </Box>
               </Box>
               
-              <Typography variant="body2">
+              <Typography variant="body2" fontWeight="500" sx={{ color: '#6A1B9A' }}>
                 {completedTasks} of {totalTasks} tasks
               </Typography>
             </Box>

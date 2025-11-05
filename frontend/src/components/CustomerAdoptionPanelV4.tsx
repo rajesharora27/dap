@@ -63,6 +63,8 @@ import {
 import { CustomerDialog } from './dialogs/CustomerDialog';
 import { AssignProductDialog } from './dialogs/AssignProductDialog';
 import { EditEntitlementsDialog } from './dialogs/EditEntitlementsDialog';
+import { AssignSolutionDialog } from './dialogs/AssignSolutionDialog';
+import { EditSolutionEntitlementsDialog } from './dialogs/EditSolutionEntitlementsDialog';
 import { CustomerSolutionPanel } from './CustomerSolutionPanel';
 import { getApiUrl } from '../config/frontend.config';
 
@@ -102,6 +104,7 @@ const GET_CUSTOMERS = gql`
       solutions {
         id
         name
+        licenseLevel
         solution {
           id
           name
@@ -335,6 +338,28 @@ const REMOVE_PRODUCT_FROM_CUSTOMER = gql`
   }
 `;
 
+const REMOVE_SOLUTION_FROM_CUSTOMER = gql`
+  mutation RemoveSolutionFromCustomer($id: ID!) {
+    removeSolutionFromCustomerEnhanced(id: $id) {
+      success
+      message
+    }
+  }
+`;
+
+const SYNC_SOLUTION_ADOPTION_PLAN = gql`
+  mutation SyncSolutionAdoptionPlan($solutionAdoptionPlanId: ID!) {
+    syncSolutionAdoptionPlan(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
+      id
+      progressPercentage
+      totalTasks
+      completedTasks
+      needsSync
+      lastSyncedAt
+    }
+  }
+`;
+
 const EXPORT_CUSTOMER_ADOPTION = gql`
   mutation ExportCustomerAdoption($customerId: ID!, $customerProductId: ID!) {
     exportCustomerAdoptionToExcel(customerId: $customerId, customerProductId: $customerProductId) {
@@ -393,6 +418,64 @@ const IMPORT_TELEMETRY = gql`
   }
 `;
 
+const EXPORT_SOLUTION_TELEMETRY_TEMPLATE = gql`
+  mutation ExportSolutionTelemetryTemplate($solutionAdoptionPlanId: ID!) {
+    exportSolutionAdoptionPlanTelemetryTemplate(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
+      url
+      filename
+      taskCount
+      attributeCount
+    }
+  }
+`;
+
+const IMPORT_SOLUTION_TELEMETRY = gql`
+  mutation ImportSolutionTelemetry($solutionAdoptionPlanId: ID!, $file: Upload!) {
+    importSolutionAdoptionPlanTelemetry(solutionAdoptionPlanId: $solutionAdoptionPlanId, file: $file) {
+      success
+      batchId
+      summary {
+        tasksProcessed
+        attributesUpdated
+        criteriaEvaluated
+        errors
+      }
+      taskResults {
+        taskId
+        taskName
+        attributesUpdated
+        criteriaMet
+        criteriaTotal
+        completionPercentage
+        errors
+      }
+    }
+  }
+`;
+
+const EVALUATE_ALL_SOLUTION_TASKS_TELEMETRY = gql`
+  mutation EvaluateAllSolutionTasksTelemetry($solutionAdoptionPlanId: ID!) {
+    evaluateAllSolutionTasksTelemetry(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
+      id
+      progressPercentage
+      totalTasks
+      completedTasks
+      tasks {
+        id
+        name
+        status
+        statusUpdatedAt
+        statusUpdatedBy
+        statusUpdateSource
+        telemetryAttributes {
+          id
+          isMet
+        }
+      }
+    }
+  }
+`;
+
 interface StatusDialogState {
   open: boolean;
   taskId: string;
@@ -420,16 +503,30 @@ interface ImportResultDialog {
 
 interface CustomerAdoptionPanelV4Props {
   selectedCustomerId: string | null;
+  onRequestAddCustomer?: () => void;
+  forceTab?: 'main' | 'products' | 'solutions';
+  hideTabs?: boolean;
 }
 
-export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoptionPanelV4Props) {
-  const [activeTab, setActiveTab] = useState<'products' | 'solutions'>('products');
+export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustomer, forceTab, hideTabs }: CustomerAdoptionPanelV4Props) {
+  const [activeTab, setActiveTab] = useState<'main' | 'products' | 'solutions'>(forceTab || 'main');
+
+  // Sync activeTab with forceTab when it changes
+  useEffect(() => {
+    if (forceTab) {
+      setActiveTab(forceTab);
+    }
+  }, [forceTab]);
   const [selectedCustomerProductId, setSelectedCustomerProductId] = useState<string | null>(null);
+  const [selectedCustomerSolutionId, setSelectedCustomerSolutionId] = useState<string | null>(null);
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [assignProductDialogOpen, setAssignProductDialogOpen] = useState(false);
+  const [assignSolutionDialogOpen, setAssignSolutionDialogOpen] = useState(false);
   const [editEntitlementsDialogOpen, setEditEntitlementsDialogOpen] = useState(false);
+  const [editSolutionEntitlementsDialogOpen, setEditSolutionEntitlementsDialogOpen] = useState(false);
   const [cannotEditProductDialogOpen, setCannotEditProductDialogOpen] = useState(false);
   const [deleteProductDialogOpen, setDeleteProductDialogOpen] = useState(false);
+  const [deleteSolutionDialogOpen, setDeleteSolutionDialogOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [taskDetailsDialogOpen, setTaskDetailsDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
@@ -462,8 +559,17 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     fetchPolicy: 'cache-and-network',
   });
 
-  const selectedCustomer = data?.customers?.find((c: any) => c.id === selectedCustomerId);
-  const selectedCustomerProduct = selectedCustomer?.products?.find((cp: any) => cp.id === selectedCustomerProductId);
+  // Memoize to prevent recalculation on every render (prevents infinite loops)
+  const selectedCustomer = React.useMemo(() => 
+    data?.customers?.find((c: any) => c.id === selectedCustomerId),
+    [data?.customers, selectedCustomerId]
+  );
+
+  const selectedCustomerProduct = React.useMemo(() => 
+    selectedCustomer?.products?.find((cp: any) => cp.id === selectedCustomerProductId),
+    [selectedCustomer?.products, selectedCustomerProductId]
+  );
+
   const adoptionPlanId = selectedCustomerProduct?.adoptionPlan?.id;
 
   const { data: planData, loading: planLoading, error: planError, refetch: refetchPlan } = useQuery(GET_ADOPTION_PLAN, {
@@ -681,6 +787,30 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     },
   });
 
+  const [removeSolution, { loading: removeSolutionLoading }] = useMutation(REMOVE_SOLUTION_FROM_CUSTOMER, {
+    refetchQueries: ['GetCustomers'],
+    awaitRefetchQueries: true,
+    onCompleted: () => {
+      setSelectedCustomerSolutionId(null);
+      refetch();
+      setSuccess('Solution removed from customer successfully');
+    },
+    onError: (err) => {
+      console.error('Remove solution error:', err);
+      setError(`Failed to remove solution: ${err.message}`);
+    },
+  });
+
+  const [syncSolutionPlan, { loading: syncSolutionLoading }] = useMutation(SYNC_SOLUTION_ADOPTION_PLAN, {
+    refetchQueries: ['GetCustomers'],
+    awaitRefetchQueries: true,
+    onCompleted: () => {
+      refetch();
+      setSuccess('Solution adoption plan synced successfully');
+    },
+    onError: (err) => setError(err.message),
+  });
+
   const [exportCustomerAdoption] = useMutation(EXPORT_CUSTOMER_ADOPTION, {
     onCompleted: (data) => {
       const { content, filename } = data.exportCustomerAdoptionToExcel;
@@ -895,10 +1025,21 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     setSelectedCustomerProductId(customerProductId);
   };
 
-  const handleAddCustomer = () => {
+  const handleAddCustomer = React.useCallback(() => {
     setEditingCustomer(null);
     setCustomerDialogOpen(true);
-  };
+  }, []);
+
+  // Expose the add customer handler to parent component
+  React.useEffect(() => {
+    if (onRequestAddCustomer) {
+      // Store the handler globally so the parent can trigger it
+      (window as any).__openAddCustomerDialog = handleAddCustomer;
+    }
+    return () => {
+      delete (window as any).__openAddCustomerDialog;
+    };
+  }, [onRequestAddCustomer, handleAddCustomer]);
 
   const handleEditCustomer = () => {
     if (selectedCustomer) {
@@ -906,6 +1047,14 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       setCustomerDialogOpen(true);
     }
   };
+
+  // Expose the edit customer handler to parent component
+  React.useEffect(() => {
+    (window as any).__openEditCustomerDialog = handleEditCustomer;
+    return () => {
+      delete (window as any).__openEditCustomerDialog;
+    };
+  }, [selectedCustomer]);
 
   const handleDeleteCustomer = () => {
     if (selectedCustomer && confirm(`Delete customer "${selectedCustomer.name}"?`)) {
@@ -1011,6 +1160,17 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
     }
   };
 
+  const handleDeleteSolution = () => {
+    setDeleteSolutionDialogOpen(true);
+  };
+
+  const handleRemoveSolution = () => {
+    if (selectedCustomerSolutionId) {
+      removeSolution({ variables: { id: selectedCustomerSolutionId } });
+      setDeleteSolutionDialogOpen(false);
+    }
+  };
+
   const handleExportTelemetry = async () => {
     if (!adoptionPlanId) {
       setError('No adoption plan found');
@@ -1110,42 +1270,425 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
       <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {selectedCustomer ? (
           <>
-            {/* Header with Customer Info and Actions */}
-            <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Box>
+            {/* Header with Customer Info - Only show in standalone mode */}
+            {!hideTabs && (
+              <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                <Box sx={{ mb: 2 }}>
                   <Typography variant="h5">{selectedCustomer.name}</Typography>
                   {selectedCustomer.description && (
                     <Typography variant="body2" color="text.secondary">{selectedCustomer.description}</Typography>
                   )}
                 </Box>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Button startIcon={<Add />} variant="outlined" size="small" color="primary" onClick={handleAddCustomer}>
-                    Add
-                  </Button>
-                  <Button startIcon={<Edit />} variant="outlined" size="small" color="primary" onClick={handleEditCustomer}>
-                    Edit
-                  </Button>
-                  <Button startIcon={<Delete />} variant="outlined" size="small" color="error" onClick={handleDeleteCustomer}>
-                    Delete
-                  </Button>
+
+                {/* Tabs for Main, Products and Solutions */}
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2 }}>
+                  <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
+                    <Tab label="Main" value="main" />
+                    <Tab label="Products" value="products" />
+                    <Tab label="Solutions" value="solutions" />
+                  </Tabs>
                 </Box>
               </Box>
+            )}
 
-              {/* Tabs for Products and Solutions */}
-              <Box sx={{ borderBottom: 1, borderColor: 'divider', mt: 2 }}>
-                <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
-                  <Tab label="Products" value="products" />
-                  <Tab label="Solutions" value="solutions" />
-                </Tabs>
+            {/* Main Tab Content */}
+            {activeTab === 'main' && (
+              <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 1.5, sm: 2, md: 3 }, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ width: '100%', maxWidth: 1200 }}>
+                  {/* Customer Details Section - Only show when tabs are visible (standalone mode) */}
+                  {!hideTabs && (
+                    <Paper 
+                      elevation={1}
+                      sx={{ 
+                        p: { xs: 2, sm: 2.5, md: 3 }, 
+                        mb: { xs: 2, md: 3 }, 
+                        borderRadius: 2,
+                        border: '1.5px solid',
+                        borderColor: '#E0E0E0'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'flex-start' }, mb: 2, gap: { xs: 2, sm: 0 } }}>
+                        <Box>
+                          <Typography variant="h6" fontWeight="600" color="primary.main" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
+                            Customer Information
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
+                            Basic customer details and management
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+                          <Button 
+                            startIcon={<Edit />} 
+                            variant="contained" 
+                            size="small" 
+                            onClick={handleEditCustomer}
+                            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
+                          >
+                            Edit
+                          </Button>
+                          <Button 
+                            startIcon={<Delete />} 
+                            variant="outlined" 
+                            size="small" 
+                            color="error" 
+                            onClick={handleDeleteCustomer}
+                            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
+                          >
+                            Delete
+                          </Button>
+                        </Box>
+                      </Box>
+                      <Box sx={{ mt: 3, display: 'grid', gap: 2 }}>
+                        <Box sx={{ display: 'flex', borderLeft: '3px solid', borderColor: 'primary.main', pl: 2 }}>
+                          <Typography variant="body2" color="text.secondary" sx={{ minWidth: 120 }}>Name</Typography>
+                          <Typography variant="body1" fontWeight="500">{selectedCustomer.name}</Typography>
+                        </Box>
+                        {selectedCustomer.description && (
+                          <Box sx={{ display: 'flex', borderLeft: '3px solid', borderColor: 'primary.main', pl: 2 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ minWidth: 120 }}>Description</Typography>
+                            <Typography variant="body1">{selectedCustomer.description}</Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </Paper>
+                  )}
+
+                  {/* Product Assignments Section */}
+                  <Paper 
+                    elevation={1}
+                    sx={{ 
+                      p: { xs: 2, sm: 2.5, md: 3 }, 
+                      mb: { xs: 2, md: 3 }, 
+                      borderRadius: 2,
+                      border: '1.5px solid',
+                      borderColor: '#E0E0E0'
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'flex-start' }, mb: { xs: 2, md: 3 }, gap: { xs: 2, sm: 0 } }}>
+                      <Box>
+                        <Typography variant="h6" fontWeight="600" color="primary.main" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
+                          Product Assignments
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
+                          Products assigned to this customer
+                        </Typography>
+                      </Box>
+                      <Button 
+                        startIcon={<Add />} 
+                        variant="contained" 
+                        size="small"
+                        onClick={() => setAssignProductDialogOpen(true)}
+                        sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '120px' } }}
+                      >
+                        Assign Product
+                      </Button>
+                    </Box>
+                    {selectedCustomer.products && selectedCustomer.products.length > 0 ? (
+                      <Box sx={{ display: 'grid', gap: 2 }}>
+                        {selectedCustomer.products.map((cp: any) => {
+                          const isFromSolution = !!cp.customerSolutionId;
+                          return (
+                            <Box 
+                              key={cp.id} 
+                              sx={{ 
+                                display: 'flex', 
+                                flexDirection: { xs: 'column', sm: 'row' },
+                                justifyContent: 'space-between', 
+                                alignItems: { xs: 'stretch', sm: 'center' },
+                                p: { xs: 1.5, sm: 2, md: 2.5 },
+                                border: '1.5px solid',
+                                borderColor: '#E0E0E0',
+                                borderLeft: '4px solid',
+                                borderLeftColor: isFromSolution ? '#2196F3' : '#4CAF50',
+                                backgroundColor: isFromSolution ? '#E3F2FD' : '#E8F5E9',
+                                borderRadius: 2,
+                                transition: 'all 0.2s ease',
+                                gap: { xs: 2, sm: 1 },
+                                '&:hover': {
+                                  boxShadow: 2,
+                                  borderColor: isFromSolution ? '#2196F3' : '#4CAF50'
+                                }
+                              }}
+                            >
+                              <Box sx={{ flex: 1 }}>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                  <Typography variant="body1" fontWeight="500" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
+                                    {cp.customerSolutionId ? (
+                                      `${cp.name}`
+                                    ) : (
+                                      `${cp.name} - ${cp.product.name}`
+                                    )}
+                                  </Typography>
+                                  <Chip 
+                                    label={cp.licenseLevel} 
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
+                                    sx={{ height: 22, fontWeight: 500, fontSize: { xs: '0.7rem', md: '0.75rem' } }}
+                                  />
+                                  <Chip 
+                                    label={isFromSolution ? "From Solution" : "Direct"} 
+                                    size="small"
+                                    color={isFromSolution ? "info" : "success"}
+                                    sx={{ height: 22, fontWeight: 500, fontSize: { xs: '0.7rem', md: '0.75rem' } }}
+                                  />
+                                </Box>
+                                {cp.customerSolutionId && (
+                                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' } }}>
+                                    Part of solution assignment • Edit via solution
+                                  </Typography>
+                                )}
+                              </Box>
+                              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+                                {cp.adoptionPlan && (
+                                  <Tooltip title="Sync with latest product tasks">
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<Sync sx={{ display: { xs: 'none', sm: 'block' } }} />}
+                                      color={cp.adoptionPlan.needsSync ? 'warning' : 'primary'}
+                                      onClick={() => {
+                                        syncAdoptionPlan({ variables: { adoptionPlanId: cp.adoptionPlan.id } });
+                                      }}
+                                      disabled={syncLoading}
+                                      sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '80px' } }}
+                                    >
+                                      {syncLoading ? 'Syncing...' : cp.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
+                                    </Button>
+                                  </Tooltip>
+                                )}
+                                <Button
+                                  size="small"
+                                  variant="outlined"
+                                  onClick={() => {
+                                    setSelectedCustomerProductId(cp.id);
+                                    setActiveTab('products');
+                                  }}
+                                  sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '100px' } }}
+                                >
+                                  View Plan
+                                </Button>
+                                <Tooltip 
+                                  title={isFromSolution ? "Cannot edit product assigned as part of solution. Edit the solution instead." : ""}
+                                  arrow
+                                >
+                                  <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<Edit sx={{ display: { xs: 'none', sm: 'block' } }} />}
+                                      disabled={isFromSolution}
+                                      onClick={() => {
+                                        if (!isFromSolution) {
+                                          setSelectedCustomerProductId(cp.id);
+                                          handleEditProductEntitlements();
+                                        }
+                                      }}
+                                      sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
+                                    >
+                                      Edit
+                                    </Button>
+                                  </Box>
+                                </Tooltip>
+                                <Tooltip 
+                                  title={isFromSolution ? "Cannot remove product assigned as part of solution. Remove the solution instead." : ""}
+                                  arrow
+                                >
+                                  <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      color="error"
+                                      startIcon={<Delete sx={{ display: { xs: 'none', sm: 'block' } }} />}
+                                      disabled={isFromSolution}
+                                      onClick={() => {
+                                        if (!isFromSolution) {
+                                          setSelectedCustomerProductId(cp.id);
+                                          setDeleteProductDialogOpen(true);
+                                        }
+                                      }}
+                                      sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
+                                    >
+                                      Remove
+                                    </Button>
+                                  </Box>
+                                </Tooltip>
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                      </Box>
+                    ) : (
+                      <Box sx={{ textAlign: 'center', py: 4, backgroundColor: 'background.default', borderRadius: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          No products assigned yet
+                        </Typography>
+                      </Box>
+                    )}
+                  </Paper>
+
+                  {/* Solution Assignments Section */}
+                  <Paper 
+                    elevation={1}
+                    sx={{ 
+                      p: { xs: 2, sm: 2.5, md: 3 }, 
+                      borderRadius: 2,
+                      border: '1.5px solid',
+                      borderColor: '#E0E0E0'
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'flex-start' }, mb: { xs: 2, md: 3 }, gap: { xs: 2, sm: 0 } }}>
+                      <Box>
+                        <Typography variant="h6" fontWeight="600" color="primary.main" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
+                          Solution Assignments
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
+                          Solutions assigned to this customer
+                        </Typography>
+                      </Box>
+                      <Button 
+                        startIcon={<Add />} 
+                        variant="contained" 
+                        size="small"
+                        onClick={() => setAssignSolutionDialogOpen(true)}
+                        sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '140px' } }}
+                      >
+                        Assign Solution
+                      </Button>
+                    </Box>
+                    {selectedCustomer.solutions && selectedCustomer.solutions.length > 0 ? (
+                      <Box sx={{ display: 'grid', gap: 2 }}>
+                        {selectedCustomer.solutions.map((cs: any) => (
+                          <Box 
+                            key={cs.id} 
+                            sx={{ 
+                              display: 'flex', 
+                              flexDirection: { xs: 'column', sm: 'row' },
+                              justifyContent: 'space-between', 
+                              alignItems: { xs: 'stretch', sm: 'center' },
+                              p: { xs: 1.5, sm: 2, md: 2.5 },
+                              border: '1.5px solid',
+                              borderColor: '#E0E0E0',
+                              borderLeft: '4px solid',
+                              borderLeftColor: '#9C27B0',
+                              backgroundColor: '#F3E5F5',
+                              borderRadius: 2,
+                              transition: 'all 0.2s ease',
+                              gap: { xs: 2, sm: 1 },
+                              '&:hover': {
+                                boxShadow: 2,
+                                borderColor: '#9C27B0'
+                              }
+                            }}
+                          >
+                            <Box sx={{ flex: 1 }}>
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                <Typography variant="body1" fontWeight="500" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
+                                  {cs.name} - {cs.solution.name}
+                                </Typography>
+                                <Chip 
+                                  label={cs.licenseLevel} 
+                                  size="small"
+                                  color="primary"
+                                  variant="outlined"
+                                  sx={{ height: 22, fontWeight: 500, fontSize: { xs: '0.7rem', md: '0.75rem' } }}
+                                />
+                                <Chip 
+                                  label="Solution" 
+                                  size="small"
+                                  color="secondary"
+                                  sx={{ height: 22, fontWeight: 500, fontSize: { xs: '0.7rem', md: '0.75rem' } }}
+                                />
+                              </Box>
+                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' } }}>
+                                Comprehensive solution with multiple products
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+                              {cs.adoptionPlan && (
+                                <Tooltip title="Sync with latest solution/product tasks">
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={<Sync sx={{ display: { xs: 'none', sm: 'block' } }} />}
+                                    color={cs.adoptionPlan.needsSync ? 'warning' : 'primary'}
+                                    onClick={() => {
+                                      syncSolutionPlan({ variables: { solutionAdoptionPlanId: cs.adoptionPlan.id } });
+                                    }}
+                                    disabled={syncSolutionLoading}
+                                    sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '80px' } }}
+                                  >
+                                    {syncSolutionLoading ? 'Syncing...' : cs.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
+                                  </Button>
+                                </Tooltip>
+                              )}
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                onClick={() => {
+                                  setSelectedCustomerSolutionId(cs.id);
+                                  setActiveTab('solutions');
+                                }}
+                                sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '100px' } }}
+                              >
+                                View Plan
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<Edit sx={{ display: { xs: 'none', sm: 'block' } }} />}
+                                onClick={() => {
+                                  setSelectedCustomerSolutionId(cs.id);
+                                  setEditSolutionEntitlementsDialogOpen(true);
+                                }}
+                                sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="error"
+                                startIcon={<Delete sx={{ display: { xs: 'none', sm: 'block' } }} />}
+                                onClick={() => {
+                                  setSelectedCustomerSolutionId(cs.id);
+                                  setDeleteSolutionDialogOpen(true);
+                                }}
+                                sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
+                              >
+                                Remove
+                              </Button>
+                            </Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    ) : (
+                      <Box sx={{ textAlign: 'center', py: 4, backgroundColor: 'background.default', borderRadius: 1 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          No solutions assigned yet
+                        </Typography>
+                      </Box>
+                    )}
+                  </Paper>
+                </Box>
               </Box>
-            </Box>
+            )}
 
-            {/* Tab Content */}
+            {/* Products Tab Content */}
             {activeTab === 'products' && (
-              <>
-                {/* Product Selection */}
-                <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+              <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ width: '100%', maxWidth: 1400, p: { xs: 1.5, sm: 2, md: 0 } }}>
+                  {/* Product Selection */}
+                  <Box 
+                    sx={{ 
+                      p: { xs: 1.5, sm: 2, md: 2.5 }, 
+                      mb: 2, 
+                      bgcolor: 'background.paper', 
+                      borderRadius: 2, 
+                      border: '1.5px solid', 
+                      borderColor: '#E0E0E0'
+                    }}
+                  >
                   <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                     <FormControl sx={{ minWidth: 300 }} size="small">
                       <InputLabel>Select Product</InputLabel>
@@ -1154,66 +1697,47 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                     onChange={(e) => handleProductChange(e.target.value)}
                     label="Select Product"
                   >
-                    {selectedCustomer.products?.map((cp: any) => (
-                      <MenuItem key={cp.id} value={cp.id}>
-                        {cp.customerSolutionId ? (
-                          // For products from solutions: name already has "Assignment - Solution - Product"
-                          `${cp.name} (${cp.licenseLevel})`
-                        ) : (
-                          // For standalone products: show "Assignment Name - Product Name"
-                          `${cp.name} - ${cp.product.name} (${cp.licenseLevel})`
-                        )}
-                      </MenuItem>
-                    ))}
+                    {selectedCustomer.products?.map((cp: any) => {
+                      const isFromSolution = !!cp.customerSolutionId;
+                      return (
+                        <MenuItem 
+                          key={cp.id} 
+                          value={cp.id}
+                          sx={{
+                            borderLeft: `4px solid ${isFromSolution ? '#2196f3' : '#8bc34a'}`,
+                            backgroundColor: isFromSolution ? '#f8fcff' : '#fafff5',
+                            mb: 0.5
+                          }}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                            <Chip 
+                              label={isFromSolution ? "Solution" : "Direct"} 
+                              size="small"
+                              sx={{ 
+                                height: 18,
+                                fontSize: '0.65rem',
+                                backgroundColor: isFromSolution ? '#2196f3' : '#8bc34a',
+                                color: 'white',
+                                fontWeight: 'bold'
+                              }}
+                            />
+                            <Typography variant="body2">
+                              {cp.customerSolutionId ? (
+                                // For products from solutions: name already has "Assignment - Solution - Product"
+                                `${cp.name} (${cp.licenseLevel})`
+                              ) : (
+                                // For standalone products: show "Assignment Name - Product Name"
+                                `${cp.name} - ${cp.product.name} (${cp.licenseLevel})`
+                              )}
+                            </Typography>
+                          </Box>
+                        </MenuItem>
+                      );
+                    })}
                   </Select>
                 </FormControl>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  color="primary"
-                  startIcon={<Add />}
-                  onClick={() => setAssignProductDialogOpen(true)}
-                >
-                  Assign Product
-                </Button>
                 {selectedCustomerProductId && planData?.adoptionPlan && (
                   <>
-                    <Tooltip title="Edit license and outcomes">
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        color="primary"
-                        startIcon={<Edit />}
-                        onClick={handleEditProductEntitlements}
-                      >
-                        Edit
-                      </Button>
-                    </Tooltip>
-                    <Tooltip title="Sync with latest product tasks (outcomes, licenses, releases)">
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<Sync />}
-                        color={planData.adoptionPlan.needsSync ? 'warning' : 'primary'}
-                        onClick={handleSync}
-                        disabled={syncLoading}
-                      >
-                        {syncLoading ? 'Syncing...' : `Sync ${planData.adoptionPlan.needsSync ? '⚠️' : ''}`}
-                      </Button>
-                    </Tooltip>
-                    <Tooltip title="Remove this product from customer">
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        color="error"
-                        startIcon={<Delete />}
-                        onClick={handleDeleteProduct}
-                        disabled={removeLoading}
-                      >
-                        Delete
-                      </Button>
-                    </Tooltip>
-                    <Divider orientation="vertical" flexItem sx={{ mx: 1 }} />
                     <Tooltip title="Export Excel template for telemetry data entry">
                       <Button
                         variant="outlined"
@@ -1257,10 +1781,33 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                   </>
                 )}
               </Box>
-            </Box>
+                  </Box>
 
-            {/* Progress and Tasks */}
-            <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+                  {/* Progress and Tasks */}
+                  <Box sx={{ p: 2.5 }}>
+              {/* Solution-based Product Info */}
+              {selectedCustomerProductId && (() => {
+                const selectedProd = selectedCustomer.products?.find((p: any) => p.id === selectedCustomerProductId);
+                return selectedProd?.customerSolutionId ? (
+                  <Alert 
+                    severity="info" 
+                    sx={{ 
+                      mb: 2,
+                      borderLeft: '4px solid #2196f3',
+                      backgroundColor: '#f8fcff'
+                    }}
+                  >
+                    <Typography variant="subtitle2" gutterBottom>
+                      🔗 Solution-Based Product
+                    </Typography>
+                    <Typography variant="body2">
+                      This product was assigned as part of a solution. Some operations may be restricted. 
+                      To modify entitlements, please edit the solution assignment.
+                    </Typography>
+                  </Alert>
+                ) : null;
+              })()}
+
               {/* Loading State */}
               {selectedCustomerProductId && planLoading && (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: 2 }}>
@@ -1843,14 +2390,17 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
                   }
                 </Alert>
               )}
-            </Box>
-              </>
+                  </Box>
+                </Box>
+              </Box>
             )}
 
             {/* Solutions Tab Content */}
             {activeTab === 'solutions' && (
-              <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
-                <CustomerSolutionPanel customerId={selectedCustomerId || ''} />
+              <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 1.5, sm: 2, md: 3 }, display: 'flex', justifyContent: 'center' }}>
+                <Box sx={{ width: '100%', maxWidth: 1400 }}>
+                  <CustomerSolutionPanel customerId={selectedCustomerId || ''} />
+                </Box>
               </Box>
             )}
           </>
@@ -2713,6 +3263,92 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId }: CustomerAdoption
           Open All ({videoMenuAnchor?.links.length})
         </MenuItem>
       </Menu>
+
+      {/* Dialogs */}
+      <AssignProductDialog
+        open={assignProductDialogOpen}
+        onClose={() => setAssignProductDialogOpen(false)}
+        customerId={selectedCustomerId || ''}
+        onAssigned={() => refetch()}
+      />
+
+      {selectedCustomerProduct && (
+        <EditEntitlementsDialog
+          open={editEntitlementsDialogOpen}
+          onClose={() => setEditEntitlementsDialogOpen(false)}
+          customerProductId={selectedCustomerProduct.id}
+          productId={selectedCustomerProduct.product.id}
+          currentLicenseLevel={selectedCustomerProduct.licenseLevel}
+          currentSelectedOutcomes={selectedCustomerProduct.selectedOutcomes || []}
+          currentSelectedReleases={selectedCustomerProduct.selectedReleases || []}
+          onSave={(licenseLevel, selectedOutcomeIds, selectedReleaseIds) => {
+            updateCustomerProduct({
+              variables: {
+                id: selectedCustomerProduct.id,
+                input: {
+                  licenseLevel,
+                  selectedOutcomeIds,
+                  selectedReleaseIds,
+                },
+              },
+            });
+          }}
+        />
+      )}
+
+      <AssignSolutionDialog
+        open={assignSolutionDialogOpen}
+        onClose={() => setAssignSolutionDialogOpen(false)}
+        customerId={selectedCustomerId || ''}
+        onSuccess={() => refetch()}
+      />
+
+      {selectedCustomerSolutionId && (
+        <EditSolutionEntitlementsDialog
+          open={editSolutionEntitlementsDialogOpen}
+          onClose={() => setEditSolutionEntitlementsDialogOpen(false)}
+          customerSolutionId={selectedCustomerSolutionId}
+          onSuccess={() => refetch()}
+        />
+      )}
+
+      {/* Delete Product Confirmation Dialog */}
+      <Dialog
+        open={deleteProductDialogOpen}
+        onClose={() => setDeleteProductDialogOpen(false)}
+      >
+        <DialogTitle>Remove Product</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to remove this product assignment? This will also delete the associated adoption plan and all task progress.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteProductDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleRemoveProduct} color="error" variant="contained" disabled={removeLoading}>
+            {removeLoading ? 'Removing...' : 'Remove'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Solution Confirmation Dialog */}
+      <Dialog
+        open={deleteSolutionDialogOpen}
+        onClose={() => setDeleteSolutionDialogOpen(false)}
+      >
+        <DialogTitle>Remove Solution</DialogTitle>
+        <DialogContent>
+          <Typography>
+            Are you sure you want to remove this solution assignment? This will also remove all associated product assignments and adoption plans.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteSolutionDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleRemoveSolution} color="error" variant="contained" disabled={removeSolutionLoading}>
+            {removeSolutionLoading ? 'Removing...' : 'Remove'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

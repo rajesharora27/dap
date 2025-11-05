@@ -2198,6 +2198,8 @@ export const resolvers = {
     bulkUpdateCustomerSolutionTaskStatus: SolutionAdoptionMutationResolvers.bulkUpdateCustomerSolutionTaskStatus,
     evaluateSolutionTaskTelemetry: SolutionAdoptionMutationResolvers.evaluateSolutionTaskTelemetry,
     evaluateAllSolutionTasksTelemetry: SolutionAdoptionMutationResolvers.evaluateAllSolutionTasksTelemetry,
+    exportSolutionAdoptionPlanTelemetryTemplate: SolutionAdoptionMutationResolvers.exportSolutionAdoptionPlanTelemetryTemplate,
+    importSolutionAdoptionPlanTelemetry: SolutionAdoptionMutationResolvers.importSolutionAdoptionPlanTelemetry,
     addProductToSolutionEnhanced: SolutionAdoptionMutationResolvers.addProductToSolutionEnhanced,
     removeProductFromSolutionEnhanced: SolutionAdoptionMutationResolvers.removeProductFromSolutionEnhanced,
     reorderProductsInSolution: SolutionAdoptionMutationResolvers.reorderProductsInSolution,
