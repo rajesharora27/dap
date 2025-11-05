@@ -15,6 +15,7 @@ import { makeExecutableSchema } from '@graphql-tools/schema';
 import { createContext, prisma } from './context';
 import { config, getCorsOrigins } from './config/app.config';
 import { CustomerTelemetryImportService } from './services/telemetry/CustomerTelemetryImportService';
+// Force restart to pick up schema changes - 2025-11-05
 
 export async function createApp() {
   const app = express();

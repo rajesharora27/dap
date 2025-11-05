@@ -63,8 +63,8 @@ interface EditEntitlementsDialogProps {
   customerProductId: string;
   productId: string;
   currentLicenseLevel: string;
-  currentSelectedOutcomes: Array<{ id: string; name: string }>;
-  currentSelectedReleases: Array<{ id: string; name: string }>;
+  currentSelectedOutcomes?: Array<{ id: string; name: string }>;
+  currentSelectedReleases?: Array<{ id: string; name: string }>;
   onSave: (licenseLevel: string, selectedOutcomeIds: string[], selectedReleaseIds: string[]) => void;
 }
 
@@ -78,20 +78,36 @@ export function EditEntitlementsDialog({
   currentSelectedReleases,
   onSave,
 }: EditEntitlementsDialogProps) {
-  // Helper function to extract license level enum from full license name
-  const extractLicenseLevel = (licenseName: string): string => {
-    if (licenseName.includes('Signature')) return 'Signature';
-    if (licenseName.includes('Advantage')) return 'Advantage';
-    if (licenseName.includes('Essential')) return 'Essential';
-    return licenseName; // Fallback to original name
+  // Helper function to map license level number to GraphQL enum value
+  const mapLicenseLevelToEnum = (level: number): string => {
+    const levelMap: { [key: number]: string } = {
+      1: 'Essential',
+      2: 'Advantage',
+      3: 'Signature'
+    };
+    return levelMap[level] || 'Essential';
   };
 
-  const [licenseLevel, setLicenseLevel] = useState(currentLicenseLevel);
+  // Normalize currentLicenseLevel to enum value (in case it's a full license name)
+  const normalizeLicenseLevel = (level: string): string => {
+    // If it's already an enum value, return as-is
+    if (['Essential', 'Advantage', 'Signature'].includes(level)) {
+      return level;
+    }
+    // Extract from full license name
+    if (level.includes('Signature') || level.includes('Premier') || level.includes('Apex') || level.includes('Beyond')) return 'Signature';
+    if (level.includes('Advantage') || level.includes('Plus')) return 'Advantage';
+    if (level.includes('Essential') || level.includes('Base') || level.includes('Essentials')) return 'Essential';
+    // Default fallback
+    return 'Essential';
+  };
+
+  const [licenseLevel, setLicenseLevel] = useState(normalizeLicenseLevel(currentLicenseLevel));
   const [selectedOutcomeIds, setSelectedOutcomeIds] = useState<string[]>(
-    currentSelectedOutcomes.map(o => o.id)
+    currentSelectedOutcomes?.map(o => o.id) || []
   );
   const [selectedReleaseIds, setSelectedReleaseIds] = useState<string[]>(
-    currentSelectedReleases.map(r => r.id)
+    currentSelectedReleases?.map(r => r.id) || []
   );
 
   const { data: outcomesData, loading: outcomesLoading } = useQuery(GET_OUTCOMES_FOR_PRODUCT, {
@@ -115,7 +131,7 @@ export function EditEntitlementsDialog({
   // Reset form when dialog opens or data changes
   useEffect(() => {
     if (open) {
-      setLicenseLevel(currentLicenseLevel);
+      setLicenseLevel(normalizeLicenseLevel(currentLicenseLevel));
       
       // If no outcomes selected (empty array), show "All" marker in UI
       if (currentSelectedOutcomes.length === 0) {
@@ -187,7 +203,7 @@ export function EditEntitlementsDialog({
   const currentOutcomeIds = currentSelectedOutcomes.map(o => o.id);
   const currentReleaseIds = currentSelectedReleases.map(r => r.id);
   const hasChanges =
-    licenseLevel !== currentLicenseLevel ||
+    licenseLevel !== normalizeLicenseLevel(currentLicenseLevel) ||
     JSON.stringify([...selectedOutcomeIds].sort()) !== JSON.stringify([...currentOutcomeIds].sort()) ||
     JSON.stringify([...selectedReleaseIds].sort()) !== JSON.stringify([...currentReleaseIds].sort());
 
@@ -216,7 +232,7 @@ export function EditEntitlementsDialog({
                 label="License Level"
               >
                 {availableLicenses.map((license: any) => (
-                  <MenuItem key={license.id} value={extractLicenseLevel(license.name)}>
+                  <MenuItem key={license.id} value={mapLicenseLevelToEnum(license.level)}>
                     <Box>
                       <Typography variant="body1">{license.name}</Typography>
                       {license.description && (

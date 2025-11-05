@@ -194,7 +194,16 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
   };
 
   return (
-    <Paper sx={{ mb: 2, border: '1px solid', borderColor: 'divider' }}>
+    <Paper 
+      elevation={1}
+      sx={{ 
+        mb: 2, 
+        border: '1.5px solid', 
+        borderColor: '#E0E0E0',
+        borderRadius: 2,
+        overflow: 'hidden'
+      }}
+    >
       {/* Header */}
       <Box
         sx={{
@@ -204,8 +213,12 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
           justifyContent: 'space-between',
           bgcolor: 'background.default',
           cursor: 'pointer',
+          borderLeft: '4px solid',
+          borderLeftColor: '#4CAF50',
+          transition: 'all 0.2s ease',
           '&:hover': {
-            bgcolor: 'action.hover'
+            bgcolor: 'action.hover',
+            boxShadow: 1
           }
         }}
         onClick={() => setExpanded(!expanded)}

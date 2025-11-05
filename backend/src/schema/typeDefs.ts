@@ -612,6 +612,10 @@ export const typeDefs = gql`
   evaluateSolutionTaskTelemetry(customerSolutionTaskId: ID!): CustomerSolutionTask!
   evaluateAllSolutionTasksTelemetry(solutionAdoptionPlanId: ID!): SolutionAdoptionPlan!
   
+  # Solution Telemetry Import/Export
+  exportSolutionAdoptionPlanTelemetryTemplate(solutionAdoptionPlanId: ID!): TelemetryTemplateExport!
+  importSolutionAdoptionPlanTelemetry(solutionAdoptionPlanId: ID!, file: Upload!): TelemetryImportResult!
+  
   # Solution product management
   addProductToSolutionEnhanced(solutionId: ID!, productId: ID!, order: Int): Boolean!
   removeProductFromSolutionEnhanced(solutionId: ID!, productId: ID!): Boolean!
@@ -785,6 +789,7 @@ export const typeDefs = gql`
     licenseLevel: LicenseLevel!
     selectedOutcomes: [Outcome!]!
     selectedReleases: [Release!]!
+    products: [CustomerProductWithPlan!]!
     adoptionPlan: SolutionAdoptionPlan
     purchasedAt: String!
     createdAt: String!

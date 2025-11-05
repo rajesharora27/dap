@@ -49,7 +49,8 @@ export const SolutionManagementMain: React.FC<Props> = ({
     if (selectedSolutionId && onSolutionSelect) {
       onSolutionSelect(selectedSolutionId);
     }
-  }, [selectedSolutionId, onSolutionSelect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSolutionId]); // Intentionally excluding onSolutionSelect to prevent infinite loop
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingSolution, setEditingSolution] = useState<any>(null);
   const [dialogInitialTab, setDialogInitialTab] = useState<'general' | 'products' | 'outcomes' | 'releases' | 'customAttributes'>('general');

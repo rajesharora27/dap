@@ -36,7 +36,9 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  Tabs,
+  Tab
 } from '@mui/material';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
 import { ProductDialog } from '../components/dialogs/ProductDialog';
@@ -44,6 +46,7 @@ import { LicenseDialog } from '../components/dialogs/LicenseDialog';
 import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
 import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
+import { SolutionDialog } from '../components/dialogs/SolutionDialog';
 import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
 import { SolutionManagement } from '../components/SolutionManagement';
 import { SolutionManagementMain } from '../components/SolutionManagementMain';
@@ -828,14 +831,21 @@ export function App() {
 
   // State management
   const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers' | 'backup'>('products');
-  const [selectedProduct, setSelectedProduct] = useState('');
-  const [selectedSolution, setSelectedSolution] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(() => {
+    // Initialize from localStorage
+    return localStorage.getItem('lastSelectedProductId') || '';
+  });
+  const [selectedSolution, setSelectedSolution] = useState(() => {
+    // Initialize from localStorage
+    return localStorage.getItem('lastSelectedSolutionId') || '';
+  });
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selectedTask, setSelectedTask] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
   const [detailProduct, setDetailProduct] = useState<any>(null);
   const [selectedProductSubSection, setSelectedProductSubSection] = useState<'main' | 'tasks'>('main');
   const [selectedSolutionSubSection, setSelectedSolutionSubSection] = useState<'main' | 'tasks'>('main');
+  const [selectedCustomerSubSection, setSelectedCustomerSubSection] = useState<'main' | 'products' | 'solutions'>('main');
   const [productsExpanded, setProductsExpanded] = useState(true);
   const [solutionsExpanded, setSolutionsExpanded] = useState(true);
   const [customersExpanded, setCustomersExpanded] = useState(true);
@@ -871,6 +881,9 @@ export function App() {
   const [editingCustomAttribute, setEditingCustomAttribute] = useState<any>(null);
   const [importProgressDialog, setImportProgressDialog] = useState(false);
   const [importProgressMessage, setImportProgressMessage] = useState('Processing...');
+  const [addSolutionDialog, setAddSolutionDialog] = useState(false);
+  const [editSolutionDialog, setEditSolutionDialog] = useState(false);
+  const [editingSolution, setEditingSolution] = useState<any>(null);
   
   // Menu anchors for howto links
   const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
@@ -1011,24 +1024,70 @@ export function App() {
   const outcomeHandlers = new OutcomeHandlers(client);
   const productHandlers = new ProductHandlers(client);
 
-  // Auto-select first product if none selected
+  // Auto-select product when products section is opened
   React.useEffect(() => {
-    if (products.length > 0 && !selectedProduct) {
+    if (selectedSection === 'products' && products.length > 0 && !selectedProduct) {
+      const lastProductId = localStorage.getItem('lastSelectedProductId');
+      if (lastProductId) {
+        // Check if last selected product still exists
+        const productExists = products.some((p: any) => p.id === lastProductId);
+        if (productExists) {
+          setSelectedProduct(lastProductId);
+          setSelectedProductSubSection('main');
+          return;
+        }
+      }
+      // Fall back to first product if no saved product or it doesn't exist
       setSelectedProduct(products[0].id);
       setSelectedProductSubSection('main');
     }
-  }, [products, selectedProduct]);
+  }, [selectedSection, products, selectedProduct]);
 
-  // Auto-select first customer when customers section is opened
+  // Persist product selection to localStorage
+  React.useEffect(() => {
+    if (selectedProduct) {
+      localStorage.setItem('lastSelectedProductId', selectedProduct);
+    }
+  }, [selectedProduct]);
+
+  // Auto-select solution when solutions section is opened
+  React.useEffect(() => {
+    if (selectedSection === 'solutions' && solutions.length > 0 && !selectedSolution) {
+      const lastSolutionId = localStorage.getItem('lastSelectedSolutionId');
+      if (lastSolutionId) {
+        // Check if last selected solution still exists
+        const solutionExists = solutions.some((s: any) => s.id === lastSolutionId);
+        if (solutionExists) {
+          setSelectedSolution(lastSolutionId);
+          setSelectedSolutionSubSection('main');
+          return;
+        }
+      }
+      // Fall back to first solution if no saved solution or it doesn't exist
+      setSelectedSolution(solutions[0].id);
+      setSelectedSolutionSubSection('main');
+    }
+  }, [selectedSection, solutions, selectedSolution]);
+
+  // Persist solution selection to localStorage
+  React.useEffect(() => {
+    if (selectedSolution) {
+      localStorage.setItem('lastSelectedSolutionId', selectedSolution);
+    }
+  }, [selectedSolution]);
+
+  // Auto-select customer when customers section is opened
   React.useEffect(() => {
     if (selectedSection === 'customers' && customers.length > 0 && !selectedCustomerId) {
       const lastCustomerId = localStorage.getItem('lastSelectedCustomerId');
-      // Check if last selected customer still exists
-      const customerExists = lastCustomerId && customers.some((c: any) => c.id === lastCustomerId);
-      const customerId = customerExists ? lastCustomerId : customers[0].id;
-      setSelectedCustomerId(customerId);
-      if (customerId) {
-        localStorage.setItem('lastSelectedCustomerId', customerId);
+      // Only auto-select if there's a saved customer ID
+      // This allows the "Add Customer" button to work by clearing localStorage
+      if (lastCustomerId) {
+        // Check if last selected customer still exists
+        const customerExists = customers.some((c: any) => c.id === lastCustomerId);
+        if (customerExists) {
+          setSelectedCustomerId(lastCustomerId);
+        }
       }
     }
   }, [selectedSection, customers, selectedCustomerId]);
@@ -1039,6 +1098,17 @@ export function App() {
       localStorage.setItem('lastSelectedCustomerId', selectedCustomerId);
     }
   }, [selectedCustomerId]);
+
+  // Memoized callbacks to prevent infinite loops
+  const handleSolutionSelect = React.useCallback((solutionId: string) => {
+    setSelectedSolution(solutionId);
+  }, []);
+
+  const handleProductClickFromSolution = React.useCallback((productId: string) => {
+    setSelectedSection('products');
+    setSelectedProduct(productId);
+    setViewMode('detail');
+  }, []);
 
   // Debug logging - uncomment for troubleshooting
   // console.log('App Component Loaded!');
@@ -4709,225 +4779,38 @@ export function App() {
         <Toolbar />
         <Box sx={{ overflow: 'auto' }}>
           <List>
+            {/* Products - Simple flat menu */}
             <ListItemButton
               selected={selectedSection === 'products'}
-              onClick={() => {
-                setSelectedSection('products');
-                setProductsExpanded(true); // Always expand when clicked
-              }}
+              onClick={() => setSelectedSection('products')}
             >
               <ListItemIcon>
                 <ProductIcon />
               </ListItemIcon>
               <ListItemText primary="Products" />
-              {productsExpanded ? <ExpandLess /> : <ExpandMore />}
             </ListItemButton>
 
-            <Collapse in={productsExpanded && selectedSection === 'products'} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                <ListItemButton
-                  sx={{ 
-                    pl: 6,
-                    position: 'relative',
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '16px',
-                      top: 0,
-                      bottom: 0,
-                      width: '2px',
-                      backgroundColor: '#e0e0e0',
-                    },
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '16px',
-                      top: '50%',
-                      width: '12px',
-                      height: '2px',
-                      backgroundColor: '#e0e0e0',
-                    }
-                  }}
-                  selected={selectedProductSubSection === 'main'}
-                  onClick={() => handleProductSubSectionChange('main')}
-                >
-                  <ListItemIcon>
-                    <MainIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Main" />
-                </ListItemButton>
-
-                <ListItemButton
-                  sx={{ 
-                    pl: 6,
-                    position: 'relative',
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '16px',
-                      top: 0,
-                      bottom: '50%',
-                      width: '2px',
-                      backgroundColor: '#e0e0e0',
-                    },
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '16px',
-                      top: '50%',
-                      width: '12px',
-                      height: '2px',
-                      backgroundColor: '#e0e0e0',
-                    }
-                  }}
-                  selected={selectedProductSubSection === 'tasks'}
-                  onClick={() => handleProductSubSectionChange('tasks')}
-                >
-                  <ListItemIcon>
-                    <TaskIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Tasks" />
-                </ListItemButton>
-              </List>
-            </Collapse>
-
+            {/* Solutions - Simple flat menu */}
             <ListItemButton
               selected={selectedSection === 'solutions'}
-              onClick={() => {
-                setSelectedSection('solutions');
-                setSolutionsExpanded(true); // Always expand when clicked
-              }}
+              onClick={() => setSelectedSection('solutions')}
             >
               <ListItemIcon>
                 <SolutionIcon />
               </ListItemIcon>
               <ListItemText primary="Solutions" />
-              {solutionsExpanded ? <ExpandLess /> : <ExpandMore />}
             </ListItemButton>
 
-            <Collapse in={solutionsExpanded && selectedSection === 'solutions'} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                <ListItemButton
-                  sx={{ 
-                    pl: 6,
-                    position: 'relative',
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '16px',
-                      top: 0,
-                      bottom: 0,
-                      width: '2px',
-                      backgroundColor: '#e0e0e0',
-                    },
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '16px',
-                      top: '50%',
-                      width: '12px',
-                      height: '2px',
-                      backgroundColor: '#e0e0e0',
-                    }
-                  }}
-                  selected={selectedSolutionSubSection === 'main'}
-                  onClick={() => handleSolutionSubSectionChange('main')}
-                >
-                  <ListItemIcon>
-                    <MainIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Main" />
-                </ListItemButton>
-
-                <ListItemButton
-                  sx={{ 
-                    pl: 6,
-                    position: 'relative',
-                    '&::before': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '16px',
-                      top: 0,
-                      bottom: '50%',
-                      width: '2px',
-                      backgroundColor: '#e0e0e0',
-                    },
-                    '&::after': {
-                      content: '""',
-                      position: 'absolute',
-                      left: '16px',
-                      top: '50%',
-                      width: '12px',
-                      height: '2px',
-                      backgroundColor: '#e0e0e0',
-                    }
-                  }}
-                  selected={selectedSolutionSubSection === 'tasks'}
-                  onClick={() => handleSolutionSubSectionChange('tasks')}
-                >
-                  <ListItemIcon>
-                    <TaskIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Tasks" />
-                </ListItemButton>
-              </List>
-            </Collapse>
-
+            {/* Customers - Simple flat menu */}
             <ListItemButton
               selected={selectedSection === 'customers'}
-              onClick={() => {
-                setSelectedSection('customers');
-                setCustomersExpanded(true); // Always expand when clicking customers menu
-              }}
+              onClick={() => setSelectedSection('customers')}
             >
               <ListItemIcon>
                 <CustomerIcon />
               </ListItemIcon>
               <ListItemText primary="Customers" />
-              {customersExpanded ? <ExpandLess /> : <ExpandMore />}
             </ListItemButton>
-
-            <Collapse in={customersExpanded && selectedSection === 'customers'} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                {[...customers].sort((a: any, b: any) => a.name.localeCompare(b.name)).map((customer: any) => (
-                  <ListItemButton
-                    key={customer.id}
-                    sx={{ 
-                      pl: 6,
-                      position: 'relative',
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        left: '16px',
-                        top: 0,
-                        bottom: 0,
-                        width: '2px',
-                        backgroundColor: '#e0e0e0',
-                      },
-                      '&::after': {
-                        content: '""',
-                        position: 'absolute',
-                        left: '16px',
-                        top: '50%',
-                        width: '12px',
-                        height: '2px',
-                        backgroundColor: '#e0e0e0',
-                      }
-                    }}
-                    selected={selectedCustomerId === customer.id}
-                    onClick={() => setSelectedCustomerId(customer.id)}
-                  >
-                    <ListItemIcon>
-                      <CustomerIcon />
-                    </ListItemIcon>
-                    <ListItemText 
-                      primary={customer.name}
-                      secondary={`${customer.products?.length || 0} products, ${customer.solutions?.length || 0} solutions`}
-                    />
-                  </ListItemButton>
-                ))}
-              </List>
-            </Collapse>
 
             {/* Backup & Restore Section */}
             <ListItemButton
@@ -4952,47 +4835,31 @@ export function App() {
             {/* Products Section */}
             {selectedSection === 'products' && (
               <Box>
-                {/* Header - Only show on 'main' submenu */}
-                {selectedProductSubSection === 'main' && (
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
+                {/* Modern Header: Title + Dropdown + Add Button */}
+                <Paper elevation={2} sx={{ mb: 3 }}>
+                  <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                    <Typography variant="h4" sx={{ minWidth: '150px' }}>
                       Products
                     </Typography>
-                  </Box>
-                )}
-
-                {/* Product Selection - Only show on 'main' submenu */}
-                {selectedProductSubSection === 'main' && (
-                  <Paper sx={{ p: 3, mb: 2 }}>
-                    {/* Loading States */}
-                    {productsLoading && (
-                      <Box sx={{ mb: 2 }}>
-                        <LinearProgress />
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                          Loading products...
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {/* Error States */}
-                    {productsError && (
-                      <Typography variant="body2" color="error" sx={{ mb: 2 }}>
-                        Error loading products: {productsError.message}
-                      </Typography>
-                    )}
-
-                    {/* Product Selector and Actions Row */}
-                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                      {/* Products Dropdown */}
-                      <FormControl sx={{ minWidth: 300, flex: '1 1 300px' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, justifyContent: 'flex-end' }}>
+                      {/* Product Selector Dropdown */}
+                      <FormControl sx={{ minWidth: 300, maxWidth: 400 }}>
                         <InputLabel>Select Product</InputLabel>
                         <Select
-                          value={selectedProduct}
-                          onChange={(e) => {
-                            setSelectedProduct(e.target.value);
-                            setSelectedProductSubSection('main');
-                          }}
+                          value={selectedProduct || ''}
                           label="Select Product"
+                          onChange={(e) => {
+                            const productId = e.target.value;
+                            setSelectedProduct(productId);
+                            
+                            // Save to localStorage
+                            if (productId) {
+                              localStorage.setItem('lastSelectedProductId', productId);
+                            } else {
+                              localStorage.removeItem('lastSelectedProductId');
+                            }
+                          }}
+                          disabled={productsLoading}
                         >
                           {products.map((product: any) => (
                             <MenuItem key={product.id} value={product.id}>
@@ -5001,71 +4868,97 @@ export function App() {
                           ))}
                         </Select>
                       </FormControl>
-
-                      {/* Product Action Buttons */}
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <Button 
-                          variant="contained" 
-                          startIcon={<Add />}
-                          onClick={() => setAddProductDialog(true)}
-                          size="medium"
-                        >
-                          Add
-                        </Button>
-                        {selectedProduct && (
-                          <>
-                            <Button 
-                              variant="contained" 
-                              startIcon={<Edit />}
-                              onClick={() => {
-                                const product = products.find((p: any) => p.id === selectedProduct);
-                                if (product) {
-                                  setEditingProduct({ ...product });
-                                  setEditProductDialog(true);
-                                }
-                              }}
-                              size="medium"
-                            >
-                              Edit
-                            </Button>
-                            <Button 
-                              variant="contained" 
-                              color="success"
-                              startIcon={<FileDownload />}
-                              onClick={() => handleExportAllProductData()}
-                              size="medium"
-                            >
-                              Export
-                            </Button>
-                            <Button 
-                              variant="contained" 
-                              color="primary"
-                              startIcon={<FileUpload />}
-                              onClick={() => handleImportAllProductData()}
-                              size="medium"
-                            >
-                              Import
-                            </Button>
-                            <Button 
-                              variant="outlined" 
-                              color="error"
-                              startIcon={<Delete />}
-                              onClick={() => {
-                                const product = products.find((p: any) => p.id === selectedProduct);
-                                if (product && window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
-                                  handleDeleteProduct(product.id);
-                                }
-                              }}
-                              size="medium"
-                            >
-                              Delete
-                            </Button>
-                          </>
-                        )}
-                      </Box>
+                      
+                      {/* Action Buttons */}
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<Add />}
+                        onClick={() => setAddProductDialog(true)}
+                        sx={{ whiteSpace: 'nowrap' }}
+                      >
+                        Add
+                      </Button>
+                      
+                      {selectedProduct && (
+                        <>
+                          <Button
+                            variant="outlined"
+                            startIcon={<Edit />}
+                            onClick={() => {
+                              const product = products.find((p: any) => p.id === selectedProduct);
+                              if (product) {
+                                setEditingProduct({ ...product });
+                                setEditProductDialog(true);
+                              }
+                            }}
+                            sx={{ whiteSpace: 'nowrap' }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="success"
+                            startIcon={<FileDownload />}
+                            onClick={() => handleExportAllProductData()}
+                            sx={{ whiteSpace: 'nowrap' }}
+                          >
+                            Export
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<FileUpload />}
+                            onClick={() => handleImportAllProductData()}
+                            sx={{ whiteSpace: 'nowrap' }}
+                          >
+                            Import
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<Delete />}
+                            onClick={() => {
+                              const product = products.find((p: any) => p.id === selectedProduct);
+                              if (product && window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
+                                handleDeleteProduct(product.id);
+                              }
+                            }}
+                            sx={{ whiteSpace: 'nowrap' }}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
                     </Box>
+                  </Box>
 
-                  </Paper>
+                  {/* Tabs */}
+                  <Box sx={{ borderTop: 1, borderColor: 'divider' }}>
+                    <Tabs 
+                      value={selectedProductSubSection} 
+                      onChange={(e, newValue) => setSelectedProductSubSection(newValue as 'main' | 'tasks')}
+                      sx={{ px: 2 }}
+                    >
+                      <Tab label="Main" value="main" />
+                      <Tab label="Tasks" value="tasks" />
+                    </Tabs>
+                  </Box>
+                </Paper>
+
+                {/* Loading/Error States */}
+                {productsLoading && (
+                  <Box sx={{ mb: 2 }}>
+                    <LinearProgress />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: 'center' }}>
+                      Loading products...
+                    </Typography>
+                  </Box>
+                )}
+                {productsError && (
+                  <Typography variant="body2" color="error" sx={{ mb: 2, textAlign: 'center' }}>
+                    Error loading products: {productsError.message}
+                  </Typography>
                 )}
 
                 {/* Main Sub-section - Summary Tiles */}
@@ -5568,7 +5461,7 @@ export function App() {
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <Typography variant="caption" color="text.secondary">
-                          Drag to reorder • Double-click for details
+                          Drag to reorder • Double-click for details • Tasks are imported via product Excel import
                         </Typography>
                         <Button
                           variant="contained"
@@ -5679,28 +5572,317 @@ export function App() {
             {/* Solutions Section */}
             {selectedSection === 'solutions' && (
               <Box>
-                {/* Main Sub-section - Solution Management */}
-                {selectedSolutionSubSection === 'main' && (
-                  <>
-                    {solutionsLoading && <LinearProgress />}
-                    {solutionsError && (
-                      <Typography color="error">Error: {solutionsError.message}</Typography>
-                    )}
+                {/* Modern Header: Title + Dropdown + Add Button */}
+                <Paper elevation={2} sx={{ mb: 3 }}>
+                  <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                    <Typography variant="h4" sx={{ minWidth: '150px' }}>
+                      Solutions
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, justifyContent: 'flex-end' }}>
+                      {/* Solution Selector Dropdown */}
+                      <FormControl sx={{ minWidth: 300, maxWidth: 400 }}>
+                        <InputLabel>Select Solution</InputLabel>
+                        <Select
+                          value={selectedSolution || ''}
+                          label="Select Solution"
+                          onChange={(e) => {
+                            const solutionId = e.target.value;
+                            setSelectedSolution(solutionId);
+                            
+                            // Save to localStorage
+                            if (solutionId) {
+                              localStorage.setItem('lastSelectedSolutionId', solutionId);
+                            } else {
+                              localStorage.removeItem('lastSelectedSolutionId');
+                            }
+                          }}
+                          disabled={solutionsLoading}
+                        >
+                          {solutions.map((solution: any) => (
+                            <MenuItem key={solution.id} value={solution.id}>
+                              {solution.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      
+                      {/* Action Buttons */}
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<Add />}
+                        onClick={() => setAddSolutionDialog(true)}
+                        sx={{ whiteSpace: 'nowrap' }}
+                      >
+                        Add
+                      </Button>
+                      
+                      {selectedSolution && (
+                        <>
+                          <Button
+                            variant="outlined"
+                            startIcon={<Edit />}
+                            onClick={() => {
+                              const solution = solutions.find((s: any) => s.id === selectedSolution);
+                              if (solution) {
+                                setEditingSolution(solution);
+                                setEditSolutionDialog(true);
+                              }
+                            }}
+                            sx={{ whiteSpace: 'nowrap' }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="success"
+                            startIcon={<FileDownload />}
+                            onClick={() => {
+                              // Export solution data
+                              console.log('Export solution:', selectedSolution);
+                              // TODO: Implement solution export functionality
+                            }}
+                            sx={{ whiteSpace: 'nowrap' }}
+                          >
+                            Export
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="primary"
+                            startIcon={<FileUpload />}
+                            onClick={() => {
+                              // Import solution data
+                              console.log('Import solution:', selectedSolution);
+                              // TODO: Implement solution import functionality
+                            }}
+                            sx={{ whiteSpace: 'nowrap' }}
+                          >
+                            Import
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<Delete />}
+                            onClick={() => {
+                              const solution = solutions.find((s: any) => s.id === selectedSolution);
+                              if (solution && window.confirm(`Are you sure you want to delete solution "${solution.name}"?`)) {
+                                // Implement delete solution handler
+                                console.log('Delete solution:', solution);
+                              }
+                            }}
+                            sx={{ whiteSpace: 'nowrap' }}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </Box>
+                  </Box>
 
-                    {!solutionsLoading && !solutionsError && (
-                      <SolutionManagementMain
-                        solutions={solutions}
-                        allProducts={products}
-                        onRefetch={refetchSolutions}
-                        onProductClick={(productId) => {
-                          setSelectedSection('products');
-                          setSelectedProduct(productId);
-                          setViewMode('detail');
-                        }}
-                        onSolutionSelect={(solutionId) => setSelectedSolution(solutionId)}
-                      />
-                    )}
-                  </>
+                  {/* Tabs */}
+                  <Box sx={{ borderTop: 1, borderColor: 'divider' }}>
+                    <Tabs 
+                      value={selectedSolutionSubSection} 
+                      onChange={(e, newValue) => setSelectedSolutionSubSection(newValue as 'main' | 'tasks')}
+                      sx={{ px: 2 }}
+                    >
+                      <Tab label="Main" value="main" />
+                      <Tab label="Tasks" value="tasks" />
+                    </Tabs>
+                  </Box>
+                </Paper>
+
+                {/* Loading/Error States */}
+                {solutionsLoading && (
+                  <Box sx={{ mb: 2 }}>
+                    <LinearProgress />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: 'center' }}>
+                      Loading solutions...
+                    </Typography>
+                  </Box>
+                )}
+                {solutionsError && (
+                  <Typography variant="body2" color="error" sx={{ mb: 2, textAlign: 'center' }}>
+                    Error loading solutions: {solutionsError.message}
+                  </Typography>
+                )}
+
+                {/* Main Sub-section - Solution Details */}
+                {selectedSolutionSubSection === 'main' && !solutionsLoading && !solutionsError && selectedSolution && (
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mb: 3 }}>
+                    {/* Description Section */}
+                    <Paper sx={{ p: 4, backgroundColor: '#f8f9fa', border: '1px solid #e0e0e0' }}>
+                      {(() => {
+                        const currentSolution = solutions.find((s: any) => s.id === selectedSolution);
+                        return currentSolution ? (
+                          <Typography
+                            variant="body1"
+                            color="text.secondary"
+                            sx={{
+                              lineHeight: 1.9,
+                              fontSize: '1.05rem',
+                              whiteSpace: 'pre-line'
+                            }}
+                          >
+                            {currentSolution.description || 'No description provided'}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body1" color="text.secondary">
+                            No solution selected
+                          </Typography>
+                        );
+                      })()}
+                    </Paper>
+
+                    {/* Information Tiles */}
+                    {(() => {
+                      const currentSolution = solutions.find((s: any) => s.id === selectedSolution);
+                      if (!currentSolution) {
+                        return null;
+                      }
+
+                      const solutionProducts = Array.isArray(currentSolution.products) 
+                        ? currentSolution.products.map((item: any) => item.product?.name || item.name).filter(Boolean)
+                        : [];
+                      const outcomeNames = (currentSolution.outcomes || []).map((item: any) => item.name).filter(Boolean);
+                      const licenseNames = (currentSolution.licenses || []).map((item: any) => item.name).filter(Boolean);
+                      const releases = (currentSolution.releases || []).map((item: any) => ({ name: item.name, level: item.level })).filter((r: any) => r.name);
+                      const customAttrs = currentSolution.customAttrs || {};
+                      const customAttrEntries = Object.entries(customAttrs);
+
+                      const tileData = [
+                        { key: 'products', title: 'Products', items: solutionProducts, type: 'list' },
+                        { key: 'outcomes', title: 'Outcomes', items: outcomeNames, type: 'list' },
+                        { key: 'licenses', title: 'Licenses', items: licenseNames, type: 'list' },
+                        { key: 'releases', title: 'Releases', items: releases, type: 'releaseWithLevel' },
+                        { key: 'customAttributes', title: 'Custom Attributes', items: customAttrEntries, type: 'keyValue' }
+                      ];
+
+                      const NAME_DISPLAY_LIMIT = 12;
+
+                      return (
+                        <Box
+                          sx={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                            gap: 2
+                          }}
+                        >
+                          {tileData.map((tile) => (
+                            <Paper
+                              key={tile.key}
+                              elevation={1}
+                              sx={{
+                                p: 3,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                border: '1px solid #e0e0e0',
+                                '&:hover': {
+                                  boxShadow: 4,
+                                  borderColor: '#d0d0d0'
+                                }
+                              }}
+                              onClick={() => {
+                                // TODO: Open edit dialog for solutions
+                                console.log('Edit solution tile clicked:', tile.key);
+                              }}
+                            >
+                              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                                {tile.title}
+                              </Typography>
+                              {tile.items.length > 0 ? (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  {tile.type === 'keyValue' ? (
+                                    // For custom attributes, show key: value
+                                    <>
+                                      {(tile.items.length <= NAME_DISPLAY_LIMIT ? tile.items : tile.items.slice(0, NAME_DISPLAY_LIMIT)).map(([key, value]: [string, any]) => (
+                                        <Typography
+                                          key={key}
+                                          variant="body2"
+                                          sx={{
+                                            color: '#424242',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis'
+                                          }}
+                                        >
+                                          <strong>{key}:</strong> {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                        </Typography>
+                                      ))}
+                                      {tile.items.length > NAME_DISPLAY_LIMIT && (
+                                        <Typography variant="body2" sx={{ color: '#666', fontStyle: 'italic', mt: 0.5 }}>
+                                          ... and {tile.items.length - NAME_DISPLAY_LIMIT} more
+                                        </Typography>
+                                      )}
+                                    </>
+                                  ) : tile.type === 'releaseWithLevel' ? (
+                                    // For releases, show name with level
+                                    <>
+                                      {(tile.items.length <= NAME_DISPLAY_LIMIT ? tile.items : tile.items.slice(0, NAME_DISPLAY_LIMIT)).map((release: any, idx: number) => (
+                                        <Typography
+                                          key={idx}
+                                          variant="body2"
+                                          sx={{
+                                            color: '#424242',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis'
+                                          }}
+                                        >
+                                          {release.name} {release.level && `(${release.level})`}
+                                        </Typography>
+                                      ))}
+                                      {tile.items.length > NAME_DISPLAY_LIMIT && (
+                                        <Typography variant="body2" sx={{ color: '#666', fontStyle: 'italic', mt: 0.5 }}>
+                                          ... and {tile.items.length - NAME_DISPLAY_LIMIT} more
+                                        </Typography>
+                                      )}
+                                    </>
+                                  ) : (
+                                    // For regular lists
+                                    <>
+                                      {(tile.items.length <= NAME_DISPLAY_LIMIT ? tile.items : tile.items.slice(0, NAME_DISPLAY_LIMIT)).map((item: string, idx: number) => (
+                                        <Typography
+                                          key={idx}
+                                          variant="body2"
+                                          sx={{
+                                            color: '#424242',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis'
+                                          }}
+                                        >
+                                          • {item}
+                                        </Typography>
+                                      ))}
+                                      {tile.items.length > NAME_DISPLAY_LIMIT && (
+                                        <Typography variant="body2" sx={{ color: '#666', fontStyle: 'italic', mt: 0.5 }}>
+                                          ... and {tile.items.length - NAME_DISPLAY_LIMIT} more
+                                        </Typography>
+                                      )}
+                                    </>
+                                  )}
+                                </Box>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                  None
+                                </Typography>
+                              )}
+                            </Paper>
+                          ))}
+                        </Box>
+                      );
+                    })()}
+                  </Box>
+                )}
+
+                {/* No solution selected message */}
+                {selectedSolutionSubSection === 'main' && !selectedSolution && !solutionsLoading && (
+                  <Paper sx={{ p: 4, textAlign: 'center' }}>
+                    <Typography variant="h6" color="text.secondary">
+                      Select a solution to view details
+                    </Typography>
+                  </Paper>
                 )}
 
                 {/* Tasks Sub-section */}
@@ -5712,7 +5894,7 @@ export function App() {
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <Typography variant="caption" color="text.secondary">
-                          Drag to reorder • Double-click for details
+                          Drag to reorder • Double-click for details • Tasks are imported via solution Excel import
                         </Typography>
                         <Button
                           variant="contained"
@@ -5822,7 +6004,166 @@ export function App() {
 
             {/* Customers Section */}
             {selectedSection === 'customers' && (
-              <CustomerAdoptionPanelV4 selectedCustomerId={selectedCustomerId} />
+              <Box>
+                {/* Modern Header: Title + Dropdown + Add Button */}
+                <Paper elevation={2} sx={{ mb: 3 }}>
+                  <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2 }}>
+                    <Typography variant="h4" sx={{ minWidth: '150px' }}>
+                      Customers
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, justifyContent: 'flex-end' }}>
+                      {/* Customer Selector Dropdown */}
+                      <FormControl sx={{ minWidth: 300, maxWidth: 400 }}>
+                        <InputLabel>Select Customer</InputLabel>
+                        <Select
+                          value={selectedCustomerId || ''}
+                          label="Select Customer"
+                          onChange={(e) => {
+                            const customerId = e.target.value;
+                            setSelectedCustomerId(customerId);
+                            
+                            // Save to localStorage
+                            if (customerId) {
+                              localStorage.setItem('lastSelectedCustomerId', customerId);
+                            } else {
+                              localStorage.removeItem('lastSelectedCustomerId');
+                            }
+                          }}
+                          disabled={customersLoading}
+                        >
+                          {customers.map((customer: any) => (
+                            <MenuItem key={customer.id} value={customer.id}>
+                              {customer.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      
+                      {/* Action Buttons */}
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<Add />}
+                        onClick={() => {
+                          // Clear localStorage and open add dialog
+                          localStorage.removeItem('lastSelectedCustomerId');
+                          setSelectedCustomerId(null);
+                          // Open the add customer dialog
+                          setTimeout(() => {
+                            if ((window as any).__openAddCustomerDialog) {
+                              (window as any).__openAddCustomerDialog();
+                            }
+                          }, 100);
+                        }}
+                        sx={{ whiteSpace: 'nowrap' }}
+                      >
+                        Add
+                      </Button>
+                      
+                      {selectedCustomerId && (
+                        <>
+                          <Button
+                            variant="outlined"
+                            startIcon={<Edit />}
+                            onClick={() => {
+                              // Open the edit customer dialog via the exposed function
+                              if ((window as any).__openEditCustomerDialog) {
+                                (window as any).__openEditCustomerDialog();
+                              }
+                            }}
+                            sx={{ whiteSpace: 'nowrap' }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            startIcon={<Delete />}
+                            onClick={() => {
+                              const customer = customers.find((c: any) => c.id === selectedCustomerId);
+                              if (customer && window.confirm(`Are you sure you want to delete customer "${customer.name}"?`)) {
+                                // Delete customer functionality
+                                console.log('Delete customer:', selectedCustomerId);
+                                // TODO: Implement delete customer
+                              }
+                            }}
+                            sx={{ whiteSpace: 'nowrap' }}
+                          >
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                    </Box>
+                  </Box>
+
+                  {/* Tabs */}
+                  <Box sx={{ borderTop: 1, borderColor: 'divider' }}>
+                    <Tabs 
+                      value={selectedCustomerSubSection} 
+                      onChange={(e, newValue) => setSelectedCustomerSubSection(newValue as 'main' | 'products' | 'solutions')}
+                      sx={{ px: 2 }}
+                    >
+                      <Tab label="Main" value="main" />
+                      <Tab label="Products" value="products" />
+                      <Tab label="Solutions" value="solutions" />
+                    </Tabs>
+                  </Box>
+                </Paper>
+
+                {/* Loading/Error States */}
+                {customersLoading && (
+                  <Box sx={{ mb: 2 }}>
+                    <LinearProgress />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: 'center' }}>
+                      Loading customers...
+                    </Typography>
+                  </Box>
+                )}
+                {customersError && (
+                  <Typography variant="body2" color="error" sx={{ mb: 2, textAlign: 'center' }}>
+                    Error loading customers: {customersError.message}
+                  </Typography>
+                )}
+
+                {/* Main Tab - Customer Details */}
+                {selectedCustomerSubSection === 'main' && selectedCustomerId && (
+                  <CustomerAdoptionPanelV4 
+                    selectedCustomerId={selectedCustomerId} 
+                    onRequestAddCustomer={() => {}}
+                    forceTab="main"
+                    hideTabs={true}
+                  />
+                )}
+
+                {/* Products Tab */}
+                {selectedCustomerSubSection === 'products' && selectedCustomerId && (
+                  <CustomerAdoptionPanelV4 
+                    selectedCustomerId={selectedCustomerId} 
+                    onRequestAddCustomer={() => {}}
+                    forceTab="products"
+                    hideTabs={true}
+                  />
+                )}
+
+                {/* Solutions Tab */}
+                {selectedCustomerSubSection === 'solutions' && selectedCustomerId && (
+                  <CustomerAdoptionPanelV4 
+                    selectedCustomerId={selectedCustomerId} 
+                    onRequestAddCustomer={() => {}}
+                    forceTab="solutions"
+                    hideTabs={true}
+                  />
+                )}
+
+                {/* No customer selected message */}
+                {!selectedCustomerId && !customersLoading && (
+                  <Paper sx={{ p: 4, textAlign: 'center' }}>
+                    <Typography variant="h6" color="text.secondary">
+                      Select a customer to view details
+                    </Typography>
+                  </Paper>
+                )}
+              </Box>
             )}
 
             {/* Backup & Restore Section */}
@@ -6101,6 +6442,24 @@ export function App() {
                 Open All ({videoMenuAnchor?.links.length})
               </MenuItem>
             </Menu>
+
+            {/* Solution Dialog */}
+            <SolutionDialog
+              open={addSolutionDialog || editSolutionDialog}
+              onClose={() => {
+                setAddSolutionDialog(false);
+                setEditSolutionDialog(false);
+                setEditingSolution(null);
+              }}
+              onSave={() => {
+                refetchSolutions();
+                setAddSolutionDialog(false);
+                setEditSolutionDialog(false);
+                setEditingSolution(null);
+              }}
+              solution={editingSolution}
+              allProducts={products}
+            />
           </>
         )}
       </Box>

@@ -402,26 +402,38 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
       )}
 
       {/* Header */}
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+      <Paper 
+        elevation={1}
+        sx={{ 
+          p: { xs: 2, sm: 2.5, md: 3 }, 
+          mb: { xs: 2, md: 3 }, 
+          borderRadius: 2,
+          border: '1.5px solid',
+          borderColor: '#E0E0E0'
+        }}
+      >
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'flex-start' }, mb: { xs: 2, md: 3 }, gap: { xs: 1.5, sm: 0 } }}>
           <Box>
-            <Typography variant="h4" gutterBottom>
+            <Typography variant="h5" gutterBottom fontWeight="600" color="primary.main">
               {plan.customerSolution.name} - {plan.customerSolution.solution.name}
             </Typography>
-            <Typography variant="subtitle1" color="text.secondary">
-              Customer: {customerName} • Solution Adoption Plan
+            <Typography variant="body2" color="text.secondary">
+              Customer: <strong>{customerName}</strong> • Solution Adoption Plan
             </Typography>
           </Box>
           
-          <Chip label={`License: ${plan.licenseLevel}`} color="primary" />
+          <Chip 
+            label={`License: ${plan.licenseLevel}`} 
+            color="primary" 
+            sx={{ fontWeight: 600, height: 28 }}
+          />
         </Box>
 
-
         {/* Overall Progress */}
-        <Box sx={{ mt: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-            <Typography variant="h6">Overall Progress</Typography>
-            <Typography variant="h6" color="primary">
+        <Box sx={{ mt: 3, p: 2.5, bgcolor: 'background.default', borderRadius: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
+            <Typography variant="h6" fontWeight="600">Overall Progress</Typography>
+            <Typography variant="h6" color="primary" fontWeight="700">
               {Math.round(plan.progressPercentage)}%
             </Typography>
           </Box>
@@ -432,186 +444,182 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
             sx={{ height: 12, borderRadius: 1, mb: 2 }}
           />
           
-          <Box sx={{ display: 'flex', gap: 3 }}>
-            <Typography variant="body2" color="text.secondary">
-              📊 {plan.completedTasks} of {plan.totalTasks} tasks completed
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              🔗 {plan.products.length} products included
-            </Typography>
-          </Box>
-        </Box>
-        
-        {/* Interactive Filters for Solution Tasks */}
-        {allSolutionTasks.length > 0 && (
-          <Box sx={{ mt: 3, p: 2, bgcolor: 'primary.light', borderRadius: 1, border: '2px solid', borderColor: 'primary.main' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-              <FilterList fontSize="small" color="primary" />
-              <Typography variant="subtitle2" fontWeight="700" color="primary.dark">
-                Filter Solution Tasks
+          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" fontWeight="600">📊</Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>{plan.completedTasks}</strong> of <strong>{plan.totalTasks}</strong> tasks completed
               </Typography>
-              {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) || 
-                (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
-                <Chip 
-                  label={`Showing ${solutionTasks.length} of ${allSolutionTasks.length} tasks`}
-                  size="small" 
-                  color="info"
-                  sx={{ ml: 1 }}
-                />
-              )}
             </Box>
-            
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              {/* License Level Display */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography variant="caption" fontWeight="600">
-                  License Level:
-                </Typography>
-                <Chip label={plan.licenseLevel} size="small" color="secondary" />
-                <Typography variant="caption" color="text.secondary">
-                  (Tasks filtered by license level at assignment)
-                </Typography>
-              </Box>
-            </Box>
-            
-            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
-              {/* Releases Filter */}
-              {availableReleases.length > 0 ? (
-                <FormControl sx={{ minWidth: 250 }} size="small">
-                  <InputLabel>Filter by Release</InputLabel>
-                  <Select
-                    multiple
-                    value={filterReleases}
-                    onChange={(e) => {
-                      const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
-                      if (value.includes(ALL_RELEASES_ID)) {
-                        if (filterReleases.includes(ALL_RELEASES_ID)) {
-                          setFilterReleases([]);
-                        } else {
-                          setFilterReleases([ALL_RELEASES_ID]);
-                        }
-                      } else {
-                        setFilterReleases(value);
-                      }
-                    }}
-                    input={<OutlinedInput label="Filter by Release" />}
-                    renderValue={(selected) => {
-                      if (selected.includes(ALL_RELEASES_ID)) return 'All Releases';
-                      if (selected.length === 0) return 'All Releases';
-                      return `${selected.length} selected`;
-                    }}
-                  >
-                    <MenuItem value={ALL_RELEASES_ID}>
-                      <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID) || filterReleases.length === 0} />
-                      <ListItemText primary="All Releases" />
-                    </MenuItem>
-                    {availableReleases.map((release: any) => (
-                      <MenuItem key={release.id} value={release.id}>
-                        <Checkbox checked={filterReleases.includes(release.id)} disabled={filterReleases.includes(ALL_RELEASES_ID)} />
-                        <ListItemText primary={`${release.name} (v${release.level})`} />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              ) : (
-                <Alert severity="info" sx={{ flex: 1 }}>
-                  <Typography variant="caption">
-                    No releases tagged on solution tasks. Add releases to tasks to enable release filtering.
-                  </Typography>
-                </Alert>
-              )}
-
-              {/* Outcomes Filter */}
-              {availableOutcomes.length > 0 ? (
-                <FormControl sx={{ minWidth: 250 }} size="small">
-                  <InputLabel>Filter by Outcome</InputLabel>
-                  <Select
-                    multiple
-                    value={filterOutcomes}
-                    onChange={(e) => {
-                      const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
-                      if (value.includes(ALL_OUTCOMES_ID)) {
-                        if (filterOutcomes.includes(ALL_OUTCOMES_ID)) {
-                          setFilterOutcomes([]);
-                        } else {
-                          setFilterOutcomes([ALL_OUTCOMES_ID]);
-                        }
-                      } else {
-                        setFilterOutcomes(value);
-                      }
-                    }}
-                    input={<OutlinedInput label="Filter by Outcome" />}
-                    renderValue={(selected) => {
-                      if (selected.includes(ALL_OUTCOMES_ID)) return 'All Outcomes';
-                      if (selected.length === 0) return 'All Outcomes';
-                      return `${selected.length} selected`;
-                    }}
-                  >
-                    <MenuItem value={ALL_OUTCOMES_ID}>
-                      <Checkbox checked={filterOutcomes.includes(ALL_OUTCOMES_ID) || filterOutcomes.length === 0} />
-                      <ListItemText primary="All Outcomes" />
-                    </MenuItem>
-                    {availableOutcomes.map((outcome: any) => (
-                      <MenuItem key={outcome.id} value={outcome.id}>
-                        <Checkbox checked={filterOutcomes.includes(outcome.id)} disabled={filterOutcomes.includes(ALL_OUTCOMES_ID)} />
-                        <ListItemText primary={outcome.name} />
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              ) : (
-                <Alert severity="info" sx={{ flex: 1 }}>
-                  <Typography variant="caption">
-                    No outcomes tagged on solution tasks. Add outcomes to tasks to enable outcome filtering.
-                  </Typography>
-                </Alert>
-              )}
-              
-              {/* Clear Filters Button */}
-              {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) || 
-                (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
-                <Button
-                  variant="text"
-                  size="small"
-                  onClick={() => {
-                    setFilterReleases([]);
-                    setFilterOutcomes([]);
-                  }}
-                  sx={{ alignSelf: 'center' }}
-                >
-                  Clear Filters
-                </Button>
-              )}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" fontWeight="600">🔗</Typography>
+              <Typography variant="body2" color="text.secondary">
+                <strong>{plan.products.length}</strong> products included
+              </Typography>
             </Box>
           </Box>
-        )}
-
-        {/* Action Buttons */}
-        <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
-          <Button
-            variant="outlined"
-            startIcon={<Sync />}
-            onClick={handleSync}
-            disabled={syncLoading}
-          >
-            {syncLoading ? 'Syncing...' : 'Sync Plan'}
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<Assessment />}
-            disabled
-          >
-            Re-evaluate Tasks
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<FileDownload />}
-            disabled
-          >
-            Generate Report
-          </Button>
         </Box>
       </Paper>
+
+      {/* Interactive Filters for Solution Tasks */}
+      {allSolutionTasks.length > 0 && (
+        <Paper 
+          elevation={1}
+          sx={{ 
+            p: 2.5, 
+            mb: 2, 
+            bgcolor: '#E0F7FA', 
+            border: '1.5px solid', 
+            borderColor: '#B2EBF2',
+            borderRadius: 2,
+            borderLeft: '4px solid',
+            borderLeftColor: '#00ACC1'
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <FilterList fontSize="small" sx={{ color: '#00838F' }} />
+            <Typography variant="subtitle2" fontWeight="700" sx={{ color: '#00838F' }}>
+              Filter Solution Tasks
+            </Typography>
+            {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) || 
+              (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
+              <Chip 
+                label={`Showing ${solutionTasks.length} of ${allSolutionTasks.length} tasks`}
+                size="small" 
+                sx={{ 
+                  ml: 1,
+                  bgcolor: '#00ACC1',
+                  color: 'white',
+                  fontWeight: 600
+                }}
+              />
+            )}
+          </Box>
+          
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            {/* License Level Display */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="caption" fontWeight="600">
+                License Level:
+              </Typography>
+              <Chip label={plan.licenseLevel} size="small" color="secondary" />
+              <Typography variant="caption" color="text.secondary">
+                (Tasks filtered by license level at assignment)
+              </Typography>
+            </Box>
+          </Box>
+          
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
+            {/* Releases Filter */}
+            {availableReleases.length > 0 ? (
+              <FormControl sx={{ minWidth: 250 }} size="small">
+                <InputLabel>Filter by Release</InputLabel>
+                <Select
+                  multiple
+                  value={filterReleases}
+                  onChange={(e) => {
+                    const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                    if (value.includes(ALL_RELEASES_ID)) {
+                      if (filterReleases.includes(ALL_RELEASES_ID)) {
+                        setFilterReleases([]);
+                      } else {
+                        setFilterReleases([ALL_RELEASES_ID]);
+                      }
+                    } else {
+                      setFilterReleases(value);
+                    }
+                  }}
+                  input={<OutlinedInput label="Filter by Release" />}
+                  renderValue={(selected) => {
+                    if (selected.includes(ALL_RELEASES_ID)) return 'All Releases';
+                    if (selected.length === 0) return 'All Releases';
+                    return `${selected.length} selected`;
+                  }}
+                >
+                  <MenuItem value={ALL_RELEASES_ID}>
+                    <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID) || filterReleases.length === 0} />
+                    <ListItemText primary="All Releases" />
+                  </MenuItem>
+                  {availableReleases.map((release: any) => (
+                    <MenuItem key={release.id} value={release.id}>
+                      <Checkbox checked={filterReleases.includes(release.id)} disabled={filterReleases.includes(ALL_RELEASES_ID)} />
+                      <ListItemText primary={`${release.name} (v${release.level})`} />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
+              <Alert severity="info" sx={{ flex: 1 }}>
+                <Typography variant="caption">
+                  No releases tagged on solution tasks. Add releases to tasks to enable release filtering.
+                </Typography>
+              </Alert>
+            )}
+
+            {/* Outcomes Filter */}
+            {availableOutcomes.length > 0 ? (
+              <FormControl sx={{ minWidth: 250 }} size="small">
+                <InputLabel>Filter by Outcome</InputLabel>
+                <Select
+                  multiple
+                  value={filterOutcomes}
+                  onChange={(e) => {
+                    const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                    if (value.includes(ALL_OUTCOMES_ID)) {
+                      if (filterOutcomes.includes(ALL_OUTCOMES_ID)) {
+                        setFilterOutcomes([]);
+                      } else {
+                        setFilterOutcomes([ALL_OUTCOMES_ID]);
+                      }
+                    } else {
+                      setFilterOutcomes(value);
+                    }
+                  }}
+                  input={<OutlinedInput label="Filter by Outcome" />}
+                  renderValue={(selected) => {
+                    if (selected.includes(ALL_OUTCOMES_ID)) return 'All Outcomes';
+                    if (selected.length === 0) return 'All Outcomes';
+                    return `${selected.length} selected`;
+                  }}
+                >
+                  <MenuItem value={ALL_OUTCOMES_ID}>
+                    <Checkbox checked={filterOutcomes.includes(ALL_OUTCOMES_ID) || filterOutcomes.length === 0} />
+                    <ListItemText primary="All Outcomes" />
+                  </MenuItem>
+                  {availableOutcomes.map((outcome: any) => (
+                    <MenuItem key={outcome.id} value={outcome.id}>
+                      <Checkbox checked={filterOutcomes.includes(outcome.id)} disabled={filterOutcomes.includes(ALL_OUTCOMES_ID)} />
+                      <ListItemText primary={outcome.name} />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
+              <Alert severity="info" sx={{ flex: 1 }}>
+                <Typography variant="caption">
+                  No outcomes tagged on solution tasks. Add outcomes to tasks to enable outcome filtering.
+                </Typography>
+              </Alert>
+            )}
+            
+            {/* Clear Filters Button */}
+            {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) || 
+              (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => {
+                  setFilterReleases([]);
+                  setFilterOutcomes([]);
+                }}
+                sx={{ alignSelf: 'center' }}
+              >
+                Clear Filters
+              </Button>
+            )}
+          </Box>
+        </Paper>
+      )}
 
       {/* Solution-Specific Tasks - Shown First */}
       {solutionTasks.length > 0 && (

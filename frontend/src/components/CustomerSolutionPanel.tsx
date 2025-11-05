@@ -18,7 +18,7 @@ import {
   DialogActions,
   Divider
 } from '@mui/material';
-import { Add, Edit, Delete, Sync } from '@mui/icons-material';
+import { Add, Edit, Delete, Sync, Download, Upload, Assessment } from '@mui/icons-material';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { AssignSolutionDialog } from './dialogs/AssignSolutionDialog';
 import { EditSolutionEntitlementsDialog } from './dialogs/EditSolutionEntitlementsDialog';
@@ -90,6 +90,64 @@ const GET_SOLUTION_ADOPTION_PLAN = gql`
   }
 `;
 
+const EXPORT_SOLUTION_TELEMETRY_TEMPLATE = gql`
+  mutation ExportSolutionTelemetryTemplate($solutionAdoptionPlanId: ID!) {
+    exportSolutionAdoptionPlanTelemetryTemplate(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
+      url
+      filename
+      taskCount
+      attributeCount
+    }
+  }
+`;
+
+const IMPORT_SOLUTION_TELEMETRY = gql`
+  mutation ImportSolutionTelemetry($solutionAdoptionPlanId: ID!, $file: Upload!) {
+    importSolutionAdoptionPlanTelemetry(solutionAdoptionPlanId: $solutionAdoptionPlanId, file: $file) {
+      success
+      batchId
+      summary {
+        tasksProcessed
+        attributesUpdated
+        criteriaEvaluated
+        errors
+      }
+      taskResults {
+        taskId
+        taskName
+        attributesUpdated
+        criteriaMet
+        criteriaTotal
+        completionPercentage
+        errors
+      }
+    }
+  }
+`;
+
+const EVALUATE_ALL_SOLUTION_TASKS_TELEMETRY = gql`
+  mutation EvaluateAllSolutionTasksTelemetry($solutionAdoptionPlanId: ID!) {
+    evaluateAllSolutionTasksTelemetry(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
+      id
+      progressPercentage
+      totalTasks
+      completedTasks
+      tasks {
+        id
+        name
+        status
+        statusUpdatedAt
+        statusUpdatedBy
+        statusUpdateSource
+        telemetryAttributes {
+          id
+          isMet
+        }
+      }
+    }
+  }
+`;
+
 interface Props {
   customerId: string;
 }
@@ -127,7 +185,8 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
       const solutionWithPlan = solutions.find((s: any) => s.adoptionPlan);
       setSelectedSolutionId(solutionWithPlan?.id || solutions[0].id);
     }
-  }, [data, customerId, selectedSolutionId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data?.customer?.solutions, customerId]); // Intentionally excluding selectedSolutionId to prevent infinite loop
 
   // Save selected solution to localStorage when it changes
   useEffect(() => {
@@ -137,9 +196,17 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
     }
   }, [selectedSolutionId, customerId]);
 
+  // Memoize selected solution and adoption plan ID to prevent unnecessary re-renders
+  const selectedSolutionData = React.useMemo(() => 
+    data?.customer?.solutions?.find((cs: any) => cs.id === selectedSolutionId),
+    [data?.customer?.solutions, selectedSolutionId]
+  );
+
+  const adoptionPlanIdForQuery = selectedSolutionData?.adoptionPlan?.id;
+
   const { data: planData, refetch: refetchPlan } = useQuery(GET_SOLUTION_ADOPTION_PLAN, {
-    variables: { id: data?.customer?.solutions?.find((cs: any) => cs.id === selectedSolutionId)?.adoptionPlan?.id },
-    skip: !selectedSolutionId || !data?.customer?.solutions?.find((cs: any) => cs.id === selectedSolutionId)?.adoptionPlan
+    variables: { id: adoptionPlanIdForQuery },
+    skip: !selectedSolutionId || !selectedSolutionData?.adoptionPlan
   });
 
   const [createAdoptionPlan] = useMutation(CREATE_SOLUTION_ADOPTION_PLAN, {
@@ -182,6 +249,29 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
     }
   });
 
+  const [exportTelemetryTemplate] = useMutation(EXPORT_SOLUTION_TELEMETRY_TEMPLATE, {
+    onCompleted: (data) => {
+      const { url, filename } = data.exportSolutionAdoptionPlanTelemetryTemplate;
+      window.open(url, '_blank');
+    },
+    onError: (err) => {
+      console.error('Export error:', err);
+      alert('Failed to export telemetry template: ' + err.message);
+    }
+  });
+
+  const [evaluateAllTasks] = useMutation(EVALUATE_ALL_SOLUTION_TASKS_TELEMETRY, {
+    onCompleted: () => {
+      refetch();
+      refetchPlan();
+      alert('All tasks re-evaluated successfully');
+    },
+    onError: (err) => {
+      console.error('Evaluation error:', err);
+      alert('Failed to evaluate tasks: ' + err.message);
+    }
+  });
+
   const handleSync = () => {
     const adoptionPlanId = selectedCustomerSolution?.adoptionPlan?.id;
     if (adoptionPlanId) {
@@ -192,6 +282,64 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   const handleDelete = () => {
     if (selectedSolutionId) {
       removeSolution({ variables: { id: selectedSolutionId } });
+    }
+  };
+
+  const handleExportTelemetry = () => {
+    const adoptionPlanId = selectedCustomerSolution?.adoptionPlan?.id;
+    if (adoptionPlanId) {
+      exportTelemetryTemplate({ variables: { solutionAdoptionPlanId: adoptionPlanId } });
+    }
+  };
+
+  const handleImportTelemetry = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    const adoptionPlanId = selectedCustomerSolution?.adoptionPlan?.id;
+    
+    if (!file || !adoptionPlanId) {
+      alert('Please select a file and solution');
+      return;
+    }
+    
+    try {
+      // Use REST API for file upload (simpler than GraphQL file uploads)
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const response = await fetch(`/api/solution-telemetry/import/${adoptionPlanId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': 'admin',
+        },
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Upload failed: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        refetch();
+        refetchPlan();
+        alert(`Import completed successfully!\nTasks processed: ${result.summary.tasksProcessed}\nAttributes updated: ${result.summary.attributesUpdated}`);
+      } else {
+        alert(`Import failed: ${result.summary.errors || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      console.error('Import error:', err);
+      alert(`Failed to import telemetry: ${err.message}`);
+    }
+    
+    // Reset the input so the same file can be re-uploaded
+    event.target.value = '';
+  };
+
+  const handleEvaluateAll = () => {
+    const adoptionPlanId = selectedCustomerSolution?.adoptionPlan?.id;
+    if (adoptionPlanId) {
+      evaluateAllTasks({ variables: { solutionAdoptionPlanId: adoptionPlanId } });
     }
   };
 
@@ -231,8 +379,17 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   return (
     <Box>
       {/* Solution Selector and Actions */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Paper 
+        elevation={1}
+        sx={{ 
+          p: { xs: 1.5, sm: 2, md: 2.5 }, 
+          mb: { xs: 2, md: 3 }, 
+          borderRadius: 2,
+          border: '1.5px solid',
+          borderColor: '#E0E0E0'
+        }}
+      >
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1.5, sm: 2 }, alignItems: { xs: 'stretch', sm: 'center' }, flexWrap: 'wrap' }}>
           <FormControl sx={{ minWidth: 300, flex: '1 1 300px' }} size="small">
             <InputLabel>Select Solution</InputLabel>
             <Select
@@ -247,65 +404,84 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
               ))}
             </Select>
           </FormControl>
-          
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<Add />}
-            onClick={() => setAssignDialogOpen(true)}
-          >
-            Assign Solution
-          </Button>
 
-          {selectedSolutionId && selectedCustomerSolution?.adoptionPlan && (
+          {selectedSolutionId && (
             <>
-              <Tooltip title="Edit license and outcomes">
+              <Tooltip title="Edit solution entitlements">
                 <Button
                   variant="outlined"
                   size="small"
-                  color="primary"
                   startIcon={<Edit />}
                   onClick={() => setEditEntitlementsDialogOpen(true)}
                 >
                   Edit
                 </Button>
               </Tooltip>
-              <Tooltip title="Sync with latest solution/product tasks">
+              {selectedCustomerSolution?.adoptionPlan && (
+                <>
+              <Tooltip title="Export Telemetry Template for data entry">
                 <Button
                   variant="outlined"
                   size="small"
-                  startIcon={<Sync />}
-                  color={planData?.solutionAdoptionPlan?.needsSync ? 'warning' : 'primary'}
-                  onClick={handleSync}
-                  disabled={syncLoading}
+                  color="primary"
+                  startIcon={<Download />}
+                  onClick={handleExportTelemetry}
                 >
-                  {syncLoading ? 'Syncing...' : `Sync ${planData?.solutionAdoptionPlan?.needsSync ? '⚠️' : ''}`}
+                  Export Template
                 </Button>
               </Tooltip>
-              <Tooltip title="Remove this solution from customer">
+              <Tooltip title="Import completed Telemetry Template file">
                 <Button
                   variant="outlined"
                   size="small"
-                  color="error"
-                  startIcon={<Delete />}
-                  onClick={() => setDeleteConfirmDialogOpen(true)}
-                  disabled={removeLoading}
+                  color="primary"
+                  component="label"
+                  startIcon={<Upload />}
                 >
-                  Delete
+                  Import Telemetry
+                  <input
+                    type="file"
+                    hidden
+                    accept=".xlsx,.xls"
+                    onChange={handleImportTelemetry}
+                  />
                 </Button>
               </Tooltip>
+              <Tooltip title="Re-evaluate all tasks based on telemetry criteria">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  color="secondary"
+                  startIcon={<Assessment />}
+                  onClick={handleEvaluateAll}
+                >
+                  Re-evaluate
+                </Button>
+              </Tooltip>
+                </>
+              )}
             </>
           )}
         </Box>
 
         {/* Solution Summary Cards */}
         {customerSolutions.length === 0 && (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <Typography variant="body1" color="text.secondary" gutterBottom>
-              No solutions assigned to this customer yet
+          <Box 
+            sx={{ 
+              textAlign: 'center', 
+              py: 6, 
+              px: 3,
+              backgroundColor: 'background.default',
+              borderRadius: 2,
+              border: '1px dashed',
+              borderColor: 'divider'
+            }}
+          >
+            <Typography variant="h6" color="text.secondary" gutterBottom fontWeight="500">
+              No Solutions Assigned Yet
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Solutions bundle multiple products together for unified adoption tracking
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 500, mx: 'auto' }}>
+              Solutions bundle multiple products together for unified adoption tracking and comprehensive progress monitoring
             </Typography>
             <Button
               variant="contained"

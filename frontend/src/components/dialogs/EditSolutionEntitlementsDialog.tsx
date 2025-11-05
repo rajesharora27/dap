@@ -15,7 +15,11 @@ import {
   Typography,
   TextField,
   Chip,
-  CircularProgress
+  CircularProgress,
+  FormControlLabel,
+  Checkbox,
+  FormGroup,
+  Paper
 } from '@mui/material';
 import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from './TaskDialog';
 
@@ -95,12 +99,12 @@ export function EditSolutionEntitlementsDialog({
   customerSolutionId,
   onSuccess,
 }: Props) {
-  const [licenseLevel, setLicenseLevel] = useState('ESSENTIAL');
+  const [licenseLevel, setLicenseLevel] = useState('Essential');
   const [name, setName] = useState('');
   const [selectedOutcomeIds, setSelectedOutcomeIds] = useState<string[]>([]);
   const [selectedReleaseIds, setSelectedReleaseIds] = useState<string[]>([]);
 
-  const { data, loading } = useQuery(GET_CUSTOMER_SOLUTION, {
+  const { data, loading, error: queryError } = useQuery(GET_CUSTOMER_SOLUTION, {
     variables: { id: customerSolutionId },
     skip: !customerSolutionId || !open,
   });
@@ -261,24 +265,43 @@ export function EditSolutionEntitlementsDialog({
             Outcomes
           </Typography>
           {data?.customerSolution?.solution?.outcomes && data.customerSolution.solution.outcomes.length > 0 ? (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Chip
-                label="All Outcomes"
-                onClick={() => handleOutcomeToggle(ALL_OUTCOMES_ID)}
-                color={selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'primary' : 'default'}
-                variant={selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'filled' : 'outlined'}
-              />
-              {data.customerSolution.solution.outcomes.map((outcome: any) => (
-                <Chip
-                  key={outcome.id}
-                  label={outcome.name}
-                  onClick={() => handleOutcomeToggle(outcome.id)}
-                  color={selectedOutcomeIds.includes(outcome.id) ? 'primary' : 'default'}
-                  variant={selectedOutcomeIds.includes(outcome.id) ? 'filled' : 'outlined'}
-                  disabled={selectedOutcomeIds.includes(ALL_OUTCOMES_ID)}
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={selectedOutcomeIds.includes(ALL_OUTCOMES_ID) || selectedOutcomeIds.length === 0}
+                      onChange={() => handleOutcomeToggle(ALL_OUTCOMES_ID)}
+                    />
+                  }
+                  label={<Typography fontWeight="bold">All Outcomes</Typography>}
                 />
-              ))}
-            </Box>
+                <Box sx={{ pl: 3, borderLeft: '2px solid #e0e0e0', ml: 1.5, mt: 1 }}>
+                  {data.customerSolution.solution.outcomes.map((outcome: any) => (
+                    <FormControlLabel
+                      key={outcome.id}
+                      control={
+                        <Checkbox
+                          checked={selectedOutcomeIds.includes(outcome.id)}
+                          onChange={() => handleOutcomeToggle(outcome.id)}
+                          disabled={selectedOutcomeIds.includes(ALL_OUTCOMES_ID)}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2">{outcome.name}</Typography>
+                          {outcome.description && (
+                            <Typography variant="caption" color="text.secondary">
+                              {outcome.description}
+                            </Typography>
+                          )}
+                        </Box>
+                      }
+                    />
+                  ))}
+                </Box>
+              </FormGroup>
+            </Paper>
           ) : (
             <Typography variant="body2" color="text.secondary">
               No outcomes available
@@ -292,24 +315,43 @@ export function EditSolutionEntitlementsDialog({
             Releases
           </Typography>
           {data?.customerSolution?.solution?.releases && data.customerSolution.solution.releases.length > 0 ? (
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              <Chip
-                label="All Releases"
-                onClick={() => handleReleaseToggle(ALL_RELEASES_ID)}
-                color={selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'primary' : 'default'}
-                variant={selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'filled' : 'outlined'}
-              />
-              {data.customerSolution.solution.releases.map((release: any) => (
-                <Chip
-                  key={release.id}
-                  label={release.name}
-                  onClick={() => handleReleaseToggle(release.id)}
-                  color={selectedReleaseIds.includes(release.id) ? 'primary' : 'default'}
-                  variant={selectedReleaseIds.includes(release.id) ? 'filled' : 'outlined'}
-                  disabled={selectedReleaseIds.includes(ALL_RELEASES_ID)}
+            <Paper variant="outlined" sx={{ p: 2 }}>
+              <FormGroup>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={selectedReleaseIds.includes(ALL_RELEASES_ID) || selectedReleaseIds.length === 0}
+                      onChange={() => handleReleaseToggle(ALL_RELEASES_ID)}
+                    />
+                  }
+                  label={<Typography fontWeight="bold">All Releases</Typography>}
                 />
-              ))}
-            </Box>
+                <Box sx={{ pl: 3, borderLeft: '2px solid #e0e0e0', ml: 1.5, mt: 1 }}>
+                  {data.customerSolution.solution.releases.map((release: any) => (
+                    <FormControlLabel
+                      key={release.id}
+                      control={
+                        <Checkbox
+                          checked={selectedReleaseIds.includes(release.id)}
+                          onChange={() => handleReleaseToggle(release.id)}
+                          disabled={selectedReleaseIds.includes(ALL_RELEASES_ID)}
+                        />
+                      }
+                      label={
+                        <Box>
+                          <Typography variant="body2">{release.name}</Typography>
+                          {release.description && (
+                            <Typography variant="caption" color="text.secondary">
+                              {release.description}
+                            </Typography>
+                          )}
+                        </Box>
+                      }
+                    />
+                  ))}
+                </Box>
+              </FormGroup>
+            </Paper>
           ) : (
             <Typography variant="body2" color="text.secondary">
               No releases available
