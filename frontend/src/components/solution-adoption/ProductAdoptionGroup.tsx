@@ -211,13 +211,13 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          bgcolor: 'background.default',
+          bgcolor: '#E0F2F1',
           cursor: 'pointer',
           borderLeft: '4px solid',
-          borderLeftColor: '#4CAF50',
+          borderLeftColor: '#00897B',
           transition: 'all 0.2s ease',
           '&:hover': {
-            bgcolor: 'action.hover',
+            bgcolor: '#B2DFDB',
             boxShadow: 1
           }
         }}

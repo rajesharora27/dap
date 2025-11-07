@@ -1,0 +1,6 @@
+This file is created to trigger a manual backend restart.
+Created at: 2025-11-05 00:12:30 UTC
+Reason: Force backend to reload schema changes for CustomerSolutionWithPlan.products field
+
+
+

@@ -502,7 +502,7 @@ export const TaskDialog: React.FC<Props> = ({
                         primary={
                           <span>
                             {outcome.name}
-                            {isSolutionLevel && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#1976d2' }}>🎯 Solution</span>}
+                            {isSolutionLevel && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#7B1FA2' }}>🎯 Solution</span>}
                           </span>
                         }
                         sx={{
@@ -651,7 +651,7 @@ export const TaskDialog: React.FC<Props> = ({
                             primary={
                               <span>
                                 {`${release.name} (v${release.level})`}
-                                {isSolutionLevel && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#1976d2' }}>🎯 Solution</span>}
+                                {isSolutionLevel && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#7B1FA2' }}>🎯 Solution</span>}
                               </span>
                             }
                             sx={{

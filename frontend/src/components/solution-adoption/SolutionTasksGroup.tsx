@@ -173,7 +173,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
           bgcolor: '#F3E5F5',
           cursor: 'pointer',
           borderLeft: '4px solid',
-          borderLeftColor: '#9C27B0',
+          borderLeftColor: '#7B1FA2',
           transition: 'all 0.2s ease',
           '&:hover': {
             bgcolor: '#E1BEE7',
@@ -188,7 +188,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
           </IconButton>
           
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h6" sx={{ color: '#6A1B9A', fontWeight: 600 }}>
+            <Typography variant="h6" sx={{ color: '#7B1FA2', fontWeight: 600 }}>
               🎯 Solution-Specific Tasks
             </Typography>
             
@@ -204,17 +204,17 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                       borderRadius: 1,
                       bgcolor: '#E1BEE7',
                       '& .MuiLinearProgress-bar': {
-                        bgcolor: '#9C27B0'
+                        bgcolor: '#7B1FA2'
                       }
                     }}
                   />
-                  <Typography variant="body2" fontWeight="600" sx={{ color: '#6A1B9A' }}>
+                  <Typography variant="body2" fontWeight="600" sx={{ color: '#7B1FA2' }}>
                     {Math.round(progress)}%
                   </Typography>
                 </Box>
               </Box>
               
-              <Typography variant="body2" fontWeight="500" sx={{ color: '#6A1B9A' }}>
+              <Typography variant="body2" fontWeight="500" sx={{ color: '#7B1FA2' }}>
                 {completedTasks} of {totalTasks} tasks
               </Typography>
             </Box>

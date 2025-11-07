@@ -44,7 +44,14 @@ const environments = {
       allowedOrigins: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [
         'http://localhost:5173',
         'http://localhost:3000',
-        'http://127.0.0.1:5173'
+        'http://127.0.0.1:5173',
+        'http://dap.cxsaaslab.com:5173',
+        'https://dap.cxsaaslab.com:5173',
+        'http://dap.cxsaaslab.com',
+        'https://dap.cxsaaslab.com',
+        'http://172.22.156.32:5173',
+        'http://dap-8321890.ztna.sse.cisco.io',
+        'https://dap-8321890.ztna.sse.cisco.io'
       ]
     }
   },
@@ -66,6 +73,10 @@ const environments = {
     cors: {
       allowedOrigins: [
         process.env.FRONTEND_URL || 'https://your-domain.com',
+        'http://dap.cxsaaslab.com',
+        'https://dap.cxsaaslab.com',
+        'http://dap-8321890.ztna.sse.cisco.io',
+        'https://dap-8321890.ztna.sse.cisco.io',
         process.env.ALLOWED_ORIGINS?.split(',') || []
       ].flat().filter(Boolean)
     }
@@ -88,6 +99,10 @@ const environments = {
     cors: {
       allowedOrigins: [
         process.env.FRONTEND_URL || 'https://staging.your-domain.com',
+        'http://dap.cxsaaslab.com',
+        'https://dap.cxsaaslab.com',
+        'http://dap-8321890.ztna.sse.cisco.io',
+        'https://dap-8321890.ztna.sse.cisco.io',
         process.env.ALLOWED_ORIGINS?.split(',') || []
       ].flat().filter(Boolean)
     }

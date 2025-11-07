@@ -532,6 +532,10 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [taskDetailsActiveTab, setTaskDetailsActiveTab] = useState(0);
   
+  // Collapsible sections state
+  const [productAssignmentsExpanded, setProductAssignmentsExpanded] = useState(true);
+  const [solutionAssignmentsExpanded, setSolutionAssignmentsExpanded] = useState(true);
+  
   // Filter states - releases and outcomes support multiple selections
   // Note: License filter removed - tasks are pre-filtered by assigned license level
   const [filterReleases, setFilterReleases] = useState<string[]>([]);
@@ -1293,7 +1297,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
 
             {/* Main Tab Content */}
             {activeTab === 'main' && (
-              <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 1.5, sm: 2, md: 3 }, display: 'flex', justifyContent: 'center' }}>
+              <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 1.5, sm: 2, md: 3 } }}>
                 <Box sx={{ width: '100%', maxWidth: 1200 }}>
                   {/* Customer Details Section - Only show when tabs are visible (standalone mode) */}
                   {!hideTabs && (
@@ -1307,7 +1311,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                         borderColor: '#E0E0E0'
                       }}
                     >
-                      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'flex-start' }, mb: 2, gap: { xs: 2, sm: 0 } }}>
+                      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 2, gap: { xs: 2, sm: 2 } }}>
                         <Box>
                           <Typography variant="h6" fontWeight="600" color="primary.main" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
                             Customer Information
@@ -1364,82 +1368,104 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                       borderColor: '#E0E0E0'
                     }}
                   >
-                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'flex-start' }, mb: { xs: 2, md: 3 }, gap: { xs: 2, sm: 0 } }}>
-                      <Box>
-                        <Typography variant="h6" fontWeight="600" color="primary.main" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                          Product Assignments
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
-                          Products assigned to this customer
-                        </Typography>
+                    <Box 
+                      sx={{ 
+                        display: 'flex', 
+                        flexDirection: { xs: 'column', sm: 'row' }, 
+                        justifyContent: 'space-between', 
+                        alignItems: { xs: 'flex-start', sm: 'center' }, 
+                        mb: productAssignmentsExpanded ? { xs: 2, md: 3 } : 0, 
+                        gap: { xs: 2, sm: 2 },
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => setProductAssignmentsExpanded(!productAssignmentsExpanded)}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <IconButton size="small" sx={{ p: 0 }}>
+                          {productAssignmentsExpanded ? <ExpandLess /> : <ExpandMore />}
+                        </IconButton>
+                        <Box>
+                          <Typography variant="h6" fontWeight="600" color="primary.main" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' }, mb: 0.5 }}>
+                            Product Assignments
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
+                            Products assigned to this customer
+                          </Typography>
+                        </Box>
                       </Box>
                       <Button 
                         startIcon={<Add />} 
                         variant="contained" 
                         size="small"
-                        onClick={() => setAssignProductDialogOpen(true)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAssignProductDialogOpen(true);
+                        }}
                         sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '120px' } }}
                       >
                         Assign Product
                       </Button>
                     </Box>
+                    <Collapse in={productAssignmentsExpanded}>
                     {selectedCustomer.products && selectedCustomer.products.length > 0 ? (
                       <Box sx={{ display: 'grid', gap: 2 }}>
                         {selectedCustomer.products.map((cp: any) => {
                           const isFromSolution = !!cp.customerSolutionId;
                           return (
-                            <Box 
-                              key={cp.id} 
-                              sx={{ 
-                                display: 'flex', 
-                                flexDirection: { xs: 'column', sm: 'row' },
-                                justifyContent: 'space-between', 
-                                alignItems: { xs: 'stretch', sm: 'center' },
-                                p: { xs: 1.5, sm: 2, md: 2.5 },
-                                border: '1.5px solid',
-                                borderColor: '#E0E0E0',
-                                borderLeft: '4px solid',
-                                borderLeftColor: isFromSolution ? '#2196F3' : '#4CAF50',
-                                backgroundColor: isFromSolution ? '#E3F2FD' : '#E8F5E9',
-                                borderRadius: 2,
-                                transition: 'all 0.2s ease',
-                                gap: { xs: 2, sm: 1 },
-                                '&:hover': {
-                                  boxShadow: 2,
-                                  borderColor: isFromSolution ? '#2196F3' : '#4CAF50'
-                                }
-                              }}
+                            <Tooltip 
+                              key={cp.id}
+                              title={isFromSolution ? "Part of solution assignment • Edit via solution • Double-click to view plan" : "Direct product assignment • Double-click to view plan"}
+                              arrow
+                              placement="top"
                             >
-                              <Box sx={{ flex: 1 }}>
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                  <Typography variant="body1" fontWeight="500" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
-                                    {cp.customerSolutionId ? (
-                                      `${cp.name}`
-                                    ) : (
-                                      `${cp.name} - ${cp.product.name}`
-                                    )}
-                                  </Typography>
-                                  <Chip 
-                                    label={cp.licenseLevel} 
-                                    size="small"
-                                    color="primary"
-                                    variant="outlined"
-                                    sx={{ height: 22, fontWeight: 500, fontSize: { xs: '0.7rem', md: '0.75rem' } }}
-                                  />
-                                  <Chip 
-                                    label={isFromSolution ? "From Solution" : "Direct"} 
-                                    size="small"
-                                    color={isFromSolution ? "info" : "success"}
-                                    sx={{ height: 22, fontWeight: 500, fontSize: { xs: '0.7rem', md: '0.75rem' } }}
-                                  />
+                              <Box 
+                                onDoubleClick={() => {
+                                  setSelectedCustomerProductId(cp.id);
+                                  setActiveTab('products');
+                                }}
+                                sx={{ 
+                                  display: 'flex', 
+                                  flexDirection: { xs: 'column', sm: 'row' },
+                                  justifyContent: 'space-between', 
+                                  alignItems: { xs: 'stretch', sm: 'center' },
+                                  p: { xs: 1.5, sm: 2, md: 2.5 },
+                                  border: '1.5px solid',
+                                  borderColor: '#E0E0E0',
+                                  borderLeft: '4px solid',
+                                  borderLeftColor: isFromSolution ? '#7B1FA2' : '#00897B',
+                                  backgroundColor: isFromSolution ? '#F3E5F5' : '#E0F2F1',
+                                  borderRadius: 2,
+                                  transition: 'all 0.2s ease',
+                                  gap: { xs: 2, sm: 1 },
+                                  cursor: 'pointer',
+                                  '&:hover': {
+                                    boxShadow: 2,
+                                    borderColor: isFromSolution ? '#7B1FA2' : '#00897B'
+                                  }
+                                }}
+                              >
+                                <Box sx={{ flex: 1 }}>
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                    <Typography variant="body1" fontWeight="500" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
+                                      {cp.customerSolutionId ? (
+                                        `${cp.name}`
+                                      ) : (
+                                        `${cp.name} - ${cp.product.name}`
+                                      )}
+                                    </Typography>
+                                    <Chip 
+                                      label={cp.licenseLevel} 
+                                      size="small"
+                                      color="primary"
+                                      variant="outlined"
+                                      sx={{ height: 22, fontWeight: 500, fontSize: { xs: '0.7rem', md: '0.75rem' } }}
+                                    />
+                                  </Box>
                                 </Box>
-                                {cp.customerSolutionId && (
-                                  <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' } }}>
-                                    Part of solution assignment • Edit via solution
-                                  </Typography>
-                                )}
-                              </Box>
-                              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+                              <Box 
+                                sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
                                 {cp.adoptionPlan && (
                                   <Tooltip title="Sync with latest product tasks">
                                     <Button
@@ -1457,17 +1483,6 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                     </Button>
                                   </Tooltip>
                                 )}
-                                <Button
-                                  size="small"
-                                  variant="outlined"
-                                  onClick={() => {
-                                    setSelectedCustomerProductId(cp.id);
-                                    setActiveTab('products');
-                                  }}
-                                  sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '100px' } }}
-                                >
-                                  View Plan
-                                </Button>
                                 <Tooltip 
                                   title={isFromSolution ? "Cannot edit product assigned as part of solution. Edit the solution instead." : ""}
                                   arrow
@@ -1515,6 +1530,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                 </Tooltip>
                               </Box>
                             </Box>
+                            </Tooltip>
                           );
                         })}
                       </Box>
@@ -1525,6 +1541,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                         </Typography>
                       </Box>
                     )}
+                    </Collapse>
                   </Paper>
 
                   {/* Solution Assignments Section */}
@@ -1537,74 +1554,98 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                       borderColor: '#E0E0E0'
                     }}
                   >
-                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'flex-start' }, mb: { xs: 2, md: 3 }, gap: { xs: 2, sm: 0 } }}>
-                      <Box>
-                        <Typography variant="h6" fontWeight="600" color="primary.main" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                          Solution Assignments
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
-                          Solutions assigned to this customer
-                        </Typography>
+                    <Box 
+                      sx={{ 
+                        display: 'flex', 
+                        flexDirection: { xs: 'column', sm: 'row' }, 
+                        justifyContent: 'space-between', 
+                        alignItems: { xs: 'flex-start', sm: 'center' }, 
+                        mb: solutionAssignmentsExpanded ? { xs: 2, md: 3 } : 0, 
+                        gap: { xs: 2, sm: 2 },
+                        cursor: 'pointer'
+                      }}
+                      onClick={() => setSolutionAssignmentsExpanded(!solutionAssignmentsExpanded)}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <IconButton size="small" sx={{ p: 0 }}>
+                          {solutionAssignmentsExpanded ? <ExpandLess /> : <ExpandMore />}
+                        </IconButton>
+                        <Box>
+                          <Typography variant="h6" fontWeight="600" color="primary.main" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' }, mb: 0.5 }}>
+                            Solution Assignments
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
+                            Solutions assigned to this customer
+                          </Typography>
+                        </Box>
                       </Box>
                       <Button 
                         startIcon={<Add />} 
                         variant="contained" 
                         size="small"
-                        onClick={() => setAssignSolutionDialogOpen(true)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAssignSolutionDialogOpen(true);
+                        }}
                         sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '140px' } }}
                       >
                         Assign Solution
                       </Button>
                     </Box>
+                    <Collapse in={solutionAssignmentsExpanded}>
                     {selectedCustomer.solutions && selectedCustomer.solutions.length > 0 ? (
                       <Box sx={{ display: 'grid', gap: 2 }}>
                         {selectedCustomer.solutions.map((cs: any) => (
-                          <Box 
-                            key={cs.id} 
-                            sx={{ 
-                              display: 'flex', 
-                              flexDirection: { xs: 'column', sm: 'row' },
-                              justifyContent: 'space-between', 
-                              alignItems: { xs: 'stretch', sm: 'center' },
-                              p: { xs: 1.5, sm: 2, md: 2.5 },
-                              border: '1.5px solid',
-                              borderColor: '#E0E0E0',
-                              borderLeft: '4px solid',
-                              borderLeftColor: '#9C27B0',
-                              backgroundColor: '#F3E5F5',
-                              borderRadius: 2,
-                              transition: 'all 0.2s ease',
-                              gap: { xs: 2, sm: 1 },
-                              '&:hover': {
-                                boxShadow: 2,
-                                borderColor: '#9C27B0'
-                              }
-                            }}
+                          <Tooltip
+                            key={cs.id}
+                            title="Solution assignment with multiple products • Double-click to view plan"
+                            arrow
+                            placement="top"
                           >
-                            <Box sx={{ flex: 1 }}>
-                              <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                <Typography variant="body1" fontWeight="500" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
-                                  {cs.name} - {cs.solution.name}
-                                </Typography>
-                                <Chip 
-                                  label={cs.licenseLevel} 
-                                  size="small"
-                                  color="primary"
-                                  variant="outlined"
-                                  sx={{ height: 22, fontWeight: 500, fontSize: { xs: '0.7rem', md: '0.75rem' } }}
-                                />
-                                <Chip 
-                                  label="Solution" 
-                                  size="small"
-                                  color="secondary"
-                                  sx={{ height: 22, fontWeight: 500, fontSize: { xs: '0.7rem', md: '0.75rem' } }}
-                                />
+                            <Box 
+                              onDoubleClick={() => {
+                                setSelectedCustomerSolutionId(cs.id);
+                                setActiveTab('solutions');
+                              }}
+                              sx={{ 
+                                display: 'flex', 
+                                flexDirection: { xs: 'column', sm: 'row' },
+                                justifyContent: 'space-between', 
+                                alignItems: { xs: 'stretch', sm: 'center' },
+                                p: { xs: 1.5, sm: 2, md: 2.5 },
+                                border: '1.5px solid',
+                                borderColor: '#E0E0E0',
+                                borderLeft: '4px solid',
+                                borderLeftColor: '#7B1FA2',
+                                backgroundColor: '#F3E5F5',
+                                borderRadius: 2,
+                                transition: 'all 0.2s ease',
+                                gap: { xs: 2, sm: 1 },
+                                cursor: 'pointer',
+                                '&:hover': {
+                                  boxShadow: 2,
+                                  borderColor: '#7B1FA2'
+                                }
+                              }}
+                            >
+                              <Box sx={{ flex: 1 }}>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                  <Typography variant="body1" fontWeight="500" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
+                                    {cs.name} - {cs.solution.name}
+                                  </Typography>
+                                  <Chip 
+                                    label={cs.licenseLevel} 
+                                    size="small"
+                                    color="primary"
+                                    variant="outlined"
+                                    sx={{ height: 22, fontWeight: 500, fontSize: { xs: '0.7rem', md: '0.75rem' } }}
+                                  />
+                                </Box>
                               </Box>
-                              <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', md: '0.75rem' } }}>
-                                Comprehensive solution with multiple products
-                              </Typography>
-                            </Box>
-                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+                            <Box 
+                              sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               {cs.adoptionPlan && (
                                 <Tooltip title="Sync with latest solution/product tasks">
                                   <Button
@@ -1622,17 +1663,6 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                   </Button>
                                 </Tooltip>
                               )}
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => {
-                                  setSelectedCustomerSolutionId(cs.id);
-                                  setActiveTab('solutions');
-                                }}
-                                sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '100px' } }}
-                              >
-                                View Plan
-                              </Button>
                               <Button
                                 size="small"
                                 variant="outlined"
@@ -1660,6 +1690,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                               </Button>
                             </Box>
                           </Box>
+                          </Tooltip>
                         ))}
                       </Box>
                     ) : (
@@ -1669,6 +1700,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                         </Typography>
                       </Box>
                     )}
+                    </Collapse>
                   </Paper>
                 </Box>
               </Box>
@@ -2819,7 +2851,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                           <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
                             Adoption Notes History
                           </Typography>
-                          <Paper variant="outlined" sx={{ p: 2, bgcolor: '#E3F2FD', maxHeight: '300px', overflow: 'auto' }}>
+                          <Paper variant="outlined" sx={{ p: 2, bgcolor: '#E0F2F1', maxHeight: '300px', overflow: 'auto' }}>
                             <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '0.85rem' }}>
                               {selectedTask.statusNotes}
                             </Typography>
