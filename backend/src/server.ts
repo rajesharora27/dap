@@ -53,6 +53,13 @@ export async function createApp() {
 
   // REST endpoint for telemetry import (multipart file upload)
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+  
+  // Configure multer for larger SQL backup files (up to 100MB)
+  const backupUpload = multer({ 
+    storage: multer.memoryStorage(), 
+    limits: { fileSize: 100 * 1024 * 1024 } 
+  });
+
   app.post('/api/telemetry/import/:adoptionPlanId', upload.single('file'), async (req, res) => {
     try {
       const { adoptionPlanId } = req.params;
@@ -84,6 +91,53 @@ export async function createApp() {
       res.status(500).json({ 
         success: false, 
         message: error.message || 'Import failed'
+      });
+    }
+  });
+
+  // REST endpoint for backup restoration from uploaded SQL file
+  app.post('/api/backup/restore-from-file', backupUpload.single('file'), async (req, res) => {
+    try {
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ success: false, message: 'No SQL file uploaded' });
+      }
+
+      // Validate file extension
+      if (!file.originalname.endsWith('.sql')) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Invalid file type. Only .sql files are accepted.' 
+        });
+      }
+
+      // Save the uploaded file to the backups directory
+      const backupsDir = path.join(process.cwd(), 'temp', 'backups');
+      if (!fs.existsSync(backupsDir)) {
+        fs.mkdirSync(backupsDir, { recursive: true });
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `uploaded_${timestamp}_${file.originalname}`;
+      const filePath = path.join(backupsDir, filename);
+
+      // Write file to disk
+      fs.writeFileSync(filePath, file.buffer);
+
+      // Import the BackupRestoreService dynamically
+      const { BackupRestoreService } = await import('./services/BackupRestoreService');
+      
+      // Restore from the uploaded file
+      const result = await BackupRestoreService.restoreBackup(filename);
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('Backup restore from file error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Restore from file failed',
+        error: error.message
       });
     }
   });

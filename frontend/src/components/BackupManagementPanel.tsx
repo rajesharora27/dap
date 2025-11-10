@@ -37,7 +37,8 @@ import {
   Error as ErrorIcon,
   Storage,
   Schedule,
-  DataObject
+  DataObject,
+  Upload
 } from '@mui/icons-material';
 
 // GraphQL Queries and Mutations
@@ -153,13 +154,15 @@ export const BackupManagementPanel: React.FC = () => {
   const [selectedBackup, setSelectedBackup] = useState<string | null>(null);
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
-    type: 'restore' | 'delete' | null;
+    type: 'restore' | 'delete' | 'restoreFromFile' | null;
     filename: string | null;
   }>({ open: false, type: null, filename: null });
   const [statusMessage, setStatusMessage] = useState<{
     type: 'success' | 'error' | 'info' | null;
     message: string;
   }>({ type: null, message: '' });
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   // GraphQL Queries and Mutations
   const { data, loading, error, refetch } = useQuery(LIST_BACKUPS, {
@@ -259,12 +262,71 @@ export const BackupManagementPanel: React.FC = () => {
       restoreBackup({ variables: { filename: confirmDialog.filename } });
     } else if (confirmDialog.type === 'delete' && confirmDialog.filename) {
       deleteBackup({ variables: { filename: confirmDialog.filename } });
+    } else if (confirmDialog.type === 'restoreFromFile') {
+      handleRestoreFromFile();
     }
   };
 
   const handleDownload = (filename: string) => {
     const url = `${window.location.origin}/api/downloads/backups/${encodeURIComponent(filename)}`;
     window.open(url, '_blank');
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith('.sql')) {
+        setStatusMessage({
+          type: 'error',
+          message: 'Invalid file type. Please select a .sql file.',
+        });
+        return;
+      }
+      setSelectedFile(file);
+      setConfirmDialog({ open: true, type: 'restoreFromFile', filename: file.name });
+    }
+  };
+
+  const handleRestoreFromFile = async () => {
+    if (!selectedFile) return;
+
+    setUploadingFile(true);
+    setStatusMessage({ type: 'info', message: 'Uploading and restoring backup...' });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const response = await fetch('/api/backup/restore-from-file', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setStatusMessage({
+          type: 'success',
+          message: result.message || 'Database restored successfully from uploaded file!',
+        });
+        // Reload the page to refresh all data
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        setStatusMessage({
+          type: 'error',
+          message: result.error || result.message || 'Failed to restore from uploaded file',
+        });
+      }
+    } catch (error: any) {
+      setStatusMessage({
+        type: 'error',
+        message: `Error restoring from file: ${error.message}`,
+      });
+    } finally {
+      setUploadingFile(false);
+      setSelectedFile(null);
+      setConfirmDialog({ open: false, type: null, filename: null });
+    }
   };
 
   const formatSize = (bytes: number): string => {
@@ -282,14 +344,14 @@ export const BackupManagementPanel: React.FC = () => {
   const backups: BackupMetadata[] = data?.listBackups || [];
   const selectedBackupData = backups.find((b) => b.filename === selectedBackup);
 
-  const isProcessing = creating || restoring || deleting;
+  const isProcessing = creating || restoring || deleting || uploadingFile;
 
   return (
     <Box sx={{ p: 3 }}>
       <Paper elevation={3} sx={{ p: 3 }}>
         <Stack spacing={3}>
           {/* Header */}
-          <Box display="flex" justifyContent="space-between" alignItems="center">
+          <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
             <Box>
               <Typography variant="h5" gutterBottom display="flex" alignItems="center">
                 <Backup sx={{ mr: 1 }} />
@@ -299,15 +361,32 @@ export const BackupManagementPanel: React.FC = () => {
                 Create database snapshots and restore from previous backups
               </Typography>
             </Box>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<Backup />}
-              onClick={handleCreateBackup}
-              disabled={isProcessing || loading}
-            >
-              Create Backup
-            </Button>
+            <Stack direction="row" spacing={2}>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<Backup />}
+                onClick={handleCreateBackup}
+                disabled={isProcessing || loading}
+              >
+                Create Backup
+              </Button>
+              <Button
+                variant="outlined"
+                color="secondary"
+                component="label"
+                startIcon={<Upload />}
+                disabled={isProcessing || loading}
+              >
+                Restore from File
+                <input
+                  type="file"
+                  hidden
+                  accept=".sql"
+                  onChange={handleFileSelect}
+                />
+              </Button>
+            </Stack>
           </Box>
 
           <Divider />
@@ -512,10 +591,10 @@ export const BackupManagementPanel: React.FC = () => {
         onClose={() => !isProcessing && setConfirmDialog({ open: false, type: null, filename: null })}
       >
         <DialogTitle>
-          {confirmDialog.type === 'restore' ? (
+          {confirmDialog.type === 'restore' || confirmDialog.type === 'restoreFromFile' ? (
             <Box display="flex" alignItems="center">
               <Warning color="warning" sx={{ mr: 1 }} />
-              Confirm Restore
+              {confirmDialog.type === 'restoreFromFile' ? 'Confirm Restore from File' : 'Confirm Restore'}
             </Box>
           ) : (
             <Box display="flex" alignItems="center">
@@ -526,9 +605,9 @@ export const BackupManagementPanel: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            {confirmDialog.type === 'restore' ? (
+            {confirmDialog.type === 'restore' || confirmDialog.type === 'restoreFromFile' ? (
               <>
-                Are you sure you want to restore from this backup?
+                Are you sure you want to restore from this {confirmDialog.type === 'restoreFromFile' ? 'uploaded file' : 'backup'}?
                 <br />
                 <strong>This will replace all current data with the backup data.</strong>
                 <br />
@@ -553,19 +632,22 @@ export const BackupManagementPanel: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={() => setConfirmDialog({ open: false, type: null, filename: null })}
+            onClick={() => {
+              setConfirmDialog({ open: false, type: null, filename: null });
+              setSelectedFile(null);
+            }}
             disabled={isProcessing}
           >
             Cancel
           </Button>
           <Button
             onClick={handleConfirmAction}
-            color={confirmDialog.type === 'restore' ? 'primary' : 'error'}
+            color={confirmDialog.type === 'restore' || confirmDialog.type === 'restoreFromFile' ? 'primary' : 'error'}
             variant="contained"
             disabled={isProcessing}
             autoFocus
           >
-            {confirmDialog.type === 'restore' ? 'Restore' : 'Delete'}
+            {confirmDialog.type === 'restore' || confirmDialog.type === 'restoreFromFile' ? 'Restore' : 'Delete'}
           </Button>
         </DialogActions>
       </Dialog>
