@@ -73,7 +73,10 @@ import {
   Home as MainIcon,
   ExpandLess,
   ExpandMore,
-  Rocket as ReleaseIcon
+  Rocket as ReleaseIcon,
+  Menu as MenuIcon,
+  ChevronLeft,
+  ChevronRight
 } from '@mui/icons-material';
 import { AuthBar } from '../components/AuthBar';
 import { useAuth } from '../components/AuthContext';
@@ -386,6 +389,12 @@ const PROCESS_DELETION_QUEUE = gql`
 const DELETE_PRODUCT = gql`
   mutation DeleteProduct($id: ID!) {
     deleteProduct(id: $id)
+  }
+`;
+
+const DELETE_SOLUTION = gql`
+  mutation DeleteSolution($id: ID!) {
+    deleteSolution(id: $id)
   }
 `;
 
@@ -832,7 +841,10 @@ export function App() {
   // State management
   const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers' | 'backup'>('products');
   const [selectedProduct, setSelectedProduct] = useState('');
-  const [selectedSolution, setSelectedSolution] = useState('');
+  const [selectedSolution, setSelectedSolution] = useState(() => {
+    // Initialize from localStorage
+    return localStorage.getItem('lastSelectedSolutionId') || '';
+  });
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selectedTask, setSelectedTask] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list');
@@ -842,6 +854,7 @@ export function App() {
   const [productsExpanded, setProductsExpanded] = useState(true);
   const [solutionsExpanded, setSolutionsExpanded] = useState(true);
   const [customersExpanded, setCustomersExpanded] = useState(true);
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(() => {
     // Initialize from localStorage
     return localStorage.getItem('lastSelectedCustomerId');
@@ -854,10 +867,12 @@ export function App() {
   const [addSolutionDialog, setAddSolutionDialog] = useState(false);
   const [addTaskDialog, setAddTaskDialog] = useState(false);
   const [editProductDialog, setEditProductDialog] = useState(false);
+  const [editSolutionDialog, setEditSolutionDialog] = useState(false);
   const [editTaskDialog, setEditTaskDialog] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', description: '' });
 
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingSolution, setEditingSolution] = useState<any>(null);
   const [editingTask, setEditingTask] = useState<any>(null);
 
   // New dialog states for sub-sections
@@ -2152,6 +2167,42 @@ export function App() {
         networkError: error?.networkError
       });
       alert('Failed to delete product: ' + (error?.message || 'Unknown error'));
+    }
+  };
+
+  const handleDeleteSolution = async (solutionId: string) => {
+    if (!confirm('Are you sure you want to delete this solution? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      console.log('Starting solution deletion for ID:', solutionId);
+
+      const result = await client.mutate({
+        mutation: DELETE_SOLUTION,
+        variables: { id: solutionId },
+        refetchQueries: ['Solutions'],
+        awaitRefetchQueries: true
+      });
+
+      console.log('Solution deletion mutation result:', result);
+
+      // If the deleted solution was selected, clear the selection
+      if (selectedSolution === solutionId) {
+        setSelectedSolution('');
+        localStorage.removeItem('lastSelectedSolutionId');
+        console.log('Cleared selected solution');
+      }
+
+      alert('Solution deleted successfully!');
+    } catch (error: any) {
+      console.error('Error deleting solution:', error);
+      console.error('Error details:', {
+        message: error?.message,
+        graphQLErrors: error?.graphQLErrors,
+        networkError: error?.networkError
+      });
+      alert('Failed to delete solution: ' + (error?.message || 'Unknown error'));
     }
   };
 
@@ -4708,18 +4759,26 @@ export function App() {
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <AuthBar />
+      <AuthBar onMenuClick={() => setDrawerOpen(!drawerOpen)} drawerOpen={drawerOpen} />
       <Toolbar />
 
       {/* Left Sidebar */}
       <Drawer
         variant="permanent"
+        open={drawerOpen}
         sx={{
-          width: drawerWidth,
+          width: drawerOpen ? drawerWidth : 0,
           flexShrink: 0,
+          whiteSpace: 'nowrap',
+          boxSizing: 'border-box',
+          transition: 'width 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
+          overflowX: 'hidden',
           '& .MuiDrawer-paper': {
-            width: drawerWidth,
+            width: drawerOpen ? drawerWidth : 0,
             boxSizing: 'border-box',
+            transition: 'width 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
+            overflowX: 'hidden',
+            borderRight: drawerOpen ? '1px solid rgba(0, 0, 0, 0.12)' : 'none',
           },
         }}
       >
@@ -4812,7 +4871,7 @@ export function App() {
               selected={selectedSection === 'customers'}
               onClick={() => {
                 setSelectedSection('customers');
-                setCustomersExpanded(true); // Always expand when clicking customers menu
+                setCustomersExpanded(true); // Always expand when clicked
               }}
             >
               <ListItemIcon>
@@ -4857,43 +4916,6 @@ export function App() {
                     }}
                   />
                 </ListItemButton>
-                {[...customers].sort((a: any, b: any) => a.name.localeCompare(b.name)).map((customer: any) => (
-                  <ListItemButton
-                    key={customer.id}
-                    sx={{ 
-                      pl: 6,
-                      position: 'relative',
-                      '&::before': {
-                        content: '""',
-                        position: 'absolute',
-                        left: '16px',
-                        top: 0,
-                        bottom: 0,
-                        width: '2px',
-                        backgroundColor: '#e0e0e0',
-                      },
-                      '&::after': {
-                        content: '""',
-                        position: 'absolute',
-                        left: '16px',
-                        top: '50%',
-                        width: '12px',
-                        height: '2px',
-                        backgroundColor: '#e0e0e0',
-                      }
-                    }}
-                    selected={selectedCustomerId === customer.id}
-                    onClick={() => setSelectedCustomerId(customer.id)}
-                  >
-                    <ListItemIcon>
-                      <CustomerIcon />
-                    </ListItemIcon>
-                    <ListItemText 
-                      primary={customer.name}
-                      secondary={`${customer.products?.length || 0} products, ${customer.solutions?.length || 0} solutions`}
-                    />
-                  </ListItemButton>
-                ))}
               </List>
             </Collapse>
 
@@ -4913,31 +4935,23 @@ export function App() {
       </Drawer>
 
       {/* Main Content */}
-      <Box component="main" sx={{ flexGrow: 1, p: 3, mt: 8 }}>
+      <Box 
+        component="main" 
+        sx={{ 
+          flexGrow: 1, 
+          p: 3, 
+          mt: 8,
+          transition: 'margin 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
+          width: drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%'
+        }}
+      >
         {/* Main List View */}
         {viewMode === 'list' && (
           <>
             {/* Products Section */}
             {selectedSection === 'products' && (
               <Box>
-                {/* Header with Tabs */}
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="h4" gutterBottom sx={{ mb: 2 }}>
-                    Products
-                  </Typography>
-                  <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                    <Tabs 
-                      value={selectedProductSubSection} 
-                      onChange={(e, newValue) => setSelectedProductSubSection(newValue as 'main' | 'tasks')}
-                    >
-                      <Tab label="Main" value="main" />
-                      <Tab label="Tasks" value="tasks" />
-                    </Tabs>
-                  </Box>
-                </Box>
-
-                {/* Product Selection - Only show on 'main' submenu */}
-                {selectedProductSubSection === 'main' && (
+                {/* Product Selection */}
                   <Paper sx={{ p: 3, mb: 2 }}>
                     {/* Loading States */}
                     {productsLoading && (
@@ -4978,17 +4992,8 @@ export function App() {
                       </FormControl>
 
                       {/* Product Action Buttons */}
+                    {selectedProduct && (
                       <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-                        <Button 
-                          variant="contained" 
-                          startIcon={<Add />}
-                          onClick={() => setAddProductDialog(true)}
-                          size="medium"
-                        >
-                          Add
-                        </Button>
-                        {selectedProduct && (
-                          <>
                             <Button 
                               variant="contained" 
                               startIcon={<Edit />}
@@ -5035,34 +5040,50 @@ export function App() {
                             >
                               Delete
                             </Button>
-                          </>
+                      </Box>
                         )}
                       </Box>
-                    </Box>
-
                   </Paper>
-                )}
+
+                {/* Tabs below dropdown and buttons */}
+                <Box sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
+                  <Tabs 
+                    value={selectedProductSubSection} 
+                    onChange={(e, newValue) => setSelectedProductSubSection(newValue as 'main' | 'tasks')}
+                  >
+                    <Tab label="Main" value="main" />
+                    <Tab label="Tasks" value="tasks" />
+                  </Tabs>
+                </Box>
 
                 {/* Main Sub-section - Summary Tiles */}
                 {selectedProductSubSection === 'main' && selectedProduct && (
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mb: 3 }}>
-                    <Paper sx={{ p: 4, backgroundColor: '#f8f9fa', border: '1px solid #e0e0e0' }}>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+                    <Paper 
+                      elevation={0}
+                      sx={{ 
+                        p: 2.5, 
+                        backgroundColor: '#fafafa', 
+                        border: '1px solid #e8e8e8',
+                        borderRadius: 2
+                      }}
+                    >
                       {(() => {
                         const currentProduct = products.find((p: any) => p.id === selectedProduct);
                         return currentProduct ? (
                           <Typography
-                            variant="body1"
+                            variant="body2"
                             color="text.secondary"
                             sx={{
-                              lineHeight: 1.9,
-                              fontSize: '1.05rem',
+                              lineHeight: 1.6,
+                              fontSize: '0.95rem',
                               whiteSpace: 'pre-line'
                             }}
                           >
                             {currentProduct.description || 'No description provided'}
                           </Typography>
                         ) : (
-                          <Typography variant="body1" color="text.secondary">
+                          <Typography variant="body2" color="text.secondary">
                             No product selected
                           </Typography>
                         );
@@ -5101,104 +5122,154 @@ export function App() {
                         <Box
                           sx={{
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                            gap: 2
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                            gap: 1.5
                           }}
                         >
                           {tileData.map((tile) => (
                             <Paper
                               key={tile.key}
-                              elevation={1}
+                              elevation={0}
                               onClick={() => handleTileClick(tile.tab)}
                               sx={{
-                                p: 3,
+                                p: 2,
                                 cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                border: '1px solid #e0e0e0',
+                                transition: 'all 0.15s ease',
+                                border: '1px solid #e8e8e8',
+                                borderRadius: 2,
+                                backgroundColor: '#ffffff',
                                 '&:hover': {
-                                  boxShadow: 4,
-                                  borderColor: '#d0d0d0'
+                                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                                  borderColor: '#1976d2',
+                                  backgroundColor: '#fafbff',
+                                  transform: 'translateY(-1px)'
                                 }
                               }}
                             >
-                              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                              <Typography 
+                                variant="subtitle2" 
+                                sx={{ 
+                                  fontWeight: 600, 
+                                  mb: 1,
+                                  fontSize: '0.875rem',
+                                  color: '#37474f',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 0.5
+                                }}
+                              >
                                 {tile.title}
+                                <Chip 
+                                  label={tile.items.length} 
+                                  size="small" 
+                                  sx={{ 
+                                    height: 18, 
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    backgroundColor: '#e3f2fd',
+                                    color: '#1976d2'
+                                  }} 
+                                />
                               </Typography>
                               {tile.items.length > 0 ? (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3, maxHeight: 140, overflow: 'auto' }}>
                                   {tile.type === 'keyValue' ? (
                                     // For custom attributes, show key: value
                                     <>
-                                      {(tile.items.length <= NAME_DISPLAY_LIMIT ? tile.items : tile.items.slice(0, NAME_DISPLAY_LIMIT)).map(([key, value]: [string, any]) => (
-                                        <Typography
+                                      {(tile.items.length <= 8 ? tile.items : tile.items.slice(0, 8)).map(([key, value]: [string, any]) => (
+                                        <Tooltip 
                                           key={key}
+                                          title={`${key}: ${typeof value === 'object' ? JSON.stringify(value) : String(value)}`}
+                                          placement="top"
+                                          arrow
+                                        >
+                                          <Typography
                                           variant="body2"
                                           sx={{
-                                            color: '#424242',
+                                              color: '#546e7a',
                                             whiteSpace: 'nowrap',
                                             overflow: 'hidden',
-                                            textOverflow: 'ellipsis'
+                                              textOverflow: 'ellipsis',
+                                              fontSize: '0.8rem',
+                                              lineHeight: 1.4
                                           }}
                                         >
-                                          <strong>{key}:</strong> {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                            <Box component="span" sx={{ fontWeight: 600, color: '#37474f' }}>{key}:</Box> {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                                         </Typography>
+                                        </Tooltip>
                                       ))}
-                                      {tile.items.length > NAME_DISPLAY_LIMIT && (
-                                        <Typography variant="caption" color="text.secondary">
-                                          +{tile.items.length - NAME_DISPLAY_LIMIT} more
+                                      {tile.items.length > 8 && (
+                                        <Typography variant="caption" sx={{ color: '#90a4ae', fontSize: '0.7rem', fontWeight: 500 }}>
+                                          +{tile.items.length - 8} more...
                                         </Typography>
                                       )}
                                     </>
                                   ) : tile.type === 'releaseWithLevel' ? (
                                     // For releases, show name with level
                                     <>
-                                      {(tile.items.length <= NAME_DISPLAY_LIMIT ? tile.items : tile.items.slice(0, NAME_DISPLAY_LIMIT)).map((release: any) => (
-                                        <Typography
+                                      {(tile.items.length <= 8 ? tile.items : tile.items.slice(0, 8)).map((release: any) => (
+                                        <Tooltip 
                                           key={release.name}
+                                          title={`${release.name} (v${release.level})`}
+                                          placement="top"
+                                          arrow
+                                        >
+                                          <Typography
                                           variant="body2"
                                           sx={{
-                                            color: '#424242',
+                                              color: '#546e7a',
                                             whiteSpace: 'nowrap',
                                             overflow: 'hidden',
-                                            textOverflow: 'ellipsis'
+                                              textOverflow: 'ellipsis',
+                                              fontSize: '0.8rem',
+                                              lineHeight: 1.4
                                           }}
                                         >
-                                          {release.name} <strong>(v{release.level})</strong>
+                                            {release.name} <Box component="span" sx={{ fontWeight: 600, color: '#37474f' }}>(v{release.level})</Box>
                                         </Typography>
+                                        </Tooltip>
                                       ))}
-                                      {tile.items.length > NAME_DISPLAY_LIMIT && (
-                                        <Typography variant="caption" color="text.secondary">
-                                          +{tile.items.length - NAME_DISPLAY_LIMIT} more
+                                      {tile.items.length > 8 && (
+                                        <Typography variant="caption" sx={{ color: '#90a4ae', fontSize: '0.7rem', fontWeight: 500 }}>
+                                          +{tile.items.length - 8} more...
                                         </Typography>
                                       )}
                                     </>
                                   ) : (
                                     // For other items, show just the name
                                     <>
-                                      {(tile.items.length <= NAME_DISPLAY_LIMIT ? tile.items : tile.items.slice(0, NAME_DISPLAY_LIMIT)).map((name: string) => (
-                                        <Typography
+                                      {(tile.items.length <= 8 ? tile.items : tile.items.slice(0, 8)).map((name: string) => (
+                                        <Tooltip 
                                           key={name}
+                                          title={name}
+                                          placement="top"
+                                          arrow
+                                        >
+                                          <Typography
                                           variant="body2"
                                           sx={{
-                                            color: '#424242',
+                                              color: '#546e7a',
                                             whiteSpace: 'nowrap',
                                             overflow: 'hidden',
-                                            textOverflow: 'ellipsis'
+                                              textOverflow: 'ellipsis',
+                                              fontSize: '0.8rem',
+                                              lineHeight: 1.4
                                           }}
                                         >
                                           {name}
                                         </Typography>
+                                        </Tooltip>
                                       ))}
-                                      {tile.items.length > NAME_DISPLAY_LIMIT && (
-                                        <Typography variant="caption" color="text.secondary">
-                                          +{tile.items.length - NAME_DISPLAY_LIMIT} more
+                                      {tile.items.length > 8 && (
+                                        <Typography variant="caption" sx={{ color: '#90a4ae', fontSize: '0.7rem', fontWeight: 500 }}>
+                                          +{tile.items.length - 8} more...
                                         </Typography>
                                       )}
                                     </>
                                   )}
                                 </Box>
                               ) : (
-                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                <Typography variant="caption" sx={{ color: '#90a4ae', fontStyle: 'italic', fontSize: '0.75rem' }}>
                                   No entries yet
                                 </Typography>
                               )}
@@ -5654,24 +5725,352 @@ export function App() {
             {/* Solutions Section */}
             {selectedSection === 'solutions' && (
               <Box>
-                {/* Main Sub-section - Solution Management */}
-                {selectedSolutionSubSection === 'main' && (
-                  <>
-                    {solutionsLoading && <LinearProgress />}
+                {/* Loading and Error States */}
+                {solutionsLoading && (
+                  <Box sx={{ mb: 2 }}>
+                    <LinearProgress />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Loading solutions...
+                    </Typography>
+                  </Box>
+                )}
                     {solutionsError && (
+                  <Box sx={{ mb: 2 }}>
                       <Typography color="error">Error: {solutionsError.message}</Typography>
+                  </Box>
                     )}
 
+                {/* Solution Selector and Buttons */}
                     {!solutionsLoading && !solutionsError && (
-                      <SolutionManagementMain
-                        solutions={solutions}
-                        allProducts={products}
-                        onRefetch={refetchSolutions}
-                        onProductClick={handleProductClickFromSolution}
-                        onSolutionSelect={handleSolutionSelect}
-                      />
-                    )}
-                  </>
+                  <Paper sx={{ p: 3, mb: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <FormControl sx={{ minWidth: 300, flex: '1 1 300px' }}>
+                        <InputLabel>Select Solution</InputLabel>
+                        <Select
+                          value={selectedSolution}
+                          onChange={(e) => {
+                            const solutionId = e.target.value;
+                            setSelectedSolution(solutionId);
+                            setSelectedSolutionSubSection('main');
+                            localStorage.setItem('lastSelectedSolutionId', solutionId);
+                          }}
+                          label="Select Solution"
+                        >
+                          {solutions.map((solution: any) => (
+                            <MenuItem key={solution.id} value={solution.id}>
+                              {solution.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+
+                      {selectedSolution && (
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <Button 
+                            variant="contained" 
+                            startIcon={<Edit />}
+                            onClick={() => {
+                              const solution = solutions.find((s: any) => s.id === selectedSolution);
+                              if (solution) {
+                                setEditingSolution({ ...solution });
+                                setEditSolutionDialog(true);
+                              }
+                            }}
+                            size="medium"
+                          >
+                            Edit
+                          </Button>
+                          <Button 
+                            variant="outlined" 
+                            color="error"
+                            startIcon={<Delete />}
+                            onClick={() => {
+                              const solution = solutions.find((s: any) => s.id === selectedSolution);
+                              if (solution && window.confirm(`Are you sure you want to delete "${solution.name}"?`)) {
+                                handleDeleteSolution(solution.id);
+                              }
+                            }}
+                            size="medium"
+                          >
+                            Delete
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
+                  </Paper>
+                )}
+
+                {/* Tabs below dropdown and buttons */}
+                {!solutionsLoading && !solutionsError && (
+                  <Box sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
+                    <Tabs 
+                      value={selectedSolutionSubSection} 
+                      onChange={(e, newValue) => setSelectedSolutionSubSection(newValue as 'main' | 'tasks')}
+                    >
+                      <Tab label="Main" value="main" />
+                      <Tab label="Tasks" value="tasks" />
+                    </Tabs>
+                  </Box>
+                )}
+
+                {/* Main Sub-section - Solution Details */}
+                {selectedSolutionSubSection === 'main' && !solutionsLoading && !solutionsError && selectedSolution && (
+                  <Box>
+                    {/* Render solution details directly here instead of using SolutionManagementMain */}
+                    {(() => {
+                      const currentSolution = solutions.find((s: any) => s.id === selectedSolution);
+                      if (!currentSolution) return null;
+
+                      const productsList = currentSolution.products?.edges || [];
+                      const outcomesList = currentSolution.outcomes || [];
+                      const releasesList = currentSolution.releases || [];
+                      const customAttrs = currentSolution.customAttrs || {};
+                      const customAttrEntries = Object.entries(customAttrs);
+                      const NAME_DISPLAY_LIMIT = 12;
+
+                      return (
+                        <Box>
+                          {/* Name and Description */}
+                          <Paper sx={{ p: 4, backgroundColor: '#f8f9fa', border: '1px solid #e0e0e0', mb: 3 }}>
+                            <Typography
+                              variant="body1"
+                              color="text.secondary"
+                              sx={{
+                                lineHeight: 1.9,
+                                fontSize: '1.05rem',
+                                whiteSpace: 'pre-line'
+                              }}
+                            >
+                              {currentSolution.description || 'No description provided'}
+                            </Typography>
+                          </Paper>
+
+                          {/* Tiles Grid */}
+                          <Box
+                            sx={{
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                              gap: 2
+                            }}
+                          >
+                            {/* Products Tile */}
+                            <Paper
+                              elevation={1}
+                              onClick={() => {
+                                setSolutionDialogInitialTab('products');
+                                setEditingSolution(currentSolution);
+                                setEditSolutionDialog(true);
+                              }}
+                              sx={{
+                                p: 3,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                border: '1px solid #e0e0e0',
+                                '&:hover': {
+                                  boxShadow: 4,
+                                  borderColor: '#d0d0d0'
+                                }
+                              }}
+                            >
+                              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                                Products ({productsList.length})
+                              </Typography>
+                              {productsList.length > 0 ? (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  {(productsList.length <= NAME_DISPLAY_LIMIT ? productsList : productsList.slice(0, NAME_DISPLAY_LIMIT)).map((edge: any, idx: number) => (
+                                    <Typography
+                                      key={edge.node.id}
+                                      variant="body2"
+                                      sx={{
+                                        color: '#424242',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                      }}
+                                    >
+                                      {idx + 1}. {edge.node.name}
+                                    </Typography>
+                                  ))}
+                                  {productsList.length > NAME_DISPLAY_LIMIT && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      +{productsList.length - NAME_DISPLAY_LIMIT} more
+                                    </Typography>
+                                  )}
+                                </Box>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                  No products yet
+                                </Typography>
+                              )}
+                            </Paper>
+
+                            {/* Outcomes Tile */}
+                            <Paper
+                              elevation={1}
+                              onClick={() => {
+                                setSolutionDialogInitialTab('outcomes');
+                                setEditingSolution(currentSolution);
+                                setEditSolutionDialog(true);
+                              }}
+                              sx={{
+                                p: 3,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                border: '1px solid #e0e0e0',
+                                '&:hover': {
+                                  boxShadow: 4,
+                                  borderColor: '#d0d0d0'
+                                }
+                              }}
+                            >
+                              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                                Outcomes ({outcomesList.length})
+                              </Typography>
+                              {outcomesList.length > 0 ? (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  {(outcomesList.length <= NAME_DISPLAY_LIMIT ? outcomesList : outcomesList.slice(0, NAME_DISPLAY_LIMIT)).map((outcome: any, idx: number) => (
+                                    <Typography
+                                      key={outcome.id}
+                                      variant="body2"
+                                      sx={{
+                                        color: '#424242',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                      }}
+                                    >
+                                      {idx + 1}. {outcome.name}
+                                    </Typography>
+                                  ))}
+                                  {outcomesList.length > NAME_DISPLAY_LIMIT && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      +{outcomesList.length - NAME_DISPLAY_LIMIT} more
+                                    </Typography>
+                                  )}
+                                </Box>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                  No outcomes yet
+                                </Typography>
+                              )}
+                            </Paper>
+
+                            {/* Releases Tile */}
+                            <Paper
+                              elevation={1}
+                              onClick={() => {
+                                setSolutionDialogInitialTab('releases');
+                                setEditingSolution(currentSolution);
+                                setEditSolutionDialog(true);
+                              }}
+                              sx={{
+                                p: 3,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                border: '1px solid #e0e0e0',
+                                '&:hover': {
+                                  boxShadow: 4,
+                                  borderColor: '#d0d0d0'
+                                }
+                              }}
+                            >
+                              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                                Releases ({releasesList.length})
+                              </Typography>
+                              {releasesList.length > 0 ? (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  {(releasesList.length <= NAME_DISPLAY_LIMIT ? releasesList : releasesList.slice(0, NAME_DISPLAY_LIMIT)).map((release: any, idx: number) => (
+                                    <Box key={release.id}>
+                                      <Typography
+                                        variant="body2"
+                                        sx={{
+                                          color: '#424242',
+                                          whiteSpace: 'nowrap',
+                                          overflow: 'hidden',
+                                          textOverflow: 'ellipsis'
+                                        }}
+                                      >
+                                        {idx + 1}. {release.name}
+                                      </Typography>
+                                    </Box>
+                                  ))}
+                                  {releasesList.length > NAME_DISPLAY_LIMIT && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      +{releasesList.length - NAME_DISPLAY_LIMIT} more
+                                    </Typography>
+                                  )}
+                                </Box>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                  No releases yet
+                                </Typography>
+                              )}
+                            </Paper>
+
+                            {/* Custom Attributes Tile */}
+                            <Paper
+                              elevation={1}
+                              onClick={() => {
+                                setSolutionDialogInitialTab('customAttributes');
+                                setEditingSolution(currentSolution);
+                                setEditSolutionDialog(true);
+                              }}
+                              sx={{
+                                p: 3,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                border: '1px solid #e0e0e0',
+                                '&:hover': {
+                                  boxShadow: 4,
+                                  borderColor: '#d0d0d0'
+                                }
+                              }}
+                            >
+                              <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+                                Custom Attributes ({customAttrEntries.length})
+                              </Typography>
+                              {customAttrEntries.length > 0 ? (
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                  {(customAttrEntries.length <= NAME_DISPLAY_LIMIT ? customAttrEntries : customAttrEntries.slice(0, NAME_DISPLAY_LIMIT)).map(([key, value], idx: number) => (
+                                    <Typography
+                                      key={key}
+                                      variant="body2"
+                                      sx={{
+                                        color: '#424242',
+                                        whiteSpace: 'nowrap',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis'
+                                      }}
+                                    >
+                                      {idx + 1}. {key}: {String(value)}
+                                    </Typography>
+                                  ))}
+                                  {customAttrEntries.length > NAME_DISPLAY_LIMIT && (
+                                    <Typography variant="caption" color="text.secondary">
+                                      +{customAttrEntries.length - NAME_DISPLAY_LIMIT} more
+                                    </Typography>
+                                  )}
+                                </Box>
+                              ) : (
+                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                  No custom attributes yet
+                                </Typography>
+                              )}
+                            </Paper>
+                          </Box>
+                        </Box>
+                      );
+                    })()}
+                  </Box>
+                )}
+
+                {/* No solution selected message */}
+                {!selectedSolution && !solutionsLoading && selectedSolutionSubSection === 'main' && (
+                  <Paper sx={{ p: 4, textAlign: 'center' }}>
+                    <Typography variant="h6" color="text.secondary">
+                      Select a solution to view details
+                    </Typography>
+                  </Paper>
                 )}
 
                 {/* Tasks Sub-section */}
@@ -5793,10 +6192,93 @@ export function App() {
 
             {/* Customers Section */}
             {selectedSection === 'customers' && (
+              <Box>
+                {/* Loading and Error States */}
+                {customersLoading && (
+                  <Box sx={{ mb: 2 }}>
+                    <LinearProgress />
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                      Loading customers...
+                    </Typography>
+                  </Box>
+                )}
+                {customersError && (
+                  <Box sx={{ mb: 2 }}>
+                    <Typography color="error">Error: {customersError.message}</Typography>
+                  </Box>
+                )}
+
+                {/* Customer Selector */}
+                {!customersLoading && !customersError && (
+                  <Paper sx={{ p: 3, mb: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <FormControl sx={{ minWidth: 300, flex: '1 1 300px' }}>
+                        <InputLabel>Select Customer</InputLabel>
+                        <Select
+                          value={selectedCustomerId || ''}
+                          onChange={(e) => {
+                            const customerId = e.target.value;
+                            setSelectedCustomerId(customerId);
+                            localStorage.setItem('lastSelectedCustomerId', customerId);
+                          }}
+                          label="Select Customer"
+                        >
+                          {[...customers].sort((a: any, b: any) => a.name.localeCompare(b.name)).map((customer: any) => (
+                            <MenuItem key={customer.id} value={customer.id}>
+                              {customer.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
+                      {selectedCustomerId && (
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <Button
+                            startIcon={<Edit />}
+                            variant="contained"
+                            size="medium"
+                            onClick={() => {
+                              if ((window as any).__openEditCustomerDialog) {
+                                (window as any).__openEditCustomerDialog();
+                              }
+                            }}
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            startIcon={<Delete />}
+                            variant="outlined"
+                            size="medium"
+                            color="error"
+                            onClick={() => {
+                              if ((window as any).__deleteCustomer) {
+                                (window as any).__deleteCustomer();
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </Box>
+                      )}
+                    </Box>
+                  </Paper>
+                )}
+
+                {/* Customer Content */}
+                {!customersLoading && !customersError && (
               <CustomerAdoptionPanelV4 
                 selectedCustomerId={selectedCustomerId} 
-                onRequestAddCustomer={() => {}}
-              />
+                    onRequestAddCustomer={() => {
+                      localStorage.removeItem('lastSelectedCustomerId');
+                      setSelectedCustomerId(null);
+                      setTimeout(() => {
+                        if ((window as any).__openAddCustomerDialog) {
+                          (window as any).__openAddCustomerDialog();
+                        }
+                      }, 100);
+                    }}
+                  />
+                )}
+              </Box>
             )}
 
             {/* Backup & Restore Section */}
@@ -5825,6 +6307,23 @@ export function App() {
               solution={null}
               allProducts={products}
               initialTab="general"
+            />
+
+            {/* Edit Solution Dialog */}
+            <SolutionDialog
+              open={editSolutionDialog}
+              onClose={() => {
+                setEditSolutionDialog(false);
+                setSolutionDialogInitialTab('general');
+              }}
+              onSave={() => {
+                refetchSolutions();
+                setEditSolutionDialog(false);
+                setSolutionDialogInitialTab('general');
+              }}
+              solution={editingSolution}
+              allProducts={products}
+              initialTab={solutionDialogInitialTab}
             />
 
             {/* Add Task Dialog */}

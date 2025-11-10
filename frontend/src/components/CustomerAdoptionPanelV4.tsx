@@ -569,9 +569,26 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
     [data?.customers, selectedCustomerId]
   );
 
+  // Sort products: directly assigned first, then solution-based
+  const sortedProducts = React.useMemo(() => {
+    if (!selectedCustomer?.products) return [];
+    
+    return [...selectedCustomer.products].sort((a: any, b: any) => {
+      const aIsDirect = !a.customerSolutionId;
+      const bIsDirect = !b.customerSolutionId;
+      
+      // Direct products come first
+      if (aIsDirect && !bIsDirect) return -1;
+      if (!aIsDirect && bIsDirect) return 1;
+      
+      // Within each group, sort by name
+      return a.name.localeCompare(b.name);
+    });
+  }, [selectedCustomer?.products]);
+
   const selectedCustomerProduct = React.useMemo(() => 
-    selectedCustomer?.products?.find((cp: any) => cp.id === selectedCustomerProductId),
-    [selectedCustomer?.products, selectedCustomerProductId]
+    sortedProducts?.find((cp: any) => cp.id === selectedCustomerProductId),
+    [sortedProducts, selectedCustomerProductId]
   );
 
   const adoptionPlanId = selectedCustomerProduct?.adoptionPlan?.id;
@@ -584,10 +601,10 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
 
   // Auto-select first product when customer is selected or products change
   useEffect(() => {
-    if (selectedCustomer?.products?.length > 0 && !selectedCustomerProductId) {
-      setSelectedCustomerProductId(selectedCustomer.products[0].id);
+    if (sortedProducts.length > 0 && !selectedCustomerProductId) {
+      setSelectedCustomerProductId(sortedProducts[0].id);
     }
-  }, [selectedCustomerId, selectedCustomer?.products?.length, selectedCustomerProductId]);
+  }, [selectedCustomerId, sortedProducts.length, selectedCustomerProductId, sortedProducts]);
 
   // Filter tasks based on release and outcome
   // Note: Tasks are already pre-filtered by license level (based on product assignment)
@@ -1066,6 +1083,14 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
     }
   };
 
+  // Expose the delete customer handler to parent component
+  React.useEffect(() => {
+    (window as any).__deleteCustomer = handleDeleteCustomer;
+    return () => {
+      delete (window as any).__deleteCustomer;
+    };
+  }, [selectedCustomer]);
+
   const handleSaveCustomer = async (input: any) => {
     if (editingCustomer) {
       await updateCustomer({ variables: { id: editingCustomer.id, input } });
@@ -1279,9 +1304,6 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
               <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="h5">{selectedCustomer.name}</Typography>
-                  {selectedCustomer.description && (
-                    <Typography variant="body2" color="text.secondary">{selectedCustomer.description}</Typography>
-                  )}
                 </Box>
 
                 {/* Tabs for Main, Products and Solutions */}
@@ -1311,36 +1333,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                         borderColor: '#E0E0E0'
                       }}
                     >
-                      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 2, gap: { xs: 2, sm: 2 } }}>
-                        <Box>
-                          <Typography variant="h6" fontWeight="600" color="primary.main" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
-                            Customer Information
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
-                            Basic customer details and management
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
-                          <Button 
-                            startIcon={<Edit />} 
-                            variant="contained" 
-                            size="small" 
-                            onClick={handleEditCustomer}
-                            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
-                          >
-                            Edit
-                          </Button>
-                          <Button 
-                            startIcon={<Delete />} 
-                            variant="outlined" 
-                            size="small" 
-                            color="error" 
-                            onClick={handleDeleteCustomer}
-                            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
-                          >
-                            Delete
-                          </Button>
-                        </Box>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="h6" fontWeight="600" color="primary.main" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
+                          Customer Information
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', md: '0.875rem' } }}>
+                          Basic customer details and management
+                        </Typography>
                       </Box>
                       <Box sx={{ mt: 3, display: 'grid', gap: 2 }}>
                         <Box sx={{ display: 'flex', borderLeft: '3px solid', borderColor: 'primary.main', pl: 2 }}>
@@ -1407,9 +1406,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                       </Button>
                     </Box>
                     <Collapse in={productAssignmentsExpanded}>
-                    {selectedCustomer.products && selectedCustomer.products.length > 0 ? (
+                    {sortedProducts && sortedProducts.length > 0 ? (
                       <Box sx={{ display: 'grid', gap: 2 }}>
-                        {selectedCustomer.products.map((cp: any) => {
+                        {sortedProducts.map((cp: any) => {
                           const isFromSolution = !!cp.customerSolutionId;
                           return (
                             <Tooltip 
@@ -1729,7 +1728,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                     onChange={(e) => handleProductChange(e.target.value)}
                     label="Select Product"
                   >
-                    {selectedCustomer.products?.map((cp: any) => {
+                    {sortedProducts?.map((cp: any) => {
                       const isFromSolution = !!cp.customerSolutionId;
                       return (
                         <MenuItem 
@@ -1819,7 +1818,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                   <Box sx={{ p: 2.5 }}>
               {/* Solution-based Product Info */}
               {selectedCustomerProductId && (() => {
-                const selectedProd = selectedCustomer.products?.find((p: any) => p.id === selectedCustomerProductId);
+                const selectedProd = sortedProducts?.find((p: any) => p.id === selectedCustomerProductId);
                 return selectedProd?.customerSolutionId ? (
                   <Alert 
                     severity="info" 
@@ -2414,10 +2413,10 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                 <Alert severity="info">
                   <strong>No product selected.</strong>
                   <br />
-                  Available products: {selectedCustomer?.products?.length || 0}
+                  Available products: {sortedProducts?.length || 0}
                   <br />
-                  {selectedCustomer?.products?.length > 0 ? 
-                    `Products: ${selectedCustomer.products.map((cp: any) => cp.name ? `${cp.product.name} (${cp.name})` : cp.product.name).join(', ')}` :
+                  {sortedProducts?.length > 0 ? 
+                    `Products: ${sortedProducts.map((cp: any) => cp.name ? `${cp.product.name} (${cp.name})` : cp.product.name).join(', ')}` :
                     'Assign a product to this customer to get started.'
                   }
                 </Alert>
