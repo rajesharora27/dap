@@ -840,7 +840,10 @@ export function App() {
 
   // State management
   const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers' | 'backup'>('products');
-  const [selectedProduct, setSelectedProduct] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState(() => {
+    // Initialize from localStorage
+    return localStorage.getItem('lastSelectedProductId') || '';
+  });
   const [selectedSolution, setSelectedSolution] = useState(() => {
     // Initialize from localStorage
     return localStorage.getItem('lastSelectedSolutionId') || '';
@@ -1035,6 +1038,7 @@ export function App() {
     if (products.length > 0 && !selectedProduct) {
       setSelectedProduct(products[0].id);
       setSelectedProductSubSection('main');
+      localStorage.setItem('lastSelectedProductId', products[0].id);
     }
   }, [products, selectedProduct]);
 
@@ -1070,6 +1074,7 @@ export function App() {
     setSelectedSection('products');
     setSelectedProduct(productId);
     setViewMode('detail');
+    localStorage.setItem('lastSelectedProductId', productId);
   }, []);
 
   // Debug logging - uncomment for troubleshooting
@@ -1189,6 +1194,7 @@ export function App() {
     setSelectedProduct(productId);
     setSelectedProductSubSection('main');
     setSelectedTask('');
+    localStorage.setItem('lastSelectedProductId', productId);
   };
 
   const handleSolutionChange = (solutionId: string) => {
@@ -2154,6 +2160,7 @@ export function App() {
       // If the deleted product was selected, clear the selection
       if (selectedProduct === productId) {
         setSelectedProduct('');
+        localStorage.removeItem('lastSelectedProductId');
         console.log('Cleared selected product - tasks will be cleared automatically');
       }
 
@@ -4978,8 +4985,10 @@ export function App() {
                         <Select
                           value={selectedProduct}
                           onChange={(e) => {
-                            setSelectedProduct(e.target.value);
+                            const productId = e.target.value;
+                            setSelectedProduct(productId);
                             setSelectedProductSubSection('main');
+                            localStorage.setItem('lastSelectedProductId', productId);
                           }}
                           label="Select Product"
                         >
