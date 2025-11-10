@@ -1,9 +1,14 @@
 import * as React from 'react';
-import { AppBar, Toolbar, Typography, Box } from '@mui/material';
-import { Dashboard, TrendingUp } from '@mui/icons-material';
+import { AppBar, Toolbar, Typography, Box, IconButton } from '@mui/material';
+import { Dashboard, Menu as MenuIcon } from '@mui/icons-material';
 import { useAuth } from './AuthContext';
 
-export const AuthBar: React.FC = () => {
+interface AuthBarProps {
+  onMenuClick?: () => void;
+  drawerOpen?: boolean;
+}
+
+export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen }) => {
   const { token, setToken } = useAuth();
   return (
     <AppBar 
@@ -17,106 +22,72 @@ export const AuthBar: React.FC = () => {
       }}
     >
       <Toolbar sx={{ py: { xs: 0.5, sm: 1 } }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2.5 }, flex: 1 }}>
-          {/* Modern Icon with Light Background */}
+        {/* Menu Toggle Button */}
+        {onMenuClick && (
+          <IconButton
+            color="inherit"
+            aria-label="toggle drawer"
+            onClick={onMenuClick}
+            edge="start"
+            sx={{ 
+              mr: 2,
+              color: 'white',
+              '&:hover': {
+                bgcolor: 'rgba(255, 255, 255, 0.1)'
+              }
+            }}
+          >
+            <MenuIcon />
+          </IconButton>
+        )}
+        
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+          {/* Modern Icon */}
           <Box 
             sx={{ 
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: { xs: 40, sm: 48 },
-              height: { xs: 40, sm: 48 },
-              borderRadius: 2.5,
-              bgcolor: 'rgba(255, 255, 255, 0.2)',
+              width: { xs: 36, sm: 42 },
+              height: { xs: 36, sm: 42 },
+              borderRadius: 2,
+              bgcolor: 'rgba(255, 255, 255, 0.15)',
               backdropFilter: 'blur(10px)',
-              border: '1px solid rgba(255, 255, 255, 0.3)',
-              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                bgcolor: 'rgba(255, 255, 255, 0.3)',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 6px 16px rgba(0, 0, 0, 0.15)'
-              }
+              border: '1px solid rgba(255, 255, 255, 0.25)',
+              transition: 'all 0.2s ease'
             }}
           >
-            <Dashboard sx={{ fontSize: { xs: 24, sm: 28 }, color: '#FFFFFF' }} />
+            <Dashboard sx={{ fontSize: { xs: 22, sm: 26 }, color: '#FFFFFF' }} />
           </Box>
           
-          {/* Title and Subtitle */}
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+          {/* Modern Title */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
             <Typography 
               variant="h6" 
               sx={{ 
-                fontWeight: 700,
-                fontSize: { xs: '1.1rem', sm: '1.35rem', md: '1.5rem' },
-                letterSpacing: '-0.5px',
-                lineHeight: 1.1,
+                fontWeight: 600,
+                fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.4rem' },
+                letterSpacing: '-0.3px',
+                lineHeight: 1.2,
                 color: '#FFFFFF',
-                fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif',
-                textShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
               }}
             >
               Dynamic Adoption Plans
             </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <TrendingUp sx={{ fontSize: { xs: 13, sm: 15 }, color: '#A7F3D0' }} />
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  fontSize: { xs: '0.7rem', sm: '0.8rem' },
-                  letterSpacing: '0.5px',
-                  fontWeight: 600,
-                  color: 'rgba(255, 255, 255, 0.9)',
-                  textTransform: 'uppercase',
-                  fontFamily: '"Inter", "Segoe UI", "Roboto", sans-serif'
-                }}
-              >
-                Accelerate Customer Success
-              </Typography>
-            </Box>
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                letterSpacing: '0.3px',
+                fontWeight: 500,
+                color: 'rgba(255, 255, 255, 0.85)',
+                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
+              }}
+            >
+              Customer Success Platform
+            </Typography>
           </Box>
-        </Box>
-        
-        {/* Status Badge */}
-        <Box 
-          sx={{ 
-            display: { xs: 'none', md: 'flex' },
-            alignItems: 'center',
-            gap: 1,
-            px: 2,
-            py: 0.75,
-            borderRadius: 2,
-            bgcolor: 'rgba(255, 255, 255, 0.2)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255, 255, 255, 0.3)',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-          }}
-        >
-          <Box 
-            sx={{ 
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              bgcolor: '#10B981',
-              boxShadow: '0 0 12px #10B981',
-              animation: 'pulse 2s ease-in-out infinite',
-              '@keyframes pulse': {
-                '0%, 100%': { opacity: 1, transform: 'scale(1)' },
-                '50%': { opacity: 0.7, transform: 'scale(1.1)' }
-              }
-            }}
-          />
-          <Typography 
-            variant="caption" 
-            sx={{ 
-              fontSize: '0.8rem',
-              fontWeight: 700,
-              color: '#FFFFFF',
-              letterSpacing: '0.5px'
-            }}
-          >
-            LIVE
-          </Typography>
         </Box>
       </Toolbar>
     </AppBar>

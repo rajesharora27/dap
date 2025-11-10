@@ -10,6 +10,7 @@ import {
   LinearProgress,
   List,
   ListItem,
+  ListItemButton,
   ListItemText,
   ListItemSecondaryAction,
   IconButton,
@@ -344,9 +345,7 @@ export const BackupManagementPanel: React.FC = () => {
                     {backups.map((backup) => (
                       <ListItem
                         key={backup.id}
-                        button
-                        selected={selectedBackup === backup.filename}
-                        onClick={() => setSelectedBackup(backup.filename)}
+                        disablePadding
                         sx={{
                           border: '1px solid',
                           borderColor: 'divider',
@@ -354,23 +353,28 @@ export const BackupManagementPanel: React.FC = () => {
                           mb: 1,
                         }}
                       >
-                        <Storage sx={{ mr: 2, color: 'primary.main' }} />
-                        <ListItemText
-                          primary={
-                            <Typography variant="subtitle2" noWrap>
-                              {backup.filename}
-                            </Typography>
-                          }
-                          secondary={
-                            <Stack direction="row" spacing={1} alignItems="center">
-                              <Schedule fontSize="small" />
-                              <Typography variant="caption">
-                                {formatDate(backup.timestamp)}
+                        <ListItemButton
+                          selected={selectedBackup === backup.filename}
+                          onClick={() => setSelectedBackup(backup.filename)}
+                        >
+                          <Storage sx={{ mr: 2, color: 'primary.main' }} />
+                          <ListItemText
+                            primary={
+                              <Typography variant="subtitle2" noWrap>
+                                {backup.filename}
                               </Typography>
-                              <Chip label={formatSize(backup.size)} size="small" />
-                            </Stack>
-                          }
-                        />
+                            }
+                            secondary={
+                              <Stack direction="row" spacing={1} alignItems="center">
+                                <Schedule fontSize="small" />
+                                <Typography variant="caption">
+                                  {formatDate(backup.timestamp)}
+                                </Typography>
+                                <Chip label={formatSize(backup.size)} size="small" />
+                              </Stack>
+                            }
+                          />
+                        </ListItemButton>
                         <ListItemSecondaryAction>
                           <Tooltip title="Download">
                             <IconButton
