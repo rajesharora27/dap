@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { ApolloClient, InMemoryCache, ApolloProvider, HttpLink, from } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
+import { onError } from '@apollo/client/link/error';
 import { getApiUrl, isDevelopment } from '../config/frontend.config';
 
 interface WrapperProps { children: React.ReactNode }
@@ -21,10 +22,45 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
   });
 
   const client = React.useMemo(() => {
+    // Error link to handle network errors and aborts gracefully
+    const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
+      // Ignore AbortErrors - these are expected when navigating away or logging out
+      if (networkError && networkError.name === 'AbortError') {
+        console.log('🔄 Request aborted (expected during navigation):', operation.operationName);
+        return;
+      }
+
+      if (graphQLErrors) {
+        graphQLErrors.forEach(({ message, locations, path }) => {
+          console.error(
+            `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
+          );
+          
+          // Check for authentication errors
+          if (message.includes('Authentication required') || 
+              message.includes('Not authenticated') ||
+              message.includes('Invalid token') ||
+              message.includes('User not found') ||
+              message.includes('prisma.user.findUnique') && message.includes('undefined')) {
+            console.warn('🔒 Authentication error detected - clearing session');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            sessionStorage.clear();
+            // Reload to trigger login page
+            setTimeout(() => window.location.href = '/', 100);
+          }
+        });
+      }
+
+      if (networkError && networkError.name !== 'AbortError') {
+        console.error(`[Network error]: ${networkError}`);
+      }
+    });
+
     // Create auth link to add Authorization header
     const authLink = setContext((operation, { headers }) => {
-      // Always use 'admin' token for fallback auth
-      const token = 'admin';
+      // Get token from localStorage
+      const token = localStorage.getItem('token');
 
       console.log('🔍 Apollo Request Details:', {
         operationName: operation.operationName,
@@ -38,7 +74,7 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
       return {
         headers: {
           ...headers,
-          authorization: token || ''
+          authorization: token ? `Bearer ${token}` : ''
         }
       };
     });
@@ -89,6 +125,12 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
 
           return response;
         }).catch(error => {
+          // Ignore AbortErrors - these are expected during navigation/logout
+          if (error.name === 'AbortError') {
+            console.log('🔄 Fetch aborted (expected during navigation)');
+            throw error; // Still throw it so Apollo can handle it
+          }
+          
           console.error('🚨 Fetch Error:', error);
           throw error;
         });
@@ -96,14 +138,16 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
     });
 
     const apolloClient = new ApolloClient({
-      link: from([authLink, httpLink]),
+      link: from([errorLink, authLink, httpLink]),
       cache: new InMemoryCache(),
       defaultOptions: {
         watchQuery: {
-          errorPolicy: 'all'
+          errorPolicy: 'all',
+          fetchPolicy: 'network-only' // Prevent cache issues during auth changes
         },
         query: {
-          errorPolicy: 'all'
+          errorPolicy: 'all',
+          fetchPolicy: 'network-only'
         }
       }
     });

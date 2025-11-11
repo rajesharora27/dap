@@ -294,7 +294,6 @@ export const typeDefs = gql`
     releases(productId: ID): [Release!]!
     taskStatuses: [TaskStatus!]!
     outcomes(productId: ID, solutionId: ID): [Outcome!]!
-    auditLogs(limit: Int = 50): [AuditLog!]!
     changeSets(limit: Int = 50): [ChangeSet!]!
     changeSet(id: ID!): ChangeSet
     search(query: String!, first: Int = 20, after: String): [SearchResult!]!
@@ -1003,5 +1002,260 @@ export const typeDefs = gql`
     Delete a backup file
     """
     deleteBackup(filename: String!): DeleteBackupResult!
+  }
+
+  # ==========================================
+  # Authentication & Authorization Types
+  # ==========================================
+
+  type UserExtended {
+    id: ID!
+    username: String!
+    email: String!
+    fullName: String
+    isAdmin: Boolean!
+    isActive: Boolean!
+    mustChangePassword: Boolean!
+    roles: [String!]
+  }
+
+  type AuthTokens {
+    token: String!
+    refreshToken: String!
+  }
+
+  type LoginResponse {
+    user: UserExtended!
+    tokens: AuthTokens!
+  }
+
+  type Permission {
+    id: ID!
+    userId: ID!
+    resourceType: String!
+    resourceId: ID
+    permissionLevel: String!
+    grantedBy: ID
+    createdAt: String!
+  }
+
+  type UserWithPermissions {
+    user: UserExtended!
+    permissions: [Permission!]!
+    roles: [String!]!
+  }
+
+  input CreateUserInput {
+    username: String!
+    email: String!
+    fullName: String!
+    isAdmin: Boolean
+  }
+
+  input UpdateUserInput {
+    email: String
+    fullName: String
+    isAdmin: Boolean
+  }
+
+  type RolePermission {
+    id: ID!
+    resourceType: String!
+    resourceId: String
+    resourceName: String
+    permissionLevel: String!
+  }
+
+  type RoleWithPermissions {
+    id: ID!
+    name: String!
+    description: String
+    userCount: Int
+    users: [UserBasic!]
+    permissions: [RolePermission!]!
+  }
+
+  type UserBasic {
+    id: ID!
+    username: String!
+    fullName: String
+    email: String!
+  }
+
+  type AvailableResource {
+    id: ID!
+    name: String!
+    type: String!
+  }
+
+  input ResourcePermissionInput {
+    resourceType: String!
+    resourceId: String
+    permissionLevel: String!
+  }
+
+  input CreateRoleInput {
+    name: String!
+    description: String
+    permissions: [ResourcePermissionInput!]
+  }
+
+  input UpdateRoleInput {
+    name: String
+    description: String
+    permissions: [ResourcePermissionInput!]
+  }
+
+  input GrantPermissionInput {
+    userId: ID!
+    resourceType: String!
+    resourceId: ID
+    permissionLevel: String!
+  }
+
+  input ChangePasswordInput {
+    userId: ID!
+    oldPassword: String
+    newPassword: String!
+  }
+
+  type AuditLogEntry {
+    id: ID!
+    userId: ID
+    action: String!
+    resourceType: String
+    resourceId: ID
+    details: String
+    ipAddress: String
+    createdAt: String!
+  }
+
+  extend type Query {
+    """
+    Get current authenticated user
+    """
+    me: UserExtended
+
+    """
+    Get all users (admin only)
+    """
+    users: [UserExtended!]!
+
+    """
+    Get user by ID with permissions (admin or self only)
+    """
+    user(id: ID!): UserWithPermissions
+
+    """
+    Get current user's permissions
+    """
+    myPermissions: [Permission!]!
+
+    """
+    Get all roles with permissions (admin only)
+    """
+    roles: [RoleWithPermissions!]!
+
+    """
+    Get specific role with permissions (admin only)
+    """
+    role(id: ID!): RoleWithPermissions
+
+    """
+    Get roles for a specific user
+    """
+    userRoles(userId: ID!): [RoleWithPermissions!]!
+
+    """
+    Get available resources for permission assignment (admin only)
+    """
+    availableResources(resourceType: String): [AvailableResource!]!
+  }
+
+  extend type Mutation {
+    """
+    Login with username/email and password
+    """
+    loginExtended(username: String!, password: String!): LoginResponse!
+
+    """
+    Logout current user
+    """
+    logout: Boolean!
+
+    """
+    Refresh authentication token
+    """
+    refreshToken(refreshToken: String!): AuthTokens!
+
+    """
+    Create a new user (admin only)
+    """
+    createUser(input: CreateUserInput!): UserExtended!
+
+    """
+    Update user information (admin only)
+    """
+    updateUser(userId: ID!, input: UpdateUserInput!): UserExtended!
+
+    """
+    Delete user (admin only)
+    """
+    deleteUser(userId: ID!): Boolean!
+
+    """
+    Change password (self or admin)
+    """
+    changePassword(input: ChangePasswordInput!): Boolean!
+
+    """
+    Reset password to default DAP123 (admin only)
+    """
+    resetPasswordToDefault(userId: ID!): Boolean!
+
+    """
+    Create a new role with permissions (admin only)
+    """
+    createRole(input: CreateRoleInput!): RoleWithPermissions!
+
+    """
+    Update role and permissions (admin only)
+    """
+    updateRole(roleId: ID!, input: UpdateRoleInput!): RoleWithPermissions!
+
+    """
+    Delete role (admin only)
+    """
+    deleteRole(roleId: ID!): Boolean!
+
+    """
+    Assign role to user (admin only)
+    """
+    assignRoleToUser(userId: ID!, roleId: ID!): Boolean!
+
+    """
+    Remove role from user (admin only)
+    """
+    removeRoleFromUser(userId: ID!, roleId: ID!): Boolean!
+
+    """
+    Grant permission to user (admin only)
+    """
+    grantPermission(input: GrantPermissionInput!): Boolean!
+
+    """
+    Revoke permission from user (admin only)
+    """
+    revokePermission(userId: ID!, resourceType: String!, resourceId: ID): Boolean!
+
+    """
+    Activate user (admin only)
+    """
+    activateUser(userId: ID!): Boolean!
+
+    """
+    Deactivate user (admin only)
+    """
+    deactivateUser(userId: ID!): Boolean!
   }
 `;

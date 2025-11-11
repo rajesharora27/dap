@@ -15,7 +15,8 @@ import { makeExecutableSchema } from '@graphql-tools/schema';
 import { createContext, prisma } from './context';
 import { config, getCorsOrigins } from './config/app.config';
 import { CustomerTelemetryImportService } from './services/telemetry/CustomerTelemetryImportService';
-// Force restart to pick up schema changes - 2025-11-05
+import { SessionManager } from './utils/sessionManager';
+// Force restart to load permission enforcement - 2025-11-11
 
 export async function createApp() {
   const app = express();
@@ -193,23 +194,42 @@ export async function createApp() {
 // @ts-ignore
 const isDirectRun = typeof require !== 'undefined' && require.main === module;
 if (isDirectRun) {
-  createApp().then(({ httpServer }) => {
+  createApp().then(async ({ httpServer }) => {
     const port = config.backend.port;
     const host = config.backend.host;
-    // simple retention / maintenance job
+    
+    // Clear all sessions on startup to force re-authentication
+    console.log('🔐 Server starting - clearing all sessions for security...');
+    try {
+      await SessionManager.clearAllSessions();
+    } catch (e) {
+      console.error('⚠️  Failed to clear sessions on startup:', (e as any).message);
+    }
+    
+    // Run maintenance job every minute
+    // - Clear old telemetry (30+ days)
+    // - Clear expired sessions (7+ days)
+    // - Clear expired locks
     setInterval(async () => {
-      const cutoff = new Date(Date.now() - 30 * 24 * 3600 * 1000);
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      
       try {
+        // Clean old telemetry data
         if (prisma && prisma.telemetry) {
-          await prisma.telemetry.deleteMany({ where: { createdAt: { lt: cutoff } } });
+          const telemetryResult = await prisma.telemetry.deleteMany({ 
+            where: { createdAt: { lt: thirtyDaysAgo } } 
+          });
+          if (telemetryResult.count > 0) {
+            console.log(`🧹 Cleaned up ${telemetryResult.count} old telemetry record(s)`);
+          }
         }
-        if (prisma && prisma.lockedEntity) {
-          await prisma.lockedEntity.deleteMany({ where: { expiresAt: { lt: new Date() } } });
-        }
+        
+        // Run session maintenance
+        await SessionManager.runMaintenance();
       } catch (e) {
-        console.error('maintenance job failed', (e as any).message);
+        console.error('❌ Maintenance job failed:', (e as any).message);
       }
-    }, 60 * 1000);
+    }, 60 * 1000); // Every minute
     httpServer.listen(Number(port), host, () => {
       const displayHost = host === '0.0.0.0' ? 'localhost' : host;
       console.log(`API + WS ready at http://${displayHost}:${port}/graphql (health at /health)`);

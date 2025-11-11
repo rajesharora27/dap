@@ -48,6 +48,9 @@ import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
 import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
 import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
+import { UserProfileDialog } from '../components/UserProfileDialog';
+import { UserManagement } from '../components/UserManagement';
+import { RoleManagement } from '../components/RoleManagement';
 import { SolutionManagement } from '../components/SolutionManagement';
 import { SolutionManagementMain } from '../components/SolutionManagementMain';
 import { BackupManagementPanel } from '../components/BackupManagementPanel';
@@ -76,10 +79,15 @@ import {
   Rocket as ReleaseIcon,
   Menu as MenuIcon,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Dashboard,
+  AdminPanelSettings as AdminIcon,
+  People as UsersIcon,
+  Security as RolesIcon
 } from '@mui/icons-material';
 import { AuthBar } from '../components/AuthBar';
 import { useAuth } from '../components/AuthContext';
+import { LoginPage } from '../components/LoginPage';
 import { gql, useQuery, useApolloClient, ApolloError } from '@apollo/client';
 import {
   DndContext,
@@ -833,13 +841,10 @@ const drawerWidth = 240;
 export function App() {
   // Apollo client for mutations
   const client = useApolloClient();
-  const { token } = useAuth();
-
-  // State for managing UI and selections
-  const isAuthenticated = true; // Always authenticated for demo
+  const { token, isAuthenticated, isLoading, user } = useAuth();
 
   // State management
-  const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers' | 'backup'>('products');
+  const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers' | 'admin'>('products');
   const [selectedProduct, setSelectedProduct] = useState(() => {
     // Initialize from localStorage
     return localStorage.getItem('lastSelectedProductId') || '';
@@ -854,9 +859,11 @@ export function App() {
   const [detailProduct, setDetailProduct] = useState<any>(null);
   const [selectedProductSubSection, setSelectedProductSubSection] = useState<'main' | 'tasks'>('main');
   const [selectedSolutionSubSection, setSelectedSolutionSubSection] = useState<'main' | 'tasks'>('main');
+  const [selectedAdminSubSection, setSelectedAdminSubSection] = useState<'users' | 'roles' | 'backup'>('users');
   const [productsExpanded, setProductsExpanded] = useState(true);
   const [solutionsExpanded, setSolutionsExpanded] = useState(true);
   const [customersExpanded, setCustomersExpanded] = useState(true);
+  const [adminExpanded, setAdminExpanded] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(() => {
     // Initialize from localStorage
@@ -873,6 +880,7 @@ export function App() {
   const [editSolutionDialog, setEditSolutionDialog] = useState(false);
   const [editTaskDialog, setEditTaskDialog] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', description: '' });
+  const [profileDialog, setProfileDialog] = useState(false);
 
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [editingSolution, setEditingSolution] = useState<any>(null);
@@ -910,8 +918,9 @@ export function App() {
     })
   );
 
-  // GraphQL queries
+  // GraphQL queries - MUST be called before any conditional returns
   const { data: productsData, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PRODUCTS, {
+    skip: !isAuthenticated,  // Skip if not authenticated
     errorPolicy: 'all',
     onError: (error) => {
       console.error('🚨 PRODUCTS Query Error:', error);
@@ -927,34 +936,34 @@ export function App() {
   });
 
   const { data: solutionsData, loading: solutionsLoading, error: solutionsError, refetch: refetchSolutions } = useQuery(SOLUTIONS, {
+    skip: !isAuthenticated,  // Skip if not authenticated
     errorPolicy: 'all'
   });
 
   const { data: customersData, loading: customersLoading, error: customersError } = useQuery(CUSTOMERS, {
+    skip: !isAuthenticated,  // Skip if not authenticated
     errorPolicy: 'all'
   });
 
   const { data: tasksData, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useQuery(TASKS_FOR_PRODUCT, {
     variables: { productId: selectedProduct },
-    skip: !selectedProduct,
+    skip: !selectedProduct || !isAuthenticated,
     errorPolicy: 'all'
   });
 
   const { data: solutionTasksData, loading: solutionTasksLoading, error: solutionTasksError, refetch: refetchSolutionTasks } = useQuery(TASKS_FOR_SOLUTION, {
     variables: { solutionId: selectedSolution },
-    skip: !selectedSolution,
+    skip: !selectedSolution || !isAuthenticated,
     errorPolicy: 'all'
   });
-
-
 
   const { data: outcomesData } = useQuery(OUTCOMES, {
     variables: { productId: selectedProduct },
-    skip: !selectedProduct,
+    skip: !selectedProduct || !isAuthenticated,
     errorPolicy: 'all'
   });
 
-  // Extract data from GraphQL responses
+  // Extract data from GraphQL responses (for use in hooks)
   const products = productsData?.products?.edges?.map((edge: any) => {
     const node = edge.node;
     // Normalize customAttrs to always be an object
@@ -981,6 +990,125 @@ export function App() {
   }) || [];
   const solutions = solutionsData?.solutions?.edges?.map((edge: any) => edge.node) || [];
   const customers = customersData?.customers || [];
+
+  // Check if user has access to any resources (for menu visibility)
+  const hasProducts = products.length > 0;
+  const hasSolutions = solutions.length > 0;
+  const hasCustomers = customers.length > 0;
+
+  // Auto-select first product if none selected (MUST be before early returns)
+  React.useEffect(() => {
+    if (isAuthenticated && products.length > 0 && !selectedProduct) {
+      setSelectedProduct(products[0].id);
+      setSelectedProductSubSection('main');
+      localStorage.setItem('lastSelectedProductId', products[0].id);
+    }
+  }, [isAuthenticated, products, selectedProduct]);
+
+  // Auto-select first customer when customers section is opened (MUST be before early returns)
+  React.useEffect(() => {
+    if (isAuthenticated && selectedSection === 'customers' && customers.length > 0 && !selectedCustomerId) {
+      const lastCustomerId = localStorage.getItem('lastSelectedCustomerId');
+      // Only auto-select if there's a saved customer ID
+      // This allows the "Add Customer" button to work by clearing localStorage
+      if (lastCustomerId) {
+        // Check if last selected customer still exists
+        const customerExists = customers.some((c: any) => c.id === lastCustomerId);
+        if (customerExists) {
+          setSelectedCustomerId(lastCustomerId);
+        }
+      }
+    }
+  }, [isAuthenticated, selectedSection, customers, selectedCustomerId]);
+
+  // Persist customer selection to localStorage (MUST be before early returns)
+  React.useEffect(() => {
+    if (isAuthenticated && selectedCustomerId) {
+      localStorage.setItem('lastSelectedCustomerId', selectedCustomerId);
+    }
+  }, [isAuthenticated, selectedCustomerId]);
+
+  // Auto-redirect if user doesn't have access to current section (MUST be before early returns)
+  React.useEffect(() => {
+    if (!isAuthenticated) return;
+    
+    // Check if current section is accessible
+    const sectionAccessible = 
+      (selectedSection === 'products' && hasProducts) ||
+      (selectedSection === 'solutions' && hasSolutions) ||
+      (selectedSection === 'customers' && hasCustomers) ||
+      (selectedSection === 'admin' && user?.isAdmin);
+
+    // If current section is not accessible, redirect to first available section
+    if (!sectionAccessible) {
+      if (hasProducts) {
+        setSelectedSection('products');
+      } else if (hasSolutions) {
+        setSelectedSection('solutions');
+      } else if (hasCustomers) {
+        setSelectedSection('customers');
+      } else if (user?.isAdmin) {
+        setSelectedSection('admin');
+      }
+      // If no sections available, selectedSection will remain as is
+      // (handled in main content rendering)
+    }
+  }, [isAuthenticated, selectedSection, hasProducts, hasSolutions, hasCustomers, user?.isAdmin]);
+
+  // Memoized callbacks to prevent infinite loops (MUST be before early returns)
+  const handleSolutionSelect = React.useCallback((solutionId: string) => {
+    setSelectedSolution(solutionId);
+  }, []);
+
+  const handleProductClickFromSolution = React.useCallback((productId: string) => {
+    setSelectedSection('products');
+    setSelectedProduct(productId);
+    setViewMode('detail');
+    localStorage.setItem('lastSelectedProductId', productId);
+  }, []);
+
+  // Authentication Guard - Show loading or login page (AFTER all hooks)
+  if (isLoading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column',
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        color: 'white'
+      }}>
+        <Box sx={{ 
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: 80,
+          height: 80,
+          borderRadius: 3,
+          bgcolor: 'rgba(255, 255, 255, 0.2)',
+          backdropFilter: 'blur(10px)',
+          border: '2px solid rgba(255, 255, 255, 0.3)',
+          mb: 3
+        }}>
+          <Dashboard sx={{ fontSize: 40, color: 'white' }} />
+        </Box>
+        <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
+          Dynamic Adoption Plans
+        </Typography>
+        <LinearProgress sx={{ width: 200, mt: 2, bgcolor: 'rgba(255,255,255,0.2)', '& .MuiLinearProgress-bar': { bgcolor: 'white' } }} />
+        <Typography variant="body2" sx={{ mt: 2, opacity: 0.9 }}>
+          Verifying session...
+        </Typography>
+      </Box>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  // Extract remaining data (products/solutions/customers extracted before auth guard)
   const tasks = [...(tasksData?.tasks?.edges?.map((edge: any) => {
     const node = edge.node;
     // Parse successCriteria from JSON string to object for each telemetry attribute
@@ -1032,50 +1160,6 @@ export function App() {
   const releaseHandlers = new ReleaseHandlers(client);
   const outcomeHandlers = new OutcomeHandlers(client);
   const productHandlers = new ProductHandlers(client);
-
-  // Auto-select first product if none selected
-  React.useEffect(() => {
-    if (products.length > 0 && !selectedProduct) {
-      setSelectedProduct(products[0].id);
-      setSelectedProductSubSection('main');
-      localStorage.setItem('lastSelectedProductId', products[0].id);
-    }
-  }, [products, selectedProduct]);
-
-  // Auto-select first customer when customers section is opened
-  React.useEffect(() => {
-    if (selectedSection === 'customers' && customers.length > 0 && !selectedCustomerId) {
-      const lastCustomerId = localStorage.getItem('lastSelectedCustomerId');
-      // Only auto-select if there's a saved customer ID
-      // This allows the "Add Customer" button to work by clearing localStorage
-      if (lastCustomerId) {
-        // Check if last selected customer still exists
-        const customerExists = customers.some((c: any) => c.id === lastCustomerId);
-        if (customerExists) {
-          setSelectedCustomerId(lastCustomerId);
-        }
-      }
-    }
-  }, [selectedSection, customers, selectedCustomerId]);
-
-  // Persist customer selection to localStorage
-  React.useEffect(() => {
-    if (selectedCustomerId) {
-      localStorage.setItem('lastSelectedCustomerId', selectedCustomerId);
-    }
-  }, [selectedCustomerId]);
-
-  // Memoized callbacks to prevent infinite loops
-  const handleSolutionSelect = React.useCallback((solutionId: string) => {
-    setSelectedSolution(solutionId);
-  }, []);
-
-  const handleProductClickFromSolution = React.useCallback((productId: string) => {
-    setSelectedSection('products');
-    setSelectedProduct(productId);
-    setViewMode('detail');
-    localStorage.setItem('lastSelectedProductId', productId);
-  }, []);
 
   // Debug logging - uncomment for troubleshooting
   // console.log('App Component Loaded!');
@@ -4766,7 +4850,11 @@ export function App() {
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
-      <AuthBar onMenuClick={() => setDrawerOpen(!drawerOpen)} drawerOpen={drawerOpen} />
+      <AuthBar 
+        onMenuClick={() => setDrawerOpen(!drawerOpen)} 
+        drawerOpen={drawerOpen}
+        onProfileClick={() => setProfileDialog(true)}
+      />
       <Toolbar />
 
       {/* Left Sidebar */}
@@ -4792,150 +4880,216 @@ export function App() {
         <Toolbar />
         <Box sx={{ overflow: 'auto' }}>
           <List>
-            <ListItemButton
-              selected={selectedSection === 'products'}
-              onClick={() => {
-                setSelectedSection('products');
-                setProductsExpanded(true); // Always expand when clicked
-              }}
-            >
-              <ListItemIcon>
-                <ProductIcon />
-              </ListItemIcon>
-              <ListItemText primary="Products" />
-              {productsExpanded ? <ExpandLess /> : <ExpandMore />}
-            </ListItemButton>
-
-            <Collapse in={productsExpanded && selectedSection === 'products'} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                {/* Add Product Button */}
+            {/* Products Section - Only show if user has access to at least one product */}
+            {hasProducts && (
+              <>
                 <ListItemButton
-                  sx={{ 
-                    pl: 4,
-                    backgroundColor: 'action.hover',
-                    '&:hover': {
-                      backgroundColor: 'action.selected',
-                    }
-                  }}
-                  onClick={() => setAddProductDialog(true)}
-                >
-                  <ListItemIcon>
-                    <Add />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="Add Product"
-                    primaryTypographyProps={{ 
-                      fontWeight: 'medium',
-                      color: 'primary.main'
-                    }}
-                  />
-                </ListItemButton>
-              </List>
-            </Collapse>
-
-            <ListItemButton
-              selected={selectedSection === 'solutions'}
-              onClick={() => {
-                setSelectedSection('solutions');
-                setSolutionsExpanded(true); // Always expand when clicked
-              }}
-            >
-              <ListItemIcon>
-                <SolutionIcon />
-              </ListItemIcon>
-              <ListItemText primary="Solutions" />
-              {solutionsExpanded ? <ExpandLess /> : <ExpandMore />}
-            </ListItemButton>
-
-            <Collapse in={solutionsExpanded && selectedSection === 'solutions'} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                {/* Add Solution Button */}
-                <ListItemButton
-                  sx={{ 
-                    pl: 4,
-                    backgroundColor: 'action.hover',
-                    '&:hover': {
-                      backgroundColor: 'action.selected',
-                    }
-                  }}
-                  onClick={() => setAddSolutionDialog(true)}
-                >
-                  <ListItemIcon>
-                    <Add />
-                  </ListItemIcon>
-                  <ListItemText 
-                    primary="Add Solution"
-                    primaryTypographyProps={{ 
-                      fontWeight: 'medium',
-                      color: 'primary.main'
-                    }}
-                  />
-                </ListItemButton>
-              </List>
-            </Collapse>
-
-            <ListItemButton
-              selected={selectedSection === 'customers'}
-              onClick={() => {
-                setSelectedSection('customers');
-                setCustomersExpanded(true); // Always expand when clicked
-              }}
-            >
-              <ListItemIcon>
-                <CustomerIcon />
-              </ListItemIcon>
-              <ListItemText primary="Customers" />
-              {customersExpanded ? <ExpandLess /> : <ExpandMore />}
-            </ListItemButton>
-
-            <Collapse in={customersExpanded && selectedSection === 'customers'} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                {/* Add Customer Button */}
-                <ListItemButton
-                  sx={{ 
-                    pl: 4,
-                    backgroundColor: 'action.hover',
-                    '&:hover': {
-                      backgroundColor: 'action.selected',
-                    }
-                  }}
+                  selected={selectedSection === 'products'}
                   onClick={() => {
-                    // Clear localStorage to prevent auto-selection
-                    localStorage.removeItem('lastSelectedCustomerId');
-                    setSelectedCustomerId(null);
-                    setSelectedSection('customers');
-                    // Open the add customer dialog directly
-                    setTimeout(() => {
-                      if ((window as any).__openAddCustomerDialog) {
-                        (window as any).__openAddCustomerDialog();
-                      }
-                    }, 100);
+                    setSelectedSection('products');
+                    setProductsExpanded(true); // Always expand when clicked
                   }}
                 >
                   <ListItemIcon>
-                    <Add />
+                    <ProductIcon />
                   </ListItemIcon>
-                  <ListItemText 
-                    primary="Add Customer"
-                    primaryTypographyProps={{ 
-                      fontWeight: 'medium',
-                      color: 'primary.main'
-                    }}
-                  />
+                  <ListItemText primary="Products" />
+                  {productsExpanded ? <ExpandLess /> : <ExpandMore />}
                 </ListItemButton>
-              </List>
-            </Collapse>
 
-            {/* Backup & Restore Section */}
-            <ListItemButton
-              selected={selectedSection === 'backup'}
-              onClick={() => setSelectedSection('backup')}
-            >
-              <ListItemIcon>
-                <BackupIcon />
-              </ListItemIcon>
-              <ListItemText primary="Backup & Restore" />
-            </ListItemButton>
+                <Collapse in={productsExpanded && selectedSection === 'products'} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {/* Add Product Button */}
+                    <ListItemButton
+                      sx={{ 
+                        pl: 4,
+                        backgroundColor: 'action.hover',
+                        '&:hover': {
+                          backgroundColor: 'action.selected',
+                        }
+                      }}
+                      onClick={() => setAddProductDialog(true)}
+                    >
+                      <ListItemIcon>
+                        <Add />
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary="Add Product"
+                        primaryTypographyProps={{ 
+                          fontWeight: 'medium',
+                          color: 'primary.main'
+                        }}
+                      />
+                    </ListItemButton>
+                  </List>
+                </Collapse>
+              </>
+            )}
+
+            {/* Solutions Section - Only show if user has access to at least one solution */}
+            {hasSolutions && (
+              <>
+                <ListItemButton
+                  selected={selectedSection === 'solutions'}
+                  onClick={() => {
+                    setSelectedSection('solutions');
+                    setSolutionsExpanded(true); // Always expand when clicked
+                  }}
+                >
+                  <ListItemIcon>
+                    <SolutionIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Solutions" />
+                  {solutionsExpanded ? <ExpandLess /> : <ExpandMore />}
+                </ListItemButton>
+
+                <Collapse in={solutionsExpanded && selectedSection === 'solutions'} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {/* Add Solution Button */}
+                    <ListItemButton
+                      sx={{ 
+                        pl: 4,
+                        backgroundColor: 'action.hover',
+                        '&:hover': {
+                          backgroundColor: 'action.selected',
+                        }
+                      }}
+                      onClick={() => setAddSolutionDialog(true)}
+                    >
+                      <ListItemIcon>
+                        <Add />
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary="Add Solution"
+                        primaryTypographyProps={{ 
+                          fontWeight: 'medium',
+                          color: 'primary.main'
+                        }}
+                      />
+                    </ListItemButton>
+                  </List>
+                </Collapse>
+              </>
+            )}
+
+            {/* Customers Section - Only show if user has access to at least one customer */}
+            {hasCustomers && (
+              <>
+                <ListItemButton
+                  selected={selectedSection === 'customers'}
+                  onClick={() => {
+                    setSelectedSection('customers');
+                    setCustomersExpanded(true); // Always expand when clicked
+                  }}
+                >
+                  <ListItemIcon>
+                    <CustomerIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Customers" />
+                  {customersExpanded ? <ExpandLess /> : <ExpandMore />}
+                </ListItemButton>
+
+                <Collapse in={customersExpanded && selectedSection === 'customers'} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {/* Add Customer Button */}
+                    <ListItemButton
+                      sx={{ 
+                        pl: 4,
+                        backgroundColor: 'action.hover',
+                        '&:hover': {
+                          backgroundColor: 'action.selected',
+                        }
+                      }}
+                      onClick={() => {
+                        // Clear localStorage to prevent auto-selection
+                        localStorage.removeItem('lastSelectedCustomerId');
+                        setSelectedCustomerId(null);
+                        setSelectedSection('customers');
+                        // Open the add customer dialog directly
+                        setTimeout(() => {
+                          if ((window as any).__openAddCustomerDialog) {
+                            (window as any).__openAddCustomerDialog();
+                          }
+                        }, 100);
+                      }}
+                    >
+                      <ListItemIcon>
+                        <Add />
+                      </ListItemIcon>
+                      <ListItemText 
+                        primary="Add Customer"
+                        primaryTypographyProps={{ 
+                          fontWeight: 'medium',
+                          color: 'primary.main'
+                        }}
+                      />
+                    </ListItemButton>
+                  </List>
+                </Collapse>
+              </>
+            )}
+
+            {/* Admin Section (Admin Only) - Expandable with Submenus */}
+            {user?.isAdmin && (
+              <>
+                <ListItemButton
+                  selected={selectedSection === 'admin'}
+                  onClick={() => {
+                    setSelectedSection('admin');
+                    setAdminExpanded(!adminExpanded);
+                  }}
+                >
+                  <ListItemIcon>
+                    <AdminIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Admin" />
+                  {adminExpanded ? <ExpandLess /> : <ExpandMore />}
+                </ListItemButton>
+                <Collapse in={adminExpanded} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    <ListItemButton
+                      sx={{ pl: 4 }}
+                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'users'}
+                      onClick={() => {
+                        setSelectedSection('admin');
+                        setSelectedAdminSubSection('users');
+                      }}
+                    >
+                      <ListItemIcon>
+                        <UsersIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Users" />
+                    </ListItemButton>
+                    <ListItemButton
+                      sx={{ pl: 4 }}
+                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'roles'}
+                      onClick={() => {
+                        setSelectedSection('admin');
+                        setSelectedAdminSubSection('roles');
+                      }}
+                    >
+                      <ListItemIcon>
+                        <RolesIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Roles" />
+                    </ListItemButton>
+                    <ListItemButton
+                      sx={{ pl: 4 }}
+                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'backup'}
+                      onClick={() => {
+                        setSelectedSection('admin');
+                        setSelectedAdminSubSection('backup');
+                      }}
+                    >
+                      <ListItemIcon>
+                        <BackupIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Backup & Restore" />
+                    </ListItemButton>
+                  </List>
+                </Collapse>
+              </>
+            )}
           </List>
           <Divider />
         </Box>
@@ -6290,9 +6444,65 @@ export function App() {
               </Box>
             )}
 
-            {/* Backup & Restore Section */}
-            {selectedSection === 'backup' && (
-              <BackupManagementPanel />
+            {/* Admin Section (Admin Only) */}
+            {selectedSection === 'admin' && user?.isAdmin && (
+              <>
+                {selectedAdminSubSection === 'users' && <UserManagement />}
+                {selectedAdminSubSection === 'roles' && <RoleManagement />}
+                {selectedAdminSubSection === 'backup' && <BackupManagementPanel />}
+              </>
+            )}
+
+            {/* No Access Message - Show when user has no access to any section */}
+            {!hasProducts && !hasSolutions && !hasCustomers && !user?.isAdmin && (
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  minHeight: '60vh',
+                  textAlign: 'center',
+                  px: 3
+                }}
+              >
+                <Paper 
+                  elevation={3} 
+                  sx={{ 
+                    p: 4, 
+                    maxWidth: 600,
+                    borderRadius: 2
+                  }}
+                >
+                  <Box 
+                    sx={{ 
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 80,
+                      height: 80,
+                      borderRadius: 2,
+                      bgcolor: 'error.light',
+                      color: 'white',
+                      mb: 3,
+                      mx: 'auto'
+                    }}
+                  >
+                    <Dashboard sx={{ fontSize: 40 }} />
+                  </Box>
+                  <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                    No Access
+                  </Typography>
+                  <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                    You currently don't have access to any resources in this application.
+                    Please contact your administrator to request access to products, solutions, or customers.
+                  </Typography>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography variant="body2" color="text.secondary">
+                    User: <strong>{user?.username || 'Unknown'}</strong>
+                  </Typography>
+                </Paper>
+              </Box>
             )}
 
             {/* Add Product Dialog */}
@@ -6598,6 +6808,12 @@ export function App() {
             </Menu>
           </>
         )}
+        
+        {/* User Profile Dialog */}
+        <UserProfileDialog
+          open={profileDialog}
+          onClose={() => setProfileDialog(false)}
+        />
       </Box>
     </Box>
   );

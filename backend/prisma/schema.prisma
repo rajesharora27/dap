@@ -11,15 +11,24 @@ datasource db {
 
 
 model User {
-  id         String      @id @default(cuid())
-  email      String      @unique
-  username   String?     @unique
-  name       String?
-  role       Role        @default(USER)
-  password   String
-  auditLogs  AuditLog[]
-  changeSets ChangeSet[]
-  sessions   Session[]
+  id                 String       @id @default(cuid())
+  email              String       @unique
+  username           String       @unique
+  name               String?
+  fullName           String?      @default("")
+  role               SystemRole   @default(USER)
+  password           String
+  isAdmin            Boolean      @default(false)
+  isActive           Boolean      @default(true)
+  mustChangePassword Boolean      @default(true)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @default(now()) @updatedAt
+  auditLogs          AuditLog[]
+  changeSets         ChangeSet[]
+  sessions           Session[]
+  permissions        Permission[]
+  userRoles          UserRole[]
+  grantedPermissions Permission[] @relation("GrantedBy")
 }
 
 model Session {
@@ -412,14 +421,20 @@ model TelemetryValue {
 }
 
 model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String?
-  action    String
-  entity    String?
-  entityId  String?
-  details   Json?
-  createdAt DateTime @default(now())
-  user      User?    @relation(fields: [userId], references: [id])
+  id           String   @id @default(cuid())
+  userId       String?
+  action       String
+  entity       String?
+  entityId     String?
+  details      Json?
+  resourceType String?
+  resourceId   String?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+  user         User?    @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model ChangeSet {
@@ -442,9 +457,11 @@ model ChangeItem {
   changeSet   ChangeSet @relation(fields: [changeSetId], references: [id])
 }
 
-enum Role {
+enum SystemRole {
   ADMIN
   USER
+  SME
+  CS
 }
 
 enum LicenseLevel {
@@ -708,4 +725,72 @@ model SolutionTaskOrder {
   @@unique([solutionId, taskId])
   @@index([solutionId])
   @@index([taskId])
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  userRoles   UserRole[]
+  permissions RolePermission[]
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  roleId    String?  // New role system - FK to Role table
+  roleName  String?  // Deprecated - kept for backward compatibility
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      Role?    @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  id              String          @id @default(cuid())
+  roleId          String
+  resourceType    ResourceType
+  resourceId      String?         // NULL for "all" resources of this type
+  permissionLevel PermissionLevel
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  role            Role            @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  
+  @@unique([roleId, resourceType, resourceId])
+  @@index([roleId])
+  @@index([resourceType, resourceId])
+}
+
+model Permission {
+  id              String   @id @default(cuid())
+  userId          String
+  resourceType    ResourceType
+  resourceId      String?  // NULL for system-wide permissions
+  permissionLevel PermissionLevel
+  grantedBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grantedByUser   User?    @relation("GrantedBy", fields: [grantedBy], references: [id])
+  
+  @@unique([userId, resourceType, resourceId])
+  @@index([userId])
+  @@index([resourceType, resourceId])
+}
+
+enum ResourceType {
+  PRODUCT
+  SOLUTION
+  CUSTOMER
+  SYSTEM
+}
+
+enum PermissionLevel {
+  READ
+  WRITE
+  ADMIN
 }

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear DAP Session</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1976d2;
+            margin-top: 0;
+        }
+        button {
+            background-color: #1976d2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+        button:hover {
+            background-color: #1565c0;
+        }
+        .success {
+            color: #4caf50;
+            font-weight: bold;
+            margin-top: 20px;
+        }
+        .info {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        code {
+            background-color: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Clear DAP Session Data</h1>
+        <p>Click the button below to clear all session data and force a fresh login.</p>
+        
+        <div class="info">
+            <strong>⚠️ This will:</strong>
+            <ul>
+                <li>Clear localStorage (token, user data)</li>
+                <li>Clear sessionStorage</li>
+                <li>Force you to log in again</li>
+            </ul>
+        </div>
+
+        <button onclick="clearAndRedirect()">Clear Session & Redirect to Login</button>
+        
+        <div id="result"></div>
+
+        <div class="info" style="margin-top: 30px;">
+            <strong>📋 Admin Credentials:</strong><br>
+            Username: <code>admin</code><br>
+            Password: <code>DAP123</code>
+        </div>
+    </div>
+
+    <script>
+        function clearAndRedirect() {
+            // Clear all storage
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            // Show success message
+            const result = document.getElementById('result');
+            result.innerHTML = '<p class="success">✅ Session cleared! Redirecting to login...</p>';
+            
+            // Redirect after a short delay
+            setTimeout(() => {
+                window.location.href = 'http://localhost:5173';
+            }, 1500);
+        }
+
+        // Show current state
+        window.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            
+            console.log('Current localStorage state:', {
+                token: token ? 'Present' : 'None',
+                user: user ? 'Present' : 'None'
+            });
+        });
+    </script>
+</body>
+</html>
+
