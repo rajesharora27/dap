@@ -32,8 +32,33 @@ export interface Context {
 }
 
 export async function createContext({ req }: any): Promise<Context> {
-  // No authentication required - always return a default admin user
-  const user = { id: 'admin', username: 'admin', role: 'ADMIN' };
+  let user = null;
+
+  // Check for JWT token in Authorization header
+  const authHeader = req?.headers?.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.substring(7);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret') as any;
+      user = {
+        userId: decoded.userId || decoded.uid, // Support both new and old format
+        username: decoded.username,
+        email: decoded.email,
+        isAdmin: decoded.isAdmin || decoded.role === 'ADMIN',
+        mustChangePassword: decoded.mustChangePassword,
+        permissions: decoded.permissions,
+        role: decoded.role
+      };
+    } catch (error) {
+      // Token is invalid, user remains null
+      console.error('Invalid token:', error);
+    }
+  }
+
+  // Fallback authentication for development/testing
+  if (!user && fallbackActive) {
+    user = { id: 'admin', username: 'admin', role: 'ADMIN', isAdmin: true };
+  }
 
   return {
     prisma,

@@ -1,15 +1,65 @@
 import * as React from 'react';
-import { AppBar, Toolbar, Typography, Box, IconButton } from '@mui/material';
-import { Dashboard, Menu as MenuIcon } from '@mui/icons-material';
+import { 
+  AppBar, 
+  Toolbar, 
+  Typography, 
+  Box, 
+  IconButton, 
+  Menu, 
+  MenuItem, 
+  Avatar, 
+  Divider,
+  ListItemIcon,
+  ListItemText
+} from '@mui/material';
+import { 
+  Dashboard, 
+  Menu as MenuIcon, 
+  AccountCircle, 
+  Logout, 
+  Person 
+} from '@mui/icons-material';
 import { useAuth } from './AuthContext';
 
 interface AuthBarProps {
   onMenuClick?: () => void;
   drawerOpen?: boolean;
+  onProfileClick?: () => void;
 }
 
-export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen }) => {
-  const { token, setToken } = useAuth();
+export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onProfileClick }) => {
+  const { user, logout } = useAuth();
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+  
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+  
+  const handleProfileClick = () => {
+    handleMenuClose();
+    if (onProfileClick) {
+      onProfileClick();
+    }
+  };
+  
+  const handleLogout = () => {
+    handleMenuClose();
+    logout();
+  };
+  
+  const getUserInitials = () => {
+    if (!user) return '?';
+    if (user.fullName) {
+      const names = user.fullName.split(' ');
+      return names.map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+    }
+    return user.username?.[0]?.toUpperCase() || '?';
+  };
+  
   return (
     <AppBar 
       position="fixed" 
@@ -88,6 +138,88 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen }) => 
               Customer Success Platform
             </Typography>
           </Box>
+        </Box>
+        
+        {/* User Menu */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {user && (
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                color: 'white', 
+                display: { xs: 'none', sm: 'block' },
+                mr: 1
+              }}
+            >
+              {user.fullName || user.username}
+            </Typography>
+          )}
+          <IconButton
+            onClick={handleMenuOpen}
+            sx={{
+              p: 0.5,
+              '&:hover': {
+                bgcolor: 'rgba(255, 255, 255, 0.1)'
+              }
+            }}
+          >
+            <Avatar 
+              sx={{ 
+                width: 36, 
+                height: 36,
+                bgcolor: 'rgba(255, 255, 255, 0.2)',
+                color: 'white',
+                fontWeight: 600,
+                fontSize: '0.875rem'
+              }}
+            >
+              {getUserInitials()}
+            </Avatar>
+          </IconButton>
+          
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            PaperProps={{
+              sx: {
+                mt: 1,
+                minWidth: 200
+              }
+            }}
+          >
+            <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                {user?.fullName || user?.username || 'User'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                {user?.email || ''}
+              </Typography>
+              {user?.isAdmin && (
+                <Typography variant="caption" sx={{ display: 'block', color: 'primary.main', fontWeight: 600 }}>
+                  Administrator
+                </Typography>
+              )}
+            </Box>
+            
+            <MenuItem onClick={handleProfileClick}>
+              <ListItemIcon>
+                <Person fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Profile & Settings</ListItemText>
+            </MenuItem>
+            
+            <Divider />
+            
+            <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <Logout fontSize="small" />
+              </ListItemIcon>
+              <ListItemText>Logout</ListItemText>
+            </MenuItem>
+          </Menu>
         </Box>
       </Toolbar>
     </AppBar>

@@ -43,7 +43,7 @@ export function buildConnection<T extends { id: string; createdAt?: Date }>(item
 }
 
 // Specific fetch helpers
-export async function fetchProductsPaginated(args: ConnectionArgs) {
+export async function fetchProductsPaginated(args: ConnectionArgs & { accessibleIds?: string[] }) {
   const fb = (process.env.AUTH_FALLBACK || '').toLowerCase();
   if (fb === '1' || fb === 'true') {
     const sample = [
@@ -65,6 +65,12 @@ export async function fetchProductsPaginated(args: ConnectionArgs) {
   const backward = args.last != null;
   if (forward && backward) throw new Error('Cannot use first & last together');
   const baseWhere: any = { deletedAt: null };
+  
+  // Add permission filter if accessibleIds provided
+  if (args.accessibleIds) {
+    baseWhere.id = { in: args.accessibleIds };
+  }
+  
   const orderBy = { id: 'asc' as const };
   let rows;
   let limit = 25;
@@ -223,7 +229,7 @@ export async function fetchTasksPaginated(productId?: string, args?: ConnectionA
   return buildConnection(rows, total, limit, hasNext, hasPrev);
 }
 
-export async function fetchSolutionsPaginated(args: ConnectionArgs) {
+export async function fetchSolutionsPaginated(args: ConnectionArgs & { accessibleIds?: string[] }) {
   const { first = 20, after, last, before } = args;
   
   // Determine pagination parameters
@@ -241,9 +247,15 @@ export async function fetchSolutionsPaginated(args: ConnectionArgs) {
     take = last || 20;
   }
   
+  // Build where clause with permission filter
+  const where: any = { deletedAt: null };
+  if (args.accessibleIds) {
+    where.id = { in: args.accessibleIds };
+  }
+  
   // Fetch solutions from database
   const solutions = await prisma.solution.findMany({
-    where: { deletedAt: null },
+    where,
     orderBy: { name: 'asc' },
     skip,
     take,

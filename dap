@@ -91,6 +91,56 @@ kill_node_processes() {
     log_success "Node.js processes stopped"
 }
 
+# Force kill all DAP-related processes (more aggressive)
+force_kill_all() {
+    log_warning "Force killing all DAP-related processes..."
+    
+    # Kill by process name patterns
+    pkill -9 -f "ts-node-dev.*src/server.ts" 2>/dev/null || true
+    pkill -9 -f "vite.*--port.*5173" 2>/dev/null || true
+    pkill -9 -f "npm.*exec.*ts-node-dev" 2>/dev/null || true
+    pkill -9 -f "npm.*exec.*vite" 2>/dev/null || true
+    pkill -9 -f "node.*backend.*server" 2>/dev/null || true
+    pkill -9 -f "node.*frontend.*vite" 2>/dev/null || true
+    
+    # Force kill any remaining processes on the ports
+    if check_port $BACKEND_PORT; then
+        local pids=$(lsof -Pi :$BACKEND_PORT -sTCP:LISTEN -t 2>/dev/null || true)
+        if [ ! -z "$pids" ]; then
+            log_info "Force killing backend processes on port $BACKEND_PORT: $pids"
+            echo "$pids" | xargs kill -9 2>/dev/null || true
+        fi
+    fi
+    
+    if check_port $FRONTEND_PORT; then
+        local pids=$(lsof -Pi :$FRONTEND_PORT -sTCP:LISTEN -t 2>/dev/null || true)
+        if [ ! -z "$pids" ]; then
+            log_info "Force killing frontend processes on port $FRONTEND_PORT: $pids"
+            echo "$pids" | xargs kill -9 2>/dev/null || true
+        fi
+    fi
+    
+    # Give the system a moment to clean up
+    sleep 2
+    
+    # Verify ports are clear
+    if check_port $BACKEND_PORT; then
+        log_error "Backend port $BACKEND_PORT still in use after force kill"
+        lsof -Pi :$BACKEND_PORT
+    else
+        log_success "Backend port $BACKEND_PORT is clear"
+    fi
+    
+    if check_port $FRONTEND_PORT; then
+        log_error "Frontend port $FRONTEND_PORT still in use after force kill"
+        lsof -Pi :$FRONTEND_PORT
+    else
+        log_success "Frontend port $FRONTEND_PORT is clear"
+    fi
+    
+    log_success "Force kill complete"
+}
+
 # Manage Docker containers
 manage_docker() {
     local action=$1
@@ -443,9 +493,13 @@ stop_all() {
 restart_all() {
     log_header "RESTARTING $APP_NAME"
     
-    stop_all
+    # Use force kill for restart to ensure clean shutdown
+    force_kill_all
+    manage_docker stop
+    
     echo ""
-    sleep 2
+    sleep 3
+    
     start_all
     
     echo ""
@@ -563,9 +617,12 @@ clean_restart() {
     echo "Press Ctrl+C now to cancel, or wait 5 seconds to continue..."
     sleep 5
     
-    stop_all
+    # Use force kill to ensure clean shutdown
+    force_kill_all
+    manage_docker stop
+    
     echo ""
-    sleep 2
+    sleep 3
     
     # Clean database first
     log_info "Setting up clean database..."
@@ -1033,8 +1090,8 @@ show_help() {
     echo "Commands:"
     echo -e "  ${GREEN}start${NC}         - Start all application services"
     echo -e "  ${RED}stop${NC}          - Stop all application services" 
-    echo -e "  ${YELLOW}restart${NC}       - Restart all services (keeps existing data)"
-    echo -e "  ${CYAN}clean-restart${NC} - ⚠️  WIPES ALL DATA, then loads fresh sample data"
+    echo -e "  ${YELLOW}restart${NC}       - Force kill and restart all services (keeps existing data)"
+    echo -e "  ${CYAN}clean-restart${NC} - ⚠️  FORCE KILL, WIPES ALL DATA, then loads fresh sample data"
     echo -e "  ${BLUE}add-sample${NC}    - ✅ Add sample data (preserves existing user data)"
     echo -e "  ${PURPLE}reset-sample${NC}  - ✅ Remove sample data only (preserves user data)"
     echo -e "  ${PURPLE}test${NC}          - Run comprehensive end-user test suite"

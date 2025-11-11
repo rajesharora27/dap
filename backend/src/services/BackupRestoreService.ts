@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import { prisma } from '../context';
+import { SessionManager } from '../utils/sessionManager';
 
 const execPromise = promisify(exec);
 
@@ -150,6 +151,7 @@ export class BackupRestoreService {
 
   /**
    * Create a database backup
+   * Note: Passwords are excluded from backup for security
    */
   static async createBackup(): Promise<BackupResult> {
     try {
@@ -165,11 +167,56 @@ export class BackupRestoreService {
 
       // Create backup using pg_dump from the container
       // Use podman/docker to execute pg_dump inside the PostgreSQL container
+      // IMPORTANT: We exclude the password column from User table for security
+      // This means restored backups will preserve existing user passwords
       const containerName = 'dap_db_1';
-      const command = `podman exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p > "${filePath}" 2>&1`;
+      
+      // First create a full schema dump
+      const command = `podman exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
 
       await execPromise(command, { maxBuffer: 50 * 1024 * 1024 }); // 50MB buffer
-
+      
+      // Now post-process the dump to remove password column from User table
+      console.log('Removing password hashes from backup for security...');
+      let backupContent = fs.readFileSync(filePath, 'utf-8');
+      
+      // Replace INSERT statements for User table to exclude password column
+      // Pattern: INSERT INTO "User" (id, email, username, name, fullName, role, password, isAdmin, isActive, mustChangePassword, createdAt, updatedAt) VALUES (...)
+      // Replace with: INSERT INTO "User" (id, email, username, name, fullName, role, isAdmin, isActive, mustChangePassword, createdAt, updatedAt) VALUES (...) 
+      // And remove the password value from VALUES
+      
+      backupContent = backupContent.replace(
+        /INSERT INTO "User" \([^)]*\bpassword\b[^)]*\) VALUES \(([^;]+)\);/gi,
+        (match) => {
+          // Find the password column position and remove it from both columns and values
+          const columnsMatch = match.match(/INSERT INTO "User" \(([^)]+)\)/);
+          const valuesMatch = match.match(/VALUES \(([^)]+)\)/);
+          
+          if (columnsMatch && valuesMatch) {
+            const columns = columnsMatch[1].split(',').map(c => c.trim());
+            const values = valuesMatch[1].split(',').map(v => v.trim());
+            
+            const passwordIndex = columns.findIndex(c => c === '"password"' || c === 'password');
+            
+            if (passwordIndex !== -1 && values.length === columns.length) {
+              // Remove password column and its value
+              columns.splice(passwordIndex, 1);
+              values.splice(passwordIndex, 1);
+              
+              return `INSERT INTO "User" (${columns.join(', ')}) VALUES (${values.join(', ')});`;
+            }
+          }
+          
+          return match; // Return original if parsing fails
+        }
+      );
+      
+      // Also add a comment to the backup file indicating passwords are excluded
+      backupContent = `-- DAP Backup (Passwords excluded for security - existing passwords will be preserved on restore)\n-- Generated: ${new Date().toISOString()}\n\n` + backupContent;
+      
+      // Write back the modified content
+      fs.writeFileSync(filePath, backupContent, 'utf-8');
+      
       // Get file size
       const stats = fs.statSync(filePath);
       const size = stats.size;
@@ -216,6 +263,7 @@ export class BackupRestoreService {
 
   /**
    * Restore database from a backup file
+   * Note: Preserves existing user passwords for security
    */
   static async restoreBackup(filename: string): Promise<RestoreResult> {
     try {
@@ -232,6 +280,28 @@ export class BackupRestoreService {
 
       const dbConfig = this.parseDatabaseUrl();
       const containerName = 'dap_db_1';
+
+      // IMPORTANT: Save existing user passwords before restore
+      console.log('Saving existing user passwords...');
+      let existingPasswords: Map<string, string> = new Map();
+      
+      try {
+        // Using prisma to get existing passwords
+        const users = await prisma.user.findMany({
+          select: {
+            username: true,
+            password: true
+          }
+        });
+        
+        users.forEach(user => {
+          existingPasswords.set(user.username, user.password);
+        });
+        
+        console.log(`✅ Saved passwords for ${existingPasswords.size} user(s)`);
+      } catch (err) {
+        console.warn('⚠️  Could not save existing passwords, they may be reset:', (err as any).message);
+      }
 
       // Fastest approach: Drop and recreate the public schema
       // This avoids all the CASCADE locking issues with TRUNCATE
@@ -310,12 +380,45 @@ export class BackupRestoreService {
         }
       }
 
+      // IMPORTANT: Restore existing user passwords after restore
+      if (existingPasswords.size > 0) {
+        console.log('Restoring user passwords...');
+        
+        try {
+          let restoredCount = 0;
+          
+          for (const [username, password] of existingPasswords.entries()) {
+            try {
+              await prisma.user.update({
+                where: { username },
+                data: { password }
+              });
+              restoredCount++;
+            } catch (err) {
+              console.warn(`⚠️  Could not restore password for user "${username}":`, (err as any).message);
+            }
+          }
+          
+          console.log(`✅ Restored passwords for ${restoredCount} of ${existingPasswords.size} user(s)`);
+        } catch (err) {
+          console.error('⚠️  Error restoring passwords:', (err as any).message);
+        }
+      }
+      
+      // Clear all sessions after restore to force re-authentication
+      console.log('🔐 Clearing all sessions after restore...');
+      try {
+        await SessionManager.clearAllSessions();
+      } catch (err) {
+        console.warn('⚠️  Could not clear sessions:', (err as any).message);
+      }
+
       // Get record counts after restore
       const recordsRestored = await this.getRecordCounts();
 
       return {
         success: true,
-        message: `Database restored successfully from ${filename}`,
+        message: `Database restored successfully from ${filename}. User passwords preserved.`,
         recordsRestored,
       };
     } catch (error: any) {

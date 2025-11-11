@@ -35,9 +35,17 @@ import {
 } from './solutionAdoption';
 import { solutionReportingService } from '../../services/solutionReportingService';
 import { BackupQueryResolvers, BackupMutationResolvers } from './backup';
+import { AuthQueryResolvers, AuthMutationResolvers } from './auth';
 import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../lib/pagination';
 import { logAudit } from '../../lib/audit';
 import { ensureRole, requireUser } from '../../lib/auth';
+import { 
+  requirePermission, 
+  filterAccessibleResources, 
+  getUserAccessibleResources,
+  canUserAccessResource 
+} from '../../lib/permissions';
+import { ResourceType, PermissionLevel } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -557,11 +565,17 @@ export const resolvers = {
     node: async (_: any, { id }: any) => {
       return prisma.product.findUnique({ where: { id } }) || prisma.task.findUnique({ where: { id } });
     },
-    product: async (_: any, { id }: any) => {
+    product: async (_: any, { id }: any, ctx: any) => {
+      requireUser(ctx);
+      
       if (fallbackActive) {
         const { products } = require('../../lib/fallbackStore');
         return products.find((p: any) => p.id === id);
       }
+      
+      // Check if user has READ permission for this product
+      await requirePermission(ctx, ResourceType.PRODUCT, id, PermissionLevel.READ);
+      
       return prisma.product.findUnique({ 
         where: { id, deletedAt: null },
         include: {
@@ -571,11 +585,77 @@ export const resolvers = {
         }
       });
     },
-    products: async (_: any, args: any) => {
+    products: async (_: any, args: any, ctx: any) => {
+      requireUser(ctx);
+      
       if (fallbackActive) return fallbackConnections.products();
-      return fetchProductsPaginated(args);
+      
+      // Get accessible product IDs for this user
+      const accessibleIds = await getUserAccessibleResources(
+        ctx.user.userId,
+        ResourceType.PRODUCT,
+        PermissionLevel.READ,
+        prisma
+      );
+      
+      // If accessibleIds is null, user has access to all products
+      // If it's an empty array, user has no access
+      // Otherwise, filter by the accessible IDs
+      if (accessibleIds !== null && accessibleIds.length === 0) {
+        // User has no access to any products
+        return {
+          edges: [],
+          pageInfo: {
+            hasNextPage: false,
+            hasPreviousPage: false,
+            startCursor: null,
+            endCursor: null
+          },
+          totalCount: 0
+        };
+      }
+      
+      // Add accessible IDs filter to args if not admin (null means admin/all access)
+      const filteredArgs = accessibleIds !== null 
+        ? { ...args, accessibleIds }
+        : args;
+      
+      return fetchProductsPaginated(filteredArgs);
     },
-    solutions: async (_: any, args: any) => { if (fallbackActive) return fallbackConnections.solutions(); return fetchSolutionsPaginated(args); },
+    solutions: async (_: any, args: any, ctx: any) => { 
+      requireUser(ctx);
+      
+      if (fallbackActive) return fallbackConnections.solutions(); 
+      
+      // Get accessible solution IDs for this user
+      const accessibleIds = await getUserAccessibleResources(
+        ctx.user.userId,
+        ResourceType.SOLUTION,
+        PermissionLevel.READ,
+        prisma
+      );
+      
+      // If user has no access to any solutions
+      if (accessibleIds !== null && accessibleIds.length === 0) {
+        return {
+          edges: [],
+          pageInfo: {
+            hasNextPage: false,
+            hasPreviousPage: false,
+            startCursor: null,
+            endCursor: null
+          },
+          totalCount: 0
+        };
+      }
+      
+      // Add accessible IDs filter to args if not admin
+      const filteredArgs = accessibleIds !== null 
+        ? { ...args, accessibleIds }
+        : args;
+      
+      return fetchSolutionsPaginated(filteredArgs); 
+    },
     tasks: async (_: any, args: any) => {
       if (args.productId) {
         return fetchTasksPaginated(args.productId, args);
@@ -585,7 +665,30 @@ export const resolvers = {
         throw new Error('Either productId or solutionId must be provided');
       }
     },
-    customers: async () => { if (fallbackActive) return fbListCustomers(); return prisma.customer.findMany({ where: { deletedAt: null } }).catch(() => []); },
+    customers: async (_: any, __: any, ctx: any) => { 
+      requireUser(ctx);
+      
+      if (fallbackActive) return fbListCustomers(); 
+      
+      // Get accessible customer IDs for this user
+      const accessibleIds = await getUserAccessibleResources(
+        ctx.user.userId,
+        ResourceType.CUSTOMER,
+        PermissionLevel.READ,
+        prisma
+      );
+      
+      // Build where clause
+      const where: any = { deletedAt: null };
+      if (accessibleIds !== null) {
+        if (accessibleIds.length === 0) {
+          return []; // No access
+        }
+        where.id = { in: accessibleIds };
+      }
+      
+      return prisma.customer.findMany({ where }).catch(() => []); 
+    },
     licenses: async () => { if (fallbackActive) return listLicenses(); return prisma.license.findMany({ where: { deletedAt: null } }); },
     releases: async (_: any, { productId }: any) => { 
       if (fallbackActive) return []; 
@@ -604,8 +707,7 @@ export const resolvers = {
       if (solutionId) where.solutionId = solutionId;
       return prisma.outcome.findMany({ where });
     },
-    auditLogs: async (_: any, { limit = 50 }: any) => prisma.auditLog.findMany({ orderBy: { createdAt: 'desc' }, take: Math.min(limit, 200) })
-    , changeSets: async (_: any, { limit = 50 }: any) => listChangeSets(limit).then(async sets => Promise.all(sets.map(async (s: any) => ({ ...s, items: await prisma.changeItem.findMany({ where: { changeSetId: s.id } }) })))),
+    changeSets: async (_: any, { limit = 50 }: any) => listChangeSets(limit).then(async sets => Promise.all(sets.map(async (s: any) => ({ ...s, items: await prisma.changeItem.findMany({ where: { changeSetId: s.id } }) })))),
     changeSet: async (_: any, { id }: any) => getChangeSet(id).then(async (s: any) => s ? { ...s, items: await prisma.changeItem.findMany({ where: { changeSetId: s.id } }) } : null)
     , search: async (_: any, { query, first = 20 }: any) => {
       const q = query.trim();
@@ -652,6 +754,17 @@ export const resolvers = {
     
     // Backup queries
     , listBackups: BackupQueryResolvers.listBackups
+    
+    // Auth queries
+    , me: AuthQueryResolvers.me
+    , users: AuthQueryResolvers.users
+    , user: AuthQueryResolvers.user
+    , myPermissions: AuthQueryResolvers.myPermissions
+    , roles: AuthQueryResolvers.roles
+    , role: AuthQueryResolvers.role
+    , userRoles: AuthQueryResolvers.userRoles
+    , availableResources: AuthQueryResolvers.availableResources
+    // Note: auditLogs is already defined above, so using the existing one
     
     // Excel Export
     , exportProductToExcel: async (_: any, { productName }: any) => {
@@ -711,11 +824,15 @@ export const resolvers = {
       return jwt.sign({ uid: user.id, role: user.role }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
     },
     createProduct: async (_: any, { input }: any, ctx: any) => {
-      if (!fallbackActive) ensureRole(ctx, 'ADMIN');
+      requireUser(ctx);
+      
       if (fallbackActive) {
         const product = fbCreateProduct(input);
         await logAudit('CREATE_PRODUCT', 'Product', product.id, { input }, ctx.user?.id); return product;
       }
+      
+      // Check if user has WRITE permission for products (system-wide)
+      await requirePermission(ctx, ResourceType.PRODUCT, null, PermissionLevel.WRITE);
 
       // Extract license IDs from input and handle relationship
       const { licenseIds, ...productData } = input;
@@ -744,7 +861,8 @@ export const resolvers = {
       return product;
     },
     updateProduct: async (_: any, { id, input }: any, ctx: any) => {
-      if (!fallbackActive) ensureRole(ctx, 'ADMIN');
+      requireUser(ctx);
+      
       if (fallbackActive) {
         const before = fbUpdateProduct(id, {});
         const updated = fbUpdateProduct(id, input);
@@ -752,6 +870,10 @@ export const resolvers = {
         pubsub.publish(PUBSUB_EVENTS.PRODUCT_UPDATED, { productUpdated: updated });
         return updated;
       }
+      
+      // Check if user has WRITE permission for this specific product
+      await requirePermission(ctx, ResourceType.PRODUCT, id, PermissionLevel.WRITE);
+      
       const before = await prisma.product.findUnique({ where: { id } });
 
       // Extract license IDs from input and handle relationship update
@@ -792,12 +914,16 @@ export const resolvers = {
       return updated;
     },
     deleteProduct: async (_: any, { id }: any, ctx: any) => {
-      if (!fallbackActive) ensureRole(ctx, 'ADMIN');
+      requireUser(ctx);
+      
       if (fallbackActive) {
         fbDeleteProduct(id);
         await logAudit('DELETE_PRODUCT', 'Product', id, {});
         return true;
       }
+      
+      // Check if user has ADMIN permission for this specific product (deletion requires highest level)
+      await requirePermission(ctx, ResourceType.PRODUCT, id, PermissionLevel.ADMIN);
       
       try {
         // Hard delete: Remove all related entities first, then delete the product
@@ -832,12 +958,150 @@ export const resolvers = {
       
       return true;
     },
-    createSolution: async (_: any, { input }: any, ctx: any) => { if (!fallbackActive) ensureRole(ctx, 'ADMIN'); if (fallbackActive) { const solution = fbCreateSolution(input); await logAudit('CREATE_SOLUTION', 'Solution', solution.id, { input }, ctx.user?.id); return solution; } const solution = await prisma.solution.create({ data: { name: input.name, description: input.description, customAttrs: input.customAttrs } }); await logAudit('CREATE_SOLUTION', 'Solution', solution.id, { input }, ctx.user?.id); return solution; },
-    updateSolution: async (_: any, { id, input }: any, ctx: any) => { if (!fallbackActive) ensureRole(ctx, 'ADMIN'); if (fallbackActive) { const before = fbUpdateSolution(id, {}); const updated = fbUpdateSolution(id, input); await logAudit('UPDATE_SOLUTION', 'Solution', id, { before, after: updated }, ctx.user?.id); return updated; } const before = await prisma.solution.findUnique({ where: { id } }); const updated = await prisma.solution.update({ where: { id }, data: { ...input } }); if (before) { const cs = await createChangeSet(ctx.user?.id); await recordChange(cs.id, 'Solution', id, before, updated); } await logAudit('UPDATE_SOLUTION', 'Solution', id, { before, after: updated }, ctx.user?.id); return updated; },
-    deleteSolution: async (_: any, { id }: any, ctx: any) => { if (!fallbackActive) ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbDeleteSolution(id); await logAudit('DELETE_SOLUTION', 'Solution', id, {}, ctx.user?.id); return true; } try { await prisma.solution.update({ where: { id }, data: { deletedAt: new Date() } }); } catch { } await logAudit('DELETE_SOLUTION', 'Solution', id, {}, ctx.user?.id); return true; },
-    createCustomer: async (_: any, { input }: any, ctx: any) => { if (!fallbackActive) ensureRole(ctx, 'ADMIN'); if (fallbackActive) { const customer = fbCreateCustomer(input); await logAudit('CREATE_CUSTOMER', 'Customer', customer.id, { input }, ctx.user?.id); return customer; } const customer = await prisma.customer.create({ data: { name: input.name, description: input.description } }); await logAudit('CREATE_CUSTOMER', 'Customer', customer.id, { input }, ctx.user?.id); return customer; },
-    updateCustomer: async (_: any, { id, input }: any, ctx: any) => { if (!fallbackActive) ensureRole(ctx, 'ADMIN'); if (fallbackActive) { const before = fbUpdateCustomer(id, {}); const updated = fbUpdateCustomer(id, input); await logAudit('UPDATE_CUSTOMER', 'Customer', id, { before, after: updated }, ctx.user?.id); return updated; } const before = await prisma.customer.findUnique({ where: { id } }); const updated = await prisma.customer.update({ where: { id }, data: { ...input } }); if (before) { const cs = await createChangeSet(ctx.user?.id); await recordChange(cs.id, 'Customer', id, before, updated); } await logAudit('UPDATE_CUSTOMER', 'Customer', id, { before, after: updated }, ctx.user?.id); return updated; },
-    deleteCustomer: async (_: any, { id }: any, ctx: any) => { if (!fallbackActive) ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbDeleteCustomer(id); await logAudit('DELETE_CUSTOMER', 'Customer', id, {}, ctx.user?.id); return true; } try { await prisma.customer.update({ where: { id }, data: { deletedAt: new Date() } }); } catch { } await logAudit('DELETE_CUSTOMER', 'Customer', id, {}, ctx.user?.id); return true; },
+    createSolution: async (_: any, { input }: any, ctx: any) => {
+      requireUser(ctx);
+      
+      if (fallbackActive) {
+        const solution = fbCreateSolution(input);
+        await logAudit('CREATE_SOLUTION', 'Solution', solution.id, { input }, ctx.user?.id);
+        return solution;
+      }
+      
+      // Check if user has ADMIN permission for solutions (creation requires highest level)
+      // Note: For creation, we check against "all solutions" permission (resourceId = null)
+      await requirePermission(ctx, ResourceType.SOLUTION, null, PermissionLevel.ADMIN);
+      
+      const solution = await prisma.solution.create({
+        data: {
+          name: input.name,
+          description: input.description,
+          customAttrs: input.customAttrs
+        }
+      });
+      
+      await logAudit('CREATE_SOLUTION', 'Solution', solution.id, { input }, ctx.user?.id);
+      return solution;
+    },
+    updateSolution: async (_: any, { id, input }: any, ctx: any) => {
+      requireUser(ctx);
+      
+      if (fallbackActive) {
+        const before = fbUpdateSolution(id, {});
+        const updated = fbUpdateSolution(id, input);
+        await logAudit('UPDATE_SOLUTION', 'Solution', id, { before, after: updated }, ctx.user?.id);
+        return updated;
+      }
+      
+      // Check if user has WRITE permission for this specific solution
+      await requirePermission(ctx, ResourceType.SOLUTION, id, PermissionLevel.WRITE);
+      
+      const before = await prisma.solution.findUnique({ where: { id } });
+      const updated = await prisma.solution.update({
+        where: { id },
+        data: { ...input }
+      });
+      
+      if (before) {
+        const cs = await createChangeSet(ctx.user?.id);
+        await recordChange(cs.id, 'Solution', id, before, updated);
+      }
+      
+      await logAudit('UPDATE_SOLUTION', 'Solution', id, { before, after: updated }, ctx.user?.id);
+      return updated;
+    },
+    deleteSolution: async (_: any, { id }: any, ctx: any) => {
+      requireUser(ctx);
+      
+      if (fallbackActive) {
+        fbDeleteSolution(id);
+        await logAudit('DELETE_SOLUTION', 'Solution', id, {}, ctx.user?.id);
+        return true;
+      }
+      
+      // Check if user has ADMIN permission for this specific solution (deletion requires highest level)
+      await requirePermission(ctx, ResourceType.SOLUTION, id, PermissionLevel.ADMIN);
+      
+      try {
+        await prisma.solution.update({
+          where: { id },
+          data: { deletedAt: new Date() }
+        });
+      } catch { }
+      
+      await logAudit('DELETE_SOLUTION', 'Solution', id, {}, ctx.user?.id);
+      return true;
+    },
+    createCustomer: async (_: any, { input }: any, ctx: any) => {
+      requireUser(ctx);
+      
+      if (fallbackActive) {
+        const customer = fbCreateCustomer(input);
+        await logAudit('CREATE_CUSTOMER', 'Customer', customer.id, { input }, ctx.user?.id);
+        return customer;
+      }
+      
+      // Check if user has ADMIN permission for customers (creation requires highest level)
+      await requirePermission(ctx, ResourceType.CUSTOMER, null, PermissionLevel.ADMIN);
+      
+      const customer = await prisma.customer.create({
+        data: {
+          name: input.name,
+          description: input.description
+        }
+      });
+      
+      await logAudit('CREATE_CUSTOMER', 'Customer', customer.id, { input }, ctx.user?.id);
+      return customer;
+    },
+    updateCustomer: async (_: any, { id, input }: any, ctx: any) => {
+      requireUser(ctx);
+      
+      if (fallbackActive) {
+        const before = fbUpdateCustomer(id, {});
+        const updated = fbUpdateCustomer(id, input);
+        await logAudit('UPDATE_CUSTOMER', 'Customer', id, { before, after: updated }, ctx.user?.id);
+        return updated;
+      }
+      
+      // Check if user has WRITE permission for this specific customer
+      await requirePermission(ctx, ResourceType.CUSTOMER, id, PermissionLevel.WRITE);
+      
+      const before = await prisma.customer.findUnique({ where: { id } });
+      const updated = await prisma.customer.update({
+        where: { id },
+        data: { ...input }
+      });
+      
+      if (before) {
+        const cs = await createChangeSet(ctx.user?.id);
+        await recordChange(cs.id, 'Customer', id, before, updated);
+      }
+      
+      await logAudit('UPDATE_CUSTOMER', 'Customer', id, { before, after: updated }, ctx.user?.id);
+      return updated;
+    },
+    deleteCustomer: async (_: any, { id }: any, ctx: any) => {
+      requireUser(ctx);
+      
+      if (fallbackActive) {
+        fbDeleteCustomer(id);
+        await logAudit('DELETE_CUSTOMER', 'Customer', id, {}, ctx.user?.id);
+        return true;
+      }
+      
+      // Check if user has ADMIN permission for this specific customer (deletion requires highest level)
+      await requirePermission(ctx, ResourceType.CUSTOMER, id, PermissionLevel.ADMIN);
+      
+      try {
+        await prisma.customer.update({
+          where: { id },
+          data: { deletedAt: new Date() }
+        });
+      } catch { }
+      
+      await logAudit('DELETE_CUSTOMER', 'Customer', id, {}, ctx.user?.id);
+      return true;
+    },
     createLicense: async (_: any, { input }: any, ctx: any) => {
       ensureRole(ctx, 'ADMIN');
       if (fallbackActive) {
@@ -2267,6 +2531,25 @@ export const resolvers = {
     , createBackup: BackupMutationResolvers.createBackup
     , restoreBackup: BackupMutationResolvers.restoreBackup
     , deleteBackup: BackupMutationResolvers.deleteBackup
+    
+    // Auth mutations
+    , loginExtended: AuthMutationResolvers.loginExtended
+    , logout: AuthMutationResolvers.logout
+    , refreshToken: AuthMutationResolvers.refreshToken
+    , createUser: AuthMutationResolvers.createUser
+    , updateUser: AuthMutationResolvers.updateUser
+    , deleteUser: AuthMutationResolvers.deleteUser
+    , changePassword: AuthMutationResolvers.changePassword
+    , resetPasswordToDefault: AuthMutationResolvers.resetPasswordToDefault
+    , createRole: AuthMutationResolvers.createRole
+    , updateRole: AuthMutationResolvers.updateRole
+    , deleteRole: AuthMutationResolvers.deleteRole
+    , assignRoleToUser: AuthMutationResolvers.assignRoleToUser
+    , removeRoleFromUser: AuthMutationResolvers.removeRoleFromUser
+    , grantPermission: AuthMutationResolvers.grantPermission
+    , revokePermission: AuthMutationResolvers.revokePermission
+    , activateUser: AuthMutationResolvers.activateUser
+    , deactivateUser: AuthMutationResolvers.deactivateUser
   },
   Subscription: {
     productUpdated: {
