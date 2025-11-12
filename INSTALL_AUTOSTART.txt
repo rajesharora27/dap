@@ -1,0 +1,48 @@
+================================================================================
+  DAP APPLICATION - AUTOMATIC STARTUP INSTALLATION
+================================================================================
+
+To configure DAP to start automatically when the system boots:
+
+1. Open a terminal in the DAP directory:
+   cd /data/dap
+
+2. Run the installation script:
+   sudo ./install-service.sh
+
+3. Follow the on-screen prompts
+
+The script will:
+  ✓ Install the systemd service
+  ✓ Enable automatic startup on boot
+  ✓ Optionally start the service immediately
+
+================================================================================
+  SERVICE MANAGEMENT COMMANDS
+================================================================================
+
+Start:       sudo systemctl start dap.service
+Stop:        sudo systemctl stop dap.service
+Restart:     sudo systemctl restart dap.service
+Status:      sudo systemctl status dap.service
+Logs:        sudo journalctl -u dap.service -f
+
+Disable autostart:  sudo systemctl disable dap.service
+Enable autostart:   sudo systemctl enable dap.service
+
+================================================================================
+  UNINSTALL
+================================================================================
+
+To remove automatic startup (but keep the application):
+   sudo ./uninstall-service.sh
+
+================================================================================
+  DOCUMENTATION
+================================================================================
+
+Quick Guide:    /data/dap/SERVICE_README.md
+Full Docs:      /data/dap/docs/SYSTEMD_SERVICE.md
+
+================================================================================
+
