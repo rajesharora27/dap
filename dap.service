@@ -1,0 +1,45 @@
+[Unit]
+Description=DAP (Digital Adoption Platform) Application
+After=network.target
+Wants=network-online.target
+Documentation=https://github.com/your-org/dap
+
+[Service]
+Type=forking
+User=root
+Group=root
+WorkingDirectory=/data/dap
+
+# Environment variables
+Environment="PATH=/usr/local/bin:/usr/bin:/bin"
+Environment="NODE_ENV=production"
+
+# Start command
+ExecStart=/data/dap/dap start
+
+# Stop command
+ExecStop=/data/dap/dap stop
+
+# Reload command (restart services gracefully)
+ExecReload=/data/dap/dap restart
+
+# Service management
+Restart=on-failure
+RestartSec=10s
+TimeoutStartSec=120s
+TimeoutStopSec=60s
+
+# Security settings
+# Note: Running as root to allow podman/docker container management
+# In production, consider using a dedicated user with appropriate permissions
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dap
+
+[Install]
+WantedBy=multi-user.target
+
