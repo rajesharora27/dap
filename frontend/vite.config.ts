@@ -6,6 +6,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   return {
+    // Base path for Apache deployment at /dap/ (set via env or default to '/')
+    base: env.VITE_BASE_PATH || '/',
     plugins: [react()],
     server: {
       host: env.FRONTEND_HOST || '0.0.0.0',

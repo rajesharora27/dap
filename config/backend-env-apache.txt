@@ -1,0 +1,15 @@
+# Backend Environment Configuration for Apache Subpath Deployment
+# Copy these variables to backend/.env when deploying with Apache
+
+NODE_ENV=production
+PORT=4000
+HOST=127.0.0.1
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/dap?schema=public
+TRUST_PROXY=true
+ALLOWED_ORIGINS=http://myapps.cxsaaslab.com,http://myapps.rajarora.csslab,http://centos1.rajarora.csslab,https://myapps-8321890.ztna.sse.cisco.io,http://172.22.156.32,https://myapps.cxsaaslab.com,https://myapps.rajarora.csslab,https://centos1.rajarora.csslab
+BACKEND_URL=http://127.0.0.1:4000
+GRAPHQL_ENDPOINT=http://127.0.0.1:4000/graphql
+FRONTEND_URL=http://myapps.cxsaaslab.com/dap/
+JWT_SECRET=change-this-to-a-secure-random-string-in-production
+JWT_EXPIRES_IN=24h
+SESSION_TIMEOUT=86400000
