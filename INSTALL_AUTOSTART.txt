@@ -1,48 +1,53 @@
-================================================================================
-  DAP APPLICATION - AUTOMATIC STARTUP INSTALLATION
-================================================================================
+═══════════════════════════════════════════════════════════════════
+  DAP APPLICATION - ENABLE AUTOMATIC STARTUP ON BOOT
+═══════════════════════════════════════════════════════════════════
 
-To configure DAP to start automatically when the system boots:
+QUICK INSTALLATION:
 
-1. Open a terminal in the DAP directory:
-   cd /data/dap
+  cd /data/dap
+  ./install-service.sh
 
-2. Run the installation script:
-   sudo ./install-service.sh
+(No sudo needed - installs as user service)
 
-3. Follow the on-screen prompts
+═══════════════════════════════════════════════════════════════════
 
-The script will:
-  ✓ Install the systemd service
-  ✓ Enable automatic startup on boot
-  ✓ Optionally start the service immediately
+WHAT THIS DOES:
 
-================================================================================
-  SERVICE MANAGEMENT COMMANDS
-================================================================================
+  ✓ Creates a systemd user service for DAP
+  ✓ Enables automatic startup on system boot
+  ✓ Configures automatic restart on failure
+  ✓ Sets up logging via journalctl
 
-Start:       sudo systemctl start dap.service
-Stop:        sudo systemctl stop dap.service
-Restart:     sudo systemctl restart dap.service
-Status:      sudo systemctl status dap.service
-Logs:        sudo journalctl -u dap.service -f
+═══════════════════════════════════════════════════════════════════
 
-Disable autostart:  sudo systemctl disable dap.service
-Enable autostart:   sudo systemctl enable dap.service
+SERVICE MANAGEMENT COMMANDS:
 
-================================================================================
-  UNINSTALL
-================================================================================
+  Start:    systemctl --user start dap.service
+  Stop:     systemctl --user stop dap.service
+  Restart:  systemctl --user restart dap.service
+  Status:   systemctl --user status dap.service
+  Logs:     journalctl --user -u dap.service -f
 
-To remove automatic startup (but keep the application):
-   sudo ./uninstall-service.sh
+NOTE: Use "systemctl --user" not "sudo systemctl"
 
-================================================================================
-  DOCUMENTATION
-================================================================================
+═══════════════════════════════════════════════════════════════════
 
-Quick Guide:    /data/dap/SERVICE_README.md
-Full Docs:      /data/dap/docs/SYSTEMD_SERVICE.md
+TO UNINSTALL:
 
-================================================================================
+  cd /data/dap
+  ./uninstall-service.sh
 
+═══════════════════════════════════════════════════════════════════
+
+TECHNICAL DETAILS:
+
+- User-mode service (runs as your user, not root)
+- Avoids podman DNS binding conflicts
+- Linger enabled for boot-time startup
+- Service file: ~/.config/systemd/user/dap.service
+
+═══════════════════════════════════════════════════════════════════
+
+For complete documentation, see: /data/dap/docs/SYSTEMD_SERVICE.md
+
+═══════════════════════════════════════════════════════════════════

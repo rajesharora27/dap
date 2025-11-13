@@ -4,12 +4,16 @@
 
 This allows the DAP application to start automatically when your server boots up, and provides easy management commands.
 
+**Note:** Uses a user-mode systemd service (runs as your user) to avoid podman networking conflicts.
+
 ## Installation (One-Time Setup)
 
 ```bash
 cd /data/dap
-sudo ./install-service.sh
+./install-service.sh
 ```
+
+**No sudo needed!** The installation creates a user-mode service.
 
 That's it! The application will now start automatically on boot.
 
@@ -17,27 +21,27 @@ That's it! The application will now start automatically on boot.
 
 ### Start the Application
 ```bash
-sudo systemctl start dap.service
+systemctl --user start dap.service
 ```
 
 ### Stop the Application
 ```bash
-sudo systemctl stop dap.service
+systemctl --user stop dap.service
 ```
 
 ### Restart the Application
 ```bash
-sudo systemctl restart dap.service
+systemctl --user restart dap.service
 ```
 
 ### Check Status
 ```bash
-sudo systemctl status dap.service
+systemctl --user status dap.service
 ```
 
 ### View Logs
 ```bash
-sudo journalctl -u dap.service -f
+journalctl --user -u dap.service -f
 ```
 (Press Ctrl+C to exit)
 
@@ -47,7 +51,7 @@ If you no longer want automatic startup:
 
 ```bash
 cd /data/dap
-sudo ./uninstall-service.sh
+./uninstall-service.sh
 ```
 
 This removes the systemd service but keeps your application intact. You can still use `./dap start|stop|restart` manually.
@@ -57,23 +61,23 @@ This removes the systemd service but keeps your application intact. You can stil
 **Service won't start?**
 ```bash
 # Check what went wrong
-sudo journalctl -u dap.service -n 50
+journalctl --user -u dap.service -n 50
 
 # Try starting manually
 cd /data/dap
-sudo ./dap start
+./dap start
 ```
 
 **Service keeps restarting?**
 ```bash
 # Stop it first
-sudo systemctl stop dap.service
+systemctl --user stop dap.service
 
 # Check logs for errors
-sudo journalctl -u dap.service -n 100
+journalctl --user -u dap.service -n 100
 
 # Fix the issue, then start again
-sudo systemctl start dap.service
+systemctl --user start dap.service
 ```
 
 ## Access the Application
@@ -83,7 +87,13 @@ After the service starts:
 - **Backend API:** http://localhost:4000/graphql
 - **Database:** PostgreSQL container on port 5432
 
+## Important Notes
+
+- **Use `systemctl --user`** (not `sudo systemctl`) for all service commands
+- The service runs as your user account, not as root
+- Linger is enabled to allow the service to start on boot even when you're not logged in
+- This approach avoids podman DNS binding conflicts that occur with system-wide services
+
 ## Need More Details?
 
 See the full documentation: `/data/dap/docs/SYSTEMD_SERVICE.md`
-

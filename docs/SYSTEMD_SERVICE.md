@@ -1,22 +1,29 @@
 # DAP Systemd Service Documentation
 
 **Date:** 2025-11-12  
-**Feature:** Automatic startup of DAP application using systemd
+**Feature:** Automatic startup of DAP application using systemd  
+**Type:** User-mode systemd service
 
 ## Overview
 
-The DAP application can now be configured to start automatically on system boot using a systemd service. This ensures the application is always available after server restarts and provides standard service management capabilities.
+The DAP application can be configured to start automatically on system boot using a systemd **user service**. This ensures the application is always available after server restarts and provides standard service management capabilities.
+
+**Why User-Mode Service:**
+- Avoids podman DNS binding conflicts that occur with system-wide services
+- Runs in the user's podman environment
+- More secure (runs as user, not root)
+- Simpler to set up (no sudo required for daily operations)
 
 ## Components
 
 ### 1. Service File: `dap.service`
 
-Located at: `/data/dap/dap.service`
+Located at: `~/.config/systemd/user/dap.service` (after installation)
 
 **Description:**
-- Systemd unit file that defines how the DAP application should be started, stopped, and managed
+- Systemd user service unit file that defines how the DAP application should be started, stopped, and managed
 - Configured to start after network is available
-- Runs as root to allow podman/docker container management
+- Runs as the current user
 - Automatically restarts on failure
 
 **Key Configuration:**
@@ -37,7 +44,7 @@ RestartSec=10s
 TimeoutStartSec=120s
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
 ```
 
 ### 2. Installation Script: `install-service.sh`
@@ -45,48 +52,49 @@ WantedBy=multi-user.target
 Located at: `/data/dap/install-service.sh`
 
 **Purpose:**
-- Automates the installation and configuration of the systemd service
-- Copies service file to `/etc/systemd/system/`
+- Automates the installation and configuration of the user systemd service
+- Creates service file in `~/.config/systemd/user/`
 - Enables the service to start on boot
+- Enables linger to allow boot-time startup
 - Optionally starts the service immediately
 
 **Usage:**
 ```bash
-sudo ./install-service.sh
+cd /data/dap
+./install-service.sh
 ```
+
+**No sudo required!**
 
 ### 3. Uninstallation Script: `uninstall-service.sh`
 
 Located at: `/data/dap/uninstall-service.sh`
 
 **Purpose:**
-- Removes the systemd service
+- Removes the user systemd service
 - Stops and disables the service
+- Optionally disables linger
 - Cleans up service files
 
 **Usage:**
 ```bash
-sudo ./uninstall-service.sh
+cd /data/dap
+./uninstall-service.sh
 ```
 
 ## Installation
 
 ### Prerequisites
 
-1. **Root/Sudo Access:**
-   ```bash
-   sudo -v
-   ```
-
-2. **Verify DAP Script Works:**
+1. **Verify DAP Script Works:**
    ```bash
    cd /data/dap
    ./dap status
    ```
 
-3. **Ensure All Components Are Installed:**
-   - PostgreSQL container
-   - Node.js and npm
+2. **Ensure All Components Are Installed:**
+   - PostgreSQL container (podman)
+   - Node.js and npm (via nvm)
    - Backend dependencies
    - Frontend dependencies
 
@@ -99,550 +107,485 @@ sudo ./uninstall-service.sh
 
 2. **Run Installation Script:**
    ```bash
-   sudo ./install-service.sh
+   ./install-service.sh
    ```
 
-3. **Follow Prompts:**
-   - The script will ask if you want to start the service immediately
-   - Type `y` to start now, or `n` to start later
+3. **Answer the Prompt:**
+   ```
+   Do you want to start the DAP service now? (y/n)
+   ```
+   
+   - Press `y` to start immediately
+   - Press `n` to start later manually
 
 4. **Verify Installation:**
    ```bash
-   sudo systemctl status dap.service
+   systemctl --user status dap.service
+   ```
+   
+   Expected output:
+   ```
+   ● dap.service - DAP (Digital Adoption Platform) Application
+        Loaded: loaded (/home/user/.config/systemd/user/dap.service; enabled)
+        Active: active (running) since ...
    ```
 
-### Expected Output
-
-```
-● dap.service - DAP (Digital Adoption Platform) Application
-     Loaded: loaded (/etc/systemd/system/dap.service; enabled; vendor preset: disabled)
-     Active: active (running) since Wed 2025-11-12 10:30:00 EST; 5min ago
-   Main PID: 12345 (dap)
-      Tasks: 0 (limit: 100000)
-     Memory: 512.0K
-        CPU: 1.234s
-     CGroup: /system.slice/dap.service
-
-Nov 12 10:30:00 hostname systemd[1]: Starting DAP (Digital Adoption Platform) Application...
-Nov 12 10:30:05 hostname dap[12345]: Backend API started successfully
-Nov 12 10:30:07 hostname dap[12345]: Frontend dev server started successfully
-Nov 12 10:30:08 hostname systemd[1]: Started DAP (Digital Adoption Platform) Application.
-```
+5. **Verify Application Access:**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:4000/graphql
 
 ## Service Management
 
 ### Basic Commands
 
-**Start Service:**
+**Start the service:**
 ```bash
-sudo systemctl start dap.service
+systemctl --user start dap.service
 ```
 
-**Stop Service:**
+**Stop the service:**
 ```bash
-sudo systemctl stop dap.service
+systemctl --user stop dap.service
 ```
 
-**Restart Service:**
+**Restart the service:**
 ```bash
-sudo systemctl restart dap.service
+systemctl --user restart dap.service
 ```
 
-**Check Status:**
+**Check service status:**
 ```bash
-sudo systemctl status dap.service
+systemctl --user status dap.service
 ```
 
-**Enable Autostart (on boot):**
+**View logs (follow mode):**
 ```bash
-sudo systemctl enable dap.service
+journalctl --user -u dap.service -f
 ```
 
-**Disable Autostart:**
+**View recent logs:**
 ```bash
-sudo systemctl disable dap.service
+journalctl --user -u dap.service -n 100
 ```
 
-### Advanced Commands
-
-**Reload Service Configuration:**
+**Enable autostart:**
 ```bash
-sudo systemctl reload dap.service
-# OR
-sudo systemctl daemon-reload
+systemctl --user enable dap.service
 ```
 
-**View Service Logs (Real-time):**
+**Disable autostart:**
 ```bash
-sudo journalctl -u dap.service -f
+systemctl --user disable dap.service
 ```
 
-**View Service Logs (Last 100 Lines):**
+### Important Notes
+
+- **Always use `systemctl --user`** (not `sudo systemctl`)
+- **Always use `journalctl --user`** for logs (not `sudo journalctl`)
+- User services run in the user's context, not as root
+- Linger must be enabled for boot-time startup
+
+## Features
+
+### 1. Automatic Startup on Boot
+
+**How It Works:**
+- Service is enabled via `systemctl --user enable`
+- Linger is enabled via `loginctl enable-linger`
+- Service starts automatically when system boots
+- No user login required (thanks to linger)
+
+**Verify Linger:**
 ```bash
-sudo journalctl -u dap.service -n 100
+loginctl show-user $USER | grep Linger
 ```
 
-**View Service Logs (Since Boot):**
-```bash
-sudo journalctl -u dap.service -b
+Expected output: `Linger=yes`
+
+### 2. Automatic Restart on Failure
+
+**Configuration:**
+```ini
+Restart=on-failure
+RestartSec=10s
 ```
 
-**View Service Logs (Specific Time Range):**
+**Behavior:**
+- If any component crashes, systemd will restart the entire service
+- Waits 10 seconds before restarting
+- Prevents rapid restart loops
+
+**Manual Restart Prevention:**
+If you want to stop the service and prevent automatic restart:
 ```bash
-sudo journalctl -u dap.service --since "2025-11-12 10:00:00" --until "2025-11-12 12:00:00"
+systemctl --user stop dap.service
+systemctl --user disable dap.service
 ```
 
-**Check if Service is Enabled:**
+### 3. Logging
+
+**All output goes to journald:**
+- Standard output
+- Standard error
+- Service status changes
+
+**View logs:**
 ```bash
-systemctl is-enabled dap.service
+# Follow logs in real-time
+journalctl --user -u dap.service -f
+
+# View last 50 lines
+journalctl --user -u dap.service -n 50
+
+# View logs since today
+journalctl --user -u dap.service --since today
+
+# View logs with timestamps
+journalctl --user -u dap.service -o short-precise
 ```
 
-**Check if Service is Active:**
+### 4. Graceful Shutdown
+
+**Shutdown Behavior:**
+- Calls `./dap stop` which gracefully stops all components
+- 60-second timeout before force kill
+- Ensures clean database shutdown
+
+### 5. Service Health Monitoring
+
+**Check if service is running:**
 ```bash
-systemctl is-active dap.service
+systemctl --user is-active dap.service
+```
+
+**Check if service is enabled:**
+```bash
+systemctl --user is-enabled dap.service
+```
+
+**Get detailed status:**
+```bash
+systemctl --user status dap.service -l --no-pager
 ```
 
 ## Troubleshooting
 
-### Service Fails to Start
+### Service Won't Start
 
-**1. Check Service Status:**
+**Check logs for errors:**
 ```bash
-sudo systemctl status dap.service
+journalctl --user -u dap.service -n 100
 ```
 
-**2. View Detailed Logs:**
-```bash
-sudo journalctl -u dap.service -n 50 --no-pager
-```
+**Common issues:**
 
-**3. Check DAP Script Manually:**
+1. **Node not in PATH:**
+   - Service file includes nvm node path
+   - Verify: `which node`
+
+2. **Permission issues:**
+   - Service runs as your user
+   - Verify: `whoami`
+
+3. **Port already in use:**
+   - Check if DAP is already running manually
+   - Run: `./dap status`
+
+**Try manual start:**
 ```bash
 cd /data/dap
-sudo ./dap status
-sudo ./dap start
+./dap start
 ```
 
-**4. Verify Permissions:**
-```bash
-ls -la /data/dap/dap
-# Should be executable: -rwxr-xr-x
-```
-
-**5. Check for Port Conflicts:**
-```bash
-sudo lsof -i :4000  # Backend
-sudo lsof -i :5173  # Frontend
-sudo lsof -i :5432  # PostgreSQL
-```
+If manual start works but service doesn't, check the service file paths.
 
 ### Service Keeps Restarting
 
-**1. Check Restart Count:**
+**Stop the restart loop:**
 ```bash
-systemctl show dap.service -p NRestarts
+systemctl --user stop dap.service
+systemctl --user disable dap.service
 ```
 
-**2. View Recent Failures:**
+**Check what's causing the failure:**
 ```bash
-sudo journalctl -u dap.service -p err -n 20
+journalctl --user -u dap.service -n 200
 ```
 
-**3. Increase Timeout:**
-Edit `/etc/systemd/system/dap.service`:
-```ini
-[Service]
-TimeoutStartSec=180s
+**Common causes:**
+- Database connection failures
+- Port conflicts
+- Missing dependencies
+
+**Fix and restart:**
+```bash
+systemctl --user enable dap.service
+systemctl --user start dap.service
 ```
 
-Then reload:
-```bash
-sudo systemctl daemon-reload
-sudo systemctl restart dap.service
-```
+### Can't Access Logs
 
-### Service Doesn't Stop Cleanly
-
-**1. Force Kill:**
+**Ensure you're using --user flag:**
 ```bash
-sudo systemctl kill -s SIGKILL dap.service
-```
+# ❌ Wrong
+journalctl -u dap.service
 
-**2. Check for Zombie Processes:**
-```bash
-ps aux | grep -E 'node|dap'
-```
-
-**3. Manual Cleanup:**
-```bash
-cd /data/dap
-sudo ./dap stop
+# ✅ Correct
+journalctl --user -u dap.service
 ```
 
 ### Service Not Starting on Boot
 
-**1. Verify Service is Enabled:**
+**Check if linger is enabled:**
 ```bash
-systemctl is-enabled dap.service
-# Should output: enabled
+loginctl show-user $USER | grep Linger
 ```
 
-**2. Check Boot Logs:**
+If `Linger=no`, enable it:
 ```bash
-sudo journalctl -u dap.service -b 0
+loginctl enable-linger $USER
 ```
 
-**3. Verify Dependencies:**
+**Check if service is enabled:**
 ```bash
-systemctl list-dependencies dap.service
+systemctl --user is-enabled dap.service
 ```
 
-**4. Re-enable Service:**
+If `disabled`, enable it:
 ```bash
-sudo systemctl disable dap.service
-sudo systemctl enable dap.service
+systemctl --user enable dap.service
 ```
+
+### Podman DNS Binding Error
+
+**This issue is resolved with user-mode service!**
+
+If you previously installed the system-wide service and had DNS binding errors:
+
+1. **Uninstall system-wide service:**
+   ```bash
+   sudo systemctl stop dap.service
+   sudo systemctl disable dap.service
+   sudo rm /etc/systemd/system/dap.service
+   sudo systemctl daemon-reload
+   ```
+
+2. **Install user-mode service:**
+   ```bash
+   cd /data/dap
+   ./install-service.sh
+   ```
+
+The user-mode service runs in your user's podman environment and avoids the DNS conflicts.
 
 ## Uninstallation
 
-### Option 1: Using Uninstall Script (Recommended)
+### Complete Removal
 
 ```bash
 cd /data/dap
-sudo ./uninstall-service.sh
+./uninstall-service.sh
 ```
 
-### Option 2: Manual Uninstallation
+**What it does:**
+1. Stops the service
+2. Disables the service
+3. Removes the service file
+4. Optionally disables linger
+5. Reloads systemd
 
-```bash
-# Stop and disable service
-sudo systemctl stop dap.service
-sudo systemctl disable dap.service
+**After uninstall:**
+- DAP application remains installed
+- Can still use manual commands: `./dap start|stop|restart`
+- No automatic startup on boot
 
-# Remove service file
-sudo rm /etc/systemd/system/dap.service
+## Technical Details
 
-# Reload systemd
-sudo systemctl daemon-reload
-sudo systemctl reset-failed
+### Directory Structure
+
+```
+/data/dap/
+├── dap                      # Main control script
+├── dap.service              # Service template (not used directly)
+├── install-service.sh       # Installation script
+├── uninstall-service.sh     # Uninstallation script
+└── docs/
+    └── SYSTEMD_SERVICE.md   # This file
+
+~/.config/systemd/user/
+└── dap.service              # Actual service file (after install)
 ```
 
-## Service Behavior
+### Environment Variables
 
-### Startup Sequence
-
-1. **System Boot:**
-   - Systemd starts `multi-user.target`
-   - Network services become available (`network.target`)
-   - DAP service starts after network is ready
-
-2. **Service Starts:**
-   - Changes to `/data/dap` directory
-   - Executes `./dap start`
-   - DAP script starts PostgreSQL container
-   - DAP script starts backend server
-   - DAP script starts frontend server
-
-3. **Service Running:**
-   - All three components (DB, backend, frontend) running
-   - Service status: `active (running)`
-
-### Shutdown Sequence
-
-1. **Service Stop Command:**
-   - Systemd calls `./dap stop`
-   - DAP script stops frontend
-   - DAP script stops backend
-   - DAP script stops PostgreSQL container
-
-2. **System Shutdown:**
-   - Systemd sends stop signal to all services
-   - DAP service gets 60 seconds (TimeoutStopSec) to stop gracefully
-   - If not stopped, SIGKILL is sent
-
-### Restart Behavior
-
-**Automatic Restart:**
-- Service automatically restarts if it exits with a failure code
-- 10-second delay between restart attempts (`RestartSec=10s`)
-- Will keep trying indefinitely until manual stop
-
-**Manual Restart:**
-```bash
-sudo systemctl restart dap.service
+The service sets:
+```ini
+Environment="PATH=/home/rajarora/.nvm/versions/node/v20.12.1/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="NODE_ENV=production"
 ```
-- Performs clean stop
-- Waits for all processes to terminate
-- Starts fresh
+
+**Note:** Node path is hardcoded to nvm location. If using different Node installation, update the service file.
+
+### Process Hierarchy
+
+When running as a service:
+```
+systemd (user instance)
+└── dap.service
+    ├── PostgreSQL container (podman)
+    ├── Backend API (ts-node-dev)
+    └── Frontend dev server (vite)
+```
+
+### Service Type: Forking
+
+```ini
+Type=forking
+```
+
+**Why forking:**
+- `./dap start` spawns background processes and exits
+- Systemd tracks the main process group
+- Allows service to report "started" after processes are running
+
+### User vs System Service
+
+**User Service (Current Implementation):**
+- Location: `~/.config/systemd/user/dap.service`
+- Commands: `systemctl --user`
+- Runs as: Current user
+- Requires: Linger enabled
+- Pros: No DNS conflicts, more secure, simpler
+- Cons: Tied to user account
+
+**System Service (Previous Attempt):**
+- Location: `/etc/systemd/system/dap.service`
+- Commands: `sudo systemctl`
+- Runs as: root
+- Requires: Root permissions
+- Pros: System-wide, not user-specific
+- Cons: Podman DNS binding conflicts
+
+**Recommendation:** Use user service (current implementation)
 
 ## Security Considerations
 
-### Running as Root
+### User Permissions
 
-**Why:**
-- Required for podman/docker container management
-- Required to bind to privileged ports (if configured)
+- Service runs as your user account
+- Has same permissions as manual execution
+- Cannot access other users' files
+- Cannot bind to privileged ports (<1024)
 
-**Mitigation:**
-- Service file includes security hardening options:
-  - `PrivateTmp=yes` - Uses private /tmp directory
-  - `NoNewPrivileges=yes` - Prevents privilege escalation
+### Container Security
 
-**Production Recommendation:**
-- Create a dedicated `dap` user
-- Grant necessary permissions for container management
-- Update service file to run as `dap` user:
-  ```ini
-  [Service]
-  User=dap
-  Group=dap
-  ```
+- Podman runs rootless containers
+- Better isolation than root-owned containers
+- Follows security best practices
 
-### File Permissions
+### Service Hardening
 
-**Service File:**
-```bash
-sudo chmod 644 /etc/systemd/system/dap.service
+Current hardening options:
+```ini
+# None required for user services
+# User services are inherently more secure than system services
 ```
 
-**DAP Script:**
+For production, consider additional restrictions in the service file.
+
+## Best Practices
+
+### 1. Regular Monitoring
+
+Check service status regularly:
 ```bash
-chmod 755 /data/dap/dap
+systemctl --user status dap.service
 ```
 
-**Application Directory:**
+### 2. Log Review
+
+Review logs periodically:
 ```bash
-# If running as dedicated user:
-chown -R dap:dap /data/dap
+journalctl --user -u dap.service --since "1 day ago"
 ```
 
-## Logging
+### 3. Updates
 
-### Log Location
+When updating DAP:
+1. Stop the service
+2. Perform updates
+3. Restart the service
 
-**Systemd Journal:**
-- All service logs are stored in systemd journal
-- Persistent across reboots
-- Accessible via `journalctl`
-
-**View All DAP Logs:**
 ```bash
-sudo journalctl -u dap.service
+systemctl --user stop dap.service
+# ... perform updates ...
+systemctl --user start dap.service
 ```
 
-**View Logs Since Last Boot:**
+### 4. Backup Before Changes
+
+Before modifying service configuration:
 ```bash
-sudo journalctl -u dap.service -b
+cp ~/.config/systemd/user/dap.service ~/.config/systemd/user/dap.service.backup
 ```
 
-**Follow Logs in Real-Time:**
+### 5. Test Manual Start First
+
+Before relying on automatic startup, ensure manual start works:
 ```bash
-sudo journalctl -u dap.service -f
-```
-
-### Log Rotation
-
-**Default:**
-- Systemd journal automatically rotates logs
-- Default retention: Based on disk space and time
-
-**Check Journal Size:**
-```bash
-journalctl --disk-usage
-```
-
-**Manual Cleanup (Keep Last 2 Days):**
-```bash
-sudo journalctl --vacuum-time=2d
-```
-
-**Manual Cleanup (Keep Last 500MB):**
-```bash
-sudo journalctl --vacuum-size=500M
-```
-
-## Integration with Existing `dap` Script
-
-### No Changes Required
-
-The systemd service works seamlessly with the existing `dap` script:
-- Uses the same `./dap start` and `./dap stop` commands
-- No modifications to the `dap` script needed
-- Can still manually run `./dap` commands when needed
-
-### Precedence
-
-**If Service is Enabled:**
-- Service starts automatically on boot
-- Manual `./dap` commands still work
-- But recommend using `systemctl` commands
-
-**Best Practice:**
-```bash
-# Use systemctl when service is installed
-sudo systemctl restart dap.service
-
-# Manual control still works
-cd /data/dap
-sudo ./dap status
-```
-
-## Monitoring
-
-### Health Checks
-
-**Check if All Components are Running:**
-```bash
-sudo systemctl status dap.service
-cd /data/dap
+./dap start
 ./dap status
+./dap stop
 ```
 
-**Check Individual Components:**
-```bash
-# Backend
-curl http://localhost:4000/graphql -d '{"query":"{__schema{types{name}}}"}' -H "Content-Type: application/json"
+## Support and Documentation
 
-# Frontend
-curl http://localhost:5173
+### Related Files
 
-# Database
-podman exec dap_db_1 pg_isready
-```
+- Quick guide: `/data/dap/SERVICE_README.md`
+- Installation instructions: `/data/dap/INSTALL_AUTOSTART.txt`
+- Known issues: `/data/dap/docs/SYSTEMD_SERVICE_KNOWN_ISSUES.md` (DNS issue now resolved)
 
-### Automated Monitoring
+### Getting Help
 
-**Create a Health Check Script:**
-```bash
-#!/bin/bash
-# /usr/local/bin/check-dap-health.sh
+If you encounter issues:
 
-if ! systemctl is-active --quiet dap.service; then
-  echo "DAP service is not running!"
-  systemctl start dap.service
-fi
-```
+1. Check logs: `journalctl --user -u dap.service -n 100`
+2. Try manual start: `./dap start`
+3. Check service status: `systemctl --user status dap.service`
+4. Review this documentation
 
-**Add to Cron:**
-```bash
-# Check every 5 minutes
-*/5 * * * * /usr/local/bin/check-dap-health.sh
-```
+### Version Information
 
-## Backup Considerations
+- **Created:** 2025-11-12
+- **Service Type:** User-mode systemd service
+- **Service Version:** 1.0 (user-mode)
+- **Status:** Production ready
 
-### What to Backup
+## Changelog
 
-**Before Uninstalling:**
-1. Database (handled by application's backup feature)
-2. Configuration files
-3. Service customizations
+### 2025-11-12 - User-Mode Service Implementation
+- Switched from system-wide to user-mode service
+- Resolved podman DNS binding conflicts
+- Updated all installation scripts
+- Updated documentation
+- Enabled linger for boot-time startup
+- Tested and verified working
 
-**Service File:**
-```bash
-# Backup service file
-sudo cp /etc/systemd/system/dap.service /data/dap/dap.service.backup
-```
+### 2025-11-12 - Initial Implementation
+- Created system-wide service
+- Encountered DNS binding issues
+- Documented workarounds
 
-### Restore After Reinstall
+## Conclusion
 
-```bash
-# Restore service
-sudo cp /data/dap/dap.service.backup /etc/systemd/system/dap.service
-sudo systemctl daemon-reload
-sudo systemctl enable dap.service
-sudo systemctl start dap.service
-```
+The DAP systemd user service provides a reliable, secure, and maintainable way to run the DAP application as an always-on service. By using a user-mode service, we avoid common containerization pitfalls while maintaining the benefits of systemd service management.
 
-## Performance Tuning
+The service will:
+- ✅ Start automatically on boot
+- ✅ Restart automatically on failure
+- ✅ Log all output for troubleshooting
+- ✅ Respond to standard systemctl commands
+- ✅ Run securely in user context
 
-### Adjust Timeout Values
-
-**For Slow Systems:**
-```ini
-[Service]
-TimeoutStartSec=300s
-TimeoutStopSec=120s
-```
-
-**For Fast Systems:**
-```ini
-[Service]
-TimeoutStartSec=60s
-TimeoutStopSec=30s
-```
-
-### Resource Limits
-
-**Add Resource Constraints:**
-```ini
-[Service]
-MemoryLimit=4G
-CPUQuota=200%
-TasksMax=1000
-```
-
-### Restart Policy
-
-**Less Aggressive Restart:**
-```ini
-[Service]
-Restart=on-failure
-RestartSec=30s
-StartLimitBurst=3
-StartLimitIntervalSec=600
-```
-
-This prevents endless restart loops if there's a persistent issue.
-
-## Files Summary
-
-| File | Location | Purpose |
-|------|----------|---------|
-| `dap.service` | `/data/dap/dap.service` | Systemd service definition |
-| `install-service.sh` | `/data/dap/install-service.sh` | Service installation script |
-| `uninstall-service.sh` | `/data/dap/uninstall-service.sh` | Service uninstallation script |
-| Installed service | `/etc/systemd/system/dap.service` | Active systemd service file |
-
-## Quick Reference
-
-```bash
-# Install service
-sudo ./install-service.sh
-
-# Check status
-sudo systemctl status dap.service
-
-# View logs
-sudo journalctl -u dap.service -f
-
-# Restart
-sudo systemctl restart dap.service
-
-# Disable autostart
-sudo systemctl disable dap.service
-
-# Uninstall
-sudo ./uninstall-service.sh
-```
-
-## Support
-
-For issues with the systemd service:
-
-1. Check service status: `sudo systemctl status dap.service`
-2. View logs: `sudo journalctl -u dap.service -n 100`
-3. Test manually: `cd /data/dap && sudo ./dap start`
-4. Check documentation: `/data/dap/docs/SYSTEMD_SERVICE.md`
-
-## Future Enhancements
-
-Potential improvements:
-
-1. **User Isolation:** Run as dedicated non-root user
-2. **Socket Activation:** Start on-demand when ports are accessed
-3. **Health Monitoring:** Automatic health checks with restart
-4. **Resource Monitoring:** Integration with monitoring tools (Prometheus, etc.)
-5. **Multi-Instance:** Support for running multiple instances
-6. **Graceful Reload:** Zero-downtime configuration reloads
-
+For questions or issues, review the logs and this documentation.
