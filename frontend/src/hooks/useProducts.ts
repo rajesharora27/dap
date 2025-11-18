@@ -185,7 +185,32 @@ export function useProducts() {
     errorPolicy: 'all'
   });
 
-  const products = data?.products?.edges?.map((edge: any) => edge.node) || [];
+  const products = data?.products?.edges?.map((edge: any) => {
+    const node = edge.node;
+    // Parse telemetry attributes' successCriteria (same as useTasksForProduct)
+    if (node.tasks?.edges) {
+      const parsedTasks = node.tasks.edges.map((taskEdge: any) => {
+        const task = taskEdge.node;
+        if (task.telemetryAttributes && Array.isArray(task.telemetryAttributes)) {
+          const parsedAttributes = task.telemetryAttributes.map((attr: any) => {
+            if (attr.successCriteria && typeof attr.successCriteria === 'string' && attr.successCriteria.trim()) {
+              try {
+                return { ...attr, successCriteria: JSON.parse(attr.successCriteria) };
+              } catch (e) {
+                console.error(`Failed to parse successCriteria for attribute "${attr.name}":`, e);
+                return attr;
+              }
+            }
+            return attr;
+          });
+          return { node: { ...task, telemetryAttributes: parsedAttributes } };
+        }
+        return taskEdge;
+      });
+      return { ...node, tasks: { edges: parsedTasks } };
+    }
+    return node;
+  }) || [];
 
   return {
     products,

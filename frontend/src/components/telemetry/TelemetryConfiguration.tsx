@@ -158,12 +158,43 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
   }) => {
     // Initialize from existing criteria if present
     const getInitialOperator = () => {
+      console.log('[getInitialOperator] attribute:', attribute.name, 'successCriteria:', attribute.successCriteria, 'type:', typeof attribute.successCriteria);
       if (!attribute.successCriteria) {
         return attribute.dataType === 'NUMBER' ? 'greater_than_or_equal' :
                attribute.dataType === 'STRING' ? 'exact' :
                attribute.dataType === 'TIMESTAMP' ? 'within_days' : '';
       }
-      const criteria = attribute.successCriteria;
+      // Check if successCriteria is a string (needs parsing)
+      let criteria = attribute.successCriteria;
+      if (typeof criteria === 'string') {
+        console.log('[getInitialOperator] WARNING: successCriteria is a string, attempting to parse:', criteria);
+        try {
+          criteria = JSON.parse(criteria);
+        } catch (e) {
+          console.error('[getInitialOperator] Failed to parse successCriteria:', e);
+          return '';
+        }
+      }
+      console.log('[getInitialOperator] parsed criteria:', criteria);
+      
+      // Handle legacy simple format: { operator: ">=", value: 10 }
+      if (criteria.operator && !criteria.type) {
+        console.log('[getInitialOperator] Legacy format detected, operator:', criteria.operator);
+        // Map legacy operators to new format
+        const operatorMap: Record<string, string> = {
+          '>=': 'greater_than_or_equal',
+          '>': 'greater_than',
+          '<=': 'less_than_or_equal',
+          '<': 'less_than',
+          '==': 'equals',
+          '!=': 'not_equals',
+          'contains': 'contains',
+          'exact': 'exact'
+        };
+        return operatorMap[criteria.operator] || criteria.operator;
+      }
+      
+      // Handle new structured format
       if (criteria.type === 'string_not_null' || criteria.type === 'timestamp_not_null') {
         return 'not_null';
       }
@@ -181,7 +212,25 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
 
     const getInitialValue = () => {
       if (!attribute.successCriteria) return '';
-      const criteria = attribute.successCriteria;
+      // Check if successCriteria is a string (needs parsing)
+      let criteria = attribute.successCriteria;
+      if (typeof criteria === 'string') {
+        console.log('[getInitialValue] WARNING: successCriteria is a string, attempting to parse:', criteria);
+        try {
+          criteria = JSON.parse(criteria);
+        } catch (e) {
+          console.error('[getInitialValue] Failed to parse successCriteria:', e);
+          return '';
+        }
+      }
+      
+      // Handle legacy simple format: { operator: ">=", value: 10 }
+      if (criteria.value !== undefined && !criteria.type) {
+        console.log('[getInitialValue] Legacy format detected, value:', criteria.value);
+        return String(criteria.value);
+      }
+      
+      // Handle new structured format
       if (criteria.type === 'boolean_flag') {
         return String(criteria.expectedValue);
       }
@@ -218,7 +267,7 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
       setLastSavedCriteria(JSON.stringify(attribute.successCriteria || null));
       setIsInitializing(false); // Mark initialization as complete
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [attribute.id, attribute.dataType]); // Only run when attribute ID or dataType changes, not on every criteria update
+    }, [attribute.id, attribute.dataType, JSON.stringify(attribute.successCriteria)]); // Trigger when criteria object changes
 
     // Auto-save criteria when operator or value changes
     useEffect(() => {

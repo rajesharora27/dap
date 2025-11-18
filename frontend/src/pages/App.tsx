@@ -937,7 +937,8 @@ export function App() {
 
   const { data: solutionsData, loading: solutionsLoading, error: solutionsError, refetch: refetchSolutions } = useQuery(SOLUTIONS, {
     skip: !isAuthenticated,  // Skip if not authenticated
-    errorPolicy: 'all'
+    errorPolicy: 'all',
+    fetchPolicy: 'network-only' // Always fetch fresh data, ignore cache
   });
 
   const { data: customersData, loading: customersLoading, error: customersError } = useQuery(CUSTOMERS, {
@@ -988,7 +989,28 @@ export function App() {
       customAttrs: normalizedCustomAttrs
     };
   }) || [];
-  const solutions = solutionsData?.solutions?.edges?.map((edge: any) => edge.node) || [];
+  const solutions = solutionsData?.solutions?.edges?.map((edge: any) => {
+    const node = edge.node;
+    // Normalize customAttrs to always be an object (same as products)
+    let normalizedCustomAttrs = {};
+    if (node.customAttrs) {
+      if (typeof node.customAttrs === 'string') {
+        try {
+          normalizedCustomAttrs = JSON.parse(node.customAttrs);
+        } catch (e) {
+          console.warn('Invalid JSON in customAttrs for solution', node.id, ':', node.customAttrs);
+          normalizedCustomAttrs = {};
+        }
+      } else {
+        normalizedCustomAttrs = node.customAttrs;
+      }
+    }
+    // Return solution with normalized customAttrs (no filtering - same as products)
+    return {
+      ...node,
+      customAttrs: normalizedCustomAttrs
+    };
+  }) || [];
   const customers = customersData?.customers || [];
 
   // Check if user has access to any resources (for menu visibility)
@@ -5981,14 +6003,18 @@ export function App() {
                   <Box>
                     {/* Render solution details directly here instead of using SolutionManagementMain */}
                     {(() => {
-                      const currentSolution = solutions.find((s: any) => s.id === selectedSolution);
-                      if (!currentSolution) return null;
+    const currentSolution = solutions.find((s: any) => s.id === selectedSolution);
+    if (!currentSolution) return null;
 
-                      const productsList = currentSolution.products?.edges || [];
-                      const outcomesList = currentSolution.outcomes || [];
-                      const releasesList = currentSolution.releases || [];
-                      const customAttrs = currentSolution.customAttrs || {};
-                      const customAttrEntries = Object.entries(customAttrs);
+    const productsList = currentSolution.products?.edges || [];
+    const outcomesList = currentSolution.outcomes || [];
+    const releasesList = currentSolution.releases || [];
+    // Filter out licenseLevel on display (it's a separate field, not a custom attribute)
+    const allCustomAttrs = currentSolution.customAttrs || {};
+    const customAttrs = Object.fromEntries(
+      Object.entries(allCustomAttrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
+    );
+    const customAttrEntries = Object.entries(customAttrs);
                       const NAME_DISPLAY_LIMIT = 12;
 
                       return (

@@ -30,7 +30,7 @@ import {
   Add as AddIcon,
   Edit as EditIcon
 } from '@mui/icons-material';
-import { gql, useMutation } from '@apollo/client';
+import { gql, useMutation, useApolloClient } from '@apollo/client';
 import { CustomAttributeDialog } from './CustomAttributeDialog';
 import { OutcomeDialog } from './OutcomeDialog';
 import { SolutionReleaseDialog } from './SolutionReleaseDialog';
@@ -204,8 +204,25 @@ export const SolutionDialog: React.FC<Props> = ({
   const [editReleaseDialog, setEditReleaseDialog] = useState(false);
   const [editingRelease, setEditingRelease] = useState<any>(null);
 
-  const [createSolution] = useMutation(CREATE_SOLUTION);
-  const [updateSolution] = useMutation(UPDATE_SOLUTION);
+  const client = useApolloClient();
+  
+  const [createSolution] = useMutation(CREATE_SOLUTION, {
+    refetchQueries: ['Solutions'],
+    awaitRefetchQueries: true,
+    fetchPolicy: 'network-only'
+  });
+  const [updateSolution] = useMutation(UPDATE_SOLUTION, {
+    refetchQueries: ['Solutions'],
+    awaitRefetchQueries: true,
+    fetchPolicy: 'network-only',
+    onCompleted: () => {
+      // Force evict solution from cache to prevent stale data merging
+      if (solution?.id) {
+        client.cache.evict({ id: `Solution:${solution.id}` });
+        client.cache.gc();
+      }
+    }
+  });
   const [addProduct] = useMutation(ADD_PRODUCT_TO_SOLUTION);
   const [removeProduct] = useMutation(REMOVE_PRODUCT_FROM_SOLUTION);
   const [reorderProducts] = useMutation(REORDER_PRODUCTS_IN_SOLUTION);
@@ -220,10 +237,13 @@ export const SolutionDialog: React.FC<Props> = ({
     if (solution) {
       setName(solution.name || '');
       setDescription(solution.description || '');
+      // Filter out licenseLevel on load (it's a separate UI field, not a custom attribute)
       const attrs = solution.customAttrs || {};
-      setLicenseLevel(attrs.licenseLevel || 'Essential');
-      const { licenseLevel: _, ...otherAttrs } = attrs;
-      setCustomAttrs(otherAttrs);
+      const cleanedAttrs = Object.fromEntries(
+        Object.entries(attrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
+      );
+      setCustomAttrs(cleanedAttrs);
+      setLicenseLevel('Essential');
       // Preserve product order from backend - products are already sorted by order
       const productIds = (solution.products?.edges || []).map((edge: any) => edge.node.id);
       setSelectedProductIds(productIds);
@@ -270,15 +290,15 @@ export const SolutionDialog: React.FC<Props> = ({
     setError('');
     
     try {
-      const attrsWithLicense = {
-        ...customAttrs,
-        licenseLevel
-      };
-
+      // Filter out licenseLevel before saving (it's a separate UI field, not a custom attribute)
+      const cleanedCustomAttrs = Object.fromEntries(
+        Object.entries(customAttrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
+      );
+      
       const input = {
         name: name.trim(),
         description: description.trim() || undefined,
-        customAttrs: attrsWithLicense
+        customAttrs: Object.keys(cleanedCustomAttrs).length > 0 ? cleanedCustomAttrs : undefined
       };
 
       let solutionId = solution?.id;

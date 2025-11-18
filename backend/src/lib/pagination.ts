@@ -268,6 +268,7 @@ export async function fetchSolutionsPaginated(args: ConnectionArgs & { accessibl
     }
   });
   
+  
   const totalCount = await prisma.solution.count({
     where: { deletedAt: null }
   });

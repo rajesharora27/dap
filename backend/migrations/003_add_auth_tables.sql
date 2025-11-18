@@ -94,3 +94,5 @@ VALUES ('admin_user_default', 'admin_role');
 INSERT OR IGNORE INTO permissions (user_id, resource_type, permission_level, granted_by)
 VALUES ('admin_user_default', 'system', 'manage', 'admin_user_default');
 
+
+

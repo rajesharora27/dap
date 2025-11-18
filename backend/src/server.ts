@@ -16,6 +16,7 @@ import { createContext, prisma } from './context';
 import { config, getCorsOrigins } from './config/app.config';
 import { CustomerTelemetryImportService } from './services/telemetry/CustomerTelemetryImportService';
 import { SessionManager } from './utils/sessionManager';
+import { AutoBackupScheduler } from './services/AutoBackupScheduler';
 // Force restart to load permission enforcement - 2025-11-11
 
 export async function createApp() {
@@ -204,6 +205,16 @@ if (isDirectRun) {
       await SessionManager.clearAllSessions();
     } catch (e) {
       console.error('⚠️  Failed to clear sessions on startup:', (e as any).message);
+    }
+    
+    // Initialize auto-backup scheduler
+    console.log('🔄 Initializing auto-backup scheduler...');
+    try {
+      const autoBackupScheduler = AutoBackupScheduler.getInstance();
+      autoBackupScheduler.start();
+      console.log('✅ Auto-backup scheduler initialized');
+    } catch (e) {
+      console.error('⚠️  Failed to initialize auto-backup scheduler:', (e as any).message);
     }
     
     // Run maintenance job every minute

@@ -115,19 +115,19 @@ export const SolutionsPanel: React.FC<Props> = ({ onSelect }) => {
           >
             <ListItemText 
               primary={
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Typography variant="body2" fontWeight="medium">
-                    {e.node.name}
-                  </Typography>
-                  {e.node.customAttrs && Object.keys(e.node.customAttrs).length > 0 && (
-                    <Chip 
-                      label={`+${Object.keys(e.node.customAttrs).length}`} 
-                      size="small" 
-                      variant="outlined"
-                      sx={{ fontSize: '0.7rem', height: 18 }}
-                    />
-                  )}
-                </Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="body2" fontWeight="medium">
+            {e.node.name}
+          </Typography>
+          {e.node.customAttrs && Object.keys(e.node.customAttrs).length > 0 && (
+            <Chip 
+              label={`+${Object.keys(e.node.customAttrs).length}`} 
+              size="small" 
+              variant="outlined"
+              sx={{ fontSize: '0.7rem', height: 18 }}
+            />
+          )}
+        </Box>
               }
               secondary={
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
