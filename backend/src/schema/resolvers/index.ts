@@ -754,6 +754,7 @@ export const resolvers = {
     
     // Backup queries
     , listBackups: BackupQueryResolvers.listBackups
+    , autoBackupConfig: BackupQueryResolvers.autoBackupConfig
     
     // Auth queries
     , me: AuthQueryResolvers.me
@@ -961,6 +962,9 @@ export const resolvers = {
     createSolution: async (_: any, { input }: any, ctx: any) => {
       requireUser(ctx);
       
+      console.log('🔍 [Backend] createSolution received input:', JSON.stringify(input));
+      console.log('🔍 [Backend] customAttrs in input:', JSON.stringify(input.customAttrs));
+      
       if (fallbackActive) {
         const solution = fbCreateSolution(input);
         await logAudit('CREATE_SOLUTION', 'Solution', solution.id, { input }, ctx.user?.id);
@@ -971,11 +975,19 @@ export const resolvers = {
       // Note: For creation, we check against "all solutions" permission (resourceId = null)
       await requirePermission(ctx, ResourceType.SOLUTION, null, PermissionLevel.ADMIN);
       
+      // Defensive: Filter licenseLevel from customAttrs (it's a separate field, not a custom attribute)
+      let safeCustomAttrs = input.customAttrs;
+      if (safeCustomAttrs && typeof safeCustomAttrs === 'object') {
+        safeCustomAttrs = Object.fromEntries(
+          Object.entries(safeCustomAttrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
+        );
+      }
+      
       const solution = await prisma.solution.create({
         data: {
           name: input.name,
           description: input.description,
-          customAttrs: input.customAttrs
+          customAttrs: safeCustomAttrs
         }
       });
       
@@ -996,9 +1008,18 @@ export const resolvers = {
       await requirePermission(ctx, ResourceType.SOLUTION, id, PermissionLevel.WRITE);
       
       const before = await prisma.solution.findUnique({ where: { id } });
+      
+      // Defensive: Filter licenseLevel from customAttrs (it's a separate field, not a custom attribute)
+      const safeInput = { ...input };
+      if (safeInput.customAttrs && typeof safeInput.customAttrs === 'object') {
+        safeInput.customAttrs = Object.fromEntries(
+          Object.entries(safeInput.customAttrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
+        );
+      }
+      
       const updated = await prisma.solution.update({
         where: { id },
-        data: { ...input }
+        data: safeInput
       });
       
       if (before) {
@@ -2531,6 +2552,8 @@ export const resolvers = {
     , createBackup: BackupMutationResolvers.createBackup
     , restoreBackup: BackupMutationResolvers.restoreBackup
     , deleteBackup: BackupMutationResolvers.deleteBackup
+    , updateAutoBackupConfig: BackupMutationResolvers.updateAutoBackupConfig
+    , triggerAutoBackup: BackupMutationResolvers.triggerAutoBackup
     
     // Auth mutations
     , loginExtended: AuthMutationResolvers.loginExtended

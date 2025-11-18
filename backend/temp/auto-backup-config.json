@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "schedule": "0 1 * * *",
+  "retentionDays": 7,
+  "lastBackupTime": "2025-11-17T21:22:42.654Z",
+  "lastChangeChecksum": "{\"users\":4,\"products\":5,\"solutions\":2,\"customers\":2,\"customerProducts\":11,\"customerSolutions\":4,\"adoptionPlans\":11,\"solutionAdoptionPlans\":4,\"tasks\":122,\"customerTasks\":246,\"customerSolutionTasks\":30}"
+}

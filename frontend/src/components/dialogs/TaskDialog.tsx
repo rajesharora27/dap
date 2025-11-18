@@ -135,7 +135,10 @@ export const TaskDialog: React.FC<Props> = ({
   const maxAllowedWeight = Math.max(0.01, remainingWeight + (task?.weight || 0));
 
   useEffect(() => {
+    console.log('[TaskDialog] useEffect triggered - open:', open, 'task:', task ? task.name : 'null');
     if (task) {
+      console.log('[TaskDialog] Task ID:', task.id, 'Name:', task.name);
+      console.log('[TaskDialog] Task has telemetryAttributes?', !!task.telemetryAttributes, 'Count:', task.telemetryAttributes?.length || 0);
       setName(task.name || '');
       setDescription(task.description || '');
       setEstMinutes(task.estMinutes || 60);
@@ -156,6 +159,11 @@ export const TaskDialog: React.FC<Props> = ({
       setSelectedReleases(taskReleases.length > 0 ? taskReleases : [ALL_RELEASES_ID]);
       
       console.log('[TaskDialog] Loading task telemetry attributes:', task.telemetryAttributes);
+      if (task.telemetryAttributes && task.telemetryAttributes.length > 0) {
+        console.log('[TaskDialog] First attribute successCriteria:', task.telemetryAttributes[0].successCriteria, 'type:', typeof task.telemetryAttributes[0].successCriteria);
+      } else {
+        console.log('[TaskDialog] WARNING: No telemetry attributes found on task!');
+      }
       setTelemetryAttributes(task.telemetryAttributes || []);
     } else {
       setName('');

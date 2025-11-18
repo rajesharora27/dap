@@ -25,7 +25,10 @@ import {
   Tooltip,
   Card,
   CardContent,
-  Grid
+  Grid,
+  Switch,
+  FormControlLabel,
+  TextField
 } from '@mui/material';
 import {
   Backup,
@@ -130,6 +133,39 @@ const DELETE_BACKUP = gql`
   }
 `;
 
+const GET_AUTO_BACKUP_CONFIG = gql`
+  query GetAutoBackupConfig {
+    autoBackupConfig {
+      enabled
+      schedule
+      retentionDays
+      lastBackupTime
+    }
+  }
+`;
+
+const UPDATE_AUTO_BACKUP_CONFIG = gql`
+  mutation UpdateAutoBackupConfig($input: AutoBackupConfigInput!) {
+    updateAutoBackupConfig(input: $input) {
+      enabled
+      schedule
+      retentionDays
+      lastBackupTime
+    }
+  }
+`;
+
+const TRIGGER_AUTO_BACKUP = gql`
+  mutation TriggerAutoBackup {
+    triggerAutoBackup {
+      success
+      filename
+      message
+      error
+    }
+  }
+`;
+
 interface BackupMetadata {
   id: string;
   filename: string;
@@ -163,11 +199,22 @@ export const BackupManagementPanel: React.FC = () => {
   }>({ type: null, message: '' });
   const [uploadingFile, setUploadingFile] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [autoBackupEnabled, setAutoBackupEnabled] = useState(false);
+  const [autoBackupRetentionDays, setAutoBackupRetentionDays] = useState(7);
 
   // GraphQL Queries and Mutations
   const { data, loading, error, refetch } = useQuery(LIST_BACKUPS, {
     pollInterval: 30000, // Refresh every 30 seconds
   });
+
+  const { data: autoBackupData, refetch: refetchAutoBackupConfig } = useQuery(GET_AUTO_BACKUP_CONFIG);
+
+  React.useEffect(() => {
+    if (autoBackupData?.autoBackupConfig) {
+      setAutoBackupEnabled(autoBackupData.autoBackupConfig.enabled);
+      setAutoBackupRetentionDays(autoBackupData.autoBackupConfig.retentionDays);
+    }
+  }, [autoBackupData]);
 
   const [createBackup, { loading: creating }] = useMutation(CREATE_BACKUP, {
     onCompleted: (data) => {
@@ -241,6 +288,45 @@ export const BackupManagementPanel: React.FC = () => {
         message: `Error deleting backup: ${error.message}`,
       });
       setConfirmDialog({ open: false, type: null, filename: null });
+    },
+  });
+
+  const [updateAutoBackupConfig, { loading: updatingConfig }] = useMutation(UPDATE_AUTO_BACKUP_CONFIG, {
+    onCompleted: () => {
+      setStatusMessage({
+        type: 'success',
+        message: 'Auto-backup settings updated successfully!',
+      });
+      refetchAutoBackupConfig();
+    },
+    onError: (error) => {
+      setStatusMessage({
+        type: 'error',
+        message: `Error updating auto-backup settings: ${error.message}`,
+      });
+    },
+  });
+
+  const [triggerAutoBackup, { loading: triggeringBackup }] = useMutation(TRIGGER_AUTO_BACKUP, {
+    onCompleted: (data) => {
+      if (data.triggerAutoBackup.success) {
+        setStatusMessage({
+          type: 'success',
+          message: data.triggerAutoBackup.message || 'Auto-backup triggered successfully!',
+        });
+        refetch();
+      } else {
+        setStatusMessage({
+          type: 'error',
+          message: data.triggerAutoBackup.error || 'Failed to trigger auto-backup',
+        });
+      }
+    },
+    onError: (error) => {
+      setStatusMessage({
+        type: 'error',
+        message: `Error triggering auto-backup: ${error.message}`,
+      });
     },
   });
 
@@ -329,6 +415,35 @@ export const BackupManagementPanel: React.FC = () => {
     }
   };
 
+  const handleToggleAutoBackup = () => {
+    const newEnabled = !autoBackupEnabled;
+    setAutoBackupEnabled(newEnabled);
+    updateAutoBackupConfig({
+      variables: {
+        input: {
+          enabled: newEnabled,
+          retentionDays: autoBackupRetentionDays,
+        },
+      },
+    });
+  };
+
+  const handleRetentionDaysChange = (days: number) => {
+    setAutoBackupRetentionDays(days);
+    updateAutoBackupConfig({
+      variables: {
+        input: {
+          enabled: autoBackupEnabled,
+          retentionDays: days,
+        },
+      },
+    });
+  };
+
+  const handleTriggerAutoBackup = () => {
+    triggerAutoBackup();
+  };
+
   const formatSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
@@ -344,7 +459,7 @@ export const BackupManagementPanel: React.FC = () => {
   const backups: BackupMetadata[] = data?.listBackups || [];
   const selectedBackupData = backups.find((b) => b.filename === selectedBackup);
 
-  const isProcessing = creating || restoring || deleting || uploadingFile;
+  const isProcessing = creating || restoring || deleting || uploadingFile || updatingConfig || triggeringBackup;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -407,6 +522,72 @@ export const BackupManagementPanel: React.FC = () => {
               Error loading backups: {error.message}
             </Alert>
           )}
+
+          {/* Auto-Backup Configuration */}
+          <Card variant="outlined">
+            <CardContent>
+              <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Schedule color="primary" />
+                  <Typography variant="h6">Automated Backup</Typography>
+                </Box>
+                <Chip
+                  label={autoBackupEnabled ? 'Enabled' : 'Disabled'}
+                  color={autoBackupEnabled ? 'success' : 'default'}
+                  size="small"
+                />
+              </Box>
+
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Automatically create backups daily at 1:00 AM. Backups are only created if changes are detected.
+              </Typography>
+
+              <Stack direction="row" spacing={2} alignItems="center" mt={2}>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={autoBackupEnabled}
+                      onChange={handleToggleAutoBackup}
+                      disabled={isProcessing}
+                    />
+                  }
+                  label="Enable Auto-Backup"
+                />
+
+                <Box display="flex" alignItems="center" gap={1}>
+                  <Typography variant="body2">Retention:</Typography>
+                  <TextField
+                    type="number"
+                    size="small"
+                    value={autoBackupRetentionDays}
+                    onChange={(e) => handleRetentionDaysChange(Number(e.target.value))}
+                    disabled={isProcessing}
+                    inputProps={{ min: 1, max: 90 }}
+                    sx={{ width: '80px' }}
+                  />
+                  <Typography variant="body2">days</Typography>
+                </Box>
+
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<Backup />}
+                  onClick={handleTriggerAutoBackup}
+                  disabled={isProcessing}
+                >
+                  Test Now
+                </Button>
+              </Stack>
+
+              {autoBackupData?.autoBackupConfig?.lastBackupTime && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                  Last auto-backup: {formatDate(autoBackupData.autoBackupConfig.lastBackupTime)}
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+
+          <Divider />
 
           {/* Backup List */}
           {!loading && !error && (

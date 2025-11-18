@@ -975,6 +975,20 @@ export const typeDefs = gql`
     error: String
   }
 
+  type AutoBackupConfig {
+    enabled: Boolean!
+    schedule: String!
+    retentionDays: Int!
+    lastBackupTime: DateTime
+    lastChangeChecksum: String
+  }
+
+  input AutoBackupConfigInput {
+    enabled: Boolean
+    schedule: String
+    retentionDays: Int
+  }
+
   type DeleteBackupResult {
     success: Boolean!
     message: String!
@@ -985,6 +999,11 @@ export const typeDefs = gql`
     List all available database backups
     """
     listBackups: [BackupMetadata!]!
+
+    """
+    Get auto-backup configuration
+    """
+    autoBackupConfig: AutoBackupConfig!
   }
 
   extend type Mutation {
@@ -1002,6 +1021,16 @@ export const typeDefs = gql`
     Delete a backup file
     """
     deleteBackup(filename: String!): DeleteBackupResult!
+
+    """
+    Update auto-backup configuration
+    """
+    updateAutoBackupConfig(input: AutoBackupConfigInput!): AutoBackupConfig!
+
+    """
+    Trigger auto-backup immediately (for testing)
+    """
+    triggerAutoBackup: BackupResult!
   }
 
   # ==========================================

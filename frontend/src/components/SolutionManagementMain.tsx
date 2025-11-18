@@ -92,12 +92,16 @@ export const SolutionManagementMain: React.FC<Props> = ({
     setDialogOpen(false);
   };
 
-  const productsList = selectedSolution?.products?.edges || [];
-  const outcomesList = selectedSolution?.outcomes || [];
-  const licensesList = selectedSolution?.licenses || [];
-  const releasesList = selectedSolution?.releases || [];
-  const customAttrs = selectedSolution?.customAttrs || {};
-  const customAttrEntries = Object.entries(customAttrs);
+    const productsList = selectedSolution?.products?.edges || [];
+    const outcomesList = selectedSolution?.outcomes || [];
+    const licensesList = selectedSolution?.licenses || [];
+    const releasesList = selectedSolution?.releases || [];
+    // Filter out licenseLevel on display (it's a separate field, not a custom attribute)
+    const allCustomAttrs = selectedSolution?.customAttrs || {};
+    const customAttrs = Object.fromEntries(
+      Object.entries(allCustomAttrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
+    );
+    const finalCustomAttrEntries = Object.entries(customAttrs);
 
   const NAME_DISPLAY_LIMIT = 12;
 
@@ -356,11 +360,11 @@ export const SolutionManagementMain: React.FC<Props> = ({
               }}
             >
               <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                Custom Attributes
+                Custom Attributes ({finalCustomAttrEntries.length})
               </Typography>
-              {customAttrEntries.length > 0 ? (
+              {finalCustomAttrEntries.length > 0 ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                  {(customAttrEntries.length <= NAME_DISPLAY_LIMIT ? customAttrEntries : customAttrEntries.slice(0, NAME_DISPLAY_LIMIT)).map(([key, value]: [string, any]) => (
+                  {(finalCustomAttrEntries.length <= NAME_DISPLAY_LIMIT ? finalCustomAttrEntries : finalCustomAttrEntries.slice(0, NAME_DISPLAY_LIMIT)).map(([key, value]: [string, any]) => (
                     <Typography
                       key={key}
                       variant="body2"
@@ -374,9 +378,9 @@ export const SolutionManagementMain: React.FC<Props> = ({
                       <strong>{key}:</strong> {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                     </Typography>
                   ))}
-                  {customAttrEntries.length > NAME_DISPLAY_LIMIT && (
+                  {finalCustomAttrEntries.length > NAME_DISPLAY_LIMIT && (
                     <Typography variant="caption" color="text.secondary">
-                      +{customAttrEntries.length - NAME_DISPLAY_LIMIT} more
+                      +{finalCustomAttrEntries.length - NAME_DISPLAY_LIMIT} more
                     </Typography>
                   )}
                 </Box>

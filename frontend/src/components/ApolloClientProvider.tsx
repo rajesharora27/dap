@@ -152,7 +152,10 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
       }
     });
 
-    console.log('✅ Enhanced Apollo Client created with auth and logging');
+    // Clear cache to remove any stale data (especially licenseLevel in customAttrs)
+    apolloClient.clearStore().catch(err => console.warn('Cache clear warning:', err));
+
+    console.log('✅ Enhanced Apollo Client created with auth, logging, and fresh cache');
     return apolloClient;
   }, [httpUrl]);
 
