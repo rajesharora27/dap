@@ -805,7 +805,14 @@ export const resolvers = {
       if (!user) throw new Error('INVALID_CREDENTIALS');
       const ok = await bcrypt.compare(password, user.password);
       if (!ok) throw new Error('INVALID_CREDENTIALS');
-      return jwt.sign({ uid: user.id, role: user.role }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
+      return jwt.sign({ 
+        uid: user.id, 
+        role: user.role,
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        isAdmin: user.isAdmin || user.role === 'ADMIN'
+      }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
     },
     simpleLogin: async (_: any, { username, password }: any) => {
       const fallbackActive = (process.env.AUTH_FALLBACK || '').toLowerCase() === '1' || (process.env.AUTH_FALLBACK || '').toLowerCase() === 'true';
@@ -822,7 +829,14 @@ export const resolvers = {
       if (!user) throw new Error('INVALID_CREDENTIALS');
       const ok = await bcrypt.compare(password, user.password);
       if (!ok) throw new Error('INVALID_CREDENTIALS');
-      return jwt.sign({ uid: user.id, role: user.role }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
+      return jwt.sign({ 
+        uid: user.id, 
+        role: user.role,
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+        isAdmin: user.isAdmin || user.role === 'ADMIN'
+      }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
     },
     createProduct: async (_: any, { input }: any, ctx: any) => {
       requireUser(ctx);
