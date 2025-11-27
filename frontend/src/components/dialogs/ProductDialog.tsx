@@ -66,12 +66,12 @@ interface Props {
   initialTab?: 'general' | 'outcomes' | 'licenses' | 'releases' | 'customAttributes';
 }
 
-export const ProductDialog: React.FC<Props> = ({ 
-  open, 
-  onClose, 
-  onSave, 
-  product, 
-  title, 
+export const ProductDialog: React.FC<Props> = ({
+  open,
+  onClose,
+  onSave,
+  product,
+  title,
   availableReleases,
   initialTab = 'general'
 }) => {
@@ -79,7 +79,7 @@ export const ProductDialog: React.FC<Props> = ({
   const [description, setDescription] = useState('');
   const [customAttrs, setCustomAttrs] = useState<{ [key: string]: any }>({});
   const [outcomes, setOutcomes] = useState<Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>>([]);
-  const [licenses, setLicenses] = useState<Array<{ id?: string; name: string; description?: string; level: number; isActive: boolean; isNew?: boolean; delete?: boolean }>>([]);
+  const [licenses, setLicenses] = useState<Array<{ id?: string; name: string; description?: string; level: string; isActive: boolean; isNew?: boolean; delete?: boolean }>>([]);
   const [releases, setReleases] = useState<Array<{ id?: string; name: string; level: number; description?: string; isNew?: boolean; delete?: boolean }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -108,7 +108,7 @@ export const ProductDialog: React.FC<Props> = ({
         id: license.id,
         name: license.name,
         description: license.description,
-        level: license.level,
+        level: String(license.level),
         isActive: license.isActive
       })));
       setReleases((product.releases || []).map(release => ({
@@ -130,7 +130,7 @@ export const ProductDialog: React.FC<Props> = ({
       setLicenses([{
         name: 'Essential',
         description: 'Basic features',
-        level: 1,
+        level: '1',
         isActive: true,
         isNew: true
       }]);
@@ -163,6 +163,7 @@ export const ProductDialog: React.FC<Props> = ({
   const handleAddLicense = (licenseData: { name: string; description?: string; level: number; isActive: boolean }) => {
     setLicenses([...licenses, {
       ...licenseData,
+      level: String(licenseData.level),
       isNew: true
     }]);
     setAddLicenseDialog(false);
@@ -170,9 +171,9 @@ export const ProductDialog: React.FC<Props> = ({
 
   const handleEditLicense = (licenseData: { name: string; description?: string; level: number; isActive: boolean }) => {
     if (editingLicense) {
-      const updatedLicenses = licenses.map(license => 
-        license.id === editingLicense.id || license === editingLicense
-          ? { ...license, ...licenseData }
+      const updatedLicenses = licenses.map(license =>
+        license.id === editingLicense.id || (license.name === editingLicense.name && license.level === String(editingLicense.level))
+          ? { ...license, ...licenseData, level: String(licenseData.level) }
           : license
       );
       setLicenses(updatedLicenses);
@@ -207,7 +208,7 @@ export const ProductDialog: React.FC<Props> = ({
 
   const handleEditOutcome = (outcomeData: { name: string; description?: string }) => {
     if (editingOutcome) {
-      const updatedOutcomes = outcomes.map(outcome => 
+      const updatedOutcomes = outcomes.map(outcome =>
         outcome.id === editingOutcome.id || outcome === editingOutcome
           ? { ...outcome, ...outcomeData }
           : outcome
@@ -274,7 +275,7 @@ export const ProductDialog: React.FC<Props> = ({
 
   const handleEditRelease = (releaseData: { name: string; level: number; description?: string }) => {
     if (editingRelease) {
-      const updatedReleases = releases.map(release => 
+      const updatedReleases = releases.map(release =>
         release.id === editingRelease.id || release === editingRelease
           ? { ...release, ...releaseData }
           : release
@@ -386,379 +387,379 @@ export const ProductDialog: React.FC<Props> = ({
 
   return (
     <>
-      <Dialog 
-        open={open} 
-        onClose={onClose} 
-        maxWidth="md" 
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="md"
         fullWidth
         PaperProps={{
           sx: { height: '90vh' }
         }}
       >
-      <DialogTitle>{title}</DialogTitle>
-      <DialogContent dividers>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="product tabs">
-            <Tab label="General" />
-            <Tab label={`Outcomes (${outcomes.filter(o => !o.delete).length})`} />
-            <Tab label={`Licenses (${licenses.filter(l => !l.delete).length})`} />
-            <Tab label={`Releases (${releases.filter(r => !r.delete).length})`} />
-            <Tab label={`Attributes (${Object.keys(customAttrs).length})`} />
-          </Tabs>
-        </Box>
-
-        {/* General Tab */}
-        <TabPanel value={tabValue} index={0}>
-          <TextField
-            fullWidth
-            label="Product Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-            sx={{ mb: 2 }}
-          />
-          <TextField
-            fullWidth
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            multiline
-            rows={6}
-            placeholder="Describe the product's purpose, features, and benefits..."
-          />
-        </TabPanel>
-
-        {/* Outcomes Tab */}
-        <TabPanel value={tabValue} index={1}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              Manage outcomes for this product
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setAddOutcomeDialog(true)}
-              size="small"
-            >
-              Add Outcome
-            </Button>
+        <DialogTitle>{title}</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs value={tabValue} onChange={handleTabChange} aria-label="product tabs">
+              <Tab label="General" />
+              <Tab label={`Outcomes (${outcomes.filter(o => !o.delete).length})`} />
+              <Tab label={`Licenses (${licenses.filter(l => !l.delete).length})`} />
+              <Tab label={`Releases (${releases.filter(r => !r.delete).length})`} />
+              <Tab label={`Attributes (${Object.keys(customAttrs).length})`} />
+            </Tabs>
           </Box>
 
-          {outcomes.filter(o => !o.delete).length > 0 ? (
-            <List dense>
-              {outcomes.map((outcome, index) =>
-                !outcome.delete && (
-                  <ListItemButton
-                    key={index}
-                    sx={{
-                      border: '1px solid #e0e0e0',
-                      borderRadius: 1,
-                      mb: 1,
-                      '&:hover': {
-                        backgroundColor: '#f5f5f5',
-                      },
-                    }}
-                    onClick={() => handleEditOutcomeClick(outcome, index)}
-                  >
-                    <ListItemText
-                      primary={outcome.name}
-                      secondary={outcome.description}
+          {/* General Tab */}
+          <TabPanel value={tabValue} index={0}>
+            <TextField
+              fullWidth
+              label="Product Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              fullWidth
+              label="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              multiline
+              rows={6}
+              placeholder="Describe the product's purpose, features, and benefits..."
+            />
+          </TabPanel>
+
+          {/* Outcomes Tab */}
+          <TabPanel value={tabValue} index={1}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Manage outcomes for this product
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setAddOutcomeDialog(true)}
+                size="small"
+              >
+                Add Outcome
+              </Button>
+            </Box>
+
+            {outcomes.filter(o => !o.delete).length > 0 ? (
+              <List dense>
+                {outcomes.map((outcome, index) =>
+                  !outcome.delete && (
+                    <ListItemButton
+                      key={index}
                       sx={{
-                        '& .MuiListItemText-primary': {
-                          fontWeight: outcome.isNew ? 'bold' : 'normal'
+                        border: '1px solid #e0e0e0',
+                        borderRadius: 1,
+                        mb: 1,
+                        '&:hover': {
+                          backgroundColor: '#f5f5f5',
+                        },
+                      }}
+                      onClick={() => handleEditOutcomeClick(outcome, index)}
+                    >
+                      <ListItemText
+                        primary={outcome.name}
+                        secondary={outcome.description}
+                        sx={{
+                          '& .MuiListItemText-primary': {
+                            fontWeight: outcome.isNew ? 'bold' : 'normal'
+                          }
+                        }}
+                      />
+                      <IconButton
+                        edge="end"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditOutcomeClick(outcome, index);
+                        }}
+                        size="small"
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        edge="end"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteOutcome(index);
+                        }}
+                        color="error"
+                        size="small"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </ListItemButton>
+                  )
+                )}
+              </List>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                No outcomes added yet. Click "Add Outcome" to get started.
+              </Typography>
+            )}
+          </TabPanel>
+
+          {/* Licenses Tab */}
+          <TabPanel value={tabValue} index={2}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Manage licenses for this product
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setAddLicenseDialog(true)}
+                size="small"
+              >
+                Add License
+              </Button>
+            </Box>
+
+            {licenses.filter(l => !l.delete).length > 0 ? (
+              <List dense>
+                {licenses.map((license, index) =>
+                  !license.delete && (
+                    <ListItemButton
+                      key={index}
+                      sx={{
+                        border: '1px solid #e0e0e0',
+                        borderRadius: 1,
+                        mb: 1,
+                        '&:hover': {
+                          backgroundColor: '#f5f5f5',
+                        },
+                      }}
+                      onClick={() => handleEditLicenseClick(license, index)}
+                    >
+                      <ListItemText
+                        primary={`${license.name} (Level ${license.level})`}
+                        secondary={
+                          <Box>
+                            <Typography variant="body2">
+                              {license.description}
+                            </Typography>
+                            <Typography variant="caption" color={license.isActive ? 'success.main' : 'error.main'}>
+                              {license.isActive ? 'Active' : 'Inactive'}
+                            </Typography>
+                          </Box>
                         }
-                      }}
-                    />
-                    <IconButton
-                      edge="end"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditOutcomeClick(outcome, index);
-                      }}
-                      size="small"
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      edge="end"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteOutcome(index);
-                      }}
-                      color="error"
-                      size="small"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </ListItemButton>
-                )
-              )}
-            </List>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-              No outcomes added yet. Click "Add Outcome" to get started.
-            </Typography>
-          )}
-        </TabPanel>
+                        secondaryTypographyProps={{ component: 'div' }}
+                        sx={{
+                          '& .MuiListItemText-primary': {
+                            fontWeight: license.isNew ? 'bold' : 'normal'
+                          }
+                        }}
+                      />
+                      <IconButton
+                        edge="end"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditLicenseClick(license, index);
+                        }}
+                        size="small"
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        edge="end"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteLicense(index);
+                        }}
+                        color="error"
+                        size="small"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </ListItemButton>
+                  )
+                )}
+              </List>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+                No licenses added yet. Click "Add License" to get started.
+              </Typography>
+            )}
+          </TabPanel>
 
-        {/* Licenses Tab */}
-        <TabPanel value={tabValue} index={2}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              Manage licenses for this product
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setAddLicenseDialog(true)}
-              size="small"
-            >
-              Add License
-            </Button>
-          </Box>
+          {/* Releases Tab */}
+          <TabPanel value={tabValue} index={3}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Manage releases for this product
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setAddReleaseDialog(true)}
+                size="small"
+              >
+                Add Release
+              </Button>
+            </Box>
 
-          {licenses.filter(l => !l.delete).length > 0 ? (
-            <List dense>
-              {licenses.map((license, index) =>
-                !license.delete && (
+            {releases.filter(r => !r.delete).length > 0 ? (
+              <List dense>
+                {releases.map((release, index) =>
+                  !release.delete && (
+                    <ListItemButton
+                      key={index}
+                      sx={{
+                        border: '1px solid #e0e0e0',
+                        borderRadius: 1,
+                        mb: 1,
+                        '&:hover': {
+                          backgroundColor: '#f5f5f5',
+                        },
+                      }}
+                      onClick={() => handleEditReleaseClick(release, index)}
+                    >
+                      <ListItemText
+                        primary={release.name}
+                        secondary={`Level: ${release.level}${release.description ? ` - ${release.description}` : ''}`}
+                        sx={{
+                          '& .MuiListItemText-primary': {
+                            fontWeight: release.isNew ? 'bold' : 'normal'
+                          }
+                        }}
+                      />
+                      <IconButton
+                        edge="end"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditReleaseClick(release, index);
+                        }}
+                        size="small"
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        edge="end"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteRelease(index);
+                        }}
+                        color="error"
+                        size="small"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </ListItemButton>
+                  )
+                )}
+              </List>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                No releases defined for this product.
+              </Typography>
+            )}
+          </TabPanel>
+
+          {/* Custom Attributes Tab */}
+          <TabPanel value={tabValue} index={4}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                Manage additional metadata for this product
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setAddCustomAttributeDialog(true)}
+                size="small"
+              >
+                Add Attribute
+              </Button>
+            </Box>
+
+            {Object.keys(customAttrs).length > 0 ? (
+              <List dense>
+                {Object.entries(customAttrs).map(([key, value]: [string, any]) => (
                   <ListItemButton
-                    key={index}
+                    key={key}
                     sx={{
                       border: '1px solid #e0e0e0',
                       borderRadius: 1,
                       mb: 1,
                       '&:hover': {
-                        backgroundColor: '#f5f5f5',
-                      },
-                    }}
-                    onClick={() => handleEditLicenseClick(license, index)}
-                  >
-                    <ListItemText
-                      primary={`${license.name} (Level ${license.level})`}
-                      secondary={
-                        <Box>
-                          <Typography variant="body2">
-                            {license.description}
-                          </Typography>
-                          <Typography variant="caption" color={license.isActive ? 'success.main' : 'error.main'}>
-                            {license.isActive ? 'Active' : 'Inactive'}
-                          </Typography>
-                        </Box>
+                        backgroundColor: '#f5f5f5'
                       }
-                      secondaryTypographyProps={{ component: 'div' }}
-                      sx={{
-                        '& .MuiListItemText-primary': {
-                          fontWeight: license.isNew ? 'bold' : 'normal'
-                        }
-                      }}
-                    />
-                    <IconButton
-                      edge="end"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditLicenseClick(license, index);
-                      }}
-                      size="small"
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      edge="end"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteLicense(index);
-                      }}
-                      color="error"
-                      size="small"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </ListItemButton>
-                )
-              )}
-            </List>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-              No licenses added yet. Click "Add License" to get started.
-            </Typography>
-          )}
-        </TabPanel>
-
-        {/* Releases Tab */}
-        <TabPanel value={tabValue} index={3}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              Manage releases for this product
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setAddReleaseDialog(true)}
-              size="small"
-            >
-              Add Release
-            </Button>
-          </Box>
-
-          {releases.filter(r => !r.delete).length > 0 ? (
-            <List dense>
-              {releases.map((release, index) =>
-                !release.delete && (
-                  <ListItemButton
-                    key={index}
-                    sx={{
-                      border: '1px solid #e0e0e0',
-                      borderRadius: 1,
-                      mb: 1,
-                      '&:hover': {
-                        backgroundColor: '#f5f5f5',
-                      },
                     }}
-                    onClick={() => handleEditReleaseClick(release, index)}
+                    onDoubleClick={() => {
+                      setEditingCustomAttribute({
+                        key,
+                        value,
+                        type: Array.isArray(value) ? 'array' :
+                          typeof value === 'object' && value !== null ? 'object' :
+                            typeof value === 'number' ? 'number' :
+                              typeof value === 'boolean' ? 'boolean' : 'string'
+                      });
+                      setEditCustomAttributeDialog(true);
+                    }}
                   >
                     <ListItemText
-                      primary={release.name}
-                      secondary={`Level: ${release.level}${release.description ? ` - ${release.description}` : ''}`}
-                      sx={{
-                        '& .MuiListItemText-primary': {
-                          fontWeight: release.isNew ? 'bold' : 'normal'
-                        }
-                      }}
+                      primary={key}
+                      secondary={typeof value === 'object' ? JSON.stringify(value) : String(value)}
                     />
-                    <IconButton
-                      edge="end"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditReleaseClick(release, index);
-                      }}
-                      size="small"
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      edge="end"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteRelease(index);
-                      }}
-                      color="error"
-                      size="small"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingCustomAttribute({
+                            key,
+                            value,
+                            type: Array.isArray(value) ? 'array' :
+                              typeof value === 'object' && value !== null ? 'object' :
+                                typeof value === 'number' ? 'number' :
+                                  typeof value === 'boolean' ? 'boolean' : 'string'
+                          });
+                          setEditCustomAttributeDialog(true);
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`Are you sure you want to delete the attribute "${key}"?`)) {
+                            handleDeleteCustomAttribute(key);
+                          }
+                        }}
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
                   </ListItemButton>
-                )
-              )}
-            </List>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-              No releases defined for this product.
+                ))}
+              </List>
+            ) : (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                No additional attributes defined for this product.
+              </Typography>
+            )}
+          </TabPanel>
+
+          {error && (
+            <Typography color="error" variant="body2" sx={{ mt: 1 }}>
+              {error}
             </Typography>
           )}
-        </TabPanel>
-
-        {/* Custom Attributes Tab */}
-        <TabPanel value={tabValue} index={4}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              Manage additional metadata for this product
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setAddCustomAttributeDialog(true)}
-              size="small"
-            >
-              Add Attribute
-            </Button>
-          </Box>
-
-          {Object.keys(customAttrs).length > 0 ? (
-            <List dense>
-              {Object.entries(customAttrs).map(([key, value]: [string, any]) => (
-                <ListItemButton
-                  key={key}
-                  sx={{
-                    border: '1px solid #e0e0e0',
-                    borderRadius: 1,
-                    mb: 1,
-                    '&:hover': {
-                      backgroundColor: '#f5f5f5'
-                    }
-                  }}
-                  onDoubleClick={() => {
-                    setEditingCustomAttribute({
-                      key,
-                      value,
-                      type: Array.isArray(value) ? 'array' :
-                        typeof value === 'object' && value !== null ? 'object' :
-                          typeof value === 'number' ? 'number' :
-                            typeof value === 'boolean' ? 'boolean' : 'string'
-                    });
-                    setEditCustomAttributeDialog(true);
-                  }}
-                >
-                  <ListItemText
-                    primary={key}
-                    secondary={typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                  />
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingCustomAttribute({
-                          key,
-                          value,
-                          type: Array.isArray(value) ? 'array' :
-                            typeof value === 'object' && value !== null ? 'object' :
-                              typeof value === 'number' ? 'number' :
-                                typeof value === 'boolean' ? 'boolean' : 'string'
-                        });
-                        setEditCustomAttributeDialog(true);
-                      }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm(`Are you sure you want to delete the attribute "${key}"?`)) {
-                          handleDeleteCustomAttribute(key);
-                        }
-                      }}
-                    >
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                </ListItemButton>
-              ))}
-            </List>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-              No additional attributes defined for this product.
-            </Typography>
-          )}
-        </TabPanel>
-
-        {error && (
-          <Typography color="error" variant="body2" sx={{ mt: 1 }}>
-            {error}
-          </Typography>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button
-          onClick={handleSave}
-          variant="contained"
-          disabled={loading}
-        >
-          {loading ? 'Saving...' : 'Save Product'}
-        </Button>
-      </DialogActions>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose}>Cancel</Button>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            disabled={loading}
+          >
+            {loading ? 'Saving...' : 'Save Product'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Sub-Dialogs - Rendered outside parent dialog to avoid z-index issues */}

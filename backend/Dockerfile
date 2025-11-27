@@ -1,4 +1,4 @@
-FROM node:20-bullseye AS deps
+FROM node:22-bullseye AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 # Install system deps then upgrade npm to desired major before installing project deps
@@ -14,7 +14,7 @@ ENV PRISMA_CLI_BINARY_TARGETS=debian-openssl-1.1.x
 RUN npx prisma generate && npm run build \
     && node -e "require('./dist/server.js'); console.log('Build verification ok')"
 
-FROM node:20-bullseye AS runtime
+FROM node:22-bullseye AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 ## copy node_modules AFTER generate (from build stage) so correct engine binary is included

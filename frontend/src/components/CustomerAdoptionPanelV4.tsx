@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
-import { gql, useQuery, useMutation } from '@apollo/client';
+import { gql, useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from './dialogs/TaskDialog';
 import {
   Box,
@@ -108,6 +108,13 @@ const GET_CUSTOMERS = gql`
         solution {
           id
           name
+        }
+        adoptionPlan {
+          id
+          progressPercentage
+          totalTasks
+          completedTasks
+          needsSync
         }
       }
     }
@@ -536,6 +543,10 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
   const [productAssignmentsExpanded, setProductAssignmentsExpanded] = useState(true);
   const [solutionAssignmentsExpanded, setSolutionAssignmentsExpanded] = useState(true);
   
+  // Individual sync loading states
+  const [syncingProductId, setSyncingProductId] = useState<string | null>(null);
+  const [syncingSolutionId, setSyncingSolutionId] = useState<string | null>(null);
+  
   // Filter states - releases and outcomes support multiple selections
   // Note: License filter removed - tasks are pre-filtered by assigned license level
   const [filterReleases, setFilterReleases] = useState<string[]>([]);
@@ -643,46 +654,18 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
     return tasks;
   }, [planData?.adoptionPlan?.tasks, filterReleases, filterOutcomes]);
 
-  // Get unique releases, licenses, and outcomes for filter dropdowns
+  // Get releases and outcomes for filter dropdowns - always from entitlements (synced from product)
   const availableReleases = React.useMemo(() => {
-    // If customer has specific release entitlements, show only those
-    if (planData?.adoptionPlan?.selectedReleases && planData.adoptionPlan.selectedReleases.length > 0) {
-      // Create a copy before sorting (GraphQL data is read-only)
-      return [...planData.adoptionPlan.selectedReleases].sort((a: any, b: any) => a.name.localeCompare(b.name));
-    }
-    
-    // Otherwise, show all releases from tasks (customer has "All" entitlement)
-    if (!planData?.adoptionPlan?.tasks) return [];
-    const releases = new Map();
-    planData.adoptionPlan.tasks.forEach((task: any) => {
-      task.releases?.forEach((release: any) => {
-        if (!releases.has(release.id)) {
-          releases.set(release.id, release);
-        }
-      });
-    });
-    return Array.from(releases.values()).sort((a: any, b: any) => a.name.localeCompare(b.name));
-  }, [planData?.adoptionPlan?.tasks, planData?.adoptionPlan?.selectedReleases]);
+    // Use entitlements directly - sync populates these with all product releases
+    if (!planData?.adoptionPlan?.selectedReleases) return [];
+    return [...planData.adoptionPlan.selectedReleases].sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }, [planData?.adoptionPlan?.selectedReleases]);
 
   const availableOutcomes = React.useMemo(() => {
-    // If customer has specific outcome entitlements, show only those
-    if (planData?.adoptionPlan?.selectedOutcomes && planData.adoptionPlan.selectedOutcomes.length > 0) {
-      // Create a copy before sorting (GraphQL data is read-only)
-      return [...planData.adoptionPlan.selectedOutcomes].sort((a: any, b: any) => a.name.localeCompare(b.name));
-    }
-    
-    // Otherwise, show all outcomes from tasks (customer has "All" entitlement)
-    if (!planData?.adoptionPlan?.tasks) return [];
-    const outcomes = new Map();
-    planData.adoptionPlan.tasks.forEach((task: any) => {
-      task.outcomes?.forEach((outcome: any) => {
-        if (!outcomes.has(outcome.id)) {
-          outcomes.set(outcome.id, outcome);
-        }
-      });
-    });
-    return Array.from(outcomes.values()).sort((a: any, b: any) => a.name.localeCompare(b.name));
-  }, [planData?.adoptionPlan?.tasks, planData?.adoptionPlan?.selectedOutcomes]);
+    // Use entitlements directly - sync populates these with all product outcomes
+    if (!planData?.adoptionPlan?.selectedOutcomes) return [];
+    return [...planData.adoptionPlan.selectedOutcomes].sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }, [planData?.adoptionPlan?.selectedOutcomes]);
 
   // Calculate progress based on filtered tasks using WEIGHTS (excluding NOT_APPLICABLE)
   const filteredProgress = React.useMemo(() => {
@@ -758,11 +741,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
     refetchQueries: ['GetAdoptionPlan', 'GetCustomers'],
     awaitRefetchQueries: true,
     onCompleted: () => {
+      setSyncingProductId(null);
       refetchPlan();
       refetch();
       setSuccess('Adoption plan synced successfully');
     },
     onError: (err) => {
+      setSyncingProductId(null);
       console.error('Sync error:', err);
       setError(`Failed to sync: ${err.message}`);
     },
@@ -826,10 +811,14 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
     refetchQueries: ['GetCustomers'],
     awaitRefetchQueries: true,
     onCompleted: () => {
+      setSyncingSolutionId(null);
       refetch();
       setSuccess('Solution adoption plan synced successfully');
     },
-    onError: (err) => setError(err.message),
+    onError: (err) => {
+      setSyncingSolutionId(null);
+      setError(err.message);
+    },
   });
 
   const [exportCustomerAdoption] = useMutation(EXPORT_CUSTOMER_ADOPTION, {
@@ -869,12 +858,12 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
       console.log('Export URL:', url, 'Filename:', filename);
 
       try {
-        // For file downloads, use the URL as-is (it's a relative path like /api/downloads/...)
-        // In development: Vite proxy forwards /api/* to backend
-        // In production: Reverse proxy forwards /api/* to backend
-        // This ensures everything goes through the same origin (no CORS issues)
-        const fileUrl = url; // Already relative, no need to construct full URL
-        console.log('File URL:', fileUrl);
+        // For file downloads, prepend base path if deployed at subpath (e.g., /dap/)
+        // In development: url = /api/downloads/... (Vite proxy forwards to backend)
+        // In production with subpath: url = /dap/api/downloads/... (Apache proxy forwards to backend)
+        const basePath = import.meta.env.BASE_URL || '/';
+        const fileUrl = basePath === '/' ? url : `${basePath.replace(/\/$/, '')}${url}`;
+        console.log('File URL:', fileUrl, 'Base Path:', basePath);
 
         const response = await fetch(fileUrl, {
           credentials: 'include',
@@ -1221,11 +1210,16 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
     
     try {
       // Use REST API for file upload (simpler than GraphQL file uploads)
-      // Use relative path - Vite proxy will forward to backend
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch(`/api/telemetry/import/${adoptionPlanId}`, {
+      // Prepend BASE_URL for subpath deployment support
+      const basePath = import.meta.env.BASE_URL || '/';
+      const uploadUrl = basePath === '/' 
+        ? `/api/telemetry/import/${adoptionPlanId}`
+        : `${basePath.replace(/\/$/, '')}/api/telemetry/import/${adoptionPlanId}`;
+      
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         headers: {
           'Authorization': 'admin',
@@ -1473,12 +1467,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                       startIcon={<Sync sx={{ display: { xs: 'none', sm: 'block' } }} />}
                                       color={cp.adoptionPlan.needsSync ? 'warning' : 'primary'}
                                       onClick={() => {
+                                        setSyncingProductId(cp.adoptionPlan.id);
                                         syncAdoptionPlan({ variables: { adoptionPlanId: cp.adoptionPlan.id } });
                                       }}
-                                      disabled={syncLoading}
+                                      disabled={syncingProductId === cp.adoptionPlan.id}
                                       sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '80px' } }}
                                     >
-                                      {syncLoading ? 'Syncing...' : cp.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
+                                      {syncingProductId === cp.adoptionPlan.id ? 'Syncing...' : cp.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
                                     </Button>
                                   </Tooltip>
                                 )}
@@ -1646,19 +1641,20 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                               onClick={(e) => e.stopPropagation()}
                             >
                               {cs.adoptionPlan && (
-                                <Tooltip title="Sync with latest solution/product tasks">
+                                <Tooltip title="Sync solution and all underlying products with latest definitions">
                                   <Button
                                     size="small"
                                     variant="outlined"
                                     startIcon={<Sync sx={{ display: { xs: 'none', sm: 'block' } }} />}
                                     color={cs.adoptionPlan.needsSync ? 'warning' : 'primary'}
                                     onClick={() => {
+                                      setSyncingSolutionId(cs.adoptionPlan.id);
                                       syncSolutionPlan({ variables: { solutionAdoptionPlanId: cs.adoptionPlan.id } });
                                     }}
-                                    disabled={syncSolutionLoading}
+                                    disabled={syncingSolutionId === cs.adoptionPlan.id}
                                     sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '80px' } }}
                                   >
-                                    {syncSolutionLoading ? 'Syncing...' : cs.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
+                                    {syncingSolutionId === cs.adoptionPlan.id ? 'Syncing...' : cs.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
                                   </Button>
                                 </Tooltip>
                               )}

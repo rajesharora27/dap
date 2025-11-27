@@ -36,14 +36,15 @@ interface Customer {
 interface Props {
   open: boolean;
   onClose: () => void;
-  onSave: (data: { 
-    name: string; 
-    email?: string; 
+  onSave: (data: {
+    name: string;
+    description?: string;
+    email?: string;
     phone?: string;
     company?: string;
     industry?: string;
     size?: string;
-    customAttrs?: any 
+    customAttrs?: any
   }) => Promise<void>;
   customer?: Customer | null;
   title: string;
@@ -95,7 +96,7 @@ export const CustomerDialog: React.FC<Props> = ({ open, onClose, onSave, custome
 
     setLoading(true);
     setError('');
-    
+
     try {
       await onSave({
         name: name.trim(),
@@ -110,38 +111,38 @@ export const CustomerDialog: React.FC<Props> = ({ open, onClose, onSave, custome
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="md" 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
       fullWidth
     >
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Box sx={{ pt: 1 }}>
-              <TextField
-                fullWidth
-                label="Customer Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                margin="normal"
-                required
-                autoFocus
+          <TextField
+            fullWidth
+            label="Customer Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            margin="normal"
+            required
+            autoFocus
             placeholder="e.g., ACME Corp"
             helperText="Required. Enter the customer or company name."
           />
-          
-              <TextField
-                fullWidth
+
+          <TextField
+            fullWidth
             label="Description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-                margin="normal"
-                multiline
+            margin="normal"
+            multiline
             rows={3}
             placeholder="e.g., Large manufacturing company with 2000+ employees"
             helperText="Optional. Add details about the customer."
-              />
+          />
 
           {error && (
             <Typography color="error" variant="body2" sx={{ mt: 2 }}>
@@ -152,9 +153,9 @@ export const CustomerDialog: React.FC<Props> = ({ open, onClose, onSave, custome
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button 
-          onClick={handleSave} 
-          variant="contained" 
+        <Button
+          onClick={handleSave}
+          variant="contained"
           disabled={loading}
         >
           {loading ? 'Saving...' : 'Save Customer'}

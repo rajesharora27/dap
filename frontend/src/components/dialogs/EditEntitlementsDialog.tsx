@@ -113,16 +113,19 @@ export function EditEntitlementsDialog({
   const { data: outcomesData, loading: outcomesLoading } = useQuery(GET_OUTCOMES_FOR_PRODUCT, {
     variables: { productId },
     skip: !productId,
+    fetchPolicy: 'network-only',  // Always fetch fresh data
   });
 
   const { data: productData, loading: productLoading } = useQuery(GET_PRODUCT_DETAILS, {
     variables: { productId },
     skip: !productId,
+    fetchPolicy: 'network-only',  // Always fetch fresh data
   });
 
   const { data: releasesData, loading: releasesLoading } = useQuery(GET_RELEASES_FOR_PRODUCT, {
     variables: { productId },
     skip: !productId,
+    fetchPolicy: 'network-only',  // Always fetch fresh data
   });
 
   const availableLicenses = productData?.product?.licenses?.filter((l: any) => l.isActive) || [];
@@ -132,19 +135,19 @@ export function EditEntitlementsDialog({
   useEffect(() => {
     if (open) {
       setLicenseLevel(normalizeLicenseLevel(currentLicenseLevel));
-      
+
       // If no outcomes selected (empty array), show "All" marker in UI
-      if (currentSelectedOutcomes.length === 0) {
+      if ((currentSelectedOutcomes?.length ?? 0) === 0) {
         setSelectedOutcomeIds([ALL_OUTCOMES_ID]);
       } else {
-        setSelectedOutcomeIds(currentSelectedOutcomes.map(o => o.id));
+        setSelectedOutcomeIds(currentSelectedOutcomes?.map(o => o.id) ?? []);
       }
-      
+
       // If no releases selected (empty array), show "All" marker in UI
-      if (currentSelectedReleases.length === 0) {
+      if ((currentSelectedReleases?.length ?? 0) === 0) {
         setSelectedReleaseIds([ALL_RELEASES_ID]);
       } else {
-        setSelectedReleaseIds(currentSelectedReleases.map(r => r.id));
+        setSelectedReleaseIds(currentSelectedReleases?.map(r => r.id) ?? []);
       }
     }
   }, [open, currentLicenseLevel, currentSelectedOutcomes, currentSelectedReleases]);
@@ -195,13 +198,13 @@ export function EditEntitlementsDialog({
     // Filter out special "All" markers before sending to backend
     const filteredOutcomes = selectedOutcomeIds.filter(id => id !== ALL_OUTCOMES_ID);
     const filteredReleases = selectedReleaseIds.filter(id => id !== ALL_RELEASES_ID);
-    
+
     onSave(licenseLevel, filteredOutcomes, filteredReleases);
   };
 
   const outcomes = outcomesData?.outcomes || [];
-  const currentOutcomeIds = currentSelectedOutcomes.map(o => o.id);
-  const currentReleaseIds = currentSelectedReleases.map(r => r.id);
+  const currentOutcomeIds = currentSelectedOutcomes?.map(o => o.id) ?? [];
+  const currentReleaseIds = currentSelectedReleases?.map(r => r.id) ?? [];
   const hasChanges =
     licenseLevel !== normalizeLicenseLevel(currentLicenseLevel) ||
     JSON.stringify([...selectedOutcomeIds].sort()) !== JSON.stringify([...currentOutcomeIds].sort()) ||
@@ -285,7 +288,7 @@ export function EditEntitlementsDialog({
                   </Box>
                 }
               />
-              
+
               {/* Individual outcomes */}
               {outcomes.map((outcome: any) => (
                 <FormControlLabel
@@ -350,7 +353,7 @@ export function EditEntitlementsDialog({
                   </Box>
                 }
               />
-              
+
               {/* Individual releases */}
               {releases.map((release: any) => (
                 <FormControlLabel

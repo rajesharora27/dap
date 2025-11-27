@@ -106,7 +106,7 @@ export class CustomerTelemetryImportService {
 
       // Collect all import operations as promises
       const importOperations: Promise<void>[] = [];
-      
+
       // Process each data row
       worksheet.eachRow((row, rowNum) => {
         if (rowNum === 1) return; // Skip header
@@ -192,7 +192,7 @@ export class CustomerTelemetryImportService {
           ).catch((error: any) => {
             errors.push(`Row ${rowNum}: Failed to create telemetry value - ${error.message}`);
           });
-          
+
           importOperations.push(operation);
 
         } catch (rowError: any) {
@@ -258,6 +258,9 @@ export class CustomerTelemetryImportService {
       case 'DATE':
         return this.parseDate(value);
 
+      case 'TIMESTAMP':
+        return this.parseTimestamp(value);
+
       default:
         throw new Error(`Unknown data type: ${dataType}`);
     }
@@ -270,7 +273,7 @@ export class CustomerTelemetryImportService {
     if (typeof value === 'boolean') return value;
 
     const str = value.toString().toLowerCase().trim();
-    
+
     if (['true', 't', 'yes', 'y', '1'].includes(str)) return true;
     if (['false', 'f', 'no', 'n', '0'].includes(str)) return false;
 
@@ -325,12 +328,46 @@ export class CustomerTelemetryImportService {
 
     const str = value.toString().trim();
     const date = new Date(str);
-    
+
     if (isNaN(date.getTime())) {
       throw new Error(`Invalid date value: "${value}". Use YYYY-MM-DD format`);
     }
 
     return date.toISOString().split('T')[0];
+  }
+
+  /**
+   * Parse timestamp value (date with time)
+   * Accepts various formats:
+   * - ISO 8601: 2025-11-18T14:30:00Z or 2025-11-18T14:30:00
+   * - Date objects
+   * - Unix timestamps (numbers)
+   * - Date strings: 2025-11-18 14:30:00
+   */
+  private static parseTimestamp(value: any): string {
+    // If already a Date object, return ISO string
+    if (value instanceof Date) {
+      return value.toISOString();
+    }
+
+    // If a number, treat as Unix timestamp (milliseconds)
+    if (typeof value === 'number') {
+      const date = new Date(value);
+      if (isNaN(date.getTime())) {
+        throw new Error(`Invalid timestamp value: "${value}"`);
+      }
+      return date.toISOString();
+    }
+
+    // Parse string value
+    const str = value.toString().trim();
+    const date = new Date(str);
+
+    if (isNaN(date.getTime())) {
+      throw new Error(`Invalid timestamp value: "${value}". Use ISO format (YYYY-MM-DDTHH:mm:ss) or Unix timestamp`);
+    }
+
+    return date.toISOString();
   }
 
   /**
@@ -371,7 +408,7 @@ export class CustomerTelemetryImportService {
           };
           const evaluationResult = await evaluateTelemetryAttribute(attributeWithValue);
           isMet = evaluationResult.success;
-          
+
           console.log(`Evaluated ${attribute.name}:`, {
             value,
             criteria: attribute.successCriteria,
@@ -534,5 +571,235 @@ export class CustomerTelemetryImportService {
       criteriaTotal,
       completionPercentage
     };
+  }
+
+  /**
+   * Import telemetry values for solution adoption plan
+   * This uses the same logic as customer adoption plans but queries solution-specific tables
+   */
+  static async importSolutionTelemetryValues(
+    solutionAdoptionPlanId: string,
+    fileBuffer: Buffer
+  ): Promise<ImportResult> {
+    const batchId = uuidv4();
+    const errors: string[] = [];
+    const taskResults: Map<string, TaskImportResult> = new Map();
+
+    try {
+      // Load solution adoption plan with tasks and telemetry attributes
+      const solutionPlan = await prisma.solutionAdoptionPlan.findUnique({
+        where: { id: solutionAdoptionPlanId },
+        include: {
+          tasks: {
+            include: {
+              telemetryAttributes: {
+                orderBy: { order: 'asc' }
+              }
+            }
+          }
+        }
+      });
+
+      if (!solutionPlan) {
+        throw new Error(`Solution adoption plan ${solutionAdoptionPlanId} not found`);
+      }
+
+      // Parse Excel file
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(fileBuffer as any);
+
+      // Find the Telemetry_Data sheet
+      const worksheet = workbook.getWorksheet('Telemetry_Data');
+      if (!worksheet) {
+        throw new Error('Excel file must contain a "Telemetry_Data" sheet');
+      }
+
+      // Validate columns
+      const headerRow = worksheet.getRow(1);
+      const requiredColumns = ['Task Name', 'Attribute Name', 'Data Type', 'Current Value', 'Date'];
+      const headers: string[] = [];
+      headerRow.eachCell((cell, colNumber) => {
+        headers[colNumber] = cell.value?.toString() || '';
+      });
+
+      for (const required of requiredColumns) {
+        if (!headers.includes(required)) {
+          throw new Error(`Missing required column: "${required}"`);
+        }
+      }
+
+      // Get column indices
+      const colIndices = {
+        taskName: headers.indexOf('Task Name'),
+        attributeName: headers.indexOf('Attribute Name'),
+        dataType: headers.indexOf('Data Type'),
+        currentValue: headers.indexOf('Current Value'),
+        date: headers.indexOf('Date'),
+        notes: headers.indexOf('Notes')
+      };
+
+      const importOperations: Promise<void>[] = [];
+
+      // Process each data row
+      worksheet.eachRow((row, rowNum) => {
+        if (rowNum === 1) return; // Skip header row
+
+        try {
+          const taskName = row.getCell(colIndices.taskName).value?.toString().trim();
+          const attributeName = row.getCell(colIndices.attributeName).value?.toString().trim();
+          const dataType = row.getCell(colIndices.dataType).value?.toString().trim();
+          const currentValueRaw = row.getCell(colIndices.currentValue).value;
+          const dateRaw = row.getCell(colIndices.date).value;
+          const notes = row.getCell(colIndices.notes).value?.toString() || null;
+
+          // Skip empty rows
+          if (!taskName || !attributeName) return;
+
+          // Find the task
+          const task = solutionPlan.tasks.find((t: any) => t.name === taskName);
+          if (!task) {
+            errors.push(`Row ${rowNum}: Task "${taskName}" not found`);
+            return;
+          }
+
+          // Find the telemetry attribute
+          const attribute: any = (task.telemetryAttributes as any[]).find(
+            (attr: any) => attr.name === attributeName
+          );
+          if (!attribute) {
+            errors.push(`Row ${rowNum}: Attribute "${attributeName}" not found for task "${taskName}"`);
+            return;
+          }
+
+          // Validate and parse value based on data type
+          let parsedValue: any;
+          try {
+            parsedValue = this.parseValueByDataType(currentValueRaw, dataType || attribute.dataType);
+          } catch (parseError: any) {
+            errors.push(`Row ${rowNum}: ${parseError.message}`);
+            return;
+          }
+
+          // Parse date
+          let recordDate = new Date();
+          if (dateRaw) {
+            if (dateRaw instanceof Date) {
+              recordDate = dateRaw;
+            } else if (typeof dateRaw === 'string') {
+              recordDate = new Date(dateRaw);
+              if (isNaN(recordDate.getTime())) {
+                errors.push(`Row ${rowNum}: Invalid date format "${dateRaw}". Use YYYY-MM-DD`);
+                recordDate = new Date(); // Use current date as fallback
+              }
+            }
+          }
+
+          // Initialize task result if not exists
+          if (!taskResults.has(task.id)) {
+            taskResults.set(task.id, {
+              taskId: task.id,
+              taskName: task.name,
+              attributesUpdated: 0,
+              criteriaMet: 0,
+              criteriaTotal: task.telemetryAttributes.filter((a: any) => a.successCriteria).length,
+              completionPercentage: 0,
+              errors: []
+            });
+          }
+
+          // Create telemetry value for solution
+          const operation = this.createSolutionTelemetryValueAndEvaluate(
+            attribute,
+            parsedValue,
+            batchId,
+            recordDate,
+            notes,
+            taskResults.get(task.id)!
+          ).catch((error: any) => {
+            errors.push(`Row ${rowNum}: Failed to create telemetry value - ${error.message}`);
+          });
+
+          importOperations.push(operation);
+
+        } catch (rowError: any) {
+          errors.push(`Row ${rowNum}: ${rowError.message}`);
+        }
+      });
+
+      // Wait for all import operations to complete
+      await Promise.all(importOperations);
+
+      // Calculate summary
+      const summary = {
+        tasksProcessed: taskResults.size,
+        attributesUpdated: Array.from(taskResults.values()).reduce((sum, tr) => sum + tr.attributesUpdated, 0),
+        criteriaEvaluated: Array.from(taskResults.values()).reduce((sum, tr) => sum + tr.criteriaTotal, 0),
+        errors
+      };
+
+      return {
+        success: errors.length === 0,
+        batchId,
+        summary,
+        taskResults: Array.from(taskResults.values())
+      };
+
+    } catch (error: any) {
+      throw new Error(`Failed to import solution telemetry: ${error.message}`);
+    }
+  }
+
+  /**
+   * Create solution telemetry value and evaluate success criteria
+   */
+  private static async createSolutionTelemetryValueAndEvaluate(
+    attribute: any,
+    value: any,
+    batchId: string,
+    recordDate: Date,
+    notes: string | null,
+    taskResult: TaskImportResult
+  ): Promise<void> {
+    try {
+      // Create the telemetry value record
+      await prisma.customerSolutionTelemetryValue.create({
+        data: {
+          customerSolutionAttributeId: attribute.id,
+          value,
+          batchId,
+          recordDate,
+          notes
+        }
+      });
+
+      taskResult.attributesUpdated++;
+
+      // Evaluate success criteria if defined
+      if (attribute.successCriteria) {
+        const result = await evaluateTelemetryAttribute(attribute);
+        const isMet = result.success;
+
+        // Update the attribute's isMet status
+        await prisma.customerTelemetryAttribute.update({
+          where: { id: attribute.id },
+          data: { isMet }
+        });
+
+        if (isMet) {
+          taskResult.criteriaMet++;
+        }
+      }
+
+      // Calculate completion percentage for the task
+      if (taskResult.criteriaTotal > 0) {
+        taskResult.completionPercentage = Math.round(
+          (taskResult.criteriaMet / taskResult.criteriaTotal) * 100
+        );
+      }
+
+    } catch (error: any) {
+      taskResult.errors.push(`Failed to create/evaluate telemetry value: ${error.message}`);
+      throw error;
+    }
   }
 }

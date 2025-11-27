@@ -29,7 +29,7 @@ export interface Permission {
 }
 
 export class AuthService {
-  constructor(private prisma: PrismaClient) {}
+  constructor(private prisma: PrismaClient) { }
 
   // Hash password
   async hashPassword(password: string): Promise<string> {
@@ -52,7 +52,7 @@ export class AuthService {
       mustChangePassword: user.mustChangePassword,
       permissions: this.formatPermissionsForToken(permissions),
     };
-    
+
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
   }
 
@@ -335,7 +335,7 @@ export class AuthService {
 
   // Check permission level
   private hasRequiredLevel(userLevel: PermissionLevel, requiredAction: PermissionLevel): boolean {
-    const levels = { VIEW: 1, EDIT: 2, MANAGE: 3 };
+    const levels: Record<string, number> = { READ: 1, WRITE: 2, ADMIN: 3 };
     return levels[userLevel] >= levels[requiredAction];
   }
 
@@ -361,7 +361,7 @@ export class AuthService {
         userId_resourceType_resourceId: {
           userId,
           resourceType,
-          resourceId
+          resourceId: resourceId as string
         }
       },
       update: {

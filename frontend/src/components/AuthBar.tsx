@@ -66,9 +66,10 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
       elevation={2}
       sx={{ 
         zIndex: 1400,
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: '#0D274D',
         backdropFilter: 'blur(10px)',
-        boxShadow: '0 4px 20px rgba(102, 126, 234, 0.25)'
+        boxShadow: '0 4px 20px rgba(13, 39, 77, 0.25)',
+        // Enterprise Professional theme - updated
       }}
     >
       <Toolbar sx={{ py: { xs: 0.5, sm: 1 } }}>

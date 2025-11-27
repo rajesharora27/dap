@@ -170,53 +170,53 @@ export class BackupRestoreService {
       // IMPORTANT: We exclude the password column from User table for security
       // This means restored backups will preserve existing user passwords
       const containerName = 'dap_db_1';
-      
+
       // First create a full schema dump
       const command = `podman exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
 
       await execPromise(command, { maxBuffer: 50 * 1024 * 1024 }); // 50MB buffer
-      
+
       // Now post-process the dump to remove password column from User table
       console.log('Removing password hashes from backup for security...');
       let backupContent = fs.readFileSync(filePath, 'utf-8');
-      
+
       // Replace INSERT statements for User table to exclude password column
       // Pattern: INSERT INTO "User" (id, email, username, name, fullName, role, password, isAdmin, isActive, mustChangePassword, createdAt, updatedAt) VALUES (...)
       // Replace with: INSERT INTO "User" (id, email, username, name, fullName, role, isAdmin, isActive, mustChangePassword, createdAt, updatedAt) VALUES (...) 
       // And remove the password value from VALUES
-      
+
       backupContent = backupContent.replace(
         /INSERT INTO "User" \([^)]*\bpassword\b[^)]*\) VALUES \(([^;]+)\);/gi,
         (match) => {
           // Find the password column position and remove it from both columns and values
           const columnsMatch = match.match(/INSERT INTO "User" \(([^)]+)\)/);
           const valuesMatch = match.match(/VALUES \(([^)]+)\)/);
-          
+
           if (columnsMatch && valuesMatch) {
             const columns = columnsMatch[1].split(',').map(c => c.trim());
             const values = valuesMatch[1].split(',').map(v => v.trim());
-            
+
             const passwordIndex = columns.findIndex(c => c === '"password"' || c === 'password');
-            
+
             if (passwordIndex !== -1 && values.length === columns.length) {
               // Remove password column and its value
               columns.splice(passwordIndex, 1);
               values.splice(passwordIndex, 1);
-              
+
               return `INSERT INTO "User" (${columns.join(', ')}) VALUES (${values.join(', ')});`;
             }
           }
-          
+
           return match; // Return original if parsing fails
         }
       );
-      
+
       // Also add a comment to the backup file indicating passwords are excluded
       backupContent = `-- DAP Backup (Passwords excluded for security - existing passwords will be preserved on restore)\n-- Generated: ${new Date().toISOString()}\n\n` + backupContent;
-      
+
       // Write back the modified content
       fs.writeFileSync(filePath, backupContent, 'utf-8');
-      
+
       // Get file size
       const stats = fs.statSync(filePath);
       const size = stats.size;
@@ -284,7 +284,7 @@ export class BackupRestoreService {
       // IMPORTANT: Save existing user passwords before restore
       console.log('Saving existing user passwords...');
       let existingPasswords: Map<string, string> = new Map();
-      
+
       try {
         // Using prisma to get existing passwords
         const users = await prisma.user.findMany({
@@ -293,11 +293,11 @@ export class BackupRestoreService {
             password: true
           }
         });
-        
-        users.forEach(user => {
+
+        users.forEach((user: any) => {
           existingPasswords.set(user.username, user.password);
         });
-        
+
         console.log(`✅ Saved passwords for ${existingPasswords.size} user(s)`);
       } catch (err) {
         console.warn('⚠️  Could not save existing passwords, they may be reset:', (err as any).message);
@@ -306,7 +306,7 @@ export class BackupRestoreService {
       // Fastest approach: Drop and recreate the public schema
       // This avoids all the CASCADE locking issues with TRUNCATE
       console.log('Clearing database before restore...');
-      
+
       try {
         // First, terminate other connections (except ours)
         console.log('Terminating active connections...');
@@ -319,21 +319,21 @@ export class BackupRestoreService {
           // Ignore errors - might not have permission
           console.log('Could not terminate connections (may lack permission), continuing...');
         }
-        
+
         // Drop the public schema (this drops all tables, functions, etc.)
         console.log('Dropping public schema...');
         await execPromise(
           `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "DROP SCHEMA IF EXISTS public CASCADE;"`,
           { timeout: 15000 }
         );
-        
+
         // Recreate the public schema
         console.log('Recreating public schema...');
         await execPromise(
           `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO ${dbConfig.user}; GRANT ALL ON SCHEMA public TO public;"`,
           { timeout: 10000 }
         );
-        
+
         console.log('Database cleared successfully');
       } catch (err: any) {
         console.error('Failed to clear database:', err.message);
@@ -344,16 +344,16 @@ export class BackupRestoreService {
       // Restore from backup
       console.log('Restoring from backup file...');
       console.log(`Backup file size: ${fs.statSync(filePath).size} bytes`);
-      
+
       // Simpler restore command - pipe file directly into psql
       // Set statement timeout to prevent hanging
       const restoreCommand = `cat "${filePath}" | podman exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -q 2>&1`;
 
       console.log('Starting restore execution...');
       const startTime = Date.now();
-      
+
       try {
-        await execPromise(restoreCommand, { 
+        await execPromise(restoreCommand, {
           maxBuffer: 50 * 1024 * 1024,
           timeout: 120000 // 120 second timeout (2 minutes)
         });
@@ -362,12 +362,12 @@ export class BackupRestoreService {
       } catch (restoreError: any) {
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
         console.error(`Restore failed after ${duration}s:`, restoreError.message);
-        
+
         // If timeout, provide helpful message
         if (restoreError.killed && restoreError.signal === 'SIGTERM') {
           throw new Error('Restore timed out after 60 seconds. Database may be too large or unresponsive.');
         }
-        
+
         // Check if it's just warnings we can ignore
         if (restoreError.message && (
           restoreError.message.includes('already exists') ||
@@ -383,10 +383,10 @@ export class BackupRestoreService {
       // IMPORTANT: Restore existing user passwords after restore
       if (existingPasswords.size > 0) {
         console.log('Restoring user passwords...');
-        
+
         try {
           let restoredCount = 0;
-          
+
           for (const [username, password] of existingPasswords.entries()) {
             try {
               await prisma.user.update({
@@ -398,13 +398,13 @@ export class BackupRestoreService {
               console.warn(`⚠️  Could not restore password for user "${username}":`, (err as any).message);
             }
           }
-          
+
           console.log(`✅ Restored passwords for ${restoredCount} of ${existingPasswords.size} user(s)`);
         } catch (err) {
           console.error('⚠️  Error restoring passwords:', (err as any).message);
         }
       }
-      
+
       // Clear all sessions after restore to force re-authentication
       console.log('🔐 Clearing all sessions after restore...');
       try {

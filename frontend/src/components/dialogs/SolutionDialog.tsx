@@ -289,6 +289,12 @@ export const SolutionDialog: React.FC<Props> = ({
     setLoading(true);
     setError('');
     
+    console.log('=== Solution Save Started ===');
+    console.log('Editing existing solution:', !!solution);
+    console.log('Products:', selectedProductIds);
+    console.log('Outcomes:', solutionOutcomes);
+    console.log('Releases:', releases);
+    
     try {
       // Filter out licenseLevel before saving (it's a separate UI field, not a custom attribute)
       const cleanedCustomAttrs = Object.fromEntries(
@@ -358,6 +364,7 @@ export const SolutionDialog: React.FC<Props> = ({
         // Delete marked outcomes
         for (const outcome of solutionOutcomes) {
           if (outcome.delete && outcome.id) {
+            console.log(`Deleting outcome: ${outcome.name}`);
             await deleteOutcome({
               variables: { id: outcome.id }
             });
@@ -367,6 +374,7 @@ export const SolutionDialog: React.FC<Props> = ({
         // Create new outcomes
         for (const outcome of solutionOutcomes) {
           if (outcome.isNew && !outcome.delete) {
+            console.log(`Creating outcome: ${outcome.name}, solutionId: ${solutionId}`);
             await createOutcome({
               variables: {
                 input: {
@@ -382,6 +390,7 @@ export const SolutionDialog: React.FC<Props> = ({
         // Update existing outcomes (if they were edited and not new/deleted)
         for (const outcome of solutionOutcomes) {
           if (!outcome.isNew && !outcome.delete && outcome.id) {
+            console.log(`Updating outcome: ${outcome.name}, solutionId: ${solutionId}`);
             await updateOutcome({
               variables: {
                 id: outcome.id,
@@ -401,6 +410,7 @@ export const SolutionDialog: React.FC<Props> = ({
         // Delete marked releases
         for (const release of releases) {
           if (release.delete && release.id) {
+            console.log(`Deleting release: ${release.name}`);
             await deleteRelease({
               variables: { id: release.id }
             });
@@ -410,6 +420,7 @@ export const SolutionDialog: React.FC<Props> = ({
         // Create new releases
         for (const release of releases) {
           if (release.isNew && !release.delete) {
+            console.log(`Creating release: ${release.name}, level: ${release.level}, solutionId: ${solutionId}`);
             await createRelease({
               variables: {
                 input: {
@@ -426,6 +437,7 @@ export const SolutionDialog: React.FC<Props> = ({
         // Update existing releases (if they were edited and not new/deleted)
         for (const release of releases) {
           if (!release.isNew && !release.delete && release.id) {
+            console.log(`Updating release: ${release.name}, level: ${release.level}, solutionId: ${solutionId}`);
             await updateRelease({
               variables: {
                 id: release.id,

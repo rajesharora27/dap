@@ -10,7 +10,7 @@
 # - Development environment management
 #
 # Usage: ./dap [command]
-# Commands: start, stop, restart, status, reset, clean-restart, test, add-sample, reset-sample, help
+# Commands: start, stop, restart, status, reset, clean-restart, rebuild, test, add-sample, reset-sample, help
 #######################################################################################
 
 set -e
@@ -1088,20 +1088,24 @@ show_help() {
     echo "Usage: $0 [command]"
     echo ""
     echo "Commands:"
-    echo -e "  ${GREEN}start${NC}         - Start all application services"
-    echo -e "  ${RED}stop${NC}          - Stop all application services" 
-    echo -e "  ${YELLOW}restart${NC}       - Force kill and restart all services (keeps existing data)"
-    echo -e "  ${CYAN}clean-restart${NC} - ⚠️  FORCE KILL, WIPES ALL DATA, then loads fresh sample data"
-    echo -e "  ${BLUE}add-sample${NC}    - ✅ Add sample data (preserves existing user data)"
-    echo -e "  ${PURPLE}reset-sample${NC}  - ✅ Remove sample data only (preserves user data)"
-    echo -e "  ${PURPLE}test${NC}          - Run comprehensive end-user test suite"
-    echo -e "  ${BLUE}status${NC}        - Show status of all services and data"
-    echo -e "  ${PURPLE}help${NC}          - Show this help message"
+    echo -e "  ${GREEN}start${NC}          - Start all application services"
+    echo -e "  ${RED}stop${NC}           - Stop all application services" 
+    echo -e "  ${YELLOW}restart${NC}        - Force kill and restart all services (keeps existing data)"
+    echo -e "  ${CYAN}rebuild${NC}        - ✅ Rebuild frontend & backend (preserves database)"
+    echo -e "  ${PURPLE}full-rebuild${NC}   - ⚠️  Rebuild all + clean restart (wipes database)"
+    echo -e "  ${CYAN}clean-restart${NC}  - ⚠️  FORCE KILL, WIPES ALL DATA, then loads fresh sample data"
+    echo -e "  ${BLUE}add-sample${NC}     - ✅ Add sample data (preserves existing user data)"
+    echo -e "  ${PURPLE}reset-sample${NC}   - ✅ Remove sample data only (preserves user data)"
+    echo -e "  ${PURPLE}test${NC}           - Run comprehensive end-user test suite"
+    echo -e "  ${BLUE}status${NC}         - Show status of all services and data"
+    echo -e "  ${PURPLE}help${NC}           - Show this help message"
     echo ""
     echo "Examples:"
     echo "  $0 start           # Start for daily development"
+    echo "  $0 rebuild         # ✅ Rebuild after code changes (preserves data)"
     echo "  $0 add-sample      # ✅ Add sample data (preserves your data)"
     echo "  $0 reset-sample    # ✅ Remove sample data (preserves your data)"
+    echo "  $0 full-rebuild    # ⚠️  Rebuild everything + fresh database"
     echo "  $0 clean-restart   # ⚠️  DANGER: Wipes everything, fresh start"
     echo "  $0 test            # Validate all functionality with comprehensive test"
     echo "  $0 status          # Check what's running"
@@ -1119,6 +1123,10 @@ show_help() {
     echo "  • Complete data relationships and constraints"
     echo "  • Essential licenses, outcomes, and releases for each product"
     echo "  • Customer solution assignments and adoption tracking"
+    echo ""
+    echo "Rebuild options:"
+    echo "  • rebuild: ✅ RECOMMENDED - Rebuilds frontend & backend, preserves database"
+    echo "  • full-rebuild: ⚠️  Rebuilds everything + wipes database"
     echo ""
     echo "Sample data management:"
     echo "  • add-sample: ✅ RECOMMENDED - Adds sample data, preserves your existing data"
@@ -1152,6 +1160,75 @@ main() {
             restart_all
             ;;
         clean-restart)
+            clean_restart
+            ;;
+        rebuild)
+            log_header "REBUILDING APPLICATION COMPONENTS"
+            log_info "This will rebuild frontend and backend without affecting database data"
+            echo ""
+            
+            # Stop services first
+            log_info "Stopping running services..."
+            kill_node_processes
+            
+            # Rebuild Backend
+            log_info "🔨 Rebuilding Backend..."
+            cd "$BACKEND_DIR"
+            if npm install --legacy-peer-deps; then
+                log_success "Backend dependencies installed"
+            else
+                log_error "Failed to install backend dependencies"
+                exit 1
+            fi
+            
+            if npm run build; then
+                log_success "Backend built successfully"
+            else
+                log_error "Failed to build backend"
+                exit 1
+            fi
+            
+            # Rebuild Frontend
+            log_info "🔨 Rebuilding Frontend..."
+            cd "$FRONTEND_DIR"
+            if npm install; then
+                log_success "Frontend dependencies installed"
+            else
+                log_error "Failed to install frontend dependencies"
+                exit 1
+            fi
+            
+            if npm run build; then
+                log_success "Frontend built successfully"
+            else
+                log_error "Failed to build frontend"
+                exit 1
+            fi
+            
+            cd "$PROJECT_DIR"
+            
+            log_success "✅ Rebuild complete!"
+            echo ""
+            log_info "Starting services with rebuilt components..."
+            start_all
+            ;;
+        full-rebuild)
+            log_header "FULL REBUILD WITH CLEAN DATABASE"
+            log_warning "⚠️  This will rebuild all components AND wipe database!"
+            echo ""
+            
+            log_info "🔨 Rebuilding Backend..."
+            cd "$BACKEND_DIR"
+            npm install --legacy-peer-deps
+            npm run build
+            
+            log_info "🔨 Rebuilding Frontend..."
+            cd "$FRONTEND_DIR"
+            npm install
+            npm run build
+            
+            cd "$PROJECT_DIR"
+            log_info "🗑️  Performing clean restart with fresh database..."
             clean_restart
             ;;
         add-sample)

@@ -48,6 +48,8 @@ const GET_SOLUTION_ADOPTION_PLAN = gql`
       completedTasks
       solutionTasksTotal
       solutionTasksComplete
+      needsSync
+      lastSyncedAt
       customerSolution {
         id
         name
@@ -412,21 +414,41 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
           borderColor: '#E0E0E0'
         }}
       >
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'flex-start' }, mb: { xs: 2, md: 3 }, gap: { xs: 1.5, sm: 0 } }}>
-          <Box>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: { xs: 2, md: 3 }, gap: { xs: 1.5, sm: 2 } }}>
+          <Box sx={{ flex: 1 }}>
             <Typography variant="h5" gutterBottom fontWeight="600" color="primary.main">
               {plan.customerSolution.name} - {plan.customerSolution.solution.name}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Customer: <strong>{customerName}</strong> • Solution Adoption Plan
+              {plan.lastSyncedAt && (
+                <span style={{ marginLeft: '8px' }}>
+                  • Last synced: {new Date(plan.lastSyncedAt).toLocaleDateString()}
+                </span>
+              )}
             </Typography>
           </Box>
           
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            {plan.needsSync && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<Sync />}
+                color="warning"
+                onClick={handleSync}
+                disabled={syncLoading}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
+                {syncLoading ? 'Syncing...' : 'Sync Required'}
+              </Button>
+            )}
           <Chip 
             label={`License: ${plan.licenseLevel}`} 
             color="primary" 
-            sx={{ fontWeight: 600, height: 28 }}
+              sx={{ fontWeight: 600, height: 32 }}
           />
+          </Box>
         </Box>
 
         {/* Overall Progress */}

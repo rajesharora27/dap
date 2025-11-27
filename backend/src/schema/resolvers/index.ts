@@ -9,9 +9,9 @@ import { createChangeSet, recordChange, commitChangeSet, undoChangeSet, listChan
 import { exportCsv, importCsv } from '../../lib/csv';
 import { generateProductSampleCsv, generateTaskSampleCsv, validateProductHeaders, validateTaskHeaders } from '../../lib/csvSamples';
 import { pubsub, PUBSUB_EVENTS } from '../../lib/pubsub';
-import { 
+import {
   TelemetryAttributeResolvers,
-  TelemetryValueResolvers, 
+  TelemetryValueResolvers,
   TelemetryQueryResolvers,
   TelemetryMutationResolvers,
   TaskTelemetryResolvers
@@ -39,11 +39,11 @@ import { AuthQueryResolvers, AuthMutationResolvers } from './auth';
 import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../lib/pagination';
 import { logAudit } from '../../lib/audit';
 import { ensureRole, requireUser } from '../../lib/auth';
-import { 
-  requirePermission, 
-  filterAccessibleResources, 
+import {
+  requirePermission,
+  filterAccessibleResources,
   getUserAccessibleResources,
-  canUserAccessResource 
+  canUserAccessResource
 } from '../../lib/permissions';
 import { ResourceType, PermissionLevel } from '@prisma/client';
 import bcrypt from 'bcryptjs';
@@ -212,9 +212,9 @@ export const resolvers = {
         // Fallback logic for releases would go here if needed
         return [];
       }
-      return prisma.release.findMany({ 
-        where: { productId: parent.id, deletedAt: null }, 
-        orderBy: { level: 'asc' } 
+      return prisma.release.findMany({
+        where: { productId: parent.id, deletedAt: null },
+        orderBy: { level: 'asc' }
       });
     }
   },
@@ -226,8 +226,8 @@ export const resolvers = {
         return { edges: list.map((p: any) => ({ cursor: Buffer.from(JSON.stringify({ id: p.id }), 'utf8').toString('base64'), node: p })), pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null }, totalCount: list.length };
       }
       // Fetch SolutionProduct records with order, then include the product
-      const prods = await prisma.solutionProduct.findMany({ 
-        where: { solutionId: parent.id }, 
+      const prods = await prisma.solutionProduct.findMany({
+        where: { solutionId: parent.id },
         include: { product: true },
         orderBy: { order: 'asc' }  // Order by SolutionProduct.order field
       });
@@ -263,9 +263,9 @@ export const resolvers = {
         // Fallback logic for releases would go here if needed
         return [];
       }
-      return prisma.release.findMany({ 
-        where: { solutionId: parent.id, deletedAt: null }, 
-        orderBy: { level: 'asc' } 
+      return prisma.release.findMany({
+        where: { solutionId: parent.id, deletedAt: null },
+        orderBy: { level: 'asc' }
       });
     },
     outcomes: async (parent: any) => {
@@ -277,32 +277,32 @@ export const resolvers = {
   },
   Customer: {
     products: (parent: any) => {
-      if (fallbackActive) { 
-        const { products } = require('../../lib/fallbackStore'); 
-        return products.filter((p: any) => parent.productIds?.includes(p.id)); 
+      if (fallbackActive) {
+        const { products } = require('../../lib/fallbackStore');
+        return products.filter((p: any) => parent.productIds?.includes(p.id));
       }
       // Return CustomerProductWithPlan instead of just Product
-      return prisma.customerProduct.findMany({ 
-        where: { customerId: parent.id }, 
-        include: { 
+      return prisma.customerProduct.findMany({
+        where: { customerId: parent.id },
+        include: {
           product: true,
           customer: true,
-        } 
+        }
       });
     },
     solutions: (parent: any) => {
-      if (fallbackActive) { 
-        const { solutions } = require('../../lib/fallbackStore'); 
-        return solutions.filter((s: any) => parent.solutionIds?.includes(s.id)); 
+      if (fallbackActive) {
+        const { solutions } = require('../../lib/fallbackStore');
+        return solutions.filter((s: any) => parent.solutionIds?.includes(s.id));
       }
       // Return CustomerSolutionWithPlan instead of just Solution
-      return prisma.customerSolution.findMany({ 
-        where: { customerId: parent.id }, 
-        include: { 
+      return prisma.customerSolution.findMany({
+        where: { customerId: parent.id },
+        include: {
           solution: true,
           customer: true,
           adoptionPlan: true
-        } 
+        }
       });
     }
   },
@@ -367,7 +367,7 @@ export const resolvers = {
         const requiredLevel = levelMap[parent.licenseLevel];
         return licenses.find((l: any) => l.level === requiredLevel && l.productId === parent.productId);
       }
-      
+
       // Convert licenseLevel back to actual license object
       const levelMap: { [key: string]: number } = {
         'ESSENTIAL': 1,
@@ -375,11 +375,11 @@ export const resolvers = {
         'SIGNATURE': 3
       };
       const requiredLevel = levelMap[parent.licenseLevel];
-      
+
       if (!requiredLevel || !parent.productId) {
         return null;
       }
-      
+
       return await prisma.license.findFirst({
         where: {
           productId: parent.productId,
@@ -409,11 +409,11 @@ export const resolvers = {
         include: { release: true }
       });
       const directReleases = taskReleases.map((tr: any) => tr.release);
-      
+
       // Find all releases for the product/solution that have higher levels
       const productId = parent.productId;
       const solutionId = parent.solutionId;
-      
+
       let allReleases: any[] = [];
       if (productId) {
         allReleases = await prisma.release.findMany({
@@ -426,41 +426,41 @@ export const resolvers = {
           orderBy: { level: 'asc' }
         });
       }
-      
+
       // Get minimum release level this task is assigned to
       const minDirectLevel = Math.min(...directReleases.map((r: any) => r.level));
-      
+
       // Include all releases at or above the minimum level
       const availableReleases = allReleases.filter((r: any) => r.level >= minDirectLevel);
-      
+
       return availableReleases;
     },
-    
+
     // Telemetry-related computed fields
     telemetryAttributes: TaskTelemetryResolvers.telemetryAttributes,
-    
+
     isCompleteBasedOnTelemetry: TaskTelemetryResolvers.isCompleteBasedOnTelemetry,
-    
+
     telemetryCompletionPercentage: TaskTelemetryResolvers.telemetryCompletionPercentage,
   },
-  
+
   TelemetryAttribute: TelemetryAttributeResolvers,
-  
+
   TelemetryValue: TelemetryValueResolvers,
-  
+
   // Customer Adoption field resolvers
   CustomerProductWithPlan: CustomerProductWithPlanResolvers,
   AdoptionPlan: AdoptionPlanResolvers,
   CustomerTask: CustomerTaskResolvers,
   CustomerTelemetryAttribute: CustomerTelemetryAttributeResolvers,
   CustomerTelemetryValue: CustomerTelemetryValueResolvers,
-  
+
   // Solution Adoption field resolvers
   CustomerSolutionWithPlan: CustomerSolutionWithPlanResolvers,
   SolutionAdoptionPlan: SolutionAdoptionPlanResolvers,
   SolutionAdoptionProduct: SolutionAdoptionProductResolvers,
   CustomerSolutionTask: CustomerSolutionTaskResolvers,
-  
+
   Outcome: {
     product: (parent: any) => {
       if (!parent.productId) return null;
@@ -512,17 +512,17 @@ export const resolvers = {
       }
       // Get all tasks that should be available in this release through inheritance
       // This includes tasks directly assigned to this release AND tasks from lower releases
-      
+
       const productId = parent.productId;
       const solutionId = parent.solutionId;
-      
+
       let lowerReleases: any[] = [];
       if (productId) {
         lowerReleases = await prisma.release.findMany({
-          where: { 
-            productId, 
+          where: {
+            productId,
             level: { lte: parent.level },
-            deletedAt: null 
+            deletedAt: null
           },
           include: {
             tasks: {
@@ -532,10 +532,10 @@ export const resolvers = {
         });
       } else if (solutionId) {
         lowerReleases = await prisma.release.findMany({
-          where: { 
-            solutionId, 
+          where: {
+            solutionId,
             level: { lte: parent.level },
-            deletedAt: null 
+            deletedAt: null
           },
           include: {
             tasks: {
@@ -544,11 +544,11 @@ export const resolvers = {
           }
         });
       }
-      
+
       // Collect all tasks from releases at or below this level
       const taskSet = new Set();
       const tasks: any[] = [];
-      
+
       lowerReleases.forEach((release: any) => {
         release.tasks.forEach((tr: any) => {
           if (!taskSet.has(tr.task.id)) {
@@ -557,7 +557,7 @@ export const resolvers = {
           }
         });
       });
-      
+
       return tasks;
     }
   },
@@ -567,16 +567,16 @@ export const resolvers = {
     },
     product: async (_: any, { id }: any, ctx: any) => {
       requireUser(ctx);
-      
+
       if (fallbackActive) {
         const { products } = require('../../lib/fallbackStore');
         return products.find((p: any) => p.id === id);
       }
-      
+
       // Check if user has READ permission for this product
       await requirePermission(ctx, ResourceType.PRODUCT, id, PermissionLevel.READ);
-      
-      return prisma.product.findUnique({ 
+
+      return prisma.product.findUnique({
         where: { id, deletedAt: null },
         include: {
           licenses: true,
@@ -587,9 +587,9 @@ export const resolvers = {
     },
     products: async (_: any, args: any, ctx: any) => {
       requireUser(ctx);
-      
+
       if (fallbackActive) return fallbackConnections.products();
-      
+
       // Get accessible product IDs for this user
       const accessibleIds = await getUserAccessibleResources(
         ctx.user.userId,
@@ -597,7 +597,7 @@ export const resolvers = {
         PermissionLevel.READ,
         prisma
       );
-      
+
       // If accessibleIds is null, user has access to all products
       // If it's an empty array, user has no access
       // Otherwise, filter by the accessible IDs
@@ -614,19 +614,19 @@ export const resolvers = {
           totalCount: 0
         };
       }
-      
+
       // Add accessible IDs filter to args if not admin (null means admin/all access)
-      const filteredArgs = accessibleIds !== null 
+      const filteredArgs = accessibleIds !== null
         ? { ...args, accessibleIds }
         : args;
-      
+
       return fetchProductsPaginated(filteredArgs);
     },
-    solutions: async (_: any, args: any, ctx: any) => { 
+    solutions: async (_: any, args: any, ctx: any) => {
       requireUser(ctx);
-      
-      if (fallbackActive) return fallbackConnections.solutions(); 
-      
+
+      if (fallbackActive) return fallbackConnections.solutions();
+
       // Get accessible solution IDs for this user
       const accessibleIds = await getUserAccessibleResources(
         ctx.user.userId,
@@ -634,7 +634,7 @@ export const resolvers = {
         PermissionLevel.READ,
         prisma
       );
-      
+
       // If user has no access to any solutions
       if (accessibleIds !== null && accessibleIds.length === 0) {
         return {
@@ -648,13 +648,13 @@ export const resolvers = {
           totalCount: 0
         };
       }
-      
+
       // Add accessible IDs filter to args if not admin
-      const filteredArgs = accessibleIds !== null 
+      const filteredArgs = accessibleIds !== null
         ? { ...args, accessibleIds }
         : args;
-      
-      return fetchSolutionsPaginated(filteredArgs); 
+
+      return fetchSolutionsPaginated(filteredArgs);
     },
     tasks: async (_: any, args: any) => {
       if (args.productId) {
@@ -665,11 +665,11 @@ export const resolvers = {
         throw new Error('Either productId or solutionId must be provided');
       }
     },
-    customers: async (_: any, __: any, ctx: any) => { 
+    customers: async (_: any, __: any, ctx: any) => {
       requireUser(ctx);
-      
-      if (fallbackActive) return fbListCustomers(); 
-      
+
+      if (fallbackActive) return fbListCustomers();
+
       // Get accessible customer IDs for this user
       const accessibleIds = await getUserAccessibleResources(
         ctx.user.userId,
@@ -677,7 +677,7 @@ export const resolvers = {
         PermissionLevel.READ,
         prisma
       );
-      
+
       // Build where clause
       const where: any = { deletedAt: null };
       if (accessibleIds !== null) {
@@ -686,18 +686,18 @@ export const resolvers = {
         }
         where.id = { in: accessibleIds };
       }
-      
-      return prisma.customer.findMany({ where }).catch(() => []); 
+
+      return prisma.customer.findMany({ where }).catch(() => []);
     },
     licenses: async () => { if (fallbackActive) return listLicenses(); return prisma.license.findMany({ where: { deletedAt: null } }); },
-    releases: async (_: any, { productId }: any) => { 
-      if (fallbackActive) return []; 
+    releases: async (_: any, { productId }: any) => {
+      if (fallbackActive) return [];
       const where: any = { deletedAt: null };
       if (productId) where.productId = productId;
-      return prisma.release.findMany({ 
-        where, 
-        orderBy: [{ productId: 'asc' }, { level: 'asc' }] 
-      }); 
+      return prisma.release.findMany({
+        where,
+        orderBy: [{ productId: 'asc' }, { level: 'asc' }]
+      });
     },
 
     outcomes: async (_: any, { productId, solutionId }: any) => {
@@ -717,16 +717,16 @@ export const resolvers = {
       return [...products, ...tasks].slice(0, first);
     }
     , telemetry: async (_: any, { taskId, limit = 50 }: any) => prisma.telemetry.findMany({ where: { taskId }, orderBy: { createdAt: 'desc' }, take: Math.min(limit, 200) })
-    
+
     // Telemetry Attribute queries
     , telemetryAttribute: TelemetryQueryResolvers.telemetryAttribute
     , telemetryAttributes: TelemetryQueryResolvers.telemetryAttributes
     , telemetryValue: TelemetryQueryResolvers.telemetryValue
     , telemetryValues: TelemetryQueryResolvers.telemetryValues
     , telemetryValuesByBatch: TelemetryQueryResolvers.telemetryValuesByBatch
-    
+
     , taskDependencies: async (_: any, { taskId }: any) => prisma.taskDependency.findMany({ where: { taskId }, orderBy: { createdAt: 'asc' } })
-    
+
     // Customer Adoption queries
     , customer: CustomerAdoptionQueryResolvers.customer
     , customerSolution: CustomerAdoptionQueryResolvers.customerSolution
@@ -735,13 +735,13 @@ export const resolvers = {
     , customerTask: CustomerAdoptionQueryResolvers.customerTask
     , customerTasksForPlan: CustomerAdoptionQueryResolvers.customerTasksForPlan
     , customerTelemetryDatabase: CustomerAdoptionQueryResolvers.customerTelemetryDatabase
-    
+
     // Solution Adoption queries
     , solutionAdoptionPlan: SolutionAdoptionQueryResolvers.solutionAdoptionPlan
     , solutionAdoptionPlansForCustomer: SolutionAdoptionQueryResolvers.solutionAdoptionPlansForCustomer
     , customerSolutionTask: SolutionAdoptionQueryResolvers.customerSolutionTask
     , customerSolutionTasksForPlan: SolutionAdoptionQueryResolvers.customerSolutionTasksForPlan
-    
+
     // Solution Reporting queries
     , solutionAdoptionReport: async (_: any, { solutionAdoptionPlanId }: any, ctx: any) => {
       requireUser(ctx);
@@ -751,11 +751,11 @@ export const resolvers = {
       requireUser(ctx);
       return await solutionReportingService.generateSolutionComparisonReport(solutionId);
     }
-    
+
     // Backup queries
     , listBackups: BackupQueryResolvers.listBackups
     , autoBackupConfig: BackupQueryResolvers.autoBackupConfig
-    
+
     // Auth queries
     , me: AuthQueryResolvers.me
     , users: AuthQueryResolvers.users
@@ -766,12 +766,12 @@ export const resolvers = {
     , userRoles: AuthQueryResolvers.userRoles
     , availableResources: AuthQueryResolvers.availableResources
     // Note: auditLogs is already defined above, so using the existing one
-    
+
     // Excel Export
     , exportProductToExcel: async (_: any, { productName }: any) => {
       const excelService = new ExcelExportService();
       const result = await excelService.exportProduct(productName);
-      
+
       return {
         filename: result.filename,
         content: result.buffer.toString('base64'),
@@ -826,12 +826,12 @@ export const resolvers = {
     },
     createProduct: async (_: any, { input }: any, ctx: any) => {
       requireUser(ctx);
-      
+
       if (fallbackActive) {
         const product = fbCreateProduct(input);
         await logAudit('CREATE_PRODUCT', 'Product', product.id, { input }, ctx.user?.id); return product;
       }
-      
+
       // Check if user has WRITE permission for products (system-wide)
       await requirePermission(ctx, ResourceType.PRODUCT, null, PermissionLevel.WRITE);
 
@@ -863,7 +863,7 @@ export const resolvers = {
     },
     updateProduct: async (_: any, { id, input }: any, ctx: any) => {
       requireUser(ctx);
-      
+
       if (fallbackActive) {
         const before = fbUpdateProduct(id, {});
         const updated = fbUpdateProduct(id, input);
@@ -871,10 +871,10 @@ export const resolvers = {
         pubsub.publish(PUBSUB_EVENTS.PRODUCT_UPDATED, { productUpdated: updated });
         return updated;
       }
-      
+
       // Check if user has WRITE permission for this specific product
       await requirePermission(ctx, ResourceType.PRODUCT, id, PermissionLevel.WRITE);
-      
+
       const before = await prisma.product.findUnique({ where: { id } });
 
       // Extract license IDs from input and handle relationship update
@@ -916,65 +916,65 @@ export const resolvers = {
     },
     deleteProduct: async (_: any, { id }: any, ctx: any) => {
       requireUser(ctx);
-      
+
       if (fallbackActive) {
         fbDeleteProduct(id);
         await logAudit('DELETE_PRODUCT', 'Product', id, {});
         return true;
       }
-      
+
       // Check if user has ADMIN permission for this specific product (deletion requires highest level)
       await requirePermission(ctx, ResourceType.PRODUCT, id, PermissionLevel.ADMIN);
-      
+
       try {
         // Hard delete: Remove all related entities first, then delete the product
         // This ensures cascading deletes work properly and no orphaned data remains
-        
+
         // Delete related tasks
         await prisma.task.deleteMany({ where: { productId: id } });
-        
+
         // Delete related outcomes
         await prisma.outcome.deleteMany({ where: { productId: id } });
-        
+
         // Delete related licenses
         await prisma.license.deleteMany({ where: { productId: id } });
-        
+
         // Delete related releases
         await prisma.release.deleteMany({ where: { productId: id } });
-        
+
         // Delete product-solution relationships
         await prisma.solutionProduct.deleteMany({ where: { productId: id } });
-        
+
         // Delete product-customer relationships
         await prisma.customerProduct.deleteMany({ where: { productId: id } });
-        
+
         // Finally, delete the product itself
         await prisma.product.delete({ where: { id } });
-        
+
         await logAudit('DELETE_PRODUCT', 'Product', id, {});
       } catch (error) {
         console.error('Error deleting product:', error);
         throw new Error(`Failed to delete product: ${error instanceof Error ? error.message : 'Unknown error'}`);
       }
-      
+
       return true;
     },
     createSolution: async (_: any, { input }: any, ctx: any) => {
       requireUser(ctx);
-      
+
       console.log('🔍 [Backend] createSolution received input:', JSON.stringify(input));
       console.log('🔍 [Backend] customAttrs in input:', JSON.stringify(input.customAttrs));
-      
+
       if (fallbackActive) {
         const solution = fbCreateSolution(input);
         await logAudit('CREATE_SOLUTION', 'Solution', solution.id, { input }, ctx.user?.id);
         return solution;
       }
-      
+
       // Check if user has ADMIN permission for solutions (creation requires highest level)
       // Note: For creation, we check against "all solutions" permission (resourceId = null)
       await requirePermission(ctx, ResourceType.SOLUTION, null, PermissionLevel.ADMIN);
-      
+
       // Defensive: Filter licenseLevel from customAttrs (it's a separate field, not a custom attribute)
       let safeCustomAttrs = input.customAttrs;
       if (safeCustomAttrs && typeof safeCustomAttrs === 'object') {
@@ -982,7 +982,7 @@ export const resolvers = {
           Object.entries(safeCustomAttrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
         );
       }
-      
+
       const solution = await prisma.solution.create({
         data: {
           name: input.name,
@@ -990,25 +990,25 @@ export const resolvers = {
           customAttrs: safeCustomAttrs
         }
       });
-      
+
       await logAudit('CREATE_SOLUTION', 'Solution', solution.id, { input }, ctx.user?.id);
       return solution;
     },
     updateSolution: async (_: any, { id, input }: any, ctx: any) => {
       requireUser(ctx);
-      
+
       if (fallbackActive) {
         const before = fbUpdateSolution(id, {});
         const updated = fbUpdateSolution(id, input);
         await logAudit('UPDATE_SOLUTION', 'Solution', id, { before, after: updated }, ctx.user?.id);
         return updated;
       }
-      
+
       // Check if user has WRITE permission for this specific solution
       await requirePermission(ctx, ResourceType.SOLUTION, id, PermissionLevel.WRITE);
-      
+
       const before = await prisma.solution.findUnique({ where: { id } });
-      
+
       // Defensive: Filter licenseLevel from customAttrs (it's a separate field, not a custom attribute)
       const safeInput = { ...input };
       if (safeInput.customAttrs && typeof safeInput.customAttrs === 'object') {
@@ -1016,110 +1016,114 @@ export const resolvers = {
           Object.entries(safeInput.customAttrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
         );
       }
-      
+
       const updated = await prisma.solution.update({
         where: { id },
         data: safeInput
       });
-      
+
       if (before) {
         const cs = await createChangeSet(ctx.user?.id);
         await recordChange(cs.id, 'Solution', id, before, updated);
       }
-      
+
       await logAudit('UPDATE_SOLUTION', 'Solution', id, { before, after: updated }, ctx.user?.id);
       return updated;
     },
     deleteSolution: async (_: any, { id }: any, ctx: any) => {
       requireUser(ctx);
-      
+
       if (fallbackActive) {
         fbDeleteSolution(id);
         await logAudit('DELETE_SOLUTION', 'Solution', id, {}, ctx.user?.id);
         return true;
       }
-      
+
       // Check if user has ADMIN permission for this specific solution (deletion requires highest level)
       await requirePermission(ctx, ResourceType.SOLUTION, id, PermissionLevel.ADMIN);
-      
+
       try {
-        await prisma.solution.update({
-          where: { id },
-          data: { deletedAt: new Date() }
-        });
-      } catch { }
-      
+        console.log(`Deleting solution: ${id}`);
+        await prisma.solution.delete({ where: { id } });
+        console.log(`Solution deleted successfully: ${id}`);
+      } catch (error: any) {
+        console.error(`Failed to delete solution ${id}:`, error.message);
+        throw new Error(`Failed to delete solution: ${error.message}`);
+      }
+
       await logAudit('DELETE_SOLUTION', 'Solution', id, {}, ctx.user?.id);
       return true;
     },
     createCustomer: async (_: any, { input }: any, ctx: any) => {
       requireUser(ctx);
-      
+
       if (fallbackActive) {
         const customer = fbCreateCustomer(input);
         await logAudit('CREATE_CUSTOMER', 'Customer', customer.id, { input }, ctx.user?.id);
         return customer;
       }
-      
+
       // Check if user has ADMIN permission for customers (creation requires highest level)
       await requirePermission(ctx, ResourceType.CUSTOMER, null, PermissionLevel.ADMIN);
-      
+
       const customer = await prisma.customer.create({
         data: {
           name: input.name,
           description: input.description
         }
       });
-      
+
       await logAudit('CREATE_CUSTOMER', 'Customer', customer.id, { input }, ctx.user?.id);
       return customer;
     },
     updateCustomer: async (_: any, { id, input }: any, ctx: any) => {
       requireUser(ctx);
-      
+
       if (fallbackActive) {
         const before = fbUpdateCustomer(id, {});
         const updated = fbUpdateCustomer(id, input);
         await logAudit('UPDATE_CUSTOMER', 'Customer', id, { before, after: updated }, ctx.user?.id);
         return updated;
       }
-      
+
       // Check if user has WRITE permission for this specific customer
       await requirePermission(ctx, ResourceType.CUSTOMER, id, PermissionLevel.WRITE);
-      
+
       const before = await prisma.customer.findUnique({ where: { id } });
       const updated = await prisma.customer.update({
         where: { id },
         data: { ...input }
       });
-      
+
       if (before) {
         const cs = await createChangeSet(ctx.user?.id);
         await recordChange(cs.id, 'Customer', id, before, updated);
       }
-      
+
       await logAudit('UPDATE_CUSTOMER', 'Customer', id, { before, after: updated }, ctx.user?.id);
       return updated;
     },
     deleteCustomer: async (_: any, { id }: any, ctx: any) => {
       requireUser(ctx);
-      
+
       if (fallbackActive) {
         fbDeleteCustomer(id);
         await logAudit('DELETE_CUSTOMER', 'Customer', id, {}, ctx.user?.id);
         return true;
       }
-      
+
       // Check if user has ADMIN permission for this specific customer (deletion requires highest level)
       await requirePermission(ctx, ResourceType.CUSTOMER, id, PermissionLevel.ADMIN);
-      
+
       try {
-        await prisma.customer.update({
-          where: { id },
-          data: { deletedAt: new Date() }
-        });
-      } catch { }
-      
+        console.log(`Deleting customer: ${id}`);
+        await prisma.customer.delete({ where: { id } });
+        console.log(`Customer deleted successfully: ${id}`);
+      } catch (error: any) {
+        console.error(`Failed to delete customer ${id}:`, error.message);
+        throw new Error(`Failed to delete customer: ${error.message}`);
+      }
+
       await logAudit('DELETE_CUSTOMER', 'Customer', id, {}, ctx.user?.id);
       return true;
     },
@@ -1164,11 +1168,28 @@ export const resolvers = {
       await logAudit('UPDATE_LICENSE', 'License', id, { before, after: l }, ctx.user?.id);
       return l;
     },
-    deleteLicense: async (_: any, { id }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbDeleteLicense(id); await logAudit('DELETE_LICENSE', 'License', id, {}, ctx.user?.id); return true; } try { await prisma.license.update({ where: { id }, data: { deletedAt: new Date() } }); } catch { } await logAudit('DELETE_LICENSE', 'License', id, {}, ctx.user?.id); return true; },
+    deleteLicense: async (_: any, { id }: any, ctx: any) => {
+      ensureRole(ctx, 'ADMIN');
+      console.log(`Deleting license: ${id}`);
+      if (fallbackActive) {
+        fbDeleteLicense(id);
+        await logAudit('DELETE_LICENSE', 'License', id, {}, ctx.user?.id);
+        return true;
+      }
+      try {
+        await prisma.license.delete({ where: { id } });
+        console.log(`License deleted successfully: ${id}`);
+      } catch (error: any) {
+        console.error(`Failed to delete license ${id}:`, error.message);
+        throw new Error(`Failed to delete license: ${error.message}`);
+      }
+      await logAudit('DELETE_LICENSE', 'License', id, {}, ctx.user?.id);
+      return true;
+    },
 
     createRelease: async (_: any, { input }: any, ctx: any) => {
       ensureRole(ctx, 'ADMIN');
-      
+
       // Validate that either productId or solutionId is provided (but not both)
       if (!input.productId && !input.solutionId) {
         throw new Error('Either productId or solutionId must be provided');
@@ -1176,7 +1197,7 @@ export const resolvers = {
       if (input.productId && input.solutionId) {
         throw new Error('Cannot provide both productId and solutionId');
       }
-      
+
       if (fallbackActive) {
         // TODO: Add fallback support for releases if needed
         throw new Error('Release management not supported in fallback mode');
@@ -1204,12 +1225,12 @@ export const resolvers = {
     },
     updateRelease: async (_: any, { id, input }: any, ctx: any) => {
       ensureRole(ctx, 'ADMIN');
-      
+
       // Validate that either productId or solutionId is provided (but not both) if either is specified
       if (input.productId && input.solutionId) {
         throw new Error('Cannot provide both productId and solutionId');
       }
-      
+
       if (fallbackActive) {
         throw new Error('Release management not supported in fallback mode');
       }
@@ -1221,7 +1242,7 @@ export const resolvers = {
           level: input.level,
           isActive: input.isActive
         };
-        
+
         // Only update productId/solutionId if explicitly provided
         if (input.productId !== undefined) {
           updateData.productId = input.productId || null;
@@ -1229,7 +1250,7 @@ export const resolvers = {
         if (input.solutionId !== undefined) {
           updateData.solutionId = input.solutionId || null;
         }
-        
+
         const r = await prisma.release.update({
           where: { id },
           data: updateData
@@ -1243,21 +1264,27 @@ export const resolvers = {
         throw error;
       }
     },
-    deleteRelease: async (_: any, { id }: any, ctx: any) => { 
-      ensureRole(ctx, 'ADMIN'); 
+    deleteRelease: async (_: any, { id }: any, ctx: any) => {
+      ensureRole(ctx, 'ADMIN');
       if (fallbackActive) {
         throw new Error('Release management not supported in fallback mode');
       }
-      try { 
-        await prisma.release.update({ where: { id }, data: { deletedAt: new Date() } }); 
-      } catch { } 
-      await logAudit('DELETE_RELEASE', 'Release', id, {}, ctx.user?.id); 
-      return true; 
+      try {
+        console.log(`Deleting release: ${id}`);
+        // Hard delete the release
+        await prisma.release.delete({ where: { id } });
+        console.log(`Release deleted successfully: ${id}`);
+      } catch (error: any) {
+        console.error(`Failed to delete release ${id}:`, error.message);
+        throw new Error(`Failed to delete release: ${error.message}`);
+      }
+      await logAudit('DELETE_RELEASE', 'Release', id, {}, ctx.user?.id);
+      return true;
     },
 
     createOutcome: async (_: any, { input }: any, ctx: any) => {
       requireUser(ctx);
-      
+
       // Validate that either productId or solutionId is provided (but not both)
       if (!input.productId && !input.solutionId) {
         throw new Error('Either productId or solutionId must be provided');
@@ -1265,7 +1292,7 @@ export const resolvers = {
       if (input.productId && input.solutionId) {
         throw new Error('Cannot provide both productId and solutionId');
       }
-      
+
       if (fallbackActive) {
         try {
           // Check for duplicate names in the same product
@@ -1327,37 +1354,42 @@ export const resolvers = {
       return outcome;
     },
     deleteOutcome: async (_: any, { id }: any, ctx: any) => {
-      requireUser(ctx);
+      console.log(`deleteOutcome called for id: ${id}`);
+      ensureRole(ctx, 'ADMIN');
       if (fallbackActive) {
         return fbSoftDeleteOutcome(id);
       }
       try {
         await prisma.outcome.delete({ where: { id } });
-      } catch { }
+        console.log(`Outcome deleted successfully: ${id}`);
+      } catch (error: any) {
+        console.error(`Failed to delete outcome ${id}:`, error.message);
+        throw new Error(`Failed to delete outcome: ${error.message}`);
+      }
       await logAudit('DELETE_OUTCOME', 'Outcome', id, {}, ctx.user?.id);
       return true;
     },
-    addProductToSolution: async (_: any, { solutionId, productId }: any, ctx: any) => { 
-      ensureRole(ctx, 'ADMIN'); 
-      if (fallbackActive) { 
-        fbAddProductToSolution(solutionId, productId); 
-        await logAudit('ADD_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); 
-        return true; 
-      } 
+    addProductToSolution: async (_: any, { solutionId, productId }: any, ctx: any) => {
+      ensureRole(ctx, 'ADMIN');
+      if (fallbackActive) {
+        fbAddProductToSolution(solutionId, productId);
+        await logAudit('ADD_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id);
+        return true;
+      }
       // Calculate next order number automatically (first added product = lowest order number)
       const maxOrderProduct = await prisma.solutionProduct.findFirst({
         where: { solutionId },
         orderBy: { order: 'desc' }
       });
       const nextOrder = (maxOrderProduct?.order || 0) + 1;
-      
-      await prisma.solutionProduct.upsert({ 
-        where: { productId_solutionId: { productId, solutionId } }, 
-        update: {}, 
-        create: { productId, solutionId, order: nextOrder } 
-      }); 
-      await logAudit('ADD_PRODUCT_SOLUTION', 'Solution', solutionId, { productId, order: nextOrder }, ctx.user?.id); 
-      return true; 
+
+      await prisma.solutionProduct.upsert({
+        where: { productId_solutionId: { productId, solutionId } },
+        update: {},
+        create: { productId, solutionId, order: nextOrder }
+      });
+      await logAudit('ADD_PRODUCT_SOLUTION', 'Solution', solutionId, { productId, order: nextOrder }, ctx.user?.id);
+      return true;
     },
     removeProductFromSolution: async (_: any, { solutionId, productId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbRemoveProductFromSolution(solutionId, productId); await logAudit('REMOVE_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); return true; } await prisma.solutionProduct.deleteMany({ where: { solutionId, productId } }); await logAudit('REMOVE_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); return true; },
     addProductToCustomer: async (_: any, { customerId, productId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbAddProductToCustomer(customerId, productId); await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; } await prisma.customerProduct.upsert({ where: { customerId_productId: { customerId, productId } }, update: {}, create: { customerId, productId } }); await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; },
@@ -1366,14 +1398,14 @@ export const resolvers = {
     removeSolutionFromCustomer: async (_: any, { customerId, solutionId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbRemoveSolutionFromCustomer(customerId, solutionId); await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; } await prisma.customerSolution.deleteMany({ where: { customerId, solutionId } }); await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; },
     reorderTasks: async (_: any, { productId, solutionId, order }: any, ctx: any) => {
       ensureRole(ctx, 'ADMIN');
-      
+
       const entityType = productId ? 'Product' : 'Solution';
       const entityId = productId || solutionId;
-      
+
       if (!entityId) {
         throw new Error('Either productId or solutionId must be provided');
       }
-      
+
       if (fallbackActive) {
         const ok = fbReorderTasks(entityId, order);
         await logAudit('REORDER_TASKS', entityType, entityId, { order }, ctx.user?.id);
@@ -1414,7 +1446,7 @@ export const resolvers = {
       console.log('🚀 CREATE_TASK - howToVideo:', `"${input.howToVideo}"`);
       console.log('🚀 CREATE_TASK - Has howToDoc field:', Object.hasOwnProperty.call(input, 'howToDoc'));
       console.log('🚀 CREATE_TASK - Has howToVideo field:', Object.hasOwnProperty.call(input, 'howToVideo'));
-      
+
       requireUser(ctx);
 
       // Ensure either productId or solutionId is provided
@@ -1667,7 +1699,7 @@ export const resolvers = {
             description: attr.description || '',
             dataType: attr.dataType,
             isRequired: attr.isRequired || false,
-            successCriteria: attr.successCriteria || null,
+            successCriteria: attr.successCriteria ?? null,
             order: attr.order !== undefined ? attr.order : index,
             isActive: true
           }))
@@ -1969,7 +2001,7 @@ export const resolvers = {
               description: attr.description || '',
               dataType: attr.dataType,
               isRequired: attr.isRequired || false,
-              successCriteria: attr.successCriteria || null,
+              successCriteria: attr.successCriteria ?? null,
               order: attr.order !== undefined ? attr.order : index,
               isActive: true
             }))
@@ -2345,19 +2377,35 @@ export const resolvers = {
     addTaskDependency: async (_: any, { taskId, dependsOnId }: any, ctx: any) => { requireUser(ctx); await prisma.taskDependency.create({ data: { taskId, dependsOnId } }); await logAudit('ADD_TASK_DEP', 'TaskDependency', taskId, { dependsOnId }); return true; },
     removeTaskDependency: async (_: any, { taskId, dependsOnId }: any, ctx: any) => { requireUser(ctx); await prisma.taskDependency.deleteMany({ where: { taskId, dependsOnId } }); await logAudit('REMOVE_TASK_DEP', 'TaskDependency', taskId, { dependsOnId }); return true; },
     addTelemetry: async (_: any, { taskId, data }: any, ctx: any) => { requireUser(ctx); await prisma.telemetry.create({ data: { taskId, data } }); await logAudit('ADD_TELEMETRY', 'Telemetry', taskId, {}); return true; },
-    
+
     // Telemetry Attribute mutations
     createTelemetryAttribute: TelemetryMutationResolvers.createTelemetryAttribute,
     updateTelemetryAttribute: TelemetryMutationResolvers.updateTelemetryAttribute,
     deleteTelemetryAttribute: TelemetryMutationResolvers.deleteTelemetryAttribute,
-    
+
     // Telemetry Value mutations
     addTelemetryValue: TelemetryMutationResolvers.addTelemetryValue,
     addBatchTelemetryValues: TelemetryMutationResolvers.addBatchTelemetryValues,
     updateTelemetryValue: TelemetryMutationResolvers.updateTelemetryValue,
     deleteTelemetryValue: TelemetryMutationResolvers.deleteTelemetryValue,
-    
-    queueTaskSoftDelete: async (_: any, { id }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbSoftDeleteTask(id); } else { await prisma.task.update({ where: { id }, data: { deletedAt: new Date() } }); } await logAudit('QUEUE_TASK_DELETE', 'Task', id, {}); return true; },
+
+    queueTaskSoftDelete: async (_: any, { id }: any, ctx: any) => {
+      ensureRole(ctx, 'ADMIN');
+      console.log(`Deleting task: ${id}`);
+      try {
+        if (fallbackActive) {
+          fbSoftDeleteTask(id);
+        } else {
+          await prisma.task.delete({ where: { id } });
+        }
+        console.log(`Task deleted successfully: ${id}`);
+      } catch (error: any) {
+        console.error(`Failed to delete task ${id}:`, error.message);
+        throw new Error(`Failed to delete task: ${error.message}`);
+      }
+      await logAudit('DELETE_TASK', 'Task', id, {});
+      return true;
+    },
     processDeletionQueue: async (_: any, { limit = 50 }: any, ctx: any) => {
       ensureRole(ctx, 'ADMIN');
 
@@ -2424,7 +2472,7 @@ export const resolvers = {
             for (let i = 0; i < tasksToReorder.length; i++) {
               const task = tasksToReorder[i];
               const newSeq = task.sequenceNumber - 1;
-              
+
               // First move to negative to avoid constraint
               await prisma.task.update({
                 where: { id: task.id },
@@ -2436,7 +2484,7 @@ export const resolvers = {
             for (let i = 0; i < tasksToReorder.length; i++) {
               const task = tasksToReorder[i];
               const newSeq = task.sequenceNumber - 1;
-              
+
               await prisma.task.update({
                 where: { id: task.id },
                 data: { sequenceNumber: newSeq }
@@ -2472,13 +2520,15 @@ export const resolvers = {
     importCustomerAdoptionFromExcel: CustomerAdoptionMutationResolvers.importCustomerAdoptionFromExcel,
     exportAdoptionPlanTelemetryTemplate: CustomerAdoptionMutationResolvers.exportAdoptionPlanTelemetryTemplate,
     importAdoptionPlanTelemetry: CustomerAdoptionMutationResolvers.importAdoptionPlanTelemetry,
-    
+
     // Solution Adoption mutations
     assignSolutionToCustomer: SolutionAdoptionMutationResolvers.assignSolutionToCustomer,
     updateCustomerSolution: SolutionAdoptionMutationResolvers.updateCustomerSolution,
     removeSolutionFromCustomerEnhanced: SolutionAdoptionMutationResolvers.removeSolutionFromCustomerEnhanced,
     createSolutionAdoptionPlan: SolutionAdoptionMutationResolvers.createSolutionAdoptionPlan,
     syncSolutionAdoptionPlan: SolutionAdoptionMutationResolvers.syncSolutionAdoptionPlan,
+    syncSolutionProducts: SolutionAdoptionMutationResolvers.syncSolutionProducts,
+    syncSolutionDefinition: SolutionAdoptionMutationResolvers.syncSolutionDefinition,
     updateCustomerSolutionTaskStatus: SolutionAdoptionMutationResolvers.updateCustomerSolutionTaskStatus,
     bulkUpdateCustomerSolutionTaskStatus: SolutionAdoptionMutationResolvers.bulkUpdateCustomerSolutionTaskStatus,
     evaluateSolutionTaskTelemetry: SolutionAdoptionMutationResolvers.evaluateSolutionTaskTelemetry,
@@ -2493,11 +2543,11 @@ export const resolvers = {
     // Excel Import
     importProductFromExcel: async (_: any, { content, mode }: any, ctx: any) => {
       ensureRole(ctx, 'ADMIN');
-      
+
       try {
         const buffer = Buffer.from(content, 'base64');
         const excelService = new ExcelImportService();
-        
+
         // Map string mode to enum
         let importMode: ImportMode;
         switch (mode) {
@@ -2512,16 +2562,16 @@ export const resolvers = {
             importMode = ImportMode.CREATE_OR_UPDATE;
             break;
         }
-        
+
         const result = await excelService.importProduct(buffer, importMode);
-        
+
         await logAudit('IMPORT_PRODUCT', 'Product', result.productId, {
           productName: result.productName,
           mode: mode,
           success: result.success,
           stats: result.stats
         });
-        
+
         return result;
       } catch (error: any) {
         console.error('Import failed:', error);
@@ -2547,14 +2597,14 @@ export const resolvers = {
         };
       }
     }
-    
+
     // Backup mutations
     , createBackup: BackupMutationResolvers.createBackup
     , restoreBackup: BackupMutationResolvers.restoreBackup
     , deleteBackup: BackupMutationResolvers.deleteBackup
     , updateAutoBackupConfig: BackupMutationResolvers.updateAutoBackupConfig
     , triggerAutoBackup: BackupMutationResolvers.triggerAutoBackup
-    
+
     // Auth mutations
     , loginExtended: AuthMutationResolvers.loginExtended
     , logout: AuthMutationResolvers.logout

@@ -184,7 +184,8 @@ export class CustomerTelemetryExportService {
       '• NUMBER: Enter numeric values (e.g., 150, 45.5, -10)',
       '• PERCENTAGE: Enter values 0-100 (e.g., 75 means 75%)',
       '• STRING: Enter any text',
-      '• DATE: Use YYYY-MM-DD format (e.g., 2025-10-18)',
+      '• DATE: Use YYYY-MM-DD format (e.g., 2025-11-18)',
+      '• TIMESTAMP: Use ISO format YYYY-MM-DDTHH:mm:ss or 2025-11-18 14:30:00',
       '',
       '═══════════════════════════════════════════════════════════════',
       '',
@@ -299,5 +300,208 @@ export class CustomerTelemetryExportService {
       productName: adoptionPlan.customerProduct.product.name,
       assignmentName: adoptionPlan.customerProduct.assignmentName || 'N/A'
     };
+  }
+
+  /**
+   * Generate telemetry template for a solution adoption plan
+   * Returns Excel buffer that can be downloaded
+   */
+  static async generateSolutionTelemetryTemplate(solutionAdoptionPlanId: string): Promise<Buffer> {
+    // Fetch solution adoption plan with tasks and telemetry attributes
+    const solutionPlan = await prisma.solutionAdoptionPlan.findUnique({
+      where: { id: solutionAdoptionPlanId },
+      include: {
+        customerSolution: {
+          include: {
+            customer: true,
+            solution: true
+          }
+        },
+        tasks: {
+          orderBy: { sequenceNumber: 'asc' },
+          include: {
+            telemetryAttributes: {
+              orderBy: { order: 'asc' }
+            }
+          }
+        }
+      }
+    });
+
+    if (!solutionPlan) {
+      throw new Error(`Solution adoption plan ${solutionAdoptionPlanId} not found`);
+    }
+
+    // Create workbook
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'DAP System';
+    workbook.created = new Date();
+
+    // Add worksheet
+    const worksheet = workbook.addWorksheet('Telemetry_Data');
+
+    // Set up columns
+    worksheet.columns = [
+      { header: 'Task Name', key: 'taskName', width: 30 },
+      { header: 'Attribute Name', key: 'attributeName', width: 25 },
+      { header: 'Data Type', key: 'dataType', width: 15 },
+      { header: 'Current Value', key: 'currentValue', width: 20 },
+      { header: 'Date', key: 'date', width: 15 },
+      { header: 'Notes', key: 'notes', width: 30 }
+    ];
+
+    // Style header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, size: 12 };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF4472C4' }
+    };
+    headerRow.font = { ...headerRow.font, color: { argb: 'FFFFFFFF' } };
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    headerRow.height = 20;
+
+    // Add data rows
+    const today = new Date().toISOString().split('T')[0];
+    let rowIndex = 2;
+
+    for (const task of solutionPlan.tasks) {
+      if (task.telemetryAttributes.length === 0) {
+        continue; // Skip tasks without telemetry
+      }
+
+      for (const attr of task.telemetryAttributes) {
+        // Get current value from latest telemetry value if it exists
+        const latestValue = await prisma.customerSolutionTelemetryValue.findFirst({
+          where: {
+            taskId: task.id,
+            attributeId: attr.id
+          },
+          orderBy: { timestamp: 'desc' }
+        });
+
+        const currentValue = latestValue?.value || '';
+        
+        worksheet.addRow({
+          taskName: task.name,
+          attributeName: attr.name,
+          dataType: attr.dataType,
+          currentValue: currentValue,
+          date: today,
+          notes: ''
+        });
+
+        // Apply row styling
+        const row = worksheet.getRow(rowIndex);
+        row.alignment = { vertical: 'middle', horizontal: 'left' };
+        row.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+
+        rowIndex++;
+      }
+    }
+
+    // Add instructions worksheet
+    const instructionsSheet = workbook.addWorksheet('Instructions');
+    instructionsSheet.getColumn(1).width = 80;
+
+    const instructions = [
+      '═══════════════════════════════════════════════════════════════',
+      'TELEMETRY DATA TEMPLATE - SOLUTION ADOPTION PLAN',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      `Customer: ${solutionPlan.customerSolution.customer.name}`,
+      `Solution: ${solutionPlan.customerSolution.solution.name}`,
+      `Assignment: ${solutionPlan.customerSolution.name}`,
+      '',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'HOW TO USE THIS TEMPLATE:',
+      '',
+      '1. Fill in the "Current Value" column with your telemetry data',
+      '2. Update the "Date" column with the measurement date (YYYY-MM-DD)',
+      '3. Add any relevant notes in the "Notes" column',
+      '4. Do NOT modify the Task Name or Attribute Name columns',
+      '5. Save the file and import it back into DAP',
+      '',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'DATA TYPE GUIDE:',
+      '',
+      '• BOOLEAN: Enter "true" or "false" (lowercase)',
+      '• NUMBER: Enter numeric values only (e.g., 42, 3.14)',
+      '• STRING: Enter any text',
+      '• TIMESTAMP: Enter date in YYYY-MM-DD format',
+      '',
+      'IMPORTANT:',
+      '⚠ Values must match the data type or import will fail',
+      '⚠ Keep task and attribute names exactly as shown',
+      '⚠ Each row represents one telemetry measurement',
+      '',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'AFTER IMPORTING:',
+      '',
+      'The system will automatically:',
+      '✓ Validate all data types',
+      '✓ Store your telemetry values',
+      '✓ Evaluate success criteria for each attribute',
+      '✓ Update the adoption plan telemetry status',
+      '✓ Show you which tasks meet their telemetry criteria',
+      '',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'SUCCESS CRITERIA:',
+      '',
+      'Each telemetry attribute has success criteria (shown in the template).',
+      'Examples:',
+      '  • "equals true" - Boolean must be true',
+      '  • ">= 100" - Number must be 100 or greater',
+      '  • "<= 50" - Number must be 50 or less',
+      '  • "AND condition" - Multiple criteria must all be true',
+      '',
+      'After import, you\'ll see which criteria are met.',
+      '',
+      '═══════════════════════════════════════════════════════════════',
+      '',
+      'SUPPORT:',
+      '',
+      'If you encounter issues:',
+      '1. Check that values match the data type',
+      '2. Verify task and attribute names haven\'t been modified',
+      '3. Ensure dates are in YYYY-MM-DD format',
+      '4. Contact your DAP administrator for help',
+      '',
+      `Template Version: 1.0`,
+      `Generated by: DAP Telemetry System`
+    ];
+
+    instructions.forEach((text, index) => {
+      const row = instructionsSheet.getRow(index + 1);
+      row.values = { text };
+      
+      // Style different types of rows
+      if (text.includes('═══')) {
+        row.font = { bold: true, color: { argb: 'FF4472C4' } };
+      } else if (text.startsWith('Customer:') || text.startsWith('Solution:') || text.startsWith('Assignment:')) {
+        row.font = { bold: true };
+      } else if (text.match(/^\d+\./)) {
+        row.font = { size: 11 };
+      } else if (text.startsWith('•') || text.startsWith('⚠') || text.startsWith('✓')) {
+        row.font = { size: 11 };
+        row.alignment = { indent: 1 };
+      } else if (text.includes(':') && !text.includes('//')) {
+        row.font = { bold: true, size: 12 };
+      }
+    });
+
+    // Generate buffer
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
   }
 }

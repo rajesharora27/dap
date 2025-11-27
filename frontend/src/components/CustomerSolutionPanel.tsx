@@ -40,6 +40,8 @@ const GET_CUSTOMER_SOLUTIONS = gql`
         adoptionPlan {
           id
           progressPercentage
+          needsSync
+          lastSyncedAt
         }
       }
     }
@@ -250,9 +252,37 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   });
 
   const [exportTelemetryTemplate] = useMutation(EXPORT_SOLUTION_TELEMETRY_TEMPLATE, {
-    onCompleted: (data) => {
+    onCompleted: async (data) => {
       const { url, filename } = data.exportSolutionAdoptionPlanTelemetryTemplate;
-      window.open(url, '_blank');
+      
+      try {
+        // Prepend base path if deployed at subpath (e.g., /dap/)
+        const basePath = import.meta.env.BASE_URL || '/';
+        const fileUrl = basePath === '/' ? url : `${basePath.replace(/\/$/, '')}${url}`;
+        
+        // Use relative path for download - works with Vite proxy and production reverse proxy
+        const response = await fetch(fileUrl, {
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to download file: ${response.statusText}`);
+        }
+
+        // Get the blob and create download
+        const blob = await response.blob();
+        const downloadUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+      } catch (err: any) {
+        console.error('Download error:', err);
+        alert('Failed to download telemetry template: ' + err.message);
+      }
     },
     onError: (err) => {
       console.error('Export error:', err);
@@ -306,7 +336,13 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
       const formData = new FormData();
       formData.append('file', file);
       
-      const response = await fetch(`/api/solution-telemetry/import/${adoptionPlanId}`, {
+      // Prepend BASE_URL for subpath deployment support
+      const basePath = import.meta.env.BASE_URL || '/';
+      const uploadUrl = basePath === '/' 
+        ? `/api/solution-telemetry/import/${adoptionPlanId}`
+        : `${basePath.replace(/\/$/, '')}/api/solution-telemetry/import/${adoptionPlanId}`;
+      
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         headers: {
           'Authorization': 'admin',
@@ -409,23 +445,55 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
             <>
               <Tooltip title="Edit solution entitlements">
                 <Button
-                  variant="outlined"
+                  variant="contained"
                   size="small"
                   startIcon={<Edit />}
                   onClick={() => setEditEntitlementsDialogOpen(true)}
+                  sx={{
+                    backgroundColor: '#0070D2',
+                    '&:hover': {
+                      backgroundColor: '#005FB2'
+                    }
+                  }}
                 >
                   Edit
                 </Button>
               </Tooltip>
               {selectedCustomerSolution?.adoptionPlan && (
                 <>
+              <Tooltip title="Recalculate solution adoption plan progress from underlying product and solution adoption plans">
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<Sync />}
+                  onClick={handleSync}
+                  disabled={syncLoading}
+                  sx={{
+                    borderColor: '#6B778C',
+                    color: '#42526E',
+                    '&:hover': {
+                      borderColor: '#42526E',
+                      backgroundColor: 'rgba(66, 82, 110, 0.04)'
+                    }
+                  }}
+                >
+                  {syncLoading ? 'Syncing...' : 'Sync Solution Adoption Plan'}
+                </Button>
+              </Tooltip>
               <Tooltip title="Export Telemetry Template for data entry">
                 <Button
                   variant="outlined"
                   size="small"
-                  color="primary"
                   startIcon={<Download />}
                   onClick={handleExportTelemetry}
+                  sx={{
+                    borderColor: '#6B778C',
+                    color: '#42526E',
+                    '&:hover': {
+                      borderColor: '#42526E',
+                      backgroundColor: 'rgba(66, 82, 110, 0.04)'
+                    }
+                  }}
                 >
                   Export Template
                 </Button>
@@ -434,9 +502,16 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
                 <Button
                   variant="outlined"
                   size="small"
-                  color="primary"
                   component="label"
                   startIcon={<Upload />}
+                  sx={{
+                    borderColor: '#6B778C',
+                    color: '#42526E',
+                    '&:hover': {
+                      borderColor: '#42526E',
+                      backgroundColor: 'rgba(66, 82, 110, 0.04)'
+                    }
+                  }}
                 >
                   Import Telemetry
                   <input
@@ -451,9 +526,16 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
                 <Button
                   variant="outlined"
                   size="small"
-                  color="secondary"
                   startIcon={<Assessment />}
                   onClick={handleEvaluateAll}
+                  sx={{
+                    borderColor: '#6B778C',
+                    color: '#42526E',
+                    '&:hover': {
+                      borderColor: '#42526E',
+                      backgroundColor: 'rgba(66, 82, 110, 0.04)'
+                    }
+                  }}
                 >
                   Re-evaluate
                 </Button>

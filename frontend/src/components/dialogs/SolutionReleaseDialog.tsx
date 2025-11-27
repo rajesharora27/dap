@@ -26,6 +26,7 @@ interface ProductRelease {
   level: number;
   productId: string;
   productName: string;
+  description?: string;
 }
 
 interface Props {

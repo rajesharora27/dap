@@ -12,26 +12,34 @@ export interface FrontendConfig {
 // Check if we're in a Vite build environment
 const isViteEnv = typeof import.meta !== 'undefined' && import.meta.env;
 
+// Helper to get BASE_URL for constructing API paths (exported for use elsewhere)
+export const getBasePath = (): string => {
+  if (typeof import.meta === 'undefined' || !import.meta.env) return '/';
+  const basePath = import.meta.env.BASE_URL || '/';
+  return basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+};
+
 // Environment-based configuration
 const getConfig = (): FrontendConfig => {
   const environment = isViteEnv ? import.meta.env.MODE : 'development';
+  const basePath = getBasePath();
   
   const configs = {
     development: {
-      // Development: Use relative paths, Vite proxy will forward to backend
-      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || '/graphql') : '/graphql',
+      // Development: Use relative paths with BASE_URL support
+      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || `${basePath}/graphql`) : `${basePath}/graphql`,
       frontendUrl: isViteEnv ? (import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173') : 'http://localhost:5173',
       environment: 'development'
     },
     production: {
-      // Production: Use relative paths, reverse proxy will forward to backend
-      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || '/graphql') : '/graphql',
+      // Production: Use relative paths with BASE_URL support for subpath deployment
+      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || `${basePath}/graphql`) : `${basePath}/graphql`,
       frontendUrl: isViteEnv ? (import.meta.env.VITE_FRONTEND_URL || 'https://your-domain.com') : 'https://your-domain.com',
       environment: 'production'
     },
     staging: {
-      // Staging: Use relative paths, reverse proxy will forward to backend
-      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || '/graphql') : '/graphql',
+      // Staging: Use relative paths with BASE_URL support for subpath deployment
+      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || `${basePath}/graphql`) : `${basePath}/graphql`,
       frontendUrl: isViteEnv ? (import.meta.env.VITE_FRONTEND_URL || 'https://staging.your-domain.com') : 'https://staging.your-domain.com',
       environment: 'staging'
     }

@@ -460,6 +460,7 @@ export const typeDefs = gql`
     outcomeIds: [ID!]
     licenseId: ID                   # Single license ID for hierarchical system
     releaseIds: [ID!]               # Release IDs this task should be assigned to
+    telemetryAttributes: [TelemetryAttributeNestedInput!]  # Telemetry attributes to create with the task
   }
 
   input TaskUpdateInput { 
@@ -475,6 +476,16 @@ export const typeDefs = gql`
     outcomeIds: [ID!]
     licenseId: ID                   # Single license ID for hierarchical system
     releaseIds: [ID!]               # Release IDs this task should be assigned to
+    telemetryAttributes: [TelemetryAttributeNestedInput!]  # Telemetry attributes to update for the task (replaces all existing)
+  }
+
+  input TelemetryAttributeNestedInput {
+    name: String!
+    description: String
+    dataType: TelemetryDataType!
+    isRequired: Boolean
+    successCriteria: JSON
+    order: Int
   }
 
   input TelemetryAttributeInput {
@@ -483,7 +494,7 @@ export const typeDefs = gql`
     description: String
     dataType: TelemetryDataType!
     isRequired: Boolean = false
-    successCriteria: JSON!
+    successCriteria: JSON
     order: Int = 0
     isActive: Boolean = true
   }
@@ -605,6 +616,8 @@ export const typeDefs = gql`
   updateCustomerSolution(id: ID!, input: UpdateCustomerSolutionInput!): CustomerSolutionWithPlan!
   removeSolutionFromCustomerEnhanced(id: ID!): DeleteResult!
   createSolutionAdoptionPlan(customerSolutionId: ID!): SolutionAdoptionPlan!
+  syncSolutionProducts(solutionAdoptionPlanId: ID!): SolutionAdoptionPlan!
+  syncSolutionDefinition(solutionAdoptionPlanId: ID!): SolutionAdoptionPlan!
   syncSolutionAdoptionPlan(solutionAdoptionPlanId: ID!): SolutionAdoptionPlan!
   updateCustomerSolutionTaskStatus(input: UpdateCustomerSolutionTaskStatusInput!): CustomerSolutionTask!
   bulkUpdateCustomerSolutionTaskStatus(solutionAdoptionPlanId: ID!, taskIds: [ID!]!, status: CustomerTaskStatus!, notes: String): [CustomerSolutionTask!]!
