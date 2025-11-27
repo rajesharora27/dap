@@ -1015,9 +1015,12 @@ export function App() {
   const customers = customersData?.customers || [];
 
   // Check if user has access to any resources (for menu visibility)
-  const hasProducts = products.length > 0;
-  const hasSolutions = solutions.length > 0;
-  const hasCustomers = customers.length > 0;
+  // Admin users can see all menus regardless of data
+  // Other users see menus based on their roles/permissions
+  const isAdminUser = user?.isAdmin || user?.role === 'ADMIN';
+  const hasProducts = isAdminUser || products.length > 0;
+  const hasSolutions = isAdminUser || solutions.length > 0;
+  const hasCustomers = isAdminUser || customers.length > 0;
 
   // Auto-select first product if none selected (MUST be before early returns)
   React.useEffect(() => {
