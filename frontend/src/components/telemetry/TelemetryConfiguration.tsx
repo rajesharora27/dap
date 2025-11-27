@@ -21,9 +21,9 @@ import {
   Switch,
   FormControlLabel
 } from '@mui/material';
-import { 
-  Add as AddIcon, 
-  Delete as DeleteIcon, 
+import {
+  Add as AddIcon,
+  Delete as DeleteIcon,
   ExpandMore as ExpandMoreIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon
@@ -122,8 +122,8 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
             mode: operator || 'exact',
             pattern: value,
             caseSensitive: false,
-            description: operator === 'exact' 
-              ? `Task succeeds when value exactly matches "${value}"` 
+            description: operator === 'exact'
+              ? `Task succeeds when value exactly matches "${value}"`
               : `Task succeeds when value contains "${value}"`
           };
         }
@@ -147,13 +147,13 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
     }
   };
 
-  const SimpleCriteriaBuilder = ({ 
-    attribute, 
-    index, 
-    onSave 
-  }: { 
-    attribute: TelemetryAttribute; 
-    index: number; 
+  const SimpleCriteriaBuilder = ({
+    attribute,
+    index,
+    onSave
+  }: {
+    attribute: TelemetryAttribute;
+    index: number;
     onSave: () => void;
   }) => {
     // Initialize from existing criteria if present
@@ -161,8 +161,8 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
       console.log('[getInitialOperator] attribute:', attribute.name, 'successCriteria:', attribute.successCriteria, 'type:', typeof attribute.successCriteria);
       if (!attribute.successCriteria) {
         return attribute.dataType === 'NUMBER' ? 'greater_than_or_equal' :
-               attribute.dataType === 'STRING' ? 'exact' :
-               attribute.dataType === 'TIMESTAMP' ? 'within_days' : '';
+          attribute.dataType === 'STRING' ? 'exact' :
+            attribute.dataType === 'TIMESTAMP' ? 'within_days' : '';
       }
       // Check if successCriteria is a string (needs parsing)
       let criteria = attribute.successCriteria;
@@ -176,7 +176,7 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
         }
       }
       console.log('[getInitialOperator] parsed criteria:', criteria);
-      
+
       // Handle legacy simple format: { operator: ">=", value: 10 }
       if (criteria.operator && !criteria.type) {
         console.log('[getInitialOperator] Legacy format detected, operator:', criteria.operator);
@@ -193,7 +193,7 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
         };
         return operatorMap[criteria.operator] || criteria.operator;
       }
-      
+
       // Handle new structured format
       if (criteria.type === 'string_not_null' || criteria.type === 'timestamp_not_null') {
         return 'not_null';
@@ -223,13 +223,13 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
           return '';
         }
       }
-      
+
       // Handle legacy simple format: { operator: ">=", value: 10 }
       if (criteria.value !== undefined && !criteria.type) {
         console.log('[getInitialValue] Legacy format detected, value:', criteria.value);
         return String(criteria.value);
       }
-      
+
       // Handle new structured format
       if (criteria.type === 'boolean_flag') {
         return String(criteria.expectedValue);
@@ -253,43 +253,97 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
 
     // Update states when attribute changes (e.g., when reopening dialog with existing data)
     useEffect(() => {
-      console.log('[SimpleCriteriaBuilder] useEffect triggered', {
-        attributeName: attribute.name,
-        successCriteria: attribute.successCriteria,
-        dataType: attribute.dataType
-      });
       const newOperator = getInitialOperator();
       const newValue = getInitialValue();
-      console.log('[SimpleCriteriaBuilder] Setting:', { newOperator, newValue });
-      setOperator(newOperator);
-      setValue(newValue);
+      
+      console.log('[SimpleCriteriaBuilder] Initialization useEffect', {
+        attributeName: attribute.name,
+        successCriteria: attribute.successCriteria,
+        dataType: attribute.dataType,
+        currentOperator: operator,
+        currentValue: value,
+        newOperator,
+        newValue
+      });
+      
+      // Only update if values have actually changed to prevent unnecessary re-renders
+      if (operator !== newOperator) {
+        console.log('[SimpleCriteriaBuilder] Updating operator:', newOperator);
+        setOperator(newOperator);
+      }
+      if (value !== newValue) {
+        console.log('[SimpleCriteriaBuilder] Updating value:', newValue);
+        setValue(newValue);
+      }
+      
       // Store the current criteria to compare against later
-      setLastSavedCriteria(JSON.stringify(attribute.successCriteria || null));
+      const criteriaString = JSON.stringify(attribute.successCriteria || null);
+      if (lastSavedCriteria !== criteriaString) {
+        console.log('[SimpleCriteriaBuilder] Updating lastSavedCriteria');
+        setLastSavedCriteria(criteriaString);
+      }
+      
       setIsInitializing(false); // Mark initialization as complete
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [attribute.id, attribute.dataType, JSON.stringify(attribute.successCriteria)]); // Trigger when criteria object changes
 
     // Auto-save criteria when operator or value changes
     useEffect(() => {
+      console.log('[SimpleCriteriaBuilder] useEffect triggered', {
+        attributeName: attribute.name,
+        dataType: attribute.dataType,
+        isInitializing,
+        operator,
+        value,
+        hasSuccessCriteria: !!attribute.successCriteria
+      });
+
       // Skip auto-save during initialization or on initial render
-      if (isInitializing || !operator) return;
-      
+      if (isInitializing) {
+        console.log('[SimpleCriteriaBuilder] Skipping - still initializing');
+        return;
+      }
+
+      // For BOOLEAN type, we don't use operator - the value itself is the selection
+      // For other types, we need an operator to be set
+      if (attribute.dataType !== 'BOOLEAN' && !operator) {
+        console.log('[SimpleCriteriaBuilder] Skipping - non-BOOLEAN type with no operator');
+        return;
+      }
+
       let criteria = null;
-      
+
       // For operators that don't need a value, auto-save immediately
       if (operator === 'not_null' || attribute.dataType === 'BOOLEAN') {
+        // For BOOLEAN, only save if a value is selected
+        if (attribute.dataType === 'BOOLEAN' && !value) {
+          console.log('[SimpleCriteriaBuilder] Skipping BOOLEAN - no value selected yet');
+          return;
+        }
+        console.log('[SimpleCriteriaBuilder] Building criteria for BOOLEAN/not_null', { operator, value });
         criteria = buildSimpleCriteria(attribute.dataType, operator, value);
       } else if (value.trim()) {
         // For operators that need a value, only auto-save if value is provided
+        console.log('[SimpleCriteriaBuilder] Building criteria with value', { operator, value });
         criteria = buildSimpleCriteria(attribute.dataType, operator, value);
       }
-      
+
       // Only update if criteria has actually changed (prevents infinite loop)
       const newCriteriaString = JSON.stringify(criteria);
+      console.log('[SimpleCriteriaBuilder] Criteria comparison', {
+        newCriteriaString,
+        lastSavedCriteria,
+        willSave: criteria && newCriteriaString !== lastSavedCriteria
+      });
+
       if (criteria && newCriteriaString !== lastSavedCriteria) {
-        console.log('[SimpleCriteriaBuilder] Auto-saving criteria:', { operator, value, criteria });
+        console.log('[SimpleCriteriaBuilder] ✅ Auto-saving criteria:', { operator, value, criteria });
         setLastSavedCriteria(newCriteriaString);
         updateAttribute(index, { successCriteria: criteria });
+      } else if (!criteria) {
+        console.log('[SimpleCriteriaBuilder] ❌ No criteria to save');
+      } else {
+        console.log('[SimpleCriteriaBuilder] ⏭️ Criteria unchanged, skipping save');
       }
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [operator, value]); // Only trigger when user changes operator or value
@@ -330,7 +384,7 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
         <Typography variant="subtitle2" gutterBottom>
           Success Criteria for {attribute.name}
         </Typography>
-        
+
         {attribute.dataType === 'BOOLEAN' ? (
           <FormControl fullWidth margin="normal">
             <InputLabel>Expected Value</InputLabel>
@@ -412,9 +466,9 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
           <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
             ✓ Changes are saved automatically
           </Typography>
-          <Button 
-            variant="outlined" 
-            size="small" 
+          <Button
+            variant="outlined"
+            size="small"
             onClick={onSave}
           >
             Close
@@ -477,7 +531,7 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
                   placeholder="e.g., Deployment Status, Performance Score"
                   disabled={disabled}
                 />
-                
+
                 <TextField
                   fullWidth
                   label="Description"
@@ -529,8 +583,8 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
                       onDelete={disabled ? undefined : () => updateAttribute(index, { successCriteria: undefined })}
                     />
                     {!disabled && (
-                      <Button 
-                        size="small" 
+                      <Button
+                        size="small"
                         sx={{ ml: 1 }}
                         onClick={() => setShowCriteriaBuilder(showCriteriaBuilder === String(index) ? null : String(index))}
                       >
@@ -582,7 +636,7 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
                   </Box>
                 )}
               </Box>
-              
+
               {!disabled && (
                 <IconButton
                   onClick={() => removeAttribute(index)}

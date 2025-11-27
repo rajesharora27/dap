@@ -18,6 +18,7 @@ import {
   Tooltip,
   Divider,
   Paper,
+  Stack,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -29,6 +30,10 @@ import {
   HourglassEmpty,
   TrendingUp,
   NotInterested,
+  AssignmentTurnedIn,
+  Business,
+  CloudDownload,
+  CloudUpload,
 } from '@mui/icons-material';
 import { AdoptionPlanDialog } from './dialogs/AdoptionPlanDialog';
 import { AssignProductDialog } from './dialogs/AssignProductDialog';
@@ -238,15 +243,41 @@ export function CustomerDetailView({ customerId, onBack }: Props) {
   }
 
   return (
+    <Box sx={{ maxWidth: 1400, mx: 'auto' }}>
+      {/* Compact Header */}
+      <Box sx={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        mb: 3,
+        pb: 2,
+        borderBottom: '2px solid',
+        borderColor: 'divider'
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <IconButton onClick={onBack} size="small" sx={{ bgcolor: 'action.hover' }}>
+            <ArrowBack />
+          </IconButton>
     <Box>
-      {/* Header with Back Button */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
-        <Button startIcon={<ArrowBack />} onClick={onBack}>
-          Back to Customers
+            <Typography variant="h5" fontWeight={600}>
+              {customer.name}
+            </Typography>
+            {customer.description && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {customer.description}
+              </Typography>
+            )}
+          </Box>
+        </Box>
+        <Button
+          variant="contained"
+          startIcon={<Add />}
+          onClick={() => setAssignProductDialogOpen(true)}
+          size="medium"
+          disableElevation
+        >
+          Assign Product
         </Button>
-        <Typography variant="h4" sx={{ flex: 1 }}>
-          {customer.name}
-        </Typography>
       </Box>
 
       {/* Messages */}
@@ -261,56 +292,50 @@ export function CustomerDetailView({ customerId, onBack }: Props) {
         </Alert>
       )}
 
-      {/* Customer Details Card */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          {customer.description && (
-            <Typography variant="body1" color="text.secondary" paragraph>
-              {customer.description}
-            </Typography>
-          )}
-          
-          <Divider sx={{ my: 2 }} />
-          
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Assigned Products: {customer.products?.length || 0}
-            </Typography>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<Add />}
-              onClick={() => setAssignProductDialogOpen(true)}
-            >
-              Assign Product
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
-
-      {/* Product Selector & Actions */}
       {customer.products && customer.products.length > 0 ? (
         <>
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <FormControl sx={{ minWidth: 300, flex: '1 1 auto' }} size="small">
-                  <InputLabel>Select Product</InputLabel>
+          {/* Product Selector Bar */}
+          <Paper 
+            elevation={0}
+            sx={{ 
+              p: 2, 
+              mb: 2, 
+              bgcolor: 'grey.50',
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: 2
+            }}
+          >
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: { xs: 'column', md: 'row' },
+              gap: 2,
+              alignItems: { xs: 'stretch', md: 'center' }
+            }}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <FormControl fullWidth size="small">
+                  <InputLabel>Select Product to View Details</InputLabel>
                   <Select
                     value={selectedProductId || ''}
                     onChange={(e) => handleProductChange(e.target.value)}
-                    label="Select Product"
+                    label="Select Product to View Details"
+                    sx={{ bgcolor: 'white' }}
                   >
                     {customer.products.map((cp: any) => (
                       <MenuItem key={cp.id} value={cp.product.id}>
-                        {cp.product.name} ({cp.licenseLevel})
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                          <AssignmentTurnedIn fontSize="small" color="action" />
+                          <span style={{ flex: 1 }}>{cp.product.name}</span>
+                          <Chip label={cp.licenseLevel} size="small" variant="outlined" />
+                        </Box>
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
+              </Box>
                 
                 {selectedCustomerProduct && (
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                <Stack direction="row" spacing={1} flexWrap="wrap" justifyContent={{ xs: 'flex-start', md: 'flex-end' }}>
                     {adoptionPlan?.needsSync && (
                       <Button
                         variant="outlined"
@@ -319,13 +344,13 @@ export function CustomerDetailView({ customerId, onBack }: Props) {
                         color="warning"
                         onClick={handleSync}
                       >
-                        Sync
+                      Sync Plan
                       </Button>
                     )}
                     <Button
                       variant="outlined"
                       size="small"
-                      startIcon={<Download />}
+                    startIcon={<CloudDownload />}
                       onClick={handleExport}
                     >
                       Export
@@ -333,114 +358,321 @@ export function CustomerDetailView({ customerId, onBack }: Props) {
                     <Button
                       variant="outlined"
                       size="small"
-                      startIcon={<Upload />}
+                    startIcon={<CloudUpload />}
                       component="label"
                     >
                       Import
                       <input type="file" hidden accept=".xlsx" onChange={handleImport} />
                     </Button>
-                  </Box>
+                </Stack>
                 )}
               </Box>
-            </CardContent>
-          </Card>
+          </Paper>
 
           {/* Adoption Plan Details */}
           {selectedProductId && adoptionPlan ? (
-            <Card>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 2 }}>
+              {/* Progress Card */}
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Card 
+                  elevation={0}
+                  sx={{ 
+                    border: '1px solid', 
+                    borderColor: 'divider',
+                    height: '100%'
+                  }}
+                >
               <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="h6">
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+                      <Box>
+                        <Typography variant="h6" fontWeight={600} gutterBottom>
+                          Adoption Progress
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
                     {selectedCustomerProduct.customerSolutionId ? (
-                      // For products from solutions: name already has format "Assignment - Solution - Product"
                       selectedCustomerProduct.name
                     ) : (
-                      // For standalone products: name is assignment name, append product name
                       `${selectedCustomerProduct.name} - ${selectedCustomerProduct.product.name}`
                     )}
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Chip label={selectedCustomerProduct.licenseLevel} color="primary" size="small" />
+                      </Box>
+                      <Stack direction="row" spacing={1}>
+                        <Chip 
+                          label={selectedCustomerProduct.licenseLevel} 
+                          color="primary" 
+                          size="small" 
+                          variant="filled"
+                        />
                     {adoptionPlan.needsSync && (
-                      <Chip label="Sync Needed" color="warning" icon={<Sync />} size="small" />
+                          <Chip 
+                            label="Sync Needed" 
+                            color="warning" 
+                            icon={<Sync />} 
+                            size="small" 
+                          />
                     )}
-                  </Box>
+                      </Stack>
                 </Box>
 
-                {/* Progress Overview */}
-                <Box sx={{ mb: 3 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary">
-                      {adoptionPlan.completedTasks} / {adoptionPlan.totalTasks} tasks completed
+                    {/* Compact Progress Display */}
+                    <Box sx={{ mb: 3, bgcolor: 'grey.50', p: 2.5, borderRadius: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1.5 }}>
+                        <Typography variant="h3" fontWeight={700} color="primary.main">
+                          {adoptionPlan.progressPercentage.toFixed(0)}%
                     </Typography>
-                    <Typography variant="body2" fontWeight="bold" color="primary">
-                      {adoptionPlan.progressPercentage.toFixed(1)}%
+                        <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                          {adoptionPlan.completedTasks} of {adoptionPlan.totalTasks} tasks
                     </Typography>
                   </Box>
                   <LinearProgress
                     variant="determinate"
                     value={adoptionPlan.progressPercentage}
-                    sx={{ height: 10, borderRadius: 5 }}
+                        sx={{ 
+                          height: 12, 
+                          borderRadius: 6,
+                          bgcolor: 'grey.300',
+                          '& .MuiLinearProgress-bar': {
+                            borderRadius: 6
+                          }
+                        }}
                   />
                 </Box>
 
-                {/* Task Status Breakdown */}
-                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 3 }}>
-                  <Chip
-                    icon={<CheckCircle />}
-                    label={`Done: ${taskCounts.DONE}`}
-                    color="success"
-                    variant="outlined"
-                    size="small"
-                  />
-                  <Chip
-                    icon={<HourglassEmpty />}
-                    label={`In Progress: ${taskCounts.IN_PROGRESS}`}
-                    color="info"
-                    variant="outlined"
-                    size="small"
-                  />
-                  <Chip
-                    icon={<TrendingUp />}
-                    label={`Not Started: ${taskCounts.NOT_STARTED}`}
-                    color="default"
-                    variant="outlined"
-                    size="small"
-                  />
-                  <Chip
-                    icon={<NotInterested />}
-                    label={`Not Applicable: ${taskCounts.NOT_APPLICABLE}`}
-                    color="default"
-                    variant="outlined"
-                    size="small"
-                  />
+                    {/* Task Status Grid */}
+                    <Box sx={{ 
+                      display: 'grid', 
+                      gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(4, 1fr)' },
+                      gap: 1.5
+                    }}>
+                      <Paper 
+                        elevation={0}
+                        sx={{ 
+                          p: 1.5, 
+                          bgcolor: 'success.50',
+                          border: '1px solid',
+                          borderColor: 'success.200',
+                          borderRadius: 1.5
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          <CheckCircle fontSize="small" sx={{ color: 'success.main' }} />
+                          <Typography variant="caption" fontWeight={600} color="success.dark">
+                            DONE
+                          </Typography>
+                        </Box>
+                        <Typography variant="h6" fontWeight={700} color="success.dark">
+                          {taskCounts.DONE}
+                        </Typography>
+                      </Paper>
+                      <Paper 
+                        elevation={0}
+                        sx={{ 
+                          p: 1.5, 
+                          bgcolor: 'info.50',
+                          border: '1px solid',
+                          borderColor: 'info.200',
+                          borderRadius: 1.5
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          <HourglassEmpty fontSize="small" sx={{ color: 'info.main' }} />
+                          <Typography variant="caption" fontWeight={600} color="info.dark">
+                            IN PROGRESS
+                          </Typography>
+                        </Box>
+                        <Typography variant="h6" fontWeight={700} color="info.dark">
+                          {taskCounts.IN_PROGRESS}
+                        </Typography>
+                      </Paper>
+                      <Paper 
+                        elevation={0}
+                        sx={{ 
+                          p: 1.5, 
+                          bgcolor: 'grey.100',
+                          border: '1px solid',
+                          borderColor: 'grey.300',
+                          borderRadius: 1.5
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          <TrendingUp fontSize="small" sx={{ color: 'text.secondary' }} />
+                          <Typography variant="caption" fontWeight={600} color="text.secondary">
+                            NOT STARTED
+                          </Typography>
+                        </Box>
+                        <Typography variant="h6" fontWeight={700} color="text.primary">
+                          {taskCounts.NOT_STARTED}
+                        </Typography>
+                      </Paper>
+                      <Paper 
+                        elevation={0}
+                        sx={{ 
+                          p: 1.5, 
+                          bgcolor: 'grey.50',
+                          border: '1px solid',
+                          borderColor: 'grey.300',
+                          borderRadius: 1.5
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                          <NotInterested fontSize="small" sx={{ color: 'text.disabled' }} />
+                          <Typography variant="caption" fontWeight={600} color="text.disabled">
+                            N/A
+                          </Typography>
+                        </Box>
+                        <Typography variant="h6" fontWeight={700} color="text.secondary">
+                          {taskCounts.NOT_APPLICABLE}
+                        </Typography>
+                      </Paper>
+                    </Box>
+
+                    {adoptionPlan.lastSyncedAt && (
+                      <Typography 
+                        variant="caption" 
+                        color="text.secondary" 
+                        sx={{ mt: 2, display: 'block', textAlign: 'center' }}
+                      >
+                        Last synced: {new Date(adoptionPlan.lastSyncedAt).toLocaleString()}
+                      </Typography>
+                    )}
+                  </CardContent>
+                </Card>
                 </Box>
 
+              {/* Actions Card */}
+              <Box sx={{ width: { xs: '100%', lg: '360px' }, flexShrink: 0 }}>
+                <Card 
+                  elevation={0}
+                  sx={{ 
+                    border: '1px solid', 
+                    borderColor: 'divider',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
+                >
+                  <CardContent sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <Typography variant="h6" fontWeight={600} gutterBottom>
+                      Quick Actions
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                      Manage tasks and track adoption progress
+                    </Typography>
+                    
+                    <Stack spacing={2} sx={{ flex: 1 }}>
                 <Button
                   variant="contained"
+                        size="large"
                   onClick={() => setAdoptionPlanDialogOpen(true)}
                   fullWidth
+                        disableElevation
+                        sx={{ py: 1.5 }}
                 >
                   View & Manage Tasks
                 </Button>
 
-                {adoptionPlan.lastSyncedAt && (
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block' }}>
-                    Last synced: {new Date(adoptionPlan.lastSyncedAt).toLocaleString()}
+                      <Divider />
+
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1, display: 'block' }}>
+                          TASK SUMMARY
+                        </Typography>
+                        <Stack spacing={1}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Total Tasks
+                            </Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                              {adoptionPlan.totalTasks}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Completed
+                            </Typography>
+                            <Typography variant="body2" fontWeight={600} color="success.main">
+                              {adoptionPlan.completedTasks}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Remaining
+                            </Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                              {adoptionPlan.totalTasks - adoptionPlan.completedTasks}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      </Box>
+
+                      {adoptionPlan.needsSync && (
+                        <>
+                          <Divider />
+                          <Alert severity="warning" sx={{ p: 1 }}>
+                            <Typography variant="caption">
+                              This plan needs to be synchronized with the latest product changes.
                   </Typography>
+                          </Alert>
+                        </>
                 )}
+                    </Stack>
               </CardContent>
             </Card>
+              </Box>
+            </Box>
           ) : selectedProductId && !adoptionPlan ? (
-            <Alert severity="info">
+            <Alert severity="info" icon={<AssignmentTurnedIn />}>
               No adoption plan found for this product. An adoption plan will be created automatically.
             </Alert>
-          ) : null}
+          ) : (
+            <Paper 
+              elevation={0}
+              sx={{ 
+                p: 4, 
+                textAlign: 'center',
+                border: '2px dashed',
+                borderColor: 'divider',
+                borderRadius: 2
+              }}
+            >
+              <Business sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                Select a Product
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Choose a product from the dropdown above to view its adoption plan and manage tasks
+              </Typography>
+            </Paper>
+          )}
         </>
       ) : (
-        <Alert severity="info" sx={{ mt: 2 }}>
-          No products assigned yet. Click "Assign Product" to get started with adoption tracking.
-        </Alert>
+        <Paper 
+          elevation={0}
+          sx={{ 
+            p: 6, 
+            textAlign: 'center',
+            border: '2px dashed',
+            borderColor: 'divider',
+            borderRadius: 2
+          }}
+        >
+          <Business sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
+          <Typography variant="h5" color="text.secondary" gutterBottom fontWeight={600}>
+            No Products Assigned
+          </Typography>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+            Get started by assigning a product to track adoption progress
+          </Typography>
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<Add />}
+            onClick={() => setAssignProductDialogOpen(true)}
+            disableElevation
+          >
+            Assign Your First Product
+          </Button>
+        </Paper>
       )}
 
       {/* Dialogs */}

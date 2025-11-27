@@ -2,6 +2,82 @@
 
 All notable changes to the DAP (Demo Application Platform) project are documented in this file.
 
+## [1.1.1] - 2025-11-11
+
+### 🔐 Session Security & AbortError Fixes
+
+#### Security Enhancements
+
+##### 1. Automatic Session Clearing on Server Restart
+- **What**: All sessions automatically cleared when server starts
+- **Why**: Force re-authentication for security after restarts
+- **Impact**: Users must log in again after server restart
+- **Files**: 
+  - `backend/src/server.ts`
+  - `backend/src/utils/sessionManager.ts` (NEW)
+
+##### 2. Password Exclusion from Backups
+- **What**: User passwords never included in backup files
+- **Why**: Secure backup storage and transfer
+- **Impact**: Backup files can be safely shared without exposing passwords
+- **Files**: `backend/src/services/BackupRestoreService.ts`
+
+##### 3. Password Preservation on Restore
+- **What**: Existing passwords saved and restored during database restore
+- **Why**: Users don't need to reset passwords after restore
+- **Impact**: Seamless restore experience
+- **Files**: `backend/src/services/BackupRestoreService.ts`
+
+##### 4. Enhanced Frontend Session Clearing
+- **What**: Gentle clearing of auth data on login page
+- **Why**: Avoid race conditions and aborted requests
+- **Impact**: Cleaner console, no spurious errors
+- **Files**: `frontend/src/components/LoginPage.tsx`
+
+#### Bug Fixes
+
+##### AbortError Fix
+- **Problem**: `AbortError: signal is aborted without reason` appearing in console
+- **Root Cause**: Aggressive `localStorage.clear()` aborting Apollo Client requests
+- **Solution**: 
+  1. Gentle storage clearing (only remove auth items if present)
+  2. Added error link to Apollo Client to handle AbortErrors gracefully
+  3. Improved logging to distinguish expected aborts from real errors
+- **Impact**: Clean console, no error noise during logout/navigation
+- **Files**: 
+  - `frontend/src/components/LoginPage.tsx`
+  - `frontend/src/components/ApolloClientProvider.tsx`
+
+#### New Features
+
+##### Session Manager Utility
+- **What**: Centralized session management utility class
+- **Methods**:
+  - `clearAllSessions()`: Clear all sessions and locks
+  - `clearExpiredSessions()`: Remove old sessions (7+ days)
+  - `clearExpiredLocks()`: Remove expired locks
+  - `clearUserSessions(userId)`: Clear sessions for specific user
+  - `runMaintenance()`: Run all maintenance tasks
+- **Benefits**: Consistent logging, reusable, easy to test
+- **File**: `backend/src/utils/sessionManager.ts` (NEW)
+
+##### Automatic Maintenance Job
+- **What**: Runs every 1 minute to clean up old data
+- **Actions**:
+  - Clear expired sessions (7+ days)
+  - Clear expired locks
+  - Clean old telemetry (30+ days)
+- **Benefits**: Database stays clean, no manual intervention
+- **File**: `backend/src/server.ts`
+
+#### Documentation
+- **NEW**: `docs/SESSION_MANAGEMENT.md` - Complete guide to session lifecycle
+- **NEW**: `docs/BACKUP_RESTORE_SECURITY.md` - Password exclusion details
+- **NEW**: `docs/SECURITY_QUICK_REFERENCE.md` - Quick reference for common operations
+- **NEW**: `docs/SESSION_SECURITY_IMPLEMENTATION.md` - Implementation summary
+- **NEW**: `docs/ABORTERROR_FIX.md` - Detailed explanation of AbortError issue
+- **UPDATED**: `docs/AUTH_IMPLEMENTATION_SUMMARY.md` - Added security sections
+
 ## [2.0.0] - 2025-10-18
 
 ### 🎉 Major Release: Customer Adoption Planning & UI Modernization

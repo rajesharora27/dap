@@ -295,7 +295,7 @@ export const SolutionManagement: React.FC<Props> = ({
         onClose={() => setDialogOpen(false)}
         onSave={handleSave}
         solution={editingSolution}
-        title={editingSolution ? 'Edit Solution' : 'Add Solution'}
+        allProducts={allProducts}
       />
 
       {/* Add Product Dialog */}

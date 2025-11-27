@@ -112,7 +112,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
       case 'NOT_APPLICABLE':
         return <NotInterested sx={{ fontSize: '1rem', opacity: 0.4 }} />;
       default:
-        return null;
+        return undefined;
     }
   };
 
@@ -153,11 +153,11 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
   };
 
   return (
-    <Paper 
+    <Paper
       elevation={1}
-      sx={{ 
-        mb: 2, 
-        border: '1.5px solid', 
+      sx={{
+        mb: 2,
+        border: '1.5px solid',
         borderColor: '#E0E0E0',
         borderRadius: 2,
         overflow: 'hidden'
@@ -186,21 +186,21 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
           <IconButton size="small" sx={{ color: '#7B1FA2' }}>
             {expanded ? <ExpandLess /> : <ExpandMore />}
           </IconButton>
-          
+
           <Box sx={{ flex: 1 }}>
             <Typography variant="h6" sx={{ color: '#7B1FA2', fontWeight: 600 }}>
               🎯 Solution-Specific Tasks
             </Typography>
-            
+
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
               <Box sx={{ flex: 1, maxWidth: 300 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <LinearProgress
                     variant="determinate"
                     value={progress}
-                    sx={{ 
-                      flex: 1, 
-                      height: 8, 
+                    sx={{
+                      flex: 1,
+                      height: 8,
                       borderRadius: 1,
                       bgcolor: '#E1BEE7',
                       '& .MuiLinearProgress-bar': {
@@ -213,7 +213,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                   </Typography>
                 </Box>
               </Box>
-              
+
               <Typography variant="body2" fontWeight="500" sx={{ color: '#7B1FA2' }}>
                 {completedTasks} of {totalTasks} tasks
               </Typography>
@@ -228,7 +228,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
           <TableContainer component={Paper} variant="outlined">
             <Table size="small">
               <TableHead>
-                <TableRow sx={{ 
+                <TableRow sx={{
                   backgroundColor: '#eeeeee',
                   borderBottom: '2px solid #d0d0d0'
                 }}>
@@ -264,16 +264,16 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                     <TableCell colSpan={8} align="center">
                       <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
                         No solution tasks found
-            </Typography>
+                      </Typography>
                     </TableCell>
                   </TableRow>
-          ) : (
+                ) : (
                   tasks.map((task) => (
-                    <TableRow 
-                  key={task.id}
+                    <TableRow
+                      key={task.id}
                       hover
                       title={task.description || 'No description available'}
-                  sx={{
+                      sx={{
                         cursor: 'pointer',
                         // Grey out NOT_APPLICABLE tasks
                         opacity: task.status === 'NOT_APPLICABLE' ? 0.4 : 1,
@@ -281,7 +281,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                         color: task.status === 'NOT_APPLICABLE' ? 'text.disabled' : 'inherit',
                         textDecoration: task.status === 'NOT_APPLICABLE' ? 'line-through' : 'none',
                         '&:hover': {
-                          backgroundColor: task.status === 'NOT_APPLICABLE' 
+                          backgroundColor: task.status === 'NOT_APPLICABLE'
                             ? 'rgba(0, 0, 0, 0.12)'
                             : 'rgba(25, 118, 210, 0.08)',
                           boxShadow: task.status === 'NOT_APPLICABLE'
@@ -293,13 +293,13 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                     >
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.sequenceNumber}</TableCell>
                       <TableCell sx={{ maxWidth: 300 }}>
-                        <Typography variant="body2" sx={{ 
-                          overflow: 'hidden', 
-                          textOverflow: 'ellipsis', 
-                          whiteSpace: 'nowrap' 
+                        <Typography variant="body2" sx={{
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
                         }}>
                           {task.name}
-                    </Typography>
+                        </Typography>
                       </TableCell>
                       <TableCell>
                         <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'center' }}>
@@ -310,8 +310,8 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                               label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
                               color="primary"
                               variant="outlined"
-                              sx={{ 
-                                fontSize: '0.7rem', 
+                              sx={{
+                                fontSize: '0.7rem',
                                 height: '20px',
                                 cursor: 'pointer',
                                 '&:hover': { backgroundColor: 'primary.light' }
@@ -324,7 +324,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                                   setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
                                 }
                               }}
-                              title={task.howToDoc.length === 1 
+                              title={task.howToDoc.length === 1
                                 ? `Documentation: ${task.howToDoc[0]}`
                                 : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
                               }
@@ -337,8 +337,8 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                               label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
                               color="error"
                               variant="outlined"
-                              sx={{ 
-                                fontSize: '0.7rem', 
+                              sx={{
+                                fontSize: '0.7rem',
                                 height: '20px',
                                 cursor: 'pointer',
                                 '&:hover': { backgroundColor: 'error.light' }
@@ -351,7 +351,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                                   setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
                                 }
                               }}
-                              title={task.howToVideo.length === 1 
+                              title={task.howToVideo.length === 1
                                 ? `Video: ${task.howToVideo[0]}`
                                 : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
                               }
@@ -360,42 +360,42 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                           {!task.howToDoc && !task.howToVideo && (
                             <Typography variant="caption" color="text.secondary">-</Typography>
                           )}
-                  </Box>
+                        </Box>
                       </TableCell>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.weight}%</TableCell>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                  <Chip
-                          icon={getStatusIcon(task.status)}
+                        <Chip
+                          {...(getStatusIcon(task.status) ? { icon: getStatusIcon(task.status) } : {})}
                           label={task.status.replace('_', ' ')}
                           color={getStatusColor(task.status)}
-                    size="small"
-                  />
+                          size="small"
+                        />
                       </TableCell>
                       <TableCell>
                         {(() => {
                           const totalAttributes = task.telemetryAttributes?.length || 0;
-                          const attributesWithValues = task.telemetryAttributes?.filter((attr) => 
+                          const attributesWithValues = task.telemetryAttributes?.filter((attr) =>
                             attr.values && attr.values.length > 0
                           ).length || 0;
-                          
-                          const attributesWithCriteriaMet = task.telemetryAttributes?.filter((attr) => 
+
+                          const attributesWithCriteriaMet = task.telemetryAttributes?.filter((attr) =>
                             attr.isMet === true
                           ).length || 0;
-                          
-                          const attributesWithCriteria = task.telemetryAttributes?.filter((attr) => 
+
+                          const attributesWithCriteria = task.telemetryAttributes?.filter((attr) =>
                             attr.successCriteria && attr.successCriteria !== 'No criteria'
                           ).length || 0;
-                          
+
                           if (totalAttributes === 0) {
                             return <Typography variant="caption" color="text.secondary">-</Typography>;
                           }
-                          
+
                           const hasData = attributesWithValues > 0;
                           const percentage = attributesWithCriteria > 0 ? Math.round((attributesWithCriteriaMet / attributesWithCriteria) * 100) : 0;
-                          
+
                           return (
                             <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap' }}>
-                              <Tooltip 
+                              <Tooltip
                                 title={
                                   <Box>
                                     <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Telemetry Values Filled</Typography>
@@ -419,7 +419,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                                 />
                               </Tooltip>
                               {attributesWithCriteria > 0 && (
-                                <Tooltip 
+                                <Tooltip
                                   title={
                                     <Box>
                                       <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Success Criteria Met</Typography>
@@ -459,14 +459,14 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                       </TableCell>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>
                         {task.statusUpdateSource ? (
-                          <Chip 
+                          <Chip
                             label={task.statusUpdateSource}
-                      size="small"
+                            size="small"
                             color={
                               task.statusUpdateSource === 'MANUAL' ? 'primary' :
-                              task.statusUpdateSource === 'TELEMETRY' ? 'success' :
-                              task.statusUpdateSource === 'IMPORT' ? 'info' :
-                              'default'
+                                task.statusUpdateSource === 'TELEMETRY' ? 'success' :
+                                  task.statusUpdateSource === 'IMPORT' ? 'info' :
+                                    'default'
                             }
                           />
                         ) : (
@@ -478,9 +478,9 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                           <Select
                             value={task.status}
                             onChange={(e) => handleStatusChange(task.id, task.name, e.target.value)}
-                      variant="outlined"
-                            sx={{ 
-                              '& .MuiSelect-select': { 
+                            variant="outlined"
+                            sx={{
+                              '& .MuiSelect-select': {
                                 py: 0.5,
                                 fontSize: '0.875rem'
                               }

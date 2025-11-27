@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { authService } from '../services/authService';
+import { createAuthService } from '../services/authService';
+import { prisma } from '../context';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -25,7 +26,8 @@ export const authMiddleware = async (
     }
 
     const token = authHeader.substring(7);
-    const decoded = authService.verifyToken(token);
+    const authServiceInstance = createAuthService(prisma);
+    const decoded = authServiceInstance.verifyToken(token);
 
     req.user = decoded;
     next();
@@ -72,11 +74,12 @@ export const requirePermission = (
     const resourceId = req.params.id || req.body.id;
 
     try {
-      const hasPermission = await authService.hasPermission(
+      const authServiceInstance = createAuthService(prisma);
+      const hasPermission = await authServiceInstance.hasPermission(
         req.user.userId,
-        resourceType,
+        resourceType.toUpperCase() as any,
         resourceId,
-        permissionLevel
+        permissionLevel.toUpperCase() as any
       );
 
       if (!hasPermission) {

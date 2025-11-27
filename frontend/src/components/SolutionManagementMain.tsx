@@ -92,16 +92,16 @@ export const SolutionManagementMain: React.FC<Props> = ({
     setDialogOpen(false);
   };
 
-    const productsList = selectedSolution?.products?.edges || [];
-    const outcomesList = selectedSolution?.outcomes || [];
-    const licensesList = selectedSolution?.licenses || [];
-    const releasesList = selectedSolution?.releases || [];
-    // Filter out licenseLevel on display (it's a separate field, not a custom attribute)
-    const allCustomAttrs = selectedSolution?.customAttrs || {};
-    const customAttrs = Object.fromEntries(
-      Object.entries(allCustomAttrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
-    );
-    const finalCustomAttrEntries = Object.entries(customAttrs);
+  const productsList = selectedSolution?.products?.edges || [];
+  const outcomesList = selectedSolution?.outcomes || [];
+  const licensesList = selectedSolution?.licenses || [];
+  const releasesList = selectedSolution?.releases || [];
+  // Filter out licenseLevel on display (it's a separate field, not a custom attribute)
+  const allCustomAttrs = selectedSolution?.customAttrs || {};
+  const customAttrs = Object.fromEntries(
+    Object.entries(allCustomAttrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
+  );
+  const finalCustomAttrEntries = Object.entries(customAttrs);
 
   const NAME_DISPLAY_LIMIT = 12;
 
@@ -127,13 +127,24 @@ export const SolutionManagementMain: React.FC<Props> = ({
             </Button>
           </Box>
         ) : (
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
             <FormControl sx={{ minWidth: 300, flex: '1 1 300px' }}>
               <InputLabel>Select Solution</InputLabel>
               <Select
                 value={selectedSolutionId}
                 onChange={(e) => setSelectedSolutionId(e.target.value)}
                 label="Select Solution"
+                sx={{
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#DFE1E6'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#0070D2'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#0070D2'
+                  }
+                }}
               >
                 {solutions.map((solution: any) => (
                   <MenuItem key={solution.id} value={solution.id}>
@@ -149,6 +160,12 @@ export const SolutionManagementMain: React.FC<Props> = ({
                 startIcon={<Add />}
                 onClick={handleAddSolution}
                 size="medium"
+                sx={{
+                  backgroundColor: '#0070D2',
+                  '&:hover': {
+                    backgroundColor: '#005FB2'
+                  }
+                }}
               >
                 Add
               </Button>
@@ -157,8 +174,14 @@ export const SolutionManagementMain: React.FC<Props> = ({
                   <Button
                     variant="contained"
                     startIcon={<Edit />}
-                    onClick={handleEditSolution}
+                    onClick={() => handleEditSolution()}
                     size="medium"
+                    sx={{
+                      backgroundColor: '#0070D2',
+                      '&:hover': {
+                        backgroundColor: '#005FB2'
+                      }
+                    }}
                   >
                     Edit
                   </Button>
@@ -187,7 +210,7 @@ export const SolutionManagementMain: React.FC<Props> = ({
               {selectedSolution.name}
             </Typography>
             {selectedSolution.description && (
-              <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+              <Typography variant="body1" sx={{ mt: 1, color: '#42526E' }}>
                 {selectedSolution.description}
               </Typography>
             )}
@@ -209,10 +232,14 @@ export const SolutionManagementMain: React.FC<Props> = ({
                 p: 3,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                border: '1px solid #e0e0e0',
+                border: '1px solid #e8e8e8',
+                borderTop: '3px solid #0070D2',
+                borderRadius: 2,
                 '&:hover': {
-                  boxShadow: 4,
-                  borderColor: '#d0d0d0'
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  borderTopColor: '#049FD9',
+                  borderColor: '#0070D2',
+                  backgroundColor: '#fafbff'
                 }
               }}
             >
@@ -256,10 +283,14 @@ export const SolutionManagementMain: React.FC<Props> = ({
                 p: 3,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                border: '1px solid #e0e0e0',
+                border: '1px solid #e8e8e8',
+                borderTop: '3px solid #0070D2',
+                borderRadius: 2,
                 '&:hover': {
-                  boxShadow: 4,
-                  borderColor: '#d0d0d0'
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  borderTopColor: '#049FD9',
+                  borderColor: '#0070D2',
+                  backgroundColor: '#fafbff'
                 }
               }}
             >
@@ -305,10 +336,14 @@ export const SolutionManagementMain: React.FC<Props> = ({
                 p: 3,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                border: '1px solid #e0e0e0',
+                border: '1px solid #e8e8e8',
+                borderTop: '3px solid #0070D2',
+                borderRadius: 2,
                 '&:hover': {
-                  boxShadow: 4,
-                  borderColor: '#d0d0d0'
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  borderTopColor: '#049FD9',
+                  borderColor: '#0070D2',
+                  backgroundColor: '#fafbff'
                 }
               }}
             >
@@ -352,10 +387,14 @@ export const SolutionManagementMain: React.FC<Props> = ({
                 p: 3,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                border: '1px solid #e0e0e0',
+                border: '1px solid #e8e8e8',
+                borderTop: '3px solid #0070D2',
+                borderRadius: 2,
                 '&:hover': {
-                  boxShadow: 4,
-                  borderColor: '#d0d0d0'
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                  borderTopColor: '#049FD9',
+                  borderColor: '#0070D2',
+                  backgroundColor: '#fafbff'
                 }
               }}
             >

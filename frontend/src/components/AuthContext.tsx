@@ -115,7 +115,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTokenState(null);
     setUserState(null);
     setIsAuthenticated(false);
-    window.location.href = '/';
+    // Use BASE_URL for subpath deployment support
+    const basePath = (typeof import.meta !== 'undefined' && import.meta.env) 
+      ? (import.meta.env.BASE_URL || '/').replace(/\/$/, '') 
+      : '/';
+    window.location.href = basePath || '/';
   };
 
   return (

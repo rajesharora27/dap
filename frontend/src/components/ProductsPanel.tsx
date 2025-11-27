@@ -44,6 +44,12 @@ const PRODUCTS = gql`query Products($first:Int,$after:String,$last:Int,$before:S
           level
           isActive
         }
+        releases {
+          id
+          name
+          level
+          description
+        }
         outcomes {
           id
           name
@@ -80,8 +86,8 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
     first: 25
   });
   const { data, refetch } = useQuery(PRODUCTS, { variables: args });
-  const [createProduct] = useMutation(CREATE_PRODUCT, { onCompleted: () => refetch() });
-  const [updateProduct] = useMutation(UPDATE_PRODUCT, { onCompleted: () => refetch() });
+  const [createProduct] = useMutation(CREATE_PRODUCT);
+  const [updateProduct] = useMutation(UPDATE_PRODUCT);
   const [deleteProduct] = useMutation(DELETE_PRODUCT, { onCompleted: () => refetch() });
   useSubscription(PRODUCT_UPDATED, { onData: () => refetch() });
   const client = useApolloClient();
@@ -181,13 +187,19 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
     customAttrs?: any;
     outcomes?: Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>;
     licenses?: Array<{ id?: string; name: string; description?: string; level: string; isActive: boolean; isNew?: boolean; delete?: boolean }>;
+    releases?: Array<{ id?: string; name: string; level: number; description?: string; isNew?: boolean; delete?: boolean }>;
     requiredLicenseLevel?: number;
   }) => {
+    console.log('=== Product Save Started ===');
+    console.log('Editing existing product:', !!editingProduct);
+    console.log('Data received:', JSON.stringify(data, null, 2));
+    
     try {
       let productId: string;
 
       if (editingProduct) {
         // Update existing product
+        console.log('Updating product:', editingProduct.id, data.name);
         const updateResult = await updateProduct({
           variables: {
             id: editingProduct.id,
@@ -198,50 +210,69 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
             }
           }
         });
+        console.log('Product updated:', updateResult.data);
         productId = editingProduct.id;
 
         // Handle outcomes updates/deletions for existing product
         if (data.outcomes) {
           for (const outcome of data.outcomes) {
-            if (outcome.delete && outcome.id) {
-              // Delete existing outcome
-              await client.mutate({
-                mutation: gql`mutation DeleteOutcome($id: ID!) { deleteOutcome(id: $id) }`,
-                variables: { id: outcome.id }
-              });
-            } else if (outcome.id) {
-              // Update existing outcome
-              await client.mutate({
-                mutation: gql`
-                  mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
-                    updateOutcome(id: $id, input: $input) { id name description }
+            try {
+              if (outcome.delete && outcome.id) {
+                // Delete existing outcome
+                await client.mutate({
+                  mutation: gql`mutation DeleteOutcome($id: ID!) { deleteOutcome(id: $id) }`,
+                  variables: { id: outcome.id }
+                });
+                console.log(`Deleted outcome: ${outcome.name}`);
+              } else if (outcome.isNew || !outcome.id) {
+                // Create new outcome
+                console.log(`Creating outcome: ${outcome.name}, productId: ${productId}`);
+                const result = await client.mutate({
+                  mutation: gql`
+                    mutation CreateOutcome($input: OutcomeInput!) {
+                      createOutcome(input: $input) { id name description }
+                    }
+                  `,
+                  variables: {
+                    input: {
+                      name: outcome.name,
+                      description: outcome.description,
+                      productId: productId
+                    }
                   }
-                `,
-                variables: {
-                  id: outcome.id,
-                  input: {
-                    name: outcome.name,
-                    description: outcome.description,
-                    productId: productId
-                  }
+                });
+                if (result.errors) {
+                  console.error(`GraphQL errors creating outcome:`, result.errors);
+                  throw new Error(result.errors.map(e => e.message).join(', '));
                 }
-              });
-            } else {
-              // Create new outcome
-              await client.mutate({
-                mutation: gql`
-                  mutation CreateOutcome($input: OutcomeInput!) {
-                    createOutcome(input: $input) { id name description }
+                console.log(`Created outcome: ${outcome.name}`, result.data);
+              } else if (outcome.id) {
+                // Update existing outcome
+                console.log(`Updating outcome: ${outcome.name}, id: ${outcome.id}, productId: ${productId}`);
+                const result = await client.mutate({
+                  mutation: gql`
+                    mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
+                      updateOutcome(id: $id, input: $input) { id name description }
+                    }
+                  `,
+                  variables: {
+                    id: outcome.id,
+                    input: {
+                      name: outcome.name,
+                      description: outcome.description,
+                      productId: productId
+                    }
                   }
-                `,
-                variables: {
-                  input: {
-                    name: outcome.name,
-                    description: outcome.description,
-                    productId: productId
-                  }
+                });
+                if (result.errors) {
+                  console.error(`GraphQL errors updating outcome:`, result.errors);
+                  throw new Error(result.errors.map(e => e.message).join(', '));
                 }
-              });
+                console.log(`Updated outcome: ${outcome.name}`, result.data);
+              }
+            } catch (outcomeError: any) {
+              console.error(`Failed to save outcome ${outcome.name}:`, outcomeError);
+              throw new Error(`Failed to save outcome "${outcome.name}": ${outcomeError.message}`);
             }
           }
         }
@@ -262,20 +293,31 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
         if (data.outcomes) {
           for (const outcome of data.outcomes) {
             if (!outcome.delete) {
-              await client.mutate({
-                mutation: gql`
-                  mutation CreateOutcome($input: OutcomeInput!) {
-                    createOutcome(input: $input) { id name description }
+              try {
+                console.log(`Creating outcome for new product: ${outcome.name}, productId: ${productId}`);
+                const result = await client.mutate({
+                  mutation: gql`
+                    mutation CreateOutcome($input: OutcomeInput!) {
+                      createOutcome(input: $input) { id name description }
+                    }
+                  `,
+                  variables: {
+                    input: {
+                      name: outcome.name,
+                      description: outcome.description,
+                      productId: productId
+                    }
                   }
-                `,
-                variables: {
-                  input: {
-                    name: outcome.name,
-                    description: outcome.description,
-                    productId: productId
-                  }
+                });
+                if (result.errors) {
+                  console.error(`GraphQL errors creating outcome:`, result.errors);
+                  throw new Error(result.errors.map(e => e.message).join(', '));
                 }
-              });
+                console.log(`Created outcome for new product: ${outcome.name}`, result.data);
+              } catch (outcomeError: any) {
+                console.error(`Failed to create outcome ${outcome.name}:`, outcomeError);
+                throw new Error(`Failed to create outcome "${outcome.name}": ${outcomeError.message}`);
+              }
             }
           }
         }
@@ -284,53 +326,163 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
       // Handle licenses for both create and update
       if (data.licenses) {
         for (const license of data.licenses) {
-          if (license.delete && license.id) {
-            // Delete existing license
-            await client.mutate({
-              mutation: gql`mutation DeleteLicense($id: ID!) { deleteLicense(id: $id) }`,
-              variables: { id: license.id }
-            });
-          } else if (license.isNew || !license.id) {
-            // Create new license
-            await client.mutate({
-              mutation: gql`
-                mutation CreateLicense($input: LicenseInput!) {
-                  createLicense(input: $input) { id name description level isActive }
+          try {
+            if (license.delete && license.id) {
+              // Delete existing license
+              await client.mutate({
+                mutation: gql`mutation DeleteLicense($id: ID!) { deleteLicense(id: $id) }`,
+                variables: { id: license.id }
+              });
+              console.log(`Deleted license: ${license.name}`);
+            } else if (license.isNew || !license.id) {
+              // Create new license
+              const licenseLevel = license.level !== undefined && license.level !== '' ? parseInt(license.level) : 1;
+              console.log(`Creating license: ${license.name}, level: ${licenseLevel}, productId: ${productId}`);
+              const result = await client.mutate({
+                mutation: gql`
+                  mutation CreateLicense($input: LicenseInput!) {
+                    createLicense(input: $input) { id name description level isActive }
+                  }
+                `,
+                variables: {
+                  input: {
+                    name: license.name,
+                    description: license.description || '',
+                    level: licenseLevel,
+                    isActive: license.isActive !== false,
+                    productId: productId
+                  }
                 }
-              `,
-              variables: {
-                input: {
-                  name: license.name,
-                  description: license.description || '',
-                  level: parseInt(license.level) || 1,
-                  isActive: license.isActive !== false,
-                  productId: productId
-                }
+              });
+              if (result.errors) {
+                console.error(`GraphQL errors creating license:`, result.errors);
+                throw new Error(result.errors.map(e => e.message).join(', '));
               }
-            });
-          } else if (license.id) {
-            // Update existing license
-            await client.mutate({
-              mutation: gql`
-                mutation UpdateLicense($id: ID!, $input: LicenseInput!) {
-                  updateLicense(id: $id, input: $input) { id name description level isActive }
+              console.log(`Created license: ${license.name}`, result.data);
+            } else if (license.id) {
+              // Update existing license
+              const licenseLevel = license.level !== undefined && license.level !== '' ? parseInt(license.level) : 1;
+              console.log(`Updating license: ${license.name}, id: ${license.id}, level: ${licenseLevel}, productId: ${productId}`);
+              const result = await client.mutate({
+                mutation: gql`
+                  mutation UpdateLicense($id: ID!, $input: LicenseInput!) {
+                    updateLicense(id: $id, input: $input) { id name description level isActive }
+                  }
+                `,
+                variables: {
+                  id: license.id,
+                  input: {
+                    name: license.name,
+                    description: license.description || '',
+                    level: licenseLevel,
+                    isActive: license.isActive !== false,
+                    productId: productId
+                  }
                 }
-              `,
-              variables: {
-                id: license.id,
-                input: {
-                  name: license.name,
-                  description: license.description || '',
-                  level: parseInt(license.level) || 1,
-                  isActive: license.isActive !== false
-                }
+              });
+              if (result.errors) {
+                console.error(`GraphQL errors updating license:`, result.errors);
+                throw new Error(result.errors.map(e => e.message).join(', '));
               }
-            });
+              console.log(`Updated license: ${license.name}`, result.data);
+            }
+          } catch (licenseError: any) {
+            console.error(`Failed to save license ${license.name}:`, licenseError);
+            throw new Error(`Failed to save license "${license.name}": ${licenseError.message}`);
           }
         }
       }
+
+      // Handle releases for both create and update
+      console.log('=== Processing Releases ===');
+      console.log('Releases received:', JSON.stringify(data.releases, null, 2));
+      if (data.releases) {
+        for (const release of data.releases) {
+          console.log(`Processing release: ${release.name}, id: ${release.id}, delete: ${release.delete}, isNew: ${release.isNew}`);
+          try {
+            if (release.delete && release.id) {
+              // Delete existing release
+              console.log(`DELETING release: ${release.name} (${release.id})`);
+              const deleteResult = await client.mutate({
+                mutation: gql`mutation DeleteRelease($id: ID!) { deleteRelease(id: $id) }`,
+                variables: { id: release.id }
+              });
+              console.log(`Deleted release: ${release.name}, result:`, deleteResult);
+            } else if (release.isNew || !release.id) {
+              // Create new release
+              const releaseLevel = release.level !== undefined ? Number(release.level) : 1.0;
+              console.log(`Creating release: ${release.name}, level: ${releaseLevel}, productId: ${productId}`);
+              const result = await client.mutate({
+                mutation: gql`
+                  mutation CreateRelease($input: ReleaseInput!) {
+                    createRelease(input: $input) { id name level description }
+                  }
+                `,
+                variables: {
+                  input: {
+                    name: release.name,
+                    description: release.description || '',
+                    level: releaseLevel,
+                    productId: productId
+                  }
+                }
+              });
+              if (result.errors) {
+                console.error(`GraphQL errors creating release:`, result.errors);
+                throw new Error(result.errors.map(e => e.message).join(', '));
+              }
+              console.log(`Created release: ${release.name}`, result.data);
+            } else if (release.id) {
+              // Update existing release
+              const releaseLevel = release.level !== undefined ? Number(release.level) : 1.0;
+              console.log(`Updating release: ${release.name}, id: ${release.id}, level: ${releaseLevel}, productId: ${productId}`);
+              const result = await client.mutate({
+                mutation: gql`
+                  mutation UpdateRelease($id: ID!, $input: ReleaseInput!) {
+                    updateRelease(id: $id, input: $input) { id name level description }
+                  }
+                `,
+                variables: {
+                  id: release.id,
+                  input: {
+                    name: release.name,
+                    description: release.description || '',
+                    level: releaseLevel,
+                    productId: productId
+                  }
+                }
+              });
+              if (result.errors) {
+                console.error(`GraphQL errors updating release:`, result.errors);
+                throw new Error(result.errors.map(e => e.message).join(', '));
+              }
+              console.log(`Updated release: ${release.name}`, result.data);
+            }
+          } catch (releaseError: any) {
+            console.error(`Failed to save release ${release.name}:`, releaseError);
+            throw new Error(`Failed to save release "${release.name}": ${releaseError.message}`);
+          }
+        }
+      }
+
+      console.log('=== All mutations completed successfully ===');
+      
+      // Clear Apollo cache to ensure fresh data
+      console.log('Clearing Apollo cache...');
+      await client.clearStore();
+      
+      // Wait a bit for backend consistency
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Refetch data after ALL operations are complete
+      console.log('Refetching products...');
+      const refetchResult = await refetch();
+      console.log('Refetch completed. Products count:', refetchResult.data?.products?.edges?.length);
+      
+      console.log('=== Product save completed successfully ===');
+
     } catch (error: any) {
-      console.error('Error saving product:', error);
+      console.error('=== Error saving product ===', error);
       throw error; // Re-throw so dialog can show error
     }
   };

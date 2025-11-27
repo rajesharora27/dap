@@ -383,7 +383,13 @@ export const BackupManagementPanel: React.FC = () => {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const response = await fetch('/api/backup/restore-from-file', {
+      // Use BASE_URL for subpath deployment support
+      const basePath = import.meta.env.BASE_URL || '/';
+      const restoreUrl = basePath === '/'
+        ? '/api/backup/restore-from-file'
+        : `${basePath.replace(/\/$/, '')}/api/backup/restore-from-file`;
+
+      const response = await fetch(restoreUrl, {
         method: 'POST',
         body: formData,
       });
@@ -592,7 +598,7 @@ export const BackupManagementPanel: React.FC = () => {
           {/* Backup List */}
           {!loading && !error && (
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 <Typography variant="h6" gutterBottom>
                   Available Backups
                 </Typography>
@@ -653,7 +659,7 @@ export const BackupManagementPanel: React.FC = () => {
               </Grid>
 
               {/* Backup Details */}
-              <Grid item xs={12} md={6}>
+              <Grid size={{ xs: 12, md: 6 }}>
                 {selectedBackupData ? (
                   <Card>
                     <CardContent>
@@ -661,7 +667,7 @@ export const BackupManagementPanel: React.FC = () => {
                         Backup Details
                       </Typography>
                       <Divider sx={{ mb: 2 }} />
-                      
+
                       <Stack spacing={2}>
                         <Box>
                           <Typography variant="subtitle2" color="text.secondary">
@@ -695,32 +701,32 @@ export const BackupManagementPanel: React.FC = () => {
                             Record Counts
                           </Typography>
                           <Grid container spacing={1}>
-                            <Grid item xs={6}>
+                            <Grid size={{ xs: 6 }}>
                               <Typography variant="caption" display="block">
                                 Users: {selectedBackupData.recordCounts.users}
                               </Typography>
                             </Grid>
-                            <Grid item xs={6}>
+                            <Grid size={{ xs: 6 }}>
                               <Typography variant="caption" display="block">
                                 Products: {selectedBackupData.recordCounts.products}
                               </Typography>
                             </Grid>
-                            <Grid item xs={6}>
+                            <Grid size={{ xs: 6 }}>
                               <Typography variant="caption" display="block">
                                 Solutions: {selectedBackupData.recordCounts.solutions}
                               </Typography>
                             </Grid>
-                            <Grid item xs={6}>
+                            <Grid size={{ xs: 6 }}>
                               <Typography variant="caption" display="block">
                                 Customers: {selectedBackupData.recordCounts.customers}
                               </Typography>
                             </Grid>
-                            <Grid item xs={6}>
+                            <Grid size={{ xs: 6 }}>
                               <Typography variant="caption" display="block">
                                 Tasks: {selectedBackupData.recordCounts.tasks}
                               </Typography>
                             </Grid>
-                            <Grid item xs={6}>
+                            <Grid size={{ xs: 6 }}>
                               <Typography variant="caption" display="block">
                                 Adoption Plans: {selectedBackupData.recordCounts.adoptionPlans}
                               </Typography>

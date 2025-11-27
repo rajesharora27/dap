@@ -97,6 +97,41 @@ export async function createApp() {
     }
   });
 
+  // REST endpoint for solution telemetry import
+  app.post('/api/solution-telemetry/import/:solutionAdoptionPlanId', upload.single('file'), async (req, res) => {
+    try {
+      const { solutionAdoptionPlanId } = req.params;
+      const file = req.file;
+
+      if (!file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+      }
+
+      if (!solutionAdoptionPlanId) {
+        return res.status(400).json({ success: false, message: 'Solution adoption plan ID is required' });
+      }
+
+      // Import the telemetry values
+      const result = await CustomerTelemetryImportService.importSolutionTelemetryValues(solutionAdoptionPlanId, file.buffer);
+
+      // Evaluate all task statuses immediately after import
+      const { SolutionAdoptionMutationResolvers } = await import('./schema/resolvers/solutionAdoption');
+      await SolutionAdoptionMutationResolvers.evaluateAllSolutionTasksTelemetry(
+        {}, 
+        { solutionAdoptionPlanId }, 
+        { user: { id: 'system', role: 'ADMIN' } }
+      );
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('Solution telemetry import error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error.message || 'Import failed'
+      });
+    }
+  });
+
   // REST endpoint for backup restoration from uploaded SQL file
   app.post('/api/backup/restore-from-file', backupUpload.single('file'), async (req, res) => {
     try {

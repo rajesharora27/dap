@@ -8,13 +8,13 @@
  */
 
 import { PrismaClient, ResourceType, PermissionLevel } from '@prisma/client';
-import { checkUserPermission, getUserAccessibleResources } from './src/lib/permissions';
+import { checkUserPermission, getUserAccessibleResources } from '../lib/permissions';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('\n🧪 PERMISSION FLOW VERIFICATION TEST\n');
-  console.log('=' .repeat(60));
+  console.log('='.repeat(60));
 
   try {
     // Setup: Create test data
@@ -158,7 +158,7 @@ async function main() {
       }
     });
 
-    console.log('=' .repeat(60));
+    console.log('='.repeat(60));
 
     // TEST 1: ALL PRODUCTS → ALL SOLUTIONS
     console.log('\n🧪 TEST 1: ALL PRODUCTS → ALL SOLUTIONS\n');
@@ -204,7 +204,7 @@ async function main() {
       console.log('✅ TEST 1 PASSED\n');
     }
 
-    console.log('=' .repeat(60));
+    console.log('='.repeat(60));
 
     // TEST 2: SPECIFIC SOLUTION → ALL PRODUCTS in that solution
     console.log('\n🧪 TEST 2: SPECIFIC SOLUTION → ALL PRODUCTS in Solution\n');
@@ -268,7 +268,7 @@ async function main() {
       console.log('✅ TEST 2 PASSED\n');
     }
 
-    console.log('=' .repeat(60));
+    console.log('='.repeat(60));
 
     // TEST 3: ALL PRODUCTS in a solution → THAT SOLUTION
     console.log('\n🧪 TEST 3: ALL PRODUCTS in Solution → THAT SOLUTION\n');
@@ -328,13 +328,13 @@ async function main() {
       console.log('✅ TEST 3 PASSED\n');
     }
 
-    console.log('=' .repeat(60));
+    console.log('='.repeat(60));
 
     // Summary
     console.log('\n📊 TEST SUMMARY\n');
-    
+
     const allPassed = canAccessSolution1 && canAccessProductA && canAccessProductB && canAccessProductC && canAccessSolution3;
-    
+
     if (allPassed) {
       console.log('✅ ALL TESTS PASSED - Permission flow is working correctly!\n');
       console.log('The following rules are properly implemented:');
@@ -345,7 +345,7 @@ async function main() {
       console.log('❌ SOME TESTS FAILED - Please review the implementation\n');
     }
 
-    console.log('=' .repeat(60));
+    console.log('='.repeat(60));
 
   } catch (error) {
     console.error('\n❌ Error running tests:', error);

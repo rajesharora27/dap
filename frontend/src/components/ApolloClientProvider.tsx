@@ -2,7 +2,7 @@ import * as React from 'react';
 import { ApolloClient, InMemoryCache, ApolloProvider, HttpLink, from } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
-import { getApiUrl, isDevelopment } from '../config/frontend.config';
+import { getApiUrl, isDevelopment, getBasePath } from '../config/frontend.config';
 
 interface WrapperProps { children: React.ReactNode }
 export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
@@ -46,8 +46,9 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             sessionStorage.clear();
-            // Reload to trigger login page
-            setTimeout(() => window.location.href = '/', 100);
+            // Reload to trigger login page (use BASE_URL for subpath deployment)
+            const basePath = getBasePath();
+            setTimeout(() => window.location.href = basePath || '/', 100);
           }
         });
       }

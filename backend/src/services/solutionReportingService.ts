@@ -1,5 +1,5 @@
 import { prisma } from '../context';
-import {  CustomerTaskStatus, SolutionProductStatus, TaskSourceType } from '@prisma/client';
+import { CustomerTaskStatus, SolutionProductStatus, TaskSourceType } from '@prisma/client';
 
 /**
  * Solution Adoption Reporting Service
@@ -11,35 +11,35 @@ export interface SolutionAdoptionReport {
   customerName: string;
   solutionName: string;
   licenseLevel: string;
-  
+
   // Overall progress
   overallProgress: number;
   taskCompletionPercentage: number;
   estimatedCompletionDate: Date | null;
   daysInProgress: number;
-  
+
   // Task breakdown
   totalTasks: number;
   completedTasks: number;
   inProgressTasks: number;
   notStartedTasks: number;
   blockedTasks: number;
-  
+
   // Product breakdown
   productProgress: ProductProgressReport[];
-  
+
   // Bottlenecks
   bottlenecks: BottleneckReport[];
-  
+
   // Health metrics
   healthScore: number;
   telemetryHealthScore: number;
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  
+
   // Timeline analysis
   onTrack: boolean;
   estimatedDaysRemaining: number | null;
-  
+
   // Recommendations
   recommendations: string[];
 }
@@ -135,10 +135,10 @@ export class SolutionReportingService {
 
     // Calculate basic metrics
     const totalTasks = plan.tasks.length;
-    const completedTasks = plan.tasks.filter(t => t.isComplete).length;
-    const inProgressTasks = plan.tasks.filter(t => t.status === 'IN_PROGRESS').length;
-    const notStartedTasks = plan.tasks.filter(t => t.status === 'NOT_STARTED').length;
-    const blockedTasks = plan.tasks.filter(t => t.status === 'BLOCKED').length;
+    const completedTasks = plan.tasks.filter((t: any) => t.isComplete).length;
+    const inProgressTasks = plan.tasks.filter((t: any) => t.status === 'IN_PROGRESS').length;
+    const notStartedTasks = plan.tasks.filter((t: any) => t.status === 'NOT_STARTED').length;
+    const blockedTasks = plan.tasks.filter((t: any) => t.status === 'BLOCKED').length;
 
     const taskCompletionPercentage = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
     const overallProgress = plan.overallProgress?.toNumber() || 0;
@@ -162,14 +162,14 @@ export class SolutionReportingService {
     const riskLevel = this.determineRiskLevel(healthScore, bottlenecks, daysInProgress);
 
     // Estimate completion
-    const { estimatedCompletionDate, estimatedDaysRemaining, onTrack } = 
+    const { estimatedCompletionDate, estimatedDaysRemaining, onTrack } =
       this.estimateCompletion(plan, completedTasks, totalTasks, daysInProgress);
 
     // Generate recommendations
     const recommendations = this.generateRecommendations(
-      plan, 
-      bottlenecks, 
-      healthScore, 
+      plan,
+      bottlenecks,
+      healthScore,
       telemetryHealthScore,
       onTrack
     );
@@ -206,7 +206,7 @@ export class SolutionReportingService {
     const productReports: ProductProgressReport[] = [];
 
     for (const productRel of plan.products) {
-      const productTasks = plan.tasks.filter((t: any) => 
+      const productTasks = plan.tasks.filter((t: any) =>
         t.sourceType === TaskSourceType.PRODUCT && t.sourceProductId === productRel.productId
       );
 
@@ -215,7 +215,7 @@ export class SolutionReportingService {
       const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
 
       // Calculate average completion time for completed tasks
-      const completedTasksWithDates = productTasks.filter((t: any) => 
+      const completedTasksWithDates = productTasks.filter((t: any) =>
         t.isComplete && t.completedAt && t.createdAt
       );
       let averageTaskCompletionTime = null;
@@ -295,7 +295,7 @@ export class SolutionReportingService {
 
     // 3. Detect products with low progress
     for (const productRel of plan.products) {
-      const productTasks = plan.tasks.filter((t: any) => 
+      const productTasks = plan.tasks.filter((t: any) =>
         t.sourceType === TaskSourceType.PRODUCT && t.sourceProductId === productRel.productId
       );
       const completedCount = productTasks.filter((t: any) => t.isComplete).length;
@@ -394,8 +394,8 @@ export class SolutionReportingService {
    * Determine risk level based on health score and bottlenecks
    */
   private determineRiskLevel(
-    healthScore: number, 
-    bottlenecks: BottleneckReport[], 
+    healthScore: number,
+    bottlenecks: BottleneckReport[],
     daysInProgress: number
   ): 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' {
     const hasCriticalBottleneck = bottlenecks.some(b => b.severity === 'CRITICAL');
@@ -502,7 +502,7 @@ export class SolutionReportingService {
       throw new Error('Solution not found');
     }
 
-    const customerSolutionsWithPlans = solution.customerSolutions.filter(cs => cs.adoptionPlan);
+    const customerSolutionsWithPlans = solution.customerSolutions.filter((cs: any) => cs.adoptionPlan);
     const totalCustomers = customerSolutionsWithPlans.length;
 
     if (totalCustomers === 0) {
@@ -520,13 +520,13 @@ export class SolutionReportingService {
     }
 
     // Calculate average progress
-    const totalProgress = customerSolutionsWithPlans.reduce((sum, cs) => {
+    const totalProgress = customerSolutionsWithPlans.reduce((sum: number, cs: any) => {
       return sum + (cs.adoptionPlan?.overallProgress?.toNumber() || 0);
     }, 0);
     const averageProgress = totalProgress / totalCustomers;
 
     // Calculate completion metrics
-    const completedPlans = customerSolutionsWithPlans.filter(cs => {
+    const completedPlans = customerSolutionsWithPlans.filter((cs: any) => {
       const plan = cs.adoptionPlan;
       return plan && plan.tasks.every((t: any) => t.isComplete);
     });
@@ -534,7 +534,7 @@ export class SolutionReportingService {
     const successRate = (completedPlans.length / totalCustomers) * 100;
 
     const completionTimes = completedPlans
-      .map(cs => {
+      .map((cs: any) => {
         const plan = cs.adoptionPlan;
         if (!plan) return null;
         const lastTask = plan.tasks.reduce((latest: any, t: any) => {
@@ -545,20 +545,20 @@ export class SolutionReportingService {
         if (!lastTask || !lastTask.completedAt) return null;
         return (lastTask.completedAt.getTime() - plan.createdAt.getTime()) / (1000 * 60 * 60 * 24);
       })
-      .filter((t): t is number => t !== null);
+      .filter((t: any): t is number => t !== null);
 
     const averageTimeToComplete = completionTimes.length > 0
-      ? completionTimes.reduce((sum, t) => sum + t, 0) / completionTimes.length
+      ? completionTimes.reduce((sum: number, t: number) => sum + t, 0) / completionTimes.length
       : null;
 
     // Identify best performing and struggling customers
-    const customerPerformances: CustomerPerformance[] = customerSolutionsWithPlans.map(cs => {
+    const customerPerformances: CustomerPerformance[] = customerSolutionsWithPlans.map((cs: any) => {
       const plan = cs.adoptionPlan!;
       const progress = plan.overallProgress?.toNumber() || 0;
       const daysInProgress = Math.floor(
         (new Date().getTime() - plan.createdAt.getTime()) / (1000 * 60 * 60 * 24)
       );
-      
+
       // Simple health score calculation
       const completedTasks = plan.tasks.filter((t: any) => t.isComplete).length;
       const totalTasks = plan.tasks.length;
