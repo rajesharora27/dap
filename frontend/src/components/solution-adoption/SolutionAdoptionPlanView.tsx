@@ -217,11 +217,11 @@ const IMPORT_PRODUCT_TELEMETRY = gql`
   mutation ImportAdoptionPlanTelemetry($adoptionPlanId: ID!, $file: Upload!) {
     importAdoptionPlanTelemetry(adoptionPlanId: $adoptionPlanId, file: $file) {
       success
-      message
+      batchId
       summary {
         tasksProcessed
-        valuesImported
-        errors
+        attributesUpdated
+        criteriaEvaluated
       }
     }
   }
@@ -243,11 +243,11 @@ const IMPORT_SOLUTION_TELEMETRY = gql`
   mutation ImportSolutionAdoptionPlanTelemetry($solutionAdoptionPlanId: ID!, $file: Upload!) {
     importSolutionAdoptionPlanTelemetry(solutionAdoptionPlanId: $solutionAdoptionPlanId, file: $file) {
       success
-      message
+      batchId
       summary {
         tasksProcessed
-        valuesImported
-        errors
+        attributesUpdated
+        criteriaEvaluated
       }
     }
   }
@@ -316,9 +316,9 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
       refetch();
       if (data?.importAdoptionPlanTelemetry?.success) {
         const summary = data.importAdoptionPlanTelemetry.summary;
-        setSuccess(`Import successful: ${summary.valuesImported} values imported for ${summary.tasksProcessed} tasks`);
+        setSuccess(`Import successful: ${summary.attributesUpdated} attributes updated for ${summary.tasksProcessed} tasks`);
       } else {
-        setError(data?.importAdoptionPlanTelemetry?.message || 'Import failed');
+        setError('Import failed');
       }
     },
     onError: (err) => setError(`Import failed: ${err.message}`)
@@ -340,9 +340,9 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
       refetch();
       if (data?.importSolutionAdoptionPlanTelemetry?.success) {
         const summary = data.importSolutionAdoptionPlanTelemetry.summary;
-        setSuccess(`Import successful: ${summary.valuesImported} values imported for ${summary.tasksProcessed} tasks`);
+        setSuccess(`Import successful: ${summary.attributesUpdated} attributes updated for ${summary.tasksProcessed} tasks`);
       } else {
-        setError(data?.importSolutionAdoptionPlanTelemetry?.message || 'Import failed');
+        setError('Import failed');
       }
     },
     onError: (err) => setError(`Import failed: ${err.message}`)
