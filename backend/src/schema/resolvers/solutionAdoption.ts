@@ -1840,16 +1840,22 @@ export const SolutionAdoptionMutationResolvers = {
       throw new Error('Customer solution task not found');
     }
 
-    // Evaluate all required attributes
-    let allRequiredMet = true;
+    // Evaluate all attributes and track telemetry status
+    const requiredAttributes = task.telemetryAttributes.filter((a: any) => a.isRequired && a.isActive);
+    let metRequiredCount = 0;
+    let hasAnyTelemetryData = false;
+    let requiredWithDataCount = 0;
+
     for (const attr of task.telemetryAttributes) {
-      if (!attr.isRequired || !attr.isActive) continue;
+      if (!attr.isActive) continue;
 
       const latestValue = attr.values[0];
-      if (!latestValue) {
-        allRequiredMet = false;
-        break;
+      if (latestValue) {
+        hasAnyTelemetryData = true;
+        if (attr.isRequired) requiredWithDataCount++;
       }
+
+      if (!latestValue) continue;
 
       const isMet = evaluateCriteria(attr.successCriteria, latestValue.value);
       await prisma.customerTelemetryAttribute.update({
@@ -1860,20 +1866,50 @@ export const SolutionAdoptionMutationResolvers = {
         }
       });
 
-      if (!isMet) {
-        allRequiredMet = false;
+      if (isMet && attr.isRequired) {
+        metRequiredCount++;
       }
     }
 
-    // Update task status if all required telemetry is met
-    if (allRequiredMet && task.status !== 'COMPLETED') {
+    // Determine new status based on telemetry
+    // Logic:
+    // 1. All required telemetry met → COMPLETED
+    // 2. Telemetry available but doesn't meet all criteria → IN_PROGRESS
+    // 3. No telemetry data at all → NOT_STARTED (unless manually set)
+    // 4. Was COMPLETED (via telemetry) and now telemetry unavailable or doesn't meet → NO_LONGER_USING
+    const wasPreviouslyDoneByTelemetry = task.status === 'COMPLETED' && task.statusUpdateSource === 'TELEMETRY';
+    let newStatus = task.status;
+    let shouldUpdate = false;
+
+    if (requiredAttributes.length > 0) {
+      if (metRequiredCount === requiredAttributes.length) {
+        // All required telemetry criteria met
+        if (task.status !== 'COMPLETED') {
+          newStatus = 'COMPLETED';
+          shouldUpdate = true;
+        }
+      } else if (wasPreviouslyDoneByTelemetry && (metRequiredCount < requiredAttributes.length || !hasAnyTelemetryData)) {
+        // Was previously COMPLETED by telemetry, but now either:
+        // - Telemetry doesn't meet criteria anymore, OR
+        // - Telemetry data is no longer available
+        newStatus = 'NO_LONGER_USING';
+        shouldUpdate = true;
+      } else if (hasAnyTelemetryData && requiredWithDataCount > 0 && task.status === 'NOT_STARTED') {
+        // Has telemetry data but doesn't meet all criteria - task is in progress
+        newStatus = 'IN_PROGRESS';
+        shouldUpdate = true;
+      }
+    }
+
+    if (shouldUpdate) {
       await prisma.customerSolutionTask.update({
         where: { id: customerSolutionTaskId },
         data: {
-          status: 'COMPLETED',
-          isComplete: true,
-          completedAt: new Date(),
-          statusUpdateSource: 'TELEMETRY'
+          status: newStatus,
+          isComplete: newStatus === 'COMPLETED',
+          completedAt: newStatus === 'COMPLETED' ? new Date() : null,
+          statusUpdateSource: 'TELEMETRY',
+          statusUpdatedAt: new Date()
         }
       });
 

@@ -1441,11 +1441,18 @@ export const CustomerAdoptionMutationResolvers = {
     // Evaluate each attribute (always evaluate to update isMet status for display)
     let metCount = 0;
     let metRequiredCount = 0;
+    let hasAnyTelemetryData = false;  // Track if any telemetry values exist
+    let requiredWithDataCount = 0;     // Track required attributes that have telemetry data
 
     for (const attr of attributes) {
       if (!attr.isActive) continue;
 
       const latestValue = attr.values[0];
+      if (latestValue) {
+        hasAnyTelemetryData = true;
+        if (attr.isRequired) requiredWithDataCount++;
+      }
+
       if (!latestValue) continue;
 
       // Use the proper evaluation engine that handles the criteria structure from SimpleCriteriaBuilder
@@ -1476,25 +1483,35 @@ export const CustomerAdoptionMutationResolvers = {
     }
 
     // Determine new status based on telemetry
+    // Logic:
+    // 1. All required telemetry met → DONE
+    // 2. Telemetry available but doesn't meet all criteria → IN_PROGRESS
+    // 3. No telemetry data at all → NOT_STARTED (unless manually set)
+    // 4. Was DONE (via telemetry) and now telemetry unavailable or doesn't meet → NO_LONGER_USING
     let newStatus: CustomerTaskStatus = task.status;
+    const wasPreviouslyDoneByTelemetry = (task.status === 'DONE' || task.status === 'COMPLETED') && 
+                                          task.statusUpdateSource === 'TELEMETRY';
 
     if (requiredAttributes.length > 0) {
       if (metRequiredCount === requiredAttributes.length) {
+        // All required telemetry criteria met
         newStatus = 'DONE';
-      } else if (metCount > 0) {
-        newStatus = 'IN_PROGRESS';
-      } else if (metCount === 0 && (task.status === 'DONE' || task.status === 'COMPLETED' || task.status === 'NO_LONGER_USING')) {
-        // Feature was done but telemetry shows it's no longer being used
-        // This is a critical status change that overrides manual status
-        // Keep NO_LONGER_USING if already set, or set it if coming from DONE/COMPLETED
+      } else if (wasPreviouslyDoneByTelemetry && (metRequiredCount < requiredAttributes.length || !hasAnyTelemetryData)) {
+        // Was previously DONE by telemetry, but now either:
+        // - Telemetry doesn't meet criteria anymore, OR
+        // - Telemetry data is no longer available
         newStatus = 'NO_LONGER_USING' as CustomerTaskStatus;
-      } else {
+      } else if (hasAnyTelemetryData && requiredWithDataCount > 0) {
+        // Has telemetry data but doesn't meet all criteria - task is in progress
+        newStatus = 'IN_PROGRESS';
+      } else if (!hasAnyTelemetryData) {
+        // No telemetry data at all - not started (unless manually set otherwise)
         newStatus = 'NOT_STARTED';
       }
     }
 
-    // Special case: NO_LONGER_USING overrides manual status because it indicates regression
-    const shouldOverrideManual = newStatus === ('NO_LONGER_USING' as CustomerTaskStatus) && (task.status === 'DONE' || task.status === 'COMPLETED' || task.status === ('NO_LONGER_USING' as CustomerTaskStatus));
+    // Special case: NO_LONGER_USING overrides manual status because it indicates regression from a telemetry-verified DONE state
+    const shouldOverrideManual = newStatus === ('NO_LONGER_USING' as CustomerTaskStatus) && wasPreviouslyDoneByTelemetry;
 
     // Only update task status if:
     // 1. Status has changed, AND
