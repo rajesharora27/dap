@@ -15,13 +15,18 @@ import {
   MenuItem,
   OutlinedInput,
   Checkbox,
-  ListItemText,
-  Snackbar
+  ListItemText
 } from '@mui/material';
-import { Sync, Assessment, FileDownload, FilterList, Download, Upload } from '@mui/icons-material';
+import { Sync, Assessment, FilterList } from '@mui/icons-material';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { ProductAdoptionGroup } from './ProductAdoptionGroup';
 import { SolutionTasksGroup } from './SolutionTasksGroup';
+import { 
+  exportProductTelemetryTemplate, 
+  importProductTelemetry,
+  exportSolutionTelemetryTemplate,
+  importSolutionTelemetry 
+} from '../../utils/telemetryOperations';
 
 const ALL_RELEASES_ID = '__ALL_RELEASES__';
 const ALL_OUTCOMES_ID = '__ALL_OUTCOMES__';
@@ -201,57 +206,6 @@ const SYNC_SOLUTION_ADOPTION_PLAN = gql`
   }
 `;
 
-// Product telemetry export/import mutations
-const EXPORT_PRODUCT_TELEMETRY_TEMPLATE = gql`
-  mutation ExportAdoptionPlanTelemetryTemplate($adoptionPlanId: ID!) {
-    exportAdoptionPlanTelemetryTemplate(adoptionPlanId: $adoptionPlanId) {
-      url
-      filename
-      taskCount
-      telemetryCount
-    }
-  }
-`;
-
-const IMPORT_PRODUCT_TELEMETRY = gql`
-  mutation ImportAdoptionPlanTelemetry($adoptionPlanId: ID!, $file: Upload!) {
-    importAdoptionPlanTelemetry(adoptionPlanId: $adoptionPlanId, file: $file) {
-      success
-      batchId
-      summary {
-        tasksProcessed
-        attributesUpdated
-        criteriaEvaluated
-      }
-    }
-  }
-`;
-
-// Solution telemetry export/import mutations
-const EXPORT_SOLUTION_TELEMETRY_TEMPLATE = gql`
-  mutation ExportSolutionAdoptionPlanTelemetryTemplate($solutionAdoptionPlanId: ID!) {
-    exportSolutionAdoptionPlanTelemetryTemplate(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
-      url
-      filename
-      taskCount
-      telemetryCount
-    }
-  }
-`;
-
-const IMPORT_SOLUTION_TELEMETRY = gql`
-  mutation ImportSolutionAdoptionPlanTelemetry($solutionAdoptionPlanId: ID!, $file: Upload!) {
-    importSolutionAdoptionPlanTelemetry(solutionAdoptionPlanId: $solutionAdoptionPlanId, file: $file) {
-      success
-      batchId
-      summary {
-        tasksProcessed
-        attributesUpdated
-        criteriaEvaluated
-      }
-    }
-  }
-`;
 
 interface Props {
   solutionAdoptionPlanId: string;
@@ -300,53 +254,6 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     onError: (err) => setError(err.message)
   });
 
-  // Product telemetry mutations
-  const [exportProductTelemetry] = useMutation(EXPORT_PRODUCT_TELEMETRY_TEMPLATE, {
-    onCompleted: (data) => {
-      if (data?.exportAdoptionPlanTelemetryTemplate?.url) {
-        window.open(data.exportAdoptionPlanTelemetryTemplate.url, '_blank');
-        setSuccess(`Template exported: ${data.exportAdoptionPlanTelemetryTemplate.taskCount} tasks, ${data.exportAdoptionPlanTelemetryTemplate.telemetryCount} telemetry attributes`);
-      }
-    },
-    onError: (err) => setError(`Export failed: ${err.message}`)
-  });
-
-  const [importProductTelemetry] = useMutation(IMPORT_PRODUCT_TELEMETRY, {
-    onCompleted: (data) => {
-      refetch();
-      if (data?.importAdoptionPlanTelemetry?.success) {
-        const summary = data.importAdoptionPlanTelemetry.summary;
-        setSuccess(`Import successful: ${summary.attributesUpdated} attributes updated for ${summary.tasksProcessed} tasks`);
-      } else {
-        setError('Import failed');
-      }
-    },
-    onError: (err) => setError(`Import failed: ${err.message}`)
-  });
-
-  // Solution telemetry mutations
-  const [exportSolutionTelemetry] = useMutation(EXPORT_SOLUTION_TELEMETRY_TEMPLATE, {
-    onCompleted: (data) => {
-      if (data?.exportSolutionAdoptionPlanTelemetryTemplate?.url) {
-        window.open(data.exportSolutionAdoptionPlanTelemetryTemplate.url, '_blank');
-        setSuccess(`Template exported: ${data.exportSolutionAdoptionPlanTelemetryTemplate.taskCount} tasks, ${data.exportSolutionAdoptionPlanTelemetryTemplate.telemetryCount} telemetry attributes`);
-      }
-    },
-    onError: (err) => setError(`Export failed: ${err.message}`)
-  });
-
-  const [importSolutionTelemetry] = useMutation(IMPORT_SOLUTION_TELEMETRY, {
-    onCompleted: (data) => {
-      refetch();
-      if (data?.importSolutionAdoptionPlanTelemetry?.success) {
-        const summary = data.importSolutionAdoptionPlanTelemetry.summary;
-        setSuccess(`Import successful: ${summary.attributesUpdated} attributes updated for ${summary.tasksProcessed} tasks`);
-      } else {
-        setError('Import failed');
-      }
-    },
-    onError: (err) => setError(`Import failed: ${err.message}`)
-  });
 
   // Extract solution tasks (must be called before any conditional returns - rules of hooks)
   const allSolutionTasks = useMemo(() => {
@@ -490,33 +397,51 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     });
   };
 
-  // Handlers for product telemetry
-  const handleExportProductTelemetry = (adoptionPlanId: string) => {
-    exportProductTelemetry({ variables: { adoptionPlanId } });
+  // Handlers for product telemetry (using shared utilities)
+  const handleExportProductTelemetry = async (adoptionPlanId: string) => {
+    try {
+      await exportProductTelemetryTemplate(adoptionPlanId);
+      setSuccess('Template exported successfully');
+    } catch (err: any) {
+      setError(`Export failed: ${err.message}`);
+    }
   };
 
   const handleImportProductTelemetry = async (adoptionPlanId: string, file: File) => {
     try {
-      await importProductTelemetry({
-        variables: { adoptionPlanId, file }
-      });
-    } catch (err) {
-      console.error('Import error:', err);
+      const result = await importProductTelemetry(adoptionPlanId, file);
+      refetch();
+      if (result.success) {
+        setSuccess(`Import successful: ${result.summary?.attributesUpdated || 0} attributes updated`);
+      } else {
+        setError(result.error || 'Import failed');
+      }
+    } catch (err: any) {
+      setError(`Import failed: ${err.message}`);
     }
   };
 
-  // Handlers for solution telemetry
-  const handleExportSolutionTelemetry = () => {
-    exportSolutionTelemetry({ variables: { solutionAdoptionPlanId } });
+  // Handlers for solution telemetry (using shared utilities)
+  const handleExportSolutionTelemetry = async () => {
+    try {
+      await exportSolutionTelemetryTemplate(solutionAdoptionPlanId);
+      setSuccess('Template exported successfully');
+    } catch (err: any) {
+      setError(`Export failed: ${err.message}`);
+    }
   };
 
   const handleImportSolutionTelemetry = async (file: File) => {
     try {
-      await importSolutionTelemetry({
-        variables: { solutionAdoptionPlanId, file }
-      });
-    } catch (err) {
-      console.error('Import error:', err);
+      const result = await importSolutionTelemetry(solutionAdoptionPlanId, file);
+      refetch();
+      if (result.success) {
+        setSuccess(`Import successful: ${result.summary?.attributesUpdated || 0} attributes updated`);
+      } else {
+        setError(result.error || 'Import failed');
+      }
+    } catch (err: any) {
+      setError(`Import failed: ${err.message}`);
     }
   };
 
