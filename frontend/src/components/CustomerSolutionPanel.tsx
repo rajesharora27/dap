@@ -480,48 +480,6 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
                   {syncLoading ? 'Syncing...' : 'Sync Solution Adoption Plan'}
                 </Button>
               </Tooltip>
-              <Tooltip title="Export Telemetry Template for data entry">
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<Download />}
-                  onClick={handleExportTelemetry}
-                  sx={{
-                    borderColor: '#6B778C',
-                    color: '#42526E',
-                    '&:hover': {
-                      borderColor: '#42526E',
-                      backgroundColor: 'rgba(66, 82, 110, 0.04)'
-                    }
-                  }}
-                >
-                  Export Template
-                </Button>
-              </Tooltip>
-              <Tooltip title="Import completed Telemetry Template file">
-                <Button
-                  variant="outlined"
-                  size="small"
-                  component="label"
-                  startIcon={<Upload />}
-                  sx={{
-                    borderColor: '#6B778C',
-                    color: '#42526E',
-                    '&:hover': {
-                      borderColor: '#42526E',
-                      backgroundColor: 'rgba(66, 82, 110, 0.04)'
-                    }
-                  }}
-                >
-                  Import Telemetry
-                  <input
-                    type="file"
-                    hidden
-                    accept=".xlsx,.xls"
-                    onChange={handleImportTelemetry}
-                  />
-                </Button>
-              </Tooltip>
               <Tooltip title="Re-evaluate all tasks based on telemetry criteria">
                 <Button
                   variant="outlined"

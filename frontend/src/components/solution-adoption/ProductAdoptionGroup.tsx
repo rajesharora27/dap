@@ -38,6 +38,8 @@ import {
   Link as LinkIcon,
   Description as DescriptionIcon,
   VideoLibrary as VideoIcon,
+  Download,
+  Upload,
 } from '@mui/icons-material';
 
 interface StatusDialogState {
@@ -97,13 +99,17 @@ interface ProductAdoptionGroupProps {
   }>;
   onUpdateTaskStatus?: (taskId: string, newStatus: string, notes?: string) => void;
   onViewProductPlan?: (productAdoptionPlanId: string) => void;
+  onExportTelemetry?: (adoptionPlanId: string) => void;
+  onImportTelemetry?: (adoptionPlanId: string, file: File) => void;
 }
 
 export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
   product,
   tasks,
   onUpdateTaskStatus,
-  onViewProductPlan
+  onViewProductPlan,
+  onExportTelemetry,
+  onImportTelemetry
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
@@ -270,6 +276,48 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
                 color={getStatusColor(calculatedStatus) as any}
                 size="small"
               />
+              
+              {/* Telemetry Export/Import Buttons */}
+              {product.productAdoptionPlanId && (
+                <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }} onClick={(e) => e.stopPropagation()}>
+                  <Tooltip title="Export Telemetry Template">
+                    <IconButton
+                      size="small"
+                      onClick={() => onExportTelemetry?.(product.productAdoptionPlanId!)}
+                      sx={{ 
+                        color: '#42526E',
+                        '&:hover': { backgroundColor: 'rgba(0, 137, 123, 0.1)' }
+                      }}
+                    >
+                      <Download fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="Import Telemetry Data">
+                    <IconButton
+                      size="small"
+                      component="label"
+                      sx={{ 
+                        color: '#42526E',
+                        '&:hover': { backgroundColor: 'rgba(0, 137, 123, 0.1)' }
+                      }}
+                    >
+                      <Upload fontSize="small" />
+                      <input
+                        type="file"
+                        hidden
+                        accept=".xlsx,.xls"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && product.productAdoptionPlanId) {
+                            onImportTelemetry?.(product.productAdoptionPlanId, file);
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )}
             </Box>
           </Box>
         </Box>

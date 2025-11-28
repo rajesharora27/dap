@@ -33,6 +33,8 @@ import {
   HourglassEmpty,
   NotInterested,
   Error as ErrorIcon,
+  Download,
+  Upload,
 } from '@mui/icons-material';
 
 interface SolutionTasksGroupProps {
@@ -70,6 +72,8 @@ interface SolutionTasksGroupProps {
     }>;
   }>;
   onUpdateTaskStatus?: (taskId: string, newStatus: string, notes?: string) => void;
+  onExportTelemetry?: () => void;
+  onImportTelemetry?: (file: File) => void;
 }
 
 interface StatusDialogState {
@@ -84,7 +88,9 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
   totalTasks,
   completedTasks,
   tasks,
-  onUpdateTaskStatus
+  onUpdateTaskStatus,
+  onExportTelemetry,
+  onImportTelemetry
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
@@ -217,6 +223,46 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
               <Typography variant="body2" fontWeight="500" sx={{ color: '#7B1FA2' }}>
                 {completedTasks} of {totalTasks} tasks
               </Typography>
+              
+              {/* Telemetry Export/Import Buttons */}
+              <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }} onClick={(e) => e.stopPropagation()}>
+                <Tooltip title="Export Telemetry Template">
+                  <IconButton
+                    size="small"
+                    onClick={() => onExportTelemetry?.()}
+                    sx={{ 
+                      color: '#7B1FA2',
+                      '&:hover': { backgroundColor: 'rgba(123, 31, 162, 0.1)' }
+                    }}
+                  >
+                    <Download fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Import Telemetry Data">
+                  <IconButton
+                    size="small"
+                    component="label"
+                    sx={{ 
+                      color: '#7B1FA2',
+                      '&:hover': { backgroundColor: 'rgba(123, 31, 162, 0.1)' }
+                    }}
+                  >
+                    <Upload fontSize="small" />
+                    <input
+                      type="file"
+                      hidden
+                      accept=".xlsx,.xls"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          onImportTelemetry?.(file);
+                        }
+                        e.target.value = '';
+                      }}
+                    />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </Box>
           </Box>
         </Box>
