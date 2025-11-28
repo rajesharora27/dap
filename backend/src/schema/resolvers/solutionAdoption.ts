@@ -1880,22 +1880,43 @@ export const SolutionAdoptionMutationResolvers = {
     const wasPreviouslyDoneByTelemetry = task.status === 'COMPLETED' && task.statusUpdateSource === 'TELEMETRY';
     let newStatus = task.status;
     let shouldUpdate = false;
+    const allAttributes = task.telemetryAttributes.filter((a: any) => a.isActive);
+    let totalMetCount = 0;
+
+    // Count total met (including non-required)
+    for (const attr of allAttributes) {
+      if (attr.values[0]) {
+        const isMet = evaluateCriteria(attr.successCriteria, attr.values[0].value);
+        if (isMet) totalMetCount++;
+      }
+    }
 
     if (requiredAttributes.length > 0) {
+      // Has required attributes - evaluate based on those
       if (metRequiredCount === requiredAttributes.length) {
-        // All required telemetry criteria met
         if (task.status !== 'COMPLETED') {
           newStatus = 'COMPLETED';
           shouldUpdate = true;
         }
       } else if (wasPreviouslyDoneByTelemetry && (metRequiredCount < requiredAttributes.length || !hasAnyTelemetryData)) {
-        // Was previously COMPLETED by telemetry, but now either:
-        // - Telemetry doesn't meet criteria anymore, OR
-        // - Telemetry data is no longer available
         newStatus = 'NO_LONGER_USING';
         shouldUpdate = true;
       } else if (hasAnyTelemetryData && requiredWithDataCount > 0 && task.status === 'NOT_STARTED') {
-        // Has telemetry data but doesn't meet all criteria - task is in progress
+        newStatus = 'IN_PROGRESS';
+        shouldUpdate = true;
+      }
+    } else if (allAttributes.length > 0) {
+      // No required attributes, but has optional telemetry attributes
+      if (wasPreviouslyDoneByTelemetry && !hasAnyTelemetryData) {
+        newStatus = 'NO_LONGER_USING';
+        shouldUpdate = true;
+      } else if (wasPreviouslyDoneByTelemetry && totalMetCount === 0) {
+        newStatus = 'NO_LONGER_USING';
+        shouldUpdate = true;
+      } else if (hasAnyTelemetryData && totalMetCount > 0 && task.status !== 'COMPLETED') {
+        newStatus = 'COMPLETED';
+        shouldUpdate = true;
+      } else if (hasAnyTelemetryData && task.status === 'NOT_STARTED') {
         newStatus = 'IN_PROGRESS';
         shouldUpdate = true;
       }

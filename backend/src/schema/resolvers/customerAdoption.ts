@@ -1493,6 +1493,7 @@ export const CustomerAdoptionMutationResolvers = {
                                           task.statusUpdateSource === 'TELEMETRY';
 
     if (requiredAttributes.length > 0) {
+      // Has required attributes - evaluate based on those
       if (metRequiredCount === requiredAttributes.length) {
         // All required telemetry criteria met
         newStatus = 'DONE';
@@ -1507,6 +1508,21 @@ export const CustomerAdoptionMutationResolvers = {
       } else if (!hasAnyTelemetryData) {
         // No telemetry data at all - not started (unless manually set otherwise)
         newStatus = 'NOT_STARTED';
+      }
+    } else if (attributes.length > 0) {
+      // No required attributes, but has optional telemetry attributes
+      if (wasPreviouslyDoneByTelemetry && !hasAnyTelemetryData) {
+        // Was DONE by telemetry but telemetry data is no longer available
+        newStatus = 'NO_LONGER_USING' as CustomerTaskStatus;
+      } else if (wasPreviouslyDoneByTelemetry && metCount === 0) {
+        // Was DONE by telemetry but none of the criteria are met anymore
+        newStatus = 'NO_LONGER_USING' as CustomerTaskStatus;
+      } else if (hasAnyTelemetryData && metCount > 0) {
+        // Has telemetry data and some criteria are met
+        newStatus = 'DONE';
+      } else if (hasAnyTelemetryData) {
+        // Has telemetry data but criteria not met
+        newStatus = 'IN_PROGRESS';
       }
     }
 
