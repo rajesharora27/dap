@@ -213,6 +213,19 @@ export const CustomerAdoptionQueryResolvers = {
   },
 
   adoptionPlan: async (_: any, { id }: any, ctx: any) => {
+    // First, auto-evaluate all task telemetry to ensure statuses are current
+    // This handles cases where telemetry was removed/changed since last view
+    try {
+      await CustomerAdoptionMutationResolvers.evaluateAllTasksTelemetry(
+        _,
+        { adoptionPlanId: id },
+        ctx
+      );
+    } catch (evalError) {
+      // Log but don't fail the query if evaluation fails
+      console.error('Auto-evaluation failed:', evalError);
+    }
+
     const plan = await prisma.adoptionPlan.findUnique({
       where: { id },
       include: {
