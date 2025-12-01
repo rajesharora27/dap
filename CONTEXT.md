@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.1.0  
-**Last Updated:** November 30, 2025  
+**Version:** 2.1.1  
+**Last Updated:** December 1, 2025  
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -13,13 +13,13 @@
 3. [Core Domain Model](#core-domain-model)
 4. [Key Features](#key-features)
 5. [Technology Stack](#technology-stack)
-6. [Deployment Configuration](#deployment-configuration)
-7. [Database Schema](#database-schema)
-8. [Authentication & Authorization](#authentication--authorization)
-9. [Recent Changes & Fixes](#recent-changes--fixes)
-10. [Known Issues & Limitations](#known-issues--limitations)
-11. [Development Workflow](#development-workflow)
-12. [Production Environment](#production-environment)
+6. [Authentication & Authorization (RBAC)](#authentication--authorization-rbac)
+7. [Deployment & Release Process](#deployment--release-process)
+8. [Database Schema](#database-schema)
+9. [Development Workflow](#development-workflow)
+10. [Production Environment](#production-environment)
+11. [Recent Changes & Fixes](#recent-changes--fixes)
+12. [Known Issues & Limitations](#known-issues--limitations)
 
 ---
 
@@ -108,7 +108,7 @@ DAP is a customer adoption tracking system where **Products** are defined with c
 - **Process Management:** PM2 (production)
 
 #### Infrastructure
-- **Web Server:** Apache httpd (production) or Nginx
+- **Web Server:** Apache httpd (development) or Nginx (production)
 - **Deployment:** SSH-based deployment scripts
 - **Database Backups:** Automated daily backups
 - **Monitoring:** PM2 monitoring, application logs
@@ -232,7 +232,7 @@ Product ──────────────────┐
 - Excel import/export for bulk updates
 - Historical value tracking
 
-### 4. Authentication & Authorization
+### 4. Authentication & Authorization (RBAC)
 - JWT-based authentication
 - Role-based access control (RBAC)
 - Per-resource permissions
@@ -247,6 +247,8 @@ Product ──────────────────┐
 - Configurable retention periods
 - Backup metadata tracking
 - UI-based backup management
+- **Passwords excluded from backups** (for security)
+- **Existing passwords preserved on restore**
 
 ### 6. Excel Import/Export
 - Multi-sheet workbooks
@@ -265,132 +267,273 @@ Product ──────────────────┐
 
 ---
 
-## Technology Stack Details
+## Authentication & Authorization (RBAC)
 
-### Frontend Dependencies (Key)
-```json
-{
-  "@apollo/client": "^3.11.11",
-  "@mui/material": "^6.3.0",
-  "react": "^19.0.0",
-  "react-router-dom": "^7.1.0",
-  "vite": "^7.1.2",
-  "@dnd-kit/core": "^6.3.1"
-}
+### Authentication Flow
+
+1. User submits email/password
+2. Backend validates credentials (bcrypt)
+3. JWT token issued (24h expiry)
+4. Token stored in localStorage
+5. Token sent in Authorization header
+6. Backend validates token on each request
+7. Session tracked in database
+
+### Authorization Model
+
+**Hierarchy:**
+```
+System Role (ADMIN > SME > CS/CSS > USER)
+  ↓
+User-Specific Permissions (resource-level)
+  ↓
+Role-Based Permissions (organizational)
 ```
 
-### Backend Dependencies (Key)
-```json
-{
-  "@apollo/server": "^4.11.3",
-  "@prisma/client": "6.14.0",
-  "express": "^5.0.1",
-  "bcryptjs": "^2.4.3",
-  "jsonwebtoken": "^9.0.2",
-  "exceljs": "^4.4.0",
-  "node-cron": "^3.0.3"
-}
+### Roles and Permissions
+
+#### System Roles
+
+**1. ADMIN (Administrator)**
+- **Full System Access**: Complete CRUD on all resources
+- **User Management**: Create, edit, delete users
+- **Role Management**: Assign/remove roles
+- **System Configuration**: Backup/restore, settings
+- **Database Access**: All operations
+- **Menu Access**: All menus visible
+
+**2. SME (Subject Matter Expert)**
+- **Products**: Full CRUD (CREATE, READ, UPDATE, DELETE)
+  - Can create/edit/delete products
+  - Can manage all product attributes
+  - Can configure telemetry
+- **Solutions**: Full CRUD
+  - Can create/edit/delete solutions
+  - Can bundle products into solutions
+- **Tasks**: Full CRUD including **deletion**
+  - Can create/edit/delete tasks
+  - Can queue tasks for deletion
+  - Can process deletion queue
+- **Customers**: No access
+- **Menu Access**: Products, Solutions
+- **Limited System Access**: No backup/restore, no user management
+
+**3. CS/CSS (Customer Success)**
+- **Customers**: Full CRUD
+  - Can create/edit/delete customers
+  - Can assign products to customers
+  - Can assign solutions to customers
+  - Can manage adoption plans
+- **Products**: READ only
+  - Can view products
+  - Can see products in dropdown when assigning
+  - **Cannot create/edit/delete products**
+- **Solutions**: READ only
+  - Can view solutions
+  - Can see solutions in dropdown when assigning
+  - **Cannot create/edit/delete solutions**
+- **Tasks**: READ only (within customer context)
+- **Menu Access**: Customers only
+- **No System Access**: No backup/restore, no user management
+
+**4. USER (Basic User)**
+- **Products**: READ only (if granted)
+- **Solutions**: READ only (if granted)
+- **Customers**: READ only (if granted)
+- **No create/edit/delete capabilities**
+- **Menu Access**: Based on permissions
+- **No System Access**
+
+### Resource Types
+- `PRODUCT` - Product management
+- `SOLUTION` - Solution management
+- `CUSTOMER` - Customer management
+- `SYSTEM` - System-wide operations
+
+### Permission Levels
+- `READ` - View only
+- `WRITE` - Edit existing
+- `ADMIN` - Full control (create, edit, delete)
+
+### Permission Hierarchy
+```
+ADMIN > WRITE > READ
 ```
 
-### Database
-- **PostgreSQL 16** with Prisma ORM
-- Connection pooling enabled
-- Migrations managed via Prisma
-- Schema: `backend/prisma/schema.prisma`
+### Default Admin
+- **Username**: `admin`
+- **Default Password**: `DAP123` (must change on first login)
+- **Role**: ADMIN
+- **Full System Access**: Yes
+
+### Test Users
+- **smeuser** / `smeuser` - SME role for testing
+- **cssuser** / `cssuser` - CSS role for testing
+
+### RBAC Implementation Details
+
+#### Backend Authorization
+**Files:**
+- `backend/src/lib/permissions.ts` - Core permission logic
+- `backend/src/lib/auth.ts` - Authentication helpers
+- `backend/src/schema/resolvers/index.ts` - GraphQL resolvers with permission checks
+
+**Key Functions:**
+- `checkUserPermission(userId, resourceType, resourceId, requiredLevel)` - Check if user has permission
+- `getUserAccessibleResources(userId, resourceType, minPermissionLevel)` - Get list of accessible resource IDs or null (all)
+- `requirePermission(ctx, resourceType, resourceId, level)` - Throw error if permission not met
+- `ensureRole(ctx, allowedRoles)` - Ensure user has one of the allowed roles
+
+**Permission Resolution Order:**
+1. Check if user is ADMIN (isAdmin === true) → Full access
+2. Check system role (SME, CS/CSS) → Role-specific access
+3. Check user-specific permissions → Resource-level access
+4. Check role-based permissions → Organizational access
+5. Deny if none match
+
+**Special Handling:**
+- SME users: Automatically get ADMIN access to PRODUCT and SOLUTION (all resources)
+- CS/CSS users: Automatically get ADMIN access to CUSTOMER (all resources) + READ access to PRODUCT and SOLUTION (all resources)
+- Admin users (isAdmin=true): Full access to everything
+- Fallback 'admin' user (in dev): Full access when no database user exists
+
+#### Frontend Authorization
+**Files:**
+- `frontend/src/components/MenuBar.tsx` - Role-based menu visibility
+- `frontend/src/components/dialogs/*` - Permission-aware dialogs
+- `frontend/src/lib/auth.tsx` - Auth context provider
+
+**Menu Visibility:**
+- Admin: Products, Solutions, Customers, Users & Roles, Backup & Restore
+- SME: Products, Solutions
+- CS/CSS: Customers
+- USER: Based on specific permissions
+
+#### Database Schema
+**Tables:**
+- `User` - User accounts (isAdmin, role fields)
+- `Role` - Role definitions (name, description)
+- `Permission` - Per-resource permissions (userId, resourceType, resourceId, level)
+- `UserRole` - User-role assignments (many-to-many)
+- `RolePermission` - Role-based permissions
 
 ---
 
-## Deployment Configuration
+## Deployment & Release Process
 
-### Development Environment (centos1 - 172.22.156.32)
+### Environments
 
-**Purpose:** Development and testing
+| Environment | Server | URL | Purpose |
+|------------|--------|-----|---------|
+| **DEV** | centos1.rajarora.csslab | http://dev.rajarora.csslab/dap/ | Development & Testing |
+| **PROD** | centos2.rajarora.csslab | https://myapps.cxsaaslab.com/dap/ | Production |
 
-**Access:**
-- Frontend: http://localhost:5173
-- Backend: http://localhost:4000/graphql
-- Database: localhost:5432
+### Standard Release Workflow
 
-**Services:**
-- Frontend: `npm run dev` (Vite dev server)
-- Backend: `npm start` (nodemon for hot reload)
-- Database: Podman container or systemd service
+#### 1. Development & Testing (DEV - centos1)
 
-**Web Server:** Apache at `/dap/` subpath
-- Config: `/etc/httpd/conf.d/dap.conf`
-- URLs:
-  - http://myapps.cxsaaslab.com/dap/
-  - http://myapps.rajarora.csslab/dap/
-  - http://centos1.rajarora.csslab/dap/
-  - https://myapps-8321890.ztna.sse.cisco.io/dap/
-  - http://172.22.156.32/dap/
-
-### Production Environment (centos2 - 172.22.156.33)
-
-**Purpose:** Production deployment
-
-**Access:**
-- Primary: http://prod.rajarora.csslab/dap/
-- Alternative: http://172.22.156.33/dap/
-- Alternative: http://centos2.rajarora.csslab/dap/
-
-**Services:**
-- Frontend: PM2 serve (port 3000)
-- Backend: PM2 cluster mode - 4 instances (port 4000)
-- Database: PostgreSQL 16 systemd service (port 5432)
-- Web Server: Nginx reverse proxy (ports 80/443)
-
-**Process Management:**
-- PM2 with ecosystem.config.js
-- Auto-restart on failure
-- Log rotation
-- Cluster mode for backend (load balancing)
-
-**Deployment:**
-- Script: `/data/dap/deploy/scripts/deploy-app.sh`
-- Quick helper: `/data/dap/deploy/scripts/prod.sh`
-- SSH user: `rajarora`
-- App user: `dap`
-- Directory: `/data/dap/app/`
-- Backups: `/data/dap/backups/`
-- Logs: `/data/dap/logs/`
-
-**Key Commands:**
 ```bash
-# Deploy to production
-/data/dap/deploy/scripts/deploy-app.sh
+cd /data/dap
 
-# Check status
-/data/dap/deploy/scripts/prod.sh status
+# Make changes
+# Test thoroughly
 
-# View logs
-/data/dap/deploy/scripts/prod.sh logs
+# Build and test
+cd backend && npm run build && cd ..
+cd frontend && npm run build && cd ..
 
-# Restart
-/data/dap/deploy/scripts/prod.sh restart
+# Restart services
+./dap restart
 
-# Rollback
-/data/dap/deploy/scripts/release.sh rollback
+# Test in browser: http://dev.rajarora.csslab/dap/
 ```
 
-### Environment Variables
+**Pre-Deployment Checklist:**
+- [ ] All code tested locally
+- [ ] No console errors (F12)
+- [ ] No backend errors in logs
+- [ ] All RBAC roles tested (admin, smeuser, cssuser)
+- [ ] UI looks correct
+- [ ] Debug logs removed
+- [ ] Documentation updated
 
-#### Backend (.env)
-```env
-NODE_ENV=production
-PORT=4000
-HOST=127.0.0.1
-DATABASE_URL=postgresql://user:pass@localhost:5432/dap?schema=public
-TRUST_PROXY=true
-ALLOWED_ORIGINS=http://prod.rajarora.csslab,http://172.22.156.33
-JWT_SECRET=<secure-random-secret>
-JWT_EXPIRES_IN=24h
+#### 2. Create Release Package
+
+```bash
+cd /data/dap
+
+# Run release creation script
+./deploy/create-release.sh
+
+# This creates:
+# - releases/release-YYYYMMDD-HHMMSS.tar.gz
+# - releases/release-YYYYMMDD-HHMMSS.manifest.txt
+# - releases/release-YYYYMMDD-HHMMSS.md (release notes)
 ```
 
-#### Frontend (vite.config.ts)
-```typescript
-base: env.VITE_BASE_PATH || '/'  // Set to '/dap/' for Apache deployment
+#### 3. Deploy to Production
+
+```bash
+# Deploy release to centos2
+./deploy/release-to-prod.sh releases/release-YYYYMMDD-HHMMSS.tar.gz
+
+# Script automatically:
+# - Creates backup of production database
+# - Transfers files
+# - Builds backend
+# - Updates database
+# - Restarts services
+# - Verifies deployment
 ```
+
+### Quick Patch Deployment
+
+For small bug fixes:
+
+```bash
+cd /data/dap
+
+# Use quick patch script (or create custom one based on APPLY_RBAC_PATCH.sh)
+./APPLY_RBAC_PATCH.sh
+
+# This:
+# - Transfers only changed files
+# - Builds and restarts
+# - Verifies deployment
+```
+
+### Deployment Scripts
+
+| Script | Purpose | Location |
+|--------|---------|----------|
+| `create-release.sh` | Create versioned release package | `/data/dap/deploy/` |
+| `release-to-prod.sh` | Deploy release to production | `/data/dap/deploy/` |
+| `APPLY_RBAC_PATCH.sh` | Quick patch for bug fixes | `/data/dap/` |
+
+### Rollback Procedure
+
+If deployment fails:
+
+```bash
+# On centos2
+cd /data/dap
+
+# Restore from backup (created before deployment)
+curl -X POST http://localhost:4000/graphql \
+  -d '{"query":"mutation { restoreBackup(filename: \"PRE_DEPLOYMENT_BACKUP.sql\") { success } }"}'
+
+# Or use GUI: Backup & Restore → Restore
+
+# Restart services
+./dap restart
+```
+
+### Deployment Documentation
+
+- **Complete Process**: `deploy/RELEASE_PROCESS.md`
+- **Quick Reference**: `deploy/QUICK_DEPLOY_GUIDE.md`
+- **Testing Checklist**: `deploy/testing-checklist.md`
+- **Deployment Index**: `DEPLOYMENT_INDEX.md`
 
 ---
 
@@ -453,145 +596,6 @@ npx prisma db push
 
 ---
 
-## Authentication & Authorization
-
-### Authentication Flow
-
-1. User submits email/password
-2. Backend validates credentials (bcrypt)
-3. JWT token issued (24h expiry)
-4. Token stored in localStorage
-5. Token sent in Authorization header
-6. Backend validates token on each request
-7. Session tracked in database
-
-### Authorization Model
-
-**Hierarchy:**
-```
-System Role (ADMIN > SME > CS > USER)
-  ↓
-User-Specific Permissions (resource-level)
-  ↓
-Role-Based Permissions (organizational)
-```
-
-**Resource Types:**
-- PRODUCT
-- SOLUTION
-- CUSTOMER
-- SYSTEM
-
-**Permission Levels:**
-- READ - View only
-- WRITE - Edit
-- ADMIN - Full control
-
-### Default Admin
-- Username: `admin`
-- Default Password: `DAP123` (must change on first login)
-- Role: ADMIN
-- Full system access
-
----
-
-## Recent Changes & Fixes
-
-### Version 2.1.0 (November 30, 2025)
-
-#### Telemetry Deletion Fix
-**Issue:** Deleting telemetry attributes from tasks did not persist in database  
-**Resolution:** Verified atomic "delete all + create new" pattern working correctly  
-**Files:**
-- `frontend/src/components/telemetry/TelemetryConfiguration.tsx`
-- `frontend/src/components/dialogs/TaskDialog.tsx`
-- `backend/src/schema/resolvers/index.ts`
-
-#### Auto-Backup Feature
-**Added:** Daily automated backups with change detection  
-**Features:**
-- Scheduled daily at 1:00 AM
-- Only backs up if database changes detected
-- Configurable retention period (default: 7 days)
-- UI controls in Settings → Backup & Restore
-- Manual trigger available
-
-**Implementation:**
-- `backend/src/services/AutoBackupScheduler.ts`
-- `backend/src/services/BackupRestoreService.ts`
-- `frontend/src/components/BackupManagementPanel.tsx`
-
-#### Production Deployment
-**Status:** Deployed to centos2 (172.22.156.33)  
-**Timestamp:** November 30, 2025 at 19:02:20 EST  
-**Health:** All systems operational  
-**Access:** http://prod.rajarora.csslab/dap/
-
-### Previous Major Changes
-
-#### Authentication System Overhaul
-- JWT-based authentication
-- Session management
-- Per-resource permissions
-- Role-based access control
-- Password change enforcement
-
-#### Telemetry Success Criteria
-- AND/OR logic support
-- Complex criteria evaluation
-- Automatic task status updates
-- Manual override capability
-
-#### Customer Adoption Tracking
-- Weighted progress calculation
-- Task filtering by license/outcomes/releases
-- Adoption plan sync mechanism
-- Status update sources tracking
-
----
-
-## Known Issues & Limitations
-
-### Current Limitations
-
-1. **Single Tenant**
-   - Currently designed for single organization use
-   - No multi-tenancy support
-
-2. **Telemetry Integration**
-   - Manual telemetry value entry
-   - No automated API integration yet
-   - Excel import as workaround
-
-3. **Reporting**
-   - Limited built-in reporting
-   - Data accessible via GraphQL
-
-4. **Mobile UI**
-   - Desktop-first design
-   - Mobile experience not optimized
-
-5. **Real-time Updates**
-   - No WebSocket-based live updates
-   - Requires manual refresh
-
-### Known Technical Debt
-
-1. **Large Bundle Size**
-   - Frontend bundle > 2MB
-   - No code splitting implemented
-   - Performance impact on slow connections
-
-2. **Type Safety**
-   - Some `any` types in resolvers
-   - GraphQL type generation could be improved
-
-3. **Test Coverage**
-   - Limited automated tests
-   - Manual testing primary method
-
----
-
 ## Development Workflow
 
 ### Local Development Setup
@@ -645,31 +649,15 @@ npm run dev
 
 ### Testing
 
-```bash
-# Manual testing checklist:
-1. Login/logout
-2. Create/edit/delete products
-3. Create adoption plans
-4. Update task statuses
-5. Configure telemetry
-6. Test backups
-7. Check permissions
-```
-
-### Code Quality
-
-```bash
-# Backend linting
-cd backend
-npm run lint
-
-# Frontend linting
-cd frontend
-npm run lint
-
-# TypeScript compilation check
-npm run build
-```
+**Manual Testing Checklist:**
+1. Login/logout with different roles
+2. Create/edit/delete products (Admin/SME)
+3. Create/edit/delete customers (Admin/CSS)
+4. Assign products to customers (Admin/CSS)
+5. Update task statuses
+6. Configure telemetry
+7. Test backups
+8. Check permissions for each role
 
 ---
 
@@ -686,59 +674,55 @@ npm run build
 ### Deployment Architecture
 
 ```
-Internet → Nginx (80/443)
+Internet → Apache (80/443)
             ↓
-       /dap/ → Frontend (PM2: port 3000)
-       /dap/graphql → Backend (PM2 cluster: port 4000)
-       /dap/api → Backend
+       /dap/ → Frontend (Static files)
+       /dap/graphql → Backend (Node.js: port 4000)
             ↓
        PostgreSQL (localhost:5432)
 ```
 
 ### Service Configuration
 
-**Nginx Config:** `/etc/nginx/conf.d/dap.conf`
-- Reverse proxy to frontend/backend
-- Rate limiting enabled
-- Gzip compression
+**Apache Config:** `/etc/httpd/conf.d/dap.conf`
+- Reverse proxy to backend
+- Static file serving
+- Cache-Control headers for no-cache
 - Security headers
-- WebSocket support
 
-**PM2 Ecosystem:** `/data/dap/app/ecosystem.config.js`
-- Backend: cluster mode, 4 instances
-- Frontend: fork mode, 1 instance
-- Auto-restart enabled
-- Log rotation configured
-- Memory limits set
+**Backend:** Node.js with Express
+- Port: 4000 (localhost only)
+- Process management: systemd or PM2
+- Hot reload disabled in production
 
 **Database:** PostgreSQL 16
-- Service: `postgresql-16.service`
-- Data: `/var/lib/pgsql/16/data`
-- Backups: `/data/dap/backups`
+- Service: `postgresql.service`
+- Port: 5432 (localhost only)
 - Daily automated backups
 
 ### Monitoring & Logs
 
 **Application Logs:**
-- Backend: `/data/dap/logs/backend.log`
-- Frontend: `/data/dap/logs/frontend.log`
-- PM2 logs: `sudo -u dap pm2 logs`
+- Backend: `/data/dap/backend.log`
+- Frontend: Browser console (in production)
 
 **System Logs:**
-- Nginx access: `/var/log/nginx/access.log`
-- Nginx error: `/var/log/nginx/error.log`
-- PostgreSQL: `/var/lib/pgsql/16/data/log/`
+- Apache access: `/var/log/httpd/access_log`
+- Apache error: `/var/log/httpd/error_log`
+- PostgreSQL: `/var/lib/pgsql/data/log/`
 
 **Monitoring:**
 ```bash
-# PM2 dashboard
-sudo -u dap pm2 monit
+# Check backend
+curl http://localhost:4000/graphql -X POST \
+  -d '{"query":"{ __typename }"}'
 
-# System resources
-htop
+# Check frontend
+curl http://localhost/dap/ | grep index-
 
-# Database connections
-sudo -u dap psql -U dap -h localhost -d dap -c "SELECT count(*) FROM pg_stat_activity;"
+# View logs
+tail -f /data/dap/backend.log
+sudo tail -f /var/log/httpd/error_log
 ```
 
 ### Security
@@ -750,38 +734,130 @@ sudo -u dap psql -U dap -h localhost -d dap -c "SELECT count(*) FROM pg_stat_act
 - PostgreSQL (5432) - Localhost only
 - Backend (4000) - Localhost only
 
-**SELinux:** Enforcing mode
-
-**Fail2Ban:**
-- SSH brute force protection
-- Automatic IP banning
-- Email alerts configured
-
 **SSL/TLS:**
 - Handled by ZTNA proxy (development)
 - Can be configured with Let's Encrypt (production)
 
-### Backup Strategy
-
-**Automated:**
-- Daily backup at 1:00 AM (via app)
-- Only if database changes detected
+**Backup Strategy:**
+- Daily automated backups at 1:00 AM
 - 7-day retention by default
-- Configurable via UI
+- Passwords excluded from backup files
+- Existing passwords preserved on restore
+- Manual backups before deployments
 
-**Manual:**
-```bash
-# Create backup
-/data/dap/deploy/scripts/prod.sh backup
+---
 
-# Restore backup
-/data/dap/deploy/scripts/release.sh db-restore
-```
+## Recent Changes & Fixes
 
-**Deployment Backups:**
-- Created before each deployment
-- Located: `/data/dap/backups/deploy_<timestamp>/`
-- Used for rollback if needed
+### Version 2.1.1 (December 1, 2025)
+
+#### RBAC Bug Fixes
+
+**Issue 1: CSS Users Cannot See Products/Solutions in Dropdowns**
+- **Severity**: High
+- **Root Cause**: Missing READ permissions in database for CSS role + frontend rendering issues
+- **Fix**: 
+  - Updated database permissions for CSS role (READ access to PRODUCT and SOLUTION)
+  - Fixed backend `getUserAccessibleResources` to return null (all access) for CSS users
+  - Fixed frontend dialog layout to ensure dropdowns render properly
+  - Fixed authentication context to include `userId` field
+- **Files Changed**:
+  - `backend/src/lib/auth.ts` - Added userId to context
+  - `backend/src/lib/permissions.ts` - Fixed fallback admin handling
+  - `frontend/src/components/dialogs/AssignProductDialog.tsx` - Fixed dialog layout
+
+**Issue 2: SME Users Cannot Delete Tasks**
+- **Severity**: Medium
+- **Root Cause**: Task deletion mutations only allowed ADMIN role
+- **Fix**: Added SME to allowed roles for `queueTaskSoftDelete` and `processDeletionQueue` mutations
+- **Files Changed**: `backend/src/schema/resolvers/index.ts`
+
+**Issue 3: Dialog Buttons Covered by Dropdowns**
+- **Severity**: Medium
+- **Root Cause**: Material-UI dropdown menu overlapping dialog buttons
+- **Fix**: 
+  - Implemented sticky DialogActions layout
+  - Added proper overflow handling
+  - Set max dialog height to 90vh with scrolling
+- **Files Changed**: 
+  - `frontend/src/components/dialogs/AssignProductDialog.tsx`
+  - `frontend/src/components/dialogs/AssignSolutionDialog.tsx`
+
+**Issue 4: Debug Console Logs in Production**
+- **Severity**: Low
+- **Fix**: Removed all debug console.logs from backend and frontend
+- **Files Changed**: Multiple resolver and component files
+
+#### Standard Release Process Created
+
+**New Documentation:**
+- `deploy/RELEASE_PROCESS.md` - Complete release workflow
+- `deploy/QUICK_DEPLOY_GUIDE.md` - Quick reference
+- `deploy/testing-checklist.md` - Pre-deployment testing
+- `DEPLOYMENT_INDEX.md` - Master deployment navigation
+
+**New Scripts:**
+- `deploy/create-release.sh` - Create versioned release packages
+- `deploy/release-to-prod.sh` - Deploy releases to production
+- `APPLY_RBAC_PATCH.sh` - Quick patch deployment
+
+**Process Benefits:**
+- Versioned releases with audit trail
+- Automated deployment to production
+- Pre-deployment testing checklist
+- Automatic backup before deployment
+- Rollback capability
+
+### Version 2.1.0 (November 30, 2025)
+
+#### Auto-Backup Feature
+- Daily automated backups at 1:00 AM
+- Change detection (only backup if changed)
+- Configurable retention period
+- **Passwords excluded from backups**
+- **Existing passwords preserved on restore**
+
+#### Telemetry Deletion Fix
+- Fixed telemetry attribute deletion not persisting
+- Verified atomic "delete all + create new" pattern
+
+---
+
+## Known Issues & Limitations
+
+### Current Limitations
+
+1. **Single Tenant**
+   - Currently designed for single organization use
+   - No multi-tenancy support
+
+2. **Telemetry Integration**
+   - Manual telemetry value entry
+   - No automated API integration yet
+   - Excel import as workaround
+
+3. **Reporting**
+   - Limited built-in reporting
+   - Data accessible via GraphQL
+
+4. **Mobile UI**
+   - Desktop-first design
+   - Mobile experience not optimized
+
+5. **Real-time Updates**
+   - No WebSocket-based live updates
+   - Requires manual refresh
+
+### Known Technical Debt
+
+1. **Large Bundle Size**
+   - Frontend bundle > 2MB
+   - No code splitting implemented
+   - Performance impact on slow connections
+
+2. **Test Coverage**
+   - Limited automated tests
+   - Manual testing primary method
 
 ---
 
@@ -794,6 +870,8 @@ sudo -u dap psql -U dap -h localhost -d dap -c "SELECT count(*) FROM pg_stat_act
 │   │   ├── schema/            # GraphQL schema and resolvers
 │   │   ├── services/          # Business logic services
 │   │   ├── lib/               # Utilities and helpers
+│   │   │   ├── auth.ts        # Authentication helpers
+│   │   │   └── permissions.ts # RBAC permission logic
 │   │   └── server.ts          # Main server file
 │   ├── prisma/
 │   │   ├── schema.prisma      # Database schema
@@ -804,6 +882,8 @@ sudo -u dap psql -U dap -h localhost -d dap -c "SELECT count(*) FROM pg_stat_act
 ├── frontend/                   # Frontend React application
 │   ├── src/
 │   │   ├── components/        # React components
+│   │   │   ├── dialogs/       # Dialog components
+│   │   │   └── MenuBar.tsx    # Role-based menu
 │   │   ├── pages/             # Page components
 │   │   ├── graphql/           # GraphQL queries/mutations
 │   │   └── App.tsx            # Main app component
@@ -811,29 +891,25 @@ sudo -u dap psql -U dap -h localhost -d dap -c "SELECT count(*) FROM pg_stat_act
 │   └── package.json
 │
 ├── deploy/                     # Production deployment
-│   ├── scripts/
-│   │   ├── deploy-app.sh      # Main deployment script
-│   │   ├── prod.sh            # Quick production helper
-│   │   └── release.sh         # Release management
-│   ├── config/
-│   │   └── production.env     # Production environment template
-│   └── README.md
-│
-├── config/                     # Configuration files
-│   ├── apache-dap-subpath.conf # Apache config (development)
-│   └── backend-env-apache.txt  # Backend env template
+│   ├── create-release.sh      # Create release package
+│   ├── release-to-prod.sh     # Deploy to production
+│   ├── RELEASE_PROCESS.md     # Complete workflow
+│   ├── QUICK_DEPLOY_GUIDE.md  # Quick reference
+│   └── testing-checklist.md   # Pre-deploy tests
 │
 ├── docs/                       # Technical documentation
-│   ├── ARCHITECTURE.md
-│   ├── FEATURES.md
-│   ├── TECHNICAL-DOCUMENTATION.md
-│   └── [various fix/feature docs]
+│   ├── ARCHITECTURE.md        # System architecture
+│   ├── FEATURES.md            # Feature documentation
+│   └── [various docs]         # Implementation guides
+│
+├── scripts/                    # Utility scripts
+│   ├── fix-rbac-permissions.js    # Fix database permissions
+│   └── test-with-real-user.js     # RBAC testing
 │
 ├── CONTEXT.md                  # This file
 ├── README.md                   # Main readme
-├── QUICK_START.md              # Quick start guide
-├── DEPLOYMENT_GUIDE.md         # Comprehensive deployment
-└── PRODUCTION_DEPLOYMENT_SUMMARY.md # Latest deployment info
+├── CHANGELOG.md                # Version history
+└── DEPLOYMENT_INDEX.md         # Deployment navigation
 ```
 
 ---
@@ -847,7 +923,7 @@ sudo -u dap psql -U dap -h localhost -d dap -c "SELECT count(*) FROM pg_stat_act
 cd /data/dap
 ./dap start          # Start all services
 ./dap status         # Check status
-./dap clean-restart  # Fresh restart with sample data
+./dap restart        # Restart services
 
 # Database
 cd /data/dap/backend
@@ -859,52 +935,31 @@ npm run seed         # Add sample data
 ### Production Deployment
 
 ```bash
-# Full deployment to production
-/data/dap/deploy/scripts/deploy-app.sh
+# Standard release
+cd /data/dap
+./deploy/create-release.sh
+./deploy/release-to-prod.sh releases/release-*.tar.gz
 
-# Production management
-/data/dap/deploy/scripts/prod.sh status
-/data/dap/deploy/scripts/prod.sh logs
-/data/dap/deploy/scripts/prod.sh restart
-/data/dap/deploy/scripts/prod.sh health
+# Quick patch
+./APPLY_RBAC_PATCH.sh
 
-# Rollback if needed
-/data/dap/deploy/scripts/release.sh rollback
+# Monitoring
+tail -f /data/dap/backend.log
+sudo tail -f /var/log/httpd/error_log
 ```
 
-### Useful GraphQL Queries
+### Testing RBAC
 
-```graphql
-# Get all products
-query {
-  products {
-    id
-    name
-    tasks {
-      id
-      name
-      telemetryAttributes {
-        id
-        name
-        successCriteria
-      }
-    }
-  }
-}
+```bash
+# Test with different users
+# Admin: admin / admin
+# SME: smeuser / smeuser
+# CSS: cssuser / cssuser
 
-# Get customer adoption plan
-query {
-  adoptionPlan(id: "plan-id") {
-    progressPercentage
-    tasks {
-      name
-      status
-      telemetryAttributes {
-        isMet
-      }
-    }
-  }
-}
+# Verify permissions:
+# - Admin: Full access to all menus
+# - SME: Products, Solutions (full CRUD including task deletion)
+# - CSS: Customers (full CRUD), Products/Solutions (view only in dropdowns)
 ```
 
 ---
@@ -918,76 +973,73 @@ query {
 3. **Test in development** before deploying to production
 4. **Create backups** before major changes
 5. **Update documentation** for new features
+6. **Follow RBAC rules** when implementing features
 
 ### Common Tasks
 
 **Adding a new feature:**
 1. Update database schema (if needed)
 2. Create/update GraphQL schema
-3. Implement resolvers (backend)
-4. Create UI components (frontend)
-5. Test thoroughly
+3. Implement resolvers with permission checks
+4. Create UI components with role-based visibility
+5. Test with all user roles
 6. Update documentation
-7. Deploy to production
+7. Deploy via standard release process
 
 **Fixing a bug:**
 1. Reproduce the issue
 2. Identify root cause
 3. Implement fix
-4. Test fix thoroughly
-5. Document the fix
-6. Deploy to production
-7. Update this CONTEXT.md
+4. Test fix with all affected roles
+5. Document the fix in CHANGELOG.md
+6. Deploy via quick patch or standard release
 
 **Deploying to production:**
-1. Ensure all changes committed
-2. Test in development
-3. Run deployment script
+1. Test in development
+2. Create release package (./deploy/create-release.sh)
+3. Deploy (./deploy/release-to-prod.sh)
 4. Monitor logs
-5. Verify health checks
-6. Update PRODUCTION_DEPLOYMENT_SUMMARY.md
+5. Verify all roles work correctly
+6. Update CONTEXT.md if needed
 
 ### Critical Paths
 
 **Authentication Flow:**
 `frontend/src/lib/auth.tsx` → `backend/src/lib/auth.ts` → JWT validation
 
+**Permission Check:**
+`backend/src/lib/permissions.ts::checkUserPermission` → Database lookup → Role/permission check
+
 **Task Status Update:**
 `frontend/src/components/CustomerAdoptionPanelV4.tsx` → `backend/src/schema/resolvers/customerAdoption.ts` → Database
 
-**Telemetry Evaluation:**
-`backend/src/services/telemetry/evaluationEngine.ts` → Success criteria check → Auto-status update
-
-**Adoption Plan Creation:**
-`backend/src/schema/resolvers/customerAdoption.ts::createAdoptionPlan` → Snapshot tasks → Apply filters
+**Menu Visibility:**
+`frontend/src/components/MenuBar.tsx` → User role check → Conditional rendering
 
 ---
 
 ## Support & Resources
 
 ### Documentation
-- **Main README:** `/data/dap/README.md`
-- **This Context:** `/data/dap/CONTEXT.md`
-- **Architecture:** `/data/dap/docs/ARCHITECTURE.md`
-- **Features:** `/data/dap/docs/FEATURES.md`
-- **Deployment:** `/data/dap/deploy/README.md`
+- **This Context**: `/data/dap/CONTEXT.md`
+- **Architecture**: `/data/dap/docs/ARCHITECTURE.md`
+- **Deployment**: `/data/dap/deploy/RELEASE_PROCESS.md`
+- **Password Security**: `/data/dap/PASSWORD_SECURITY_BACKUPS.md`
 
 ### Access
-- **Development:** http://myapps.cxsaaslab.com/dap/
-- **Production:** http://prod.rajarora.csslab/dap/
-- **GraphQL Playground:** http://localhost:4000/graphql (dev)
+- **DEV**: http://dev.rajarora.csslab/dap/
+- **PROD**: https://myapps.cxsaaslab.com/dap/
+- **GraphQL Playground**: http://localhost:4000/graphql (dev only)
 
 ### Key People
-- **Developer:** AI Assistant + Human Operator
-- **SSH User:** rajarora
-- **App User:** dap (production)
+- **Developer**: AI Assistant + Human Operator
+- **SSH User**: rajarora
+- **App User**: dap (production)
 
 ---
 
-**Last Updated:** November 30, 2025  
-**Version:** 2.1.0  
+**Last Updated:** December 1, 2025  
+**Version:** 2.1.1  
 **Status:** Production Ready
 
 *This document should be updated whenever significant changes are made to the application.*
-
-

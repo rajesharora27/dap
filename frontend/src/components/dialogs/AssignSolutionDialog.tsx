@@ -22,7 +22,8 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Chip
+  Chip,
+  Autocomplete
 } from '@mui/material';
 import { gql, useMutation, useQuery } from '@apollo/client';
 import { ExpandMore } from '@mui/icons-material';
@@ -265,21 +266,43 @@ export const AssignSolutionDialog: React.FC<Props> = ({
           )}
 
           {/* Solution Selector */}
-          <FormControl fullWidth required>
-            <InputLabel>Solution</InputLabel>
-            <Select
-              value={selectedSolutionId}
-              onChange={(e) => setSelectedSolutionId(e.target.value)}
-              label="Solution"
-              disabled={solutionsLoading}
-            >
-              {solutions.map((solution: any) => (
-                <MenuItem key={solution.id} value={solution.id}>
-                  {solution.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Autocomplete
+            fullWidth
+            options={solutions}
+            getOptionLabel={(option: any) => option.name || ''}
+            value={solutions.find((s: any) => s.id === selectedSolutionId) || null}
+            onChange={(event, newValue) => {
+              console.log('✅ Solution selected:', newValue);
+              setSelectedSolutionId(newValue?.id || '');
+            }}
+            loading={solutionsLoading}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Solution"
+                placeholder="Select a solution"
+                required
+              />
+            )}
+            renderOption={(props, option: any) => (
+              <li {...props} key={option.id}>
+                <Box>
+                  <Typography variant="body1">{option.name}</Typography>
+                  {option.description && (
+                    <Typography variant="caption" color="text.secondary">
+                      {option.description}
+                    </Typography>
+                  )}
+                </Box>
+              </li>
+            )}
+            isOptionEqualToValue={(option: any, value: any) => option.id === value.id}
+            ListboxProps={{
+              style: {
+                maxHeight: 300,
+              },
+            }}
+          />
 
           {/* Assignment Name */}
           {selectedSolution && (
