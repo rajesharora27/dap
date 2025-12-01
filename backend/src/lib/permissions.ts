@@ -52,8 +52,11 @@ export async function checkUserPermission(
     }
   }
 
-  if (user.role === 'CS') {
+  if (user.role === 'CS' || (user.role as string) === 'CSS') {
     if (resourceType === ResourceType.CUSTOMER) {
+      return true;
+    }
+    if ((resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) && requiredLevel === PermissionLevel.READ) {
       return true;
     }
   }
@@ -384,9 +387,12 @@ export async function getUserAccessibleResources(
     }
   }
 
-  if (user.role === 'CS') {
+  if (user.role === 'CS' || (user.role as string) === 'CSS') {
     if (resourceType === ResourceType.CUSTOMER) {
       return null; // CS has access to all Customers
+    }
+    if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
+      return null; // CS has access to all Products and Solutions (Read-only checked elsewhere)
     }
   }
 
@@ -765,9 +771,12 @@ export async function getUserPermissionLevel(
     }
   }
 
-  if (user.role === 'CS') {
+  if (user.role === 'CS' || (user.role as string) === 'CSS') {
     if (resourceType === ResourceType.CUSTOMER) {
       return PermissionLevel.ADMIN;
+    }
+    if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
+      return PermissionLevel.READ;
     }
   }
 

@@ -220,7 +220,7 @@ export const SolutionAdoptionQueryResolvers = {
 // Mutation Resolvers
 export const SolutionAdoptionMutationResolvers = {
   assignSolutionToCustomer: async (_: any, { input }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     const { customerId, solutionId, name, licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
 
@@ -348,7 +348,7 @@ export const SolutionAdoptionMutationResolvers = {
   },
 
   updateCustomerSolution: async (_: any, { id, input }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     const updateData: any = {};
     const oldName = input.name ? (await prisma.customerSolution.findUnique({ where: { id }, select: { name: true } }))?.name : null;
@@ -479,7 +479,7 @@ export const SolutionAdoptionMutationResolvers = {
   },
 
   removeSolutionFromCustomerEnhanced: async (_: any, { id }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     try {
       // Get the customer solution with its linked products
@@ -2060,7 +2060,7 @@ export const SolutionAdoptionMutationResolvers = {
 
   // Export telemetry template for solution adoption plan
   exportSolutionAdoptionPlanTelemetryTemplate: async (_: any, { solutionAdoptionPlanId }: { solutionAdoptionPlanId: string }, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     // Use the customer telemetry export service with solution-specific queries
     const { CustomerTelemetryExportService } = require('../../services/telemetry/CustomerTelemetryExportService');
@@ -2126,7 +2126,7 @@ export const SolutionAdoptionMutationResolvers = {
 
   // Import telemetry data for solution adoption plan
   importSolutionAdoptionPlanTelemetry: async (_: any, { solutionAdoptionPlanId, file }: { solutionAdoptionPlanId: string; file: any }, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     // Handle file upload - file is an Upload scalar
     const { createReadStream } = await file;
