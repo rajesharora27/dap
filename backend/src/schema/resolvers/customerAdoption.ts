@@ -415,7 +415,7 @@ export const CustomerAdoptionQueryResolvers = {
 
 export const CustomerAdoptionMutationResolvers = {
   assignProductToCustomer: async (_: any, { input }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     const { customerId, productId, name, licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
 
@@ -479,7 +479,7 @@ export const CustomerAdoptionMutationResolvers = {
   },
 
   updateCustomerProduct: async (_: any, { id, input }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     const { name, licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
 
@@ -706,7 +706,7 @@ export const CustomerAdoptionMutationResolvers = {
   },
 
   removeProductFromCustomerEnhanced: async (_: any, { id }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     const customerProduct = await prisma.customerProduct.findUnique({
       where: { id },
@@ -739,7 +739,7 @@ export const CustomerAdoptionMutationResolvers = {
   },
 
   createAdoptionPlan: async (_: any, { customerProductId }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     const customerProduct = await prisma.customerProduct.findUnique({
       where: { id: customerProductId },
@@ -885,7 +885,7 @@ export const CustomerAdoptionMutationResolvers = {
   },
 
   syncAdoptionPlan: async (_: any, { adoptionPlanId }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     console.log(`=== SYNC ADOPTION PLAN START: ${adoptionPlanId} ===`);
 
@@ -1131,7 +1131,7 @@ export const CustomerAdoptionMutationResolvers = {
   },
 
   updateCustomerTaskStatus: async (_: any, { input }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     const { customerTaskId, status, notes, updateSource } = input;
 
@@ -1240,7 +1240,7 @@ export const CustomerAdoptionMutationResolvers = {
   },
 
   bulkUpdateCustomerTaskStatus: async (_: any, { adoptionPlanId, taskIds, status, notes }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     // Fetch existing tasks to preserve their notes
     const existingTasks = await prisma.customerTask.findMany({
@@ -1517,7 +1517,7 @@ export const CustomerAdoptionMutationResolvers = {
   },
 
   exportCustomerAdoptionToExcel: async (_: any, { customerId, customerProductId }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     const ExcelJS = await import('exceljs');
 
@@ -1657,7 +1657,7 @@ export const CustomerAdoptionMutationResolvers = {
   },
 
   importCustomerAdoptionFromExcel: async (_: any, { content }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     const ExcelJS = await import('exceljs');
     const workbook = new ExcelJS.Workbook();
@@ -1848,7 +1848,7 @@ export const CustomerAdoptionMutationResolvers = {
 
   // Export telemetry template
   exportAdoptionPlanTelemetryTemplate: async (_: any, { adoptionPlanId }: { adoptionPlanId: string }, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     // Get metadata first
     const metadata = await CustomerTelemetryExportService.getTemplateMetadata(adoptionPlanId);
@@ -1889,7 +1889,7 @@ export const CustomerAdoptionMutationResolvers = {
 
   // Import telemetry data
   importAdoptionPlanTelemetry: async (_: any, { adoptionPlanId, file }: { adoptionPlanId: string; file: any }, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS']);
+    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
 
     // Handle file upload - file is an Upload scalar
     const { createReadStream } = await file;
