@@ -165,16 +165,22 @@ export class BackupRestoreService {
       // Get record counts before backup
       const recordCounts = await this.getRecordCounts();
 
-      // Create backup using pg_dump from the container
-      // Use podman/docker to execute pg_dump inside the PostgreSQL container
-      // IMPORTANT: We exclude the password column from User table for security
-      // This means restored backups will preserve existing user passwords
+      // Create backup
+      // In production, we use native pg_dump as the database is running as a system service
+      // In development, we use podman exec to run pg_dump inside the container
       const containerName = 'dap_db_1';
+      let command: string;
+      const env = { ...process.env, PGPASSWORD: dbConfig.password };
 
-      // First create a full schema dump
-      const command = `podman exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
+      if (process.env.NODE_ENV === 'production') {
+        // Native Postgres
+        command = `pg_dump -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
+      } else {
+        // Podman container
+        command = `podman exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
+      }
 
-      await execPromise(command, { maxBuffer: 50 * 1024 * 1024 }); // 50MB buffer
+      await execPromise(command, { maxBuffer: 50 * 1024 * 1024, env }); // 50MB buffer
 
       // Now post-process the dump to remove password column from User table
       console.log('Removing password hashes from backup for security...');
@@ -311,10 +317,11 @@ export class BackupRestoreService {
         // First, terminate other connections (except ours)
         console.log('Terminating active connections...');
         try {
-          await execPromise(
-            `podman exec ${containerName} psql -U ${dbConfig.user} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbConfig.database}' AND pid <> pg_backend_pid();"`,
-            { timeout: 5000 }
-          );
+          const terminateCmd = process.env.NODE_ENV === 'production'
+            ? `psql -U ${dbConfig.user} -h ${dbConfig.host} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbConfig.database}' AND pid <> pg_backend_pid();"`
+            : `podman exec ${containerName} psql -U ${dbConfig.user} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbConfig.database}' AND pid <> pg_backend_pid();"`;
+
+          await execPromise(terminateCmd, { timeout: 5000, env: { ...process.env, PGPASSWORD: dbConfig.password } });
         } catch {
           // Ignore errors - might not have permission
           console.log('Could not terminate connections (may lack permission), continuing...');
@@ -322,17 +329,19 @@ export class BackupRestoreService {
 
         // Drop the public schema (this drops all tables, functions, etc.)
         console.log('Dropping public schema...');
-        await execPromise(
-          `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "DROP SCHEMA IF EXISTS public CASCADE;"`,
-          { timeout: 15000 }
-        );
+        const dropCmd = process.env.NODE_ENV === 'production'
+          ? `psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -c "DROP SCHEMA IF EXISTS public CASCADE;"`
+          : `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "DROP SCHEMA IF EXISTS public CASCADE;"`;
+
+        await execPromise(dropCmd, { timeout: 15000, env: { ...process.env, PGPASSWORD: dbConfig.password } });
 
         // Recreate the public schema
         console.log('Recreating public schema...');
-        await execPromise(
-          `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO ${dbConfig.user}; GRANT ALL ON SCHEMA public TO public;"`,
-          { timeout: 10000 }
-        );
+        const createCmd = process.env.NODE_ENV === 'production'
+          ? `psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -c "CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO ${dbConfig.user}; GRANT ALL ON SCHEMA public TO public;"`
+          : `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO ${dbConfig.user}; GRANT ALL ON SCHEMA public TO public;"`;
+
+        await execPromise(createCmd, { timeout: 10000, env: { ...process.env, PGPASSWORD: dbConfig.password } });
 
         console.log('Database cleared successfully');
       } catch (err: any) {
@@ -347,7 +356,14 @@ export class BackupRestoreService {
 
       // Simpler restore command - pipe file directly into psql
       // Set statement timeout to prevent hanging
-      const restoreCommand = `cat "${filePath}" | podman exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -q 2>&1`;
+      let restoreCommand: string;
+      const env = { ...process.env, PGPASSWORD: dbConfig.password };
+
+      if (process.env.NODE_ENV === 'production') {
+        restoreCommand = `cat "${filePath}" | psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -q 2>&1`;
+      } else {
+        restoreCommand = `cat "${filePath}" | podman exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -q 2>&1`;
+      }
 
       console.log('Starting restore execution...');
       const startTime = Date.now();
@@ -355,7 +371,8 @@ export class BackupRestoreService {
       try {
         await execPromise(restoreCommand, {
           maxBuffer: 50 * 1024 * 1024,
-          timeout: 120000 // 120 second timeout (2 minutes)
+          timeout: 120000, // 120 second timeout (2 minutes)
+          env
         });
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
         console.log(`Restore command completed successfully in ${duration}s`);
