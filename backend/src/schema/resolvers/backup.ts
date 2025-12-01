@@ -27,9 +27,9 @@ export const BackupMutationResolvers = {
    */
   createBackup: async (_: any, __: any, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
-    
+
     const result = await BackupRestoreService.createBackup();
-    
+
     return result;
   },
 
@@ -38,9 +38,9 @@ export const BackupMutationResolvers = {
    */
   restoreBackup: async (_: any, { filename }: { filename: string }, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
-    
+
     const result = await BackupRestoreService.restoreBackup(filename);
-    
+
     return result;
   },
 
@@ -49,9 +49,9 @@ export const BackupMutationResolvers = {
    */
   deleteBackup: async (_: any, { filename }: { filename: string }, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
-    
+
     const result = await BackupRestoreService.deleteBackup(filename);
-    
+
     return result;
   },
 
@@ -60,12 +60,12 @@ export const BackupMutationResolvers = {
    */
   updateAutoBackupConfig: async (_: any, { input }: { input: any }, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
-    
+
     try {
       console.log('[AutoBackup] Updating config with input:', JSON.stringify(input));
       const scheduler = AutoBackupScheduler.getInstance();
       scheduler.updateConfig(input);
-      
+
       const config = scheduler.getConfig();
       console.log('[AutoBackup] Returning config:', JSON.stringify(config));
       return config;
@@ -80,22 +80,22 @@ export const BackupMutationResolvers = {
    */
   triggerAutoBackup: async (_: any, __: any, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
-    
+
     console.log('[AutoBackup] Manual trigger requested by admin');
-    
+
     try {
       // Create backup immediately
       const result = await BackupRestoreService.createBackup();
-      
+
       if (result.success) {
         // Update scheduler's checksum
         const scheduler = AutoBackupScheduler.getInstance();
         scheduler.updateConfig({
           lastBackupTime: new Date(),
-          lastChangeChecksum: result.metadata.recordCounts ? JSON.stringify(result.metadata.recordCounts) : undefined,
+          lastChangeChecksum: result.metadata?.recordCounts ? JSON.stringify(result.metadata.recordCounts) : undefined,
         });
       }
-      
+
       return result;
     } catch (error: any) {
       console.error('[AutoBackup] Error during manual trigger:', error);

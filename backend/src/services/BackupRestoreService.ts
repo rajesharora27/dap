@@ -34,7 +34,7 @@ export interface BackupResult {
   filePath: string;
   size: number;
   url: string;
-  metadata: BackupMetadata;
+  metadata?: BackupMetadata;
   message?: string;
   error?: string;
 }
@@ -255,7 +255,7 @@ export class BackupRestoreService {
         filePath: '',
         size: 0,
         url: '',
-        metadata: {} as BackupMetadata,
+        metadata: undefined,
         error: error.message || 'Backup creation failed',
       };
     }
