@@ -805,9 +805,19 @@ export const resolvers = {
       if (!user) throw new Error('INVALID_CREDENTIALS');
       const ok = await bcrypt.compare(password, user.password);
       if (!ok) throw new Error('INVALID_CREDENTIALS');
+
+      // Fetch user roles
+      const userRoles = await prisma.userRole.findMany({
+        where: { userId: user.id },
+        include: { role: true }
+      });
+      const roleNames = userRoles.map((ur: any) => ur.role?.name).filter(Boolean) as string[];
+      const roles = [user.role, ...roleNames];
+
       return jwt.sign({
         uid: user.id,
         role: user.role,
+        roles: roles,
         username: user.username,
         email: user.email,
         fullName: user.fullName,
@@ -829,9 +839,19 @@ export const resolvers = {
       if (!user) throw new Error('INVALID_CREDENTIALS');
       const ok = await bcrypt.compare(password, user.password);
       if (!ok) throw new Error('INVALID_CREDENTIALS');
+
+      // Fetch user roles
+      const userRoles = await prisma.userRole.findMany({
+        where: { userId: user.id },
+        include: { role: true }
+      });
+      const roleNames = userRoles.map((ur: any) => ur.role?.name).filter(Boolean) as string[];
+      const roles = [user.role, ...roleNames];
+
       return jwt.sign({
         uid: user.id,
         role: user.role,
+        roles: roles,
         username: user.username,
         email: user.email,
         fullName: user.fullName,
