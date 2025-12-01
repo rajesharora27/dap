@@ -45,14 +45,25 @@ export async function checkUserPermission(
     return true;
   }
 
+  // Fetch user roles to check for named roles acting as system roles
+  const userRolesForSystemCheck = await prisma.userRole.findMany({
+    where: { userId },
+    include: { role: true }
+  });
+  const roleNames = userRolesForSystemCheck.map((ur: any) => ur.role?.name).filter(Boolean) as string[];
+  const effectiveRoles = [user.role, ...roleNames];
+
+  const isSME = effectiveRoles.includes('SME');
+  const isCS = effectiveRoles.includes('CS') || effectiveRoles.includes('CSS');
+
   // Check System Roles
-  if (user.role === 'SME') {
+  if (isSME) {
     if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
       return true;
     }
   }
 
-  if (user.role === 'CS' || (user.role as string) === 'CSS') {
+  if (isCS) {
     if (resourceType === ResourceType.CUSTOMER) {
       return true;
     }
@@ -380,14 +391,25 @@ export async function getUserAccessibleResources(
     return null; // Admin has access to all resources
   }
 
+  // Fetch user roles to check for named roles acting as system roles
+  const userRolesList = await prisma.userRole.findMany({
+    where: { userId },
+    include: { role: true }
+  });
+  const roleNames = userRolesList.map((ur: any) => ur.role?.name).filter(Boolean) as string[];
+  const effectiveRoles = [user.role, ...roleNames];
+
+  const isSME = effectiveRoles.includes('SME');
+  const isCS = effectiveRoles.includes('CS') || effectiveRoles.includes('CSS');
+
   // Check System Roles
-  if (user.role === 'SME') {
+  if (isSME) {
     if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
       return null; // SME has access to all Products and Solutions
     }
   }
 
-  if (user.role === 'CS' || (user.role as string) === 'CSS') {
+  if (isCS) {
     if (resourceType === ResourceType.CUSTOMER) {
       return null; // CS has access to all Customers
     }
@@ -764,14 +786,25 @@ export async function getUserPermissionLevel(
     return PermissionLevel.ADMIN;
   }
 
+  // Fetch user roles to check for named roles acting as system roles
+  const userRolesForSystemCheck = await prisma.userRole.findMany({
+    where: { userId },
+    include: { role: true }
+  });
+  const roleNames = userRolesForSystemCheck.map((ur: any) => ur.role?.name).filter(Boolean) as string[];
+  const effectiveRoles = [user.role, ...roleNames];
+
+  const isSME = effectiveRoles.includes('SME');
+  const isCS = effectiveRoles.includes('CS') || effectiveRoles.includes('CSS');
+
   // Check System Roles
-  if (user.role === 'SME') {
+  if (isSME) {
     if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
       return PermissionLevel.ADMIN;
     }
   }
 
-  if (user.role === 'CS' || (user.role as string) === 'CSS') {
+  if (isCS) {
     if (resourceType === ResourceType.CUSTOMER) {
       return PermissionLevel.ADMIN;
     }

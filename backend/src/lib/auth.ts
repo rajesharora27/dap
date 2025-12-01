@@ -11,13 +11,16 @@ export function ensureRole(ctx: any, role: string | string[]) {
   }
 
   const userRole = ctx.user.role;
+  const userRoles = ctx.user.roles || [userRole];
 
   // ADMIN always has access
-  if (userRole === 'ADMIN') return;
+  if (userRole === 'ADMIN' || userRoles.includes('ADMIN')) return;
 
   const allowedRoles = Array.isArray(role) ? role : [role];
 
-  if (!allowedRoles.includes(userRole)) {
+  const hasRole = allowedRoles.some(r => userRoles.includes(r));
+
+  if (!hasRole) {
     throw new Error(`Access denied. Required role: ${allowedRoles.join(' or ')}`);
   }
 }

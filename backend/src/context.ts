@@ -47,7 +47,8 @@ export async function createContext({ req }: any): Promise<Context> {
         isAdmin: decoded.isAdmin || decoded.role === 'ADMIN',
         mustChangePassword: decoded.mustChangePassword,
         permissions: decoded.permissions,
-        role: decoded.role
+        role: decoded.role,
+        roles: decoded.roles || [decoded.role]
       };
     } catch (error) {
       // Token is invalid, user remains null
