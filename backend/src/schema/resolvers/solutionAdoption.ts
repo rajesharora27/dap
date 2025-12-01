@@ -220,7 +220,7 @@ export const SolutionAdoptionQueryResolvers = {
 // Mutation Resolvers
 export const SolutionAdoptionMutationResolvers = {
   assignSolutionToCustomer: async (_: any, { input }: any, ctx: any) => {
-    ensureRole(ctx, 'ADMIN');
+    ensureRole(ctx, ['ADMIN', 'CS']);
 
     const { customerId, solutionId, name, licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
 
@@ -348,7 +348,7 @@ export const SolutionAdoptionMutationResolvers = {
   },
 
   updateCustomerSolution: async (_: any, { id, input }: any, ctx: any) => {
-    ensureRole(ctx, 'ADMIN');
+    ensureRole(ctx, ['ADMIN', 'CS']);
 
     const updateData: any = {};
     const oldName = input.name ? (await prisma.customerSolution.findUnique({ where: { id }, select: { name: true } }))?.name : null;
@@ -479,7 +479,7 @@ export const SolutionAdoptionMutationResolvers = {
   },
 
   removeSolutionFromCustomerEnhanced: async (_: any, { id }: any, ctx: any) => {
-    ensureRole(ctx, 'ADMIN');
+    ensureRole(ctx, ['ADMIN', 'CS']);
 
     try {
       // Get the customer solution with its linked products
