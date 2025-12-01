@@ -72,7 +72,9 @@ export const LoginPage: React.FC = () => {
             username: payload.username || username,
             email: payload.email,
             fullName: payload.fullName,
-            isAdmin: payload.isAdmin || payload.role === 'ADMIN'
+            isAdmin: payload.isAdmin || payload.role === 'ADMIN',
+            role: payload.role,
+            roles: payload.roles || []
           });
         } catch (err) {
           setUser({ username });

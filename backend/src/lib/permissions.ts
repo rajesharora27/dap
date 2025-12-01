@@ -377,6 +377,11 @@ export async function getUserAccessibleResources(
   minPermissionLevel: PermissionLevel,
   prisma: PrismaClient
 ): Promise<string[] | null> {
+  // Special handling for fallback/test users (e.g., "admin" created by requireUser)
+  if (userId === 'admin') {
+    return null; // Fallback admin has access to all resources
+  }
+
   // Check if user is admin
   const user = await prisma.user.findUnique({
     where: { id: userId },

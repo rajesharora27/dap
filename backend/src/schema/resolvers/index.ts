@@ -589,7 +589,7 @@ export const resolvers = {
       requireUser(ctx);
 
       if (fallbackActive) return fallbackConnections.products();
-
+      
       // Get accessible product IDs for this user
       const accessibleIds = await getUserAccessibleResources(
         ctx.user.userId,
@@ -996,8 +996,6 @@ export const resolvers = {
     createSolution: async (_: any, { input }: any, ctx: any) => {
       requireUser(ctx);
 
-      console.log('🔍 [Backend] createSolution received input:', JSON.stringify(input));
-      console.log('🔍 [Backend] customAttrs in input:', JSON.stringify(input.customAttrs));
 
       if (fallbackActive) {
         const solution = fbCreateSolution(input);
@@ -2423,7 +2421,7 @@ export const resolvers = {
     deleteTelemetryValue: TelemetryMutationResolvers.deleteTelemetryValue,
 
     queueTaskSoftDelete: async (_: any, { id }: any, ctx: any) => {
-      ensureRole(ctx, 'ADMIN');
+      ensureRole(ctx, ['ADMIN', 'SME']);
       console.log(`Deleting task: ${id}`);
       try {
         if (fallbackActive) {
@@ -2440,7 +2438,7 @@ export const resolvers = {
       return true;
     },
     processDeletionQueue: async (_: any, { limit = 50 }: any, ctx: any) => {
-      ensureRole(ctx, 'ADMIN');
+      ensureRole(ctx, ['ADMIN', 'SME']);
 
       if (fallbackActive) {
         // In fallback mode, just return 0 as deletions are handled immediately

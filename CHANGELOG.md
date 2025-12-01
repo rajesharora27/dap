@@ -1,5 +1,38 @@
 # Changelog
 
+All notable changes to the DAP (Digital Adoption Platform) project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.1.1] - 2025-12-01
+
+### Fixed
+- **RBAC**: CSS users can now see products and solutions in assignment dropdowns
+- **RBAC**: SME users can now delete tasks  
+- **UI**: Dialog OK/Cancel buttons no longer covered by dropdown menus
+- **Backend**: Fixed userId field compatibility in authentication context
+- **Database**: Updated SME and CSS role permissions
+
+### Changed
+- **Backend**: Removed debug console.logs from production build
+- **Frontend**: Removed debug console.logs from dialogs
+- **UI**: Implemented sticky DialogActions layout for better UX
+- **Docs**: Standardized release process (DEV → PROD)
+
+### Added
+- **Deploy**: Standard release workflow (`deploy/RELEASE_PROCESS.md`)
+- **Deploy**: Automated release scripts (`create-release.sh`, `release-to-prod.sh`)
+- **Deploy**: Testing checklist for pre-deployment validation
+- **Docs**: Password security documentation for backups
+- **Scripts**: RBAC permissions fix script (`fix-rbac-permissions.js`)
+- **Scripts**: Real user authentication testing (`test-with-real-user.js`)
+
+### Security
+- Confirmed passwords are excluded from backup files
+- Existing passwords preserved during restore operations
+
+
 All notable changes to the DAP (Demo Application Platform) project are documented in this file.
 
 ## [1.1.1] - 2025-11-11

@@ -2852,14 +2852,8 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
         </MenuItem>
       </Menu>
 
-      {/* Dialogs */}
-      <AssignProductDialog
-        open={assignProductDialogOpen}
-        onClose={() => setAssignProductDialogOpen(false)}
-        customerId={selectedCustomerId || ''}
-        onAssigned={() => refetch()}
-      />
-
+      {/* Dialogs - Removed duplicate AssignProductDialog (was rendered twice, causing overlay issues) */}
+      
       {selectedCustomerProduct && (
         <EditEntitlementsDialog
           open={editEntitlementsDialogOpen}

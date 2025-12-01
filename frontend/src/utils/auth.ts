@@ -42,7 +42,7 @@ export function isTokenExpired(token: string): boolean {
     if (!payload || !payload.exp) {
       return true;
     }
-    
+
     // exp is in seconds, Date.now() is in milliseconds
     const currentTime = Date.now() / 1000;
     return payload.exp < currentTime;
@@ -58,13 +58,13 @@ export function isTokenValid(token: string | null): boolean {
   if (!token) {
     return false;
   }
-  
+
   // Check format
   const parts = token.split('.');
   if (parts.length !== 3) {
     return false;
   }
-  
+
   // Check expiration
   return !isTokenExpired(token);
 }
@@ -77,7 +77,7 @@ export function getUserFromToken(token: string): any | null {
   if (!payload) {
     return null;
   }
-  
+
   return {
     id: payload.uid,
     username: payload.username,

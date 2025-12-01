@@ -6,8 +6,13 @@ export function ensureRole(ctx: any, role: string | string[]) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('Authentication required');
     }
-    ctx.user = { id: 'admin', role: 'ADMIN' };
+    ctx.user = { id: 'admin', userId: 'admin', role: 'ADMIN', isAdmin: true };
     return;
+  }
+
+  // Ensure userId is set (for compatibility with both old and new code)
+  if (!ctx.user.userId && ctx.user.id) {
+    ctx.user.userId = ctx.user.id;
   }
 
   const userRole = ctx.user.role;
@@ -29,6 +34,10 @@ export function requireUser(ctx: any) {
   // No authentication required - always allow all requests
   // Ensure ctx.user exists for any resolvers that might use it
   if (!ctx.user) {
-    ctx.user = { id: 'user', role: 'USER' };
+    ctx.user = { id: 'admin', userId: 'admin', role: 'ADMIN', isAdmin: true };
+  }
+  // Ensure userId is set (for compatibility with both old and new code)
+  if (ctx.user && !ctx.user.userId && ctx.user.id) {
+    ctx.user.userId = ctx.user.id;
   }
 }

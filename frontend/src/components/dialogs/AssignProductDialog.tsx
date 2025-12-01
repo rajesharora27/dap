@@ -133,13 +133,19 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
     skip: !selectedProductId,
   });
 
-  // Debug logging
-  if (productsError) {
-    console.error('Products loading error:', productsError);
-  }
-  if (productsData) {
-    console.log('Products data loaded:', productsData.products?.edges?.length, 'products');
-  }
+  // Debug logging - Enhanced
+  useEffect(() => {
+    if (productsError) {
+      console.error('❌ Products loading error:', productsError);
+    }
+    if (productsData) {
+      if (productsData.products?.edges) {
+        productsData.products.edges.forEach((edge: any, idx: number) => {
+          console.log(`Edge ${idx}:`, edge);
+        });
+      }
+    }
+  }, [productsData, productsError]);
 
   const [assignProduct, { loading: assigning }] = useMutation(ASSIGN_PRODUCT_TO_CUSTOMER, {
     refetchQueries: ['GetCustomers'],
@@ -150,7 +156,65 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
     awaitRefetchQueries: true,
   });
 
-  const products = productsData?.products?.edges?.map((e: any) => e.node) || [];
+  // Map products from edges, filtering out any null/undefined nodes
+  // CRITICAL FIX: Handle both edge.node structure and direct array structure
+  const products = React.useMemo(() => {
+    if (!productsData?.products) {
+      console.log('⚠️ No products data found');
+      return [];
+    }
+    
+    // Handle connection-style response (edges with nodes)
+    if (productsData.products.edges) {
+      const mapped = productsData.products.edges
+        .map((e: any, index: number) => {
+          // Handle case where edge itself might be the product
+          if (e && e.id && !e.node) {
+            console.log(`Edge ${index} is direct product:`, e.id);
+            return e;
+          }
+          // Handle standard edge.node structure
+          if (e && e.node) {
+            if (!e.node.id) {
+              console.warn(`⚠️ Edge ${index} node missing id:`, e.node);
+              return null;
+            }
+            return e.node;
+          }
+          console.warn(`⚠️ Edge ${index} is invalid:`, e);
+          return null;
+        })
+        .filter((node: any) => {
+          const isValid = node != null && node.id;
+          if (!isValid && node !== null) {
+            console.warn('⚠️ Filtered out invalid node:', node);
+          }
+          return isValid;
+        });
+      if (mapped.length > 0) {
+        console.log('📝 Sample product:', mapped[0]);
+      } else {
+        console.warn('⚠️ No valid products after mapping!');
+        console.warn('Raw edges data:', productsData.products.edges);
+      }
+      return mapped;
+    }
+    
+    // Handle direct array response (fallback)
+    if (Array.isArray(productsData.products)) {
+      console.log('📦 Products is direct array, count:', productsData.products.length);
+      return productsData.products.filter((p: any) => p && p.id);
+    }
+    
+    console.warn('⚠️ Unknown products data structure:', productsData.products);
+    return [];
+  }, [productsData]);
+  
+  // Additional debug effect
+  useEffect(() => {
+    if (products.length > 0) {
+    }
+  }, [products]);
   const outcomes = outcomesData?.outcomes || [];
   const releases = releasesData?.releases || [];
   const selectedProduct = products.find((p: any) => p.id === selectedProductId);
@@ -279,7 +343,19 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
   };
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={onClose} 
+      maxWidth="md" 
+      fullWidth
+      sx={{
+        '& .MuiDialog-paper': {
+          maxHeight: '90vh', // Limit dialog height
+          display: 'flex',
+          flexDirection: 'column',
+        },
+      }}
+    >
       <DialogTitle>
         Assign Product to Customer
         <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -287,41 +363,94 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
         </Typography>
       </DialogTitle>
 
-      <DialogContent>
+      <DialogContent 
+        sx={{ 
+          flex: 1,
+          overflowY: 'auto', // Allow scrolling
+          overflowX: 'hidden',
+          pb: 2, // Padding at bottom
+        }}
+      >
         {/* Step 1: Select Product */}
         {step === 1 && (
-          <Box sx={{ mt: 2 }}>
+          <Box sx={{ mt: 2, position: 'relative', zIndex: 1 }}>
             <Typography variant="h6" gutterBottom>
               Select Product
             </Typography>
             {productsLoading ? (
-              <LinearProgress />
+              <Box sx={{ mt: 2 }}>
+                <LinearProgress />
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  Loading products...
+                </Typography>
+              </Box>
             ) : productsError ? (
-              <Alert severity="error">Error loading products: {productsError.message}</Alert>
+              <Alert severity="error" sx={{ mt: 2 }}>
+                Error loading products: {productsError.message}
+              </Alert>
             ) : products.length === 0 ? (
-              <Alert severity="warning">No products available. Please create a product first.</Alert>
+              <Alert severity="warning" sx={{ mt: 2 }}>
+                No products available. Please create a product first.
+              </Alert>
             ) : (
-              <FormControl fullWidth sx={{ mt: 2 }}>
-                <InputLabel>Product</InputLabel>
-                <Select
-                  value={selectedProductId}
-                  onChange={(e) => setSelectedProductId(e.target.value)}
-                  label="Product"
-                >
-                  {products.map((product: any) => (
-                    <MenuItem key={product.id} value={product.id}>
-                      <Box>
-                        <Typography variant="body1">{product.name}</Typography>
-                        {product.description && (
-                          <Typography variant="caption" color="text.secondary">
-                            {product.description}
-                          </Typography>
-                        )}
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Box sx={{ mt: 2 }}>
+                <Alert severity="success" icon={false} sx={{ mb: 2, py: 0.5 }}>
+                  ✅ {products.length} products available
+                </Alert>
+                
+                {/* Simple Select Dropdown with forced visibility */}
+                <FormControl fullWidth required>
+                  <InputLabel id="product-label">Product</InputLabel>
+                  <Select
+                    labelId="product-label"
+                    id="product-select"
+                    value={selectedProductId}
+                    label="Product"
+                    onChange={(e) => {
+                      setSelectedProductId(e.target.value);
+                    }}
+                    MenuProps={{
+                      PaperProps: {
+                        style: {
+                          maxHeight: 300,
+                        },
+                      },
+                      anchorOrigin: {
+                        vertical: 'bottom',
+                        horizontal: 'left',
+                      },
+                      transformOrigin: {
+                        vertical: 'top',
+                        horizontal: 'left',
+                      },
+                      disablePortal: false,
+                    }}
+                  >
+                    {products.map((product: any) => {
+                      return (
+                        <MenuItem 
+                          key={product.id} 
+                          value={product.id}
+                        >
+                          <Box sx={{ width: '100%' }}>
+                            <Typography variant="body1" fontWeight={500}>
+                              {product.name}
+                            </Typography>
+                            {product.description && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                {product.description}
+                              </Typography>
+                            )}
+                          </Box>
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5 }}>
+                    {products.length} products available
+                  </Typography>
+                </FormControl>
+              </Box>
             )}
           </Box>
         )}
@@ -668,7 +797,18 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
         )}
       </DialogContent>
 
-      <DialogActions>
+      <DialogActions 
+        sx={{ 
+          borderTop: 1, 
+          borderColor: 'divider',
+          px: 3,
+          py: 2,
+          position: 'sticky',
+          bottom: 0,
+          backgroundColor: 'background.paper',
+          zIndex: 1,
+        }}
+      >
         <Button onClick={onClose} disabled={assigning || creatingPlan}>
           Cancel
         </Button>

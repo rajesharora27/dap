@@ -269,7 +269,8 @@ export class BackupRestoreService {
 
   /**
    * Restore database from a backup file
-   * Note: Preserves existing user passwords for security
+   * Note: Automatically preserves existing user passwords
+   * Backup files created after this update do not contain passwords
    */
   static async restoreBackup(filename: string): Promise<RestoreResult> {
     try {
