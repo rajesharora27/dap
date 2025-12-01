@@ -28,11 +28,11 @@ export async function checkUserPermission(
   prisma: PrismaClient
 ): Promise<boolean> {
   // 1. Check if user is admin (bypass all checks)
-  const user = await prisma.user.findUnique({ 
+  const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { isAdmin: true, isActive: true }
+    select: { isAdmin: true, isActive: true, role: true }
   });
-  
+
   if (!user) {
     return false;
   }
@@ -43,6 +43,19 @@ export async function checkUserPermission(
 
   if (user.isAdmin) {
     return true;
+  }
+
+  // Check System Roles
+  if (user.role === 'SME') {
+    if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
+      return true;
+    }
+  }
+
+  if (user.role === 'CS') {
+    if (resourceType === ResourceType.CUSTOMER) {
+      return true;
+    }
   }
 
   // Track the highest permission level found from ANY source
@@ -104,7 +117,7 @@ export async function checkUserPermission(
 
   // 4. BIDIRECTIONAL PERMISSION FLOW: Check cross-resource permissions
   //    Products ↔ Solutions relationship
-  
+
   // If checking for PRODUCT access
   if (resourceType === ResourceType.PRODUCT) {
     // First check if user has "all solutions" permission → grants "all products" permission
@@ -115,11 +128,11 @@ export async function checkUserPermission(
         resourceId: null, // All solutions
       }
     });
-    
+
     if (allSolutionsPermission) {
       updateHighestPermission(allSolutionsPermission.permissionLevel);
     }
-    
+
     // Check role-based "all solutions" permission → grants "all products"
     const allUserRoles = await prisma.userRole.findMany({
       where: { userId },
@@ -131,18 +144,18 @@ export async function checkUserPermission(
         }
       }
     });
-    
+
     for (const userRole of allUserRoles) {
       if (userRole.role?.permissions) {
         for (const rolePerm of userRole.role.permissions) {
-          if (rolePerm.resourceType === ResourceType.SOLUTION && 
-              rolePerm.resourceId === null) {
+          if (rolePerm.resourceType === ResourceType.SOLUTION &&
+            rolePerm.resourceId === null) {
             updateHighestPermission(rolePerm.permissionLevel);
           }
         }
       }
     }
-    
+
     // If checking specific product, also check if user has access via specific solutions
     if (resourceId) {
       // Find solutions containing this product
@@ -150,7 +163,7 @@ export async function checkUserPermission(
         where: { productId: resourceId },
         select: { solutionId: true }
       });
-      
+
       for (const sp of solutionProducts) {
         // Check direct permission on solution
         const solutionPermission = await prisma.permission.findFirst({
@@ -161,17 +174,17 @@ export async function checkUserPermission(
           },
           orderBy: { permissionLevel: 'desc' }
         });
-        
+
         if (solutionPermission) {
           updateHighestPermission(solutionPermission.permissionLevel);
         }
-        
+
         // Check role-based permission on solution
         for (const userRole of allUserRoles) {
           if (userRole.role?.permissions) {
             for (const rolePerm of userRole.role.permissions) {
               if (rolePerm.resourceType === ResourceType.SOLUTION &&
-                  rolePerm.resourceId === sp.solutionId) {
+                rolePerm.resourceId === sp.solutionId) {
                 updateHighestPermission(rolePerm.permissionLevel);
               }
             }
@@ -180,7 +193,7 @@ export async function checkUserPermission(
       }
     }
   }
-  
+
   // If checking for SOLUTION access
   if (resourceType === ResourceType.SOLUTION) {
     // Check if user has "all products" permission → grants "all solutions" permission
@@ -191,11 +204,11 @@ export async function checkUserPermission(
         resourceId: null, // All products
       }
     });
-    
+
     if (allProductsPermission) {
       updateHighestPermission(allProductsPermission.permissionLevel);
     }
-    
+
     // Check role-based "all products" permission → grants "all solutions"
     // We need to fetch ALL user roles (not just filtered by resourceType)
     const allUserRoles = await prisma.userRole.findMany({
@@ -208,33 +221,33 @@ export async function checkUserPermission(
         }
       }
     });
-    
+
     for (const userRole of allUserRoles) {
       if (userRole.role?.permissions) {
         for (const rolePerm of userRole.role.permissions) {
-          if (rolePerm.resourceType === ResourceType.PRODUCT && 
-              rolePerm.resourceId === null) {
+          if (rolePerm.resourceType === ResourceType.PRODUCT &&
+            rolePerm.resourceId === null) {
             updateHighestPermission(rolePerm.permissionLevel);
           }
         }
       }
     }
-    
+
     // If checking specific solution, check if user has access to ALL products in the solution
     if (resourceId) {
       const solutionProducts = await prisma.solutionProduct.findMany({
         where: { solutionId: resourceId },
         select: { productId: true }
       });
-      
+
       // If solution has no products, deny access
       if (solutionProducts.length === 0) {
         return false;
       }
-      
+
       // Check if user has access to ALL products in the solution
       let hasAccessToAllProducts = true;
-      
+
       for (const sp of solutionProducts) {
         // Check if user has permission for this product
         const productPermission = await prisma.permission.findFirst({
@@ -247,21 +260,21 @@ export async function checkUserPermission(
             ]
           }
         });
-        
+
         let hasProductAccess = false;
-        
+
         if (productPermission && hasPermissionLevel(productPermission.permissionLevel, requiredLevel)) {
           hasProductAccess = true;
         }
-        
+
         // Check role-based permission for this product
         if (!hasProductAccess) {
           for (const userRole of userRoles) {
             if (userRole.role?.permissions) {
               for (const rolePerm of userRole.role.permissions) {
                 if (rolePerm.resourceType === ResourceType.PRODUCT &&
-                    (rolePerm.resourceId === null || rolePerm.resourceId === sp.productId) &&
-                    hasPermissionLevel(rolePerm.permissionLevel, requiredLevel)) {
+                  (rolePerm.resourceId === null || rolePerm.resourceId === sp.productId) &&
+                  hasPermissionLevel(rolePerm.permissionLevel, requiredLevel)) {
                   hasProductAccess = true;
                   break;
                 }
@@ -270,18 +283,18 @@ export async function checkUserPermission(
             }
           }
         }
-        
+
         if (!hasProductAccess) {
           hasAccessToAllProducts = false;
           break;
         }
       }
-      
+
       if (hasAccessToAllProducts && solutionProducts.length > 0) {
         // User has access to all products in this solution
         // Find the LOWEST permission level among the products (most restrictive)
         let lowestProductPermission: PermissionLevel = PermissionLevel.ADMIN;
-        
+
         for (const sp of solutionProducts) {
           const productPermission = await prisma.permission.findFirst({
             where: {
@@ -294,19 +307,19 @@ export async function checkUserPermission(
             },
             orderBy: { permissionLevel: 'desc' }
           });
-          
+
           if (productPermission) {
             if (PERMISSION_HIERARCHY[productPermission.permissionLevel] < PERMISSION_HIERARCHY[lowestProductPermission]) {
               lowestProductPermission = productPermission.permissionLevel;
             }
           }
-          
+
           // Also check role-based permissions
           for (const userRole of allUserRoles) {
             if (userRole.role?.permissions) {
               for (const rolePerm of userRole.role.permissions) {
                 if (rolePerm.resourceType === ResourceType.PRODUCT &&
-                    (rolePerm.resourceId === null || rolePerm.resourceId === sp.productId)) {
+                  (rolePerm.resourceId === null || rolePerm.resourceId === sp.productId)) {
                   if (PERMISSION_HIERARCHY[rolePerm.permissionLevel] < PERMISSION_HIERARCHY[lowestProductPermission]) {
                     lowestProductPermission = rolePerm.permissionLevel;
                   }
@@ -315,7 +328,7 @@ export async function checkUserPermission(
             }
           }
         }
-        
+
         updateHighestPermission(lowestProductPermission);
       }
     }
@@ -351,17 +364,30 @@ export async function getUserAccessibleResources(
   prisma: PrismaClient
 ): Promise<string[] | null> {
   // Check if user is admin
-  const user = await prisma.user.findUnique({ 
+  const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { isAdmin: true, isActive: true }
+    select: { isAdmin: true, isActive: true, role: true }
   });
-  
+
   if (!user || !user.isActive) {
     return [];
   }
 
   if (user.isAdmin) {
     return null; // Admin has access to all resources
+  }
+
+  // Check System Roles
+  if (user.role === 'SME') {
+    if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
+      return null; // SME has access to all Products and Solutions
+    }
+  }
+
+  if (user.role === 'CS') {
+    if (resourceType === ResourceType.CUSTOMER) {
+      return null; // CS has access to all Customers
+    }
   }
 
   const accessibleResourceIds = new Set<string>();
@@ -419,7 +445,7 @@ export async function getUserAccessibleResources(
   }
 
   // 3. BIDIRECTIONAL PERMISSION FLOW: Check cross-resource permissions
-  
+
   // If checking for PRODUCTS
   if (resourceType === ResourceType.PRODUCT) {
     // Products are accessible via solution permissions
@@ -430,10 +456,10 @@ export async function getUserAccessibleResources(
         resourceType: ResourceType.SOLUTION
       }
     });
-    
+
     const solutionAccessibleIds = new Set<string>();
     let hasAllSolutionsAccess = false;
-    
+
     for (const perm of solutionPermissions) {
       if (hasPermissionLevel(perm.permissionLevel, minPermissionLevel)) {
         if (perm.resourceId === null) {
@@ -444,7 +470,7 @@ export async function getUserAccessibleResources(
         }
       }
     }
-    
+
     // Check role-based solution permissions
     if (!hasAllSolutionsAccess) {
       const solutionRoles = await prisma.userRole.findMany({
@@ -459,7 +485,7 @@ export async function getUserAccessibleResources(
           }
         }
       });
-      
+
       for (const userRole of solutionRoles) {
         if (userRole.role?.permissions) {
           for (const rolePerm of userRole.role.permissions) {
@@ -476,12 +502,12 @@ export async function getUserAccessibleResources(
         }
       }
     }
-    
+
     if (hasAllSolutionsAccess) {
       // User has access to ALL solutions → has access to ALL products
       return null;
     }
-    
+
     if (solutionAccessibleIds.size > 0) {
       // Get all products from accessible solutions
       const solutionProducts = await prisma.solutionProduct.findMany({
@@ -490,13 +516,13 @@ export async function getUserAccessibleResources(
         },
         select: { productId: true }
       });
-      
+
       for (const sp of solutionProducts) {
         accessibleResourceIds.add(sp.productId);
       }
     }
   }
-  
+
   // If checking for SOLUTIONS
   if (resourceType === ResourceType.SOLUTION) {
     // Check if user has "all products" permission → grants "all solutions"
@@ -507,13 +533,13 @@ export async function getUserAccessibleResources(
         resourceId: null // All products
       }
     });
-    
+
     for (const perm of allProductsPermissions) {
       if (hasPermissionLevel(perm.permissionLevel, minPermissionLevel)) {
         return null; // Has access to all products → all solutions
       }
     }
-    
+
     // Check role-based "all products" permission
     const productRoles = await prisma.userRole.findMany({
       where: { userId },
@@ -530,7 +556,7 @@ export async function getUserAccessibleResources(
         }
       }
     });
-    
+
     for (const userRole of productRoles) {
       if (userRole.role?.permissions) {
         for (const rolePerm of userRole.role.permissions) {
@@ -540,7 +566,7 @@ export async function getUserAccessibleResources(
         }
       }
     }
-    
+
     // Get all products user has access to (directly, no recursion)
     const productPermissions = await prisma.permission.findMany({
       where: {
@@ -548,10 +574,10 @@ export async function getUserAccessibleResources(
         resourceType: ResourceType.PRODUCT
       }
     });
-    
+
     const productAccessibleIds = new Set<string>();
     let hasAllProductsAccess = false;
-    
+
     for (const perm of productPermissions) {
       if (hasPermissionLevel(perm.permissionLevel, minPermissionLevel)) {
         if (perm.resourceId === null) {
@@ -562,7 +588,7 @@ export async function getUserAccessibleResources(
         }
       }
     }
-    
+
     // Check role-based product permissions
     if (!hasAllProductsAccess) {
       const productRoles2 = await prisma.userRole.findMany({
@@ -577,7 +603,7 @@ export async function getUserAccessibleResources(
           }
         }
       });
-      
+
       for (const userRole of productRoles2) {
         if (userRole.role?.permissions) {
           for (const rolePerm of userRole.role.permissions) {
@@ -594,30 +620,30 @@ export async function getUserAccessibleResources(
         }
       }
     }
-    
+
     if (hasAllProductsAccess) {
       // User has access to ALL products → has access to ALL solutions
       return null;
     }
-    
+
     if (productAccessibleIds.size > 0) {
       // Find solutions where user has access to ALL products in the solution
       const allSolutions = await prisma.solution.findMany({
         where: { deletedAt: null },
         select: { id: true }
       });
-      
+
       for (const solution of allSolutions) {
         const solutionProducts = await prisma.solutionProduct.findMany({
           where: { solutionId: solution.id },
           select: { productId: true }
         });
-        
+
         // Check if user has access to ALL products in this solution
-        const allProductsAccessible = solutionProducts.every(sp => 
+        const allProductsAccessible = solutionProducts.every(sp =>
           productAccessibleIds.has(sp.productId)
         );
-        
+
         if (solutionProducts.length > 0 && allProductsAccessible) {
           accessibleResourceIds.add(solution.id);
         }
@@ -719,17 +745,30 @@ export async function getUserPermissionLevel(
   resourceId: string | null,
   prisma: PrismaClient
 ): Promise<PermissionLevel | null> {
-  const user = await prisma.user.findUnique({ 
+  const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { isAdmin: true, isActive: true }
+    select: { isAdmin: true, isActive: true, role: true }
   });
-  
+
   if (!user || !user.isActive) {
     return null;
   }
 
   if (user.isAdmin) {
     return PermissionLevel.ADMIN;
+  }
+
+  // Check System Roles
+  if (user.role === 'SME') {
+    if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
+      return PermissionLevel.ADMIN;
+    }
+  }
+
+  if (user.role === 'CS') {
+    if (resourceType === ResourceType.CUSTOMER) {
+      return PermissionLevel.ADMIN;
+    }
   }
 
   let highestLevel: PermissionLevel | null = null;
