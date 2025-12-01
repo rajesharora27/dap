@@ -415,7 +415,7 @@ export const CustomerAdoptionQueryResolvers = {
 
 export const CustomerAdoptionMutationResolvers = {
   assignProductToCustomer: async (_: any, { input }: any, ctx: any) => {
-    ensureRole(ctx, 'ADMIN');
+    ensureRole(ctx, ['ADMIN', 'CS']);
 
     const { customerId, productId, name, licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
 
@@ -479,7 +479,7 @@ export const CustomerAdoptionMutationResolvers = {
   },
 
   updateCustomerProduct: async (_: any, { id, input }: any, ctx: any) => {
-    ensureRole(ctx, 'ADMIN');
+    ensureRole(ctx, ['ADMIN', 'CS']);
 
     const { name, licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
 
@@ -706,7 +706,7 @@ export const CustomerAdoptionMutationResolvers = {
   },
 
   removeProductFromCustomerEnhanced: async (_: any, { id }: any, ctx: any) => {
-    ensureRole(ctx, 'ADMIN');
+    ensureRole(ctx, ['ADMIN', 'CS']);
 
     const customerProduct = await prisma.customerProduct.findUnique({
       where: { id },
