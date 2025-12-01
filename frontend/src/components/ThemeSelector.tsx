@@ -141,7 +141,7 @@ export const ThemeSelector: React.FC = () => {
       return themes[currentTheme as keyof typeof themes];
     }
     // Fallback
-    return themes.ciscoDark;
+    return themes.ciscoLight;
   };
 
   const currentConfig = getCurrentThemeConfig();

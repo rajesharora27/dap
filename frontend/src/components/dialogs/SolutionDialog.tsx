@@ -205,7 +205,7 @@ export const SolutionDialog: React.FC<Props> = ({
   const [editingRelease, setEditingRelease] = useState<any>(null);
 
   const client = useApolloClient();
-  
+
   const [createSolution] = useMutation(CREATE_SOLUTION, {
     refetchQueries: ['Solutions'],
     awaitRefetchQueries: true,
@@ -288,23 +288,23 @@ export const SolutionDialog: React.FC<Props> = ({
 
     setLoading(true);
     setError('');
-    
+
     console.log('=== Solution Save Started ===');
     console.log('Editing existing solution:', !!solution);
     console.log('Products:', selectedProductIds);
     console.log('Outcomes:', solutionOutcomes);
     console.log('Releases:', releases);
-    
+
     try {
       // Filter out licenseLevel before saving (it's a separate UI field, not a custom attribute)
       const cleanedCustomAttrs = Object.fromEntries(
         Object.entries(customAttrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
       );
-      
+
       const input = {
         name: name.trim(),
         description: description.trim() || undefined,
-        customAttrs: Object.keys(cleanedCustomAttrs).length > 0 ? cleanedCustomAttrs : undefined
+        customAttrs: cleanedCustomAttrs
       };
 
       let solutionId = solution?.id;
@@ -322,7 +322,7 @@ export const SolutionDialog: React.FC<Props> = ({
 
       if (solutionId) {
         const existingProductIds = (solution?.products?.edges || []).map((edge: any) => edge.node.id);
-        
+
         // First, remove products that are no longer selected
         for (const productId of existingProductIds) {
           if (!selectedProductIds.includes(productId)) {
@@ -338,8 +338,8 @@ export const SolutionDialog: React.FC<Props> = ({
           const productId = selectedProductIds[i];
           if (!existingProductIds.includes(productId)) {
             await addProduct({
-              variables: { 
-                solutionId, 
+              variables: {
+                solutionId,
                 productId,
                 order: i + 1  // Explicit order: first product = 1, second = 2, etc.
               }
@@ -353,7 +353,7 @@ export const SolutionDialog: React.FC<Props> = ({
           productId,
           order: index + 1  // First product = 1, second = 2, etc.
         }));
-        
+
         await reorderProducts({
           variables: { solutionId, productOrders }
         });
@@ -603,188 +603,355 @@ export const SolutionDialog: React.FC<Props> = ({
 
   return (
     <>
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="md" 
-      fullWidth
+      <Dialog
+        open={open}
+        onClose={onClose}
+        maxWidth="md"
+        fullWidth
         PaperProps={{
           sx: { height: '90vh' }
         }}
       >
-      <DialogTitle>
-        {solution ? 'Edit Solution' : 'Add New Solution'}
-      </DialogTitle>
-      <DialogContent dividers>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="solution tabs">
-            <Tab label="General" />
-            <Tab label={`Products (${selectedProductIds.length})`} />
-            <Tab label={`Outcomes (${allOutcomes.length})`} />
-            <Tab label={`Releases (${releases.filter(r => !r.delete).length})`} />
-            <Tab label={`Attributes (${Object.keys(customAttrs).length})`} />
-          </Tabs>
-        </Box>
-
-        {/* General Tab */}
-        <TabPanel value={tabValue} index={0}>
-              <TextField
-                fullWidth
-                label="Solution Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-            sx={{ mb: 2 }}
-            placeholder="e.g., Enterprise Security Bundle"
-            helperText="A descriptive name for your solution bundle"
-          />
-
-          <TextField
-            fullWidth
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            multiline
-            rows={4}
-            sx={{ mb: 2 }}
-            placeholder="Describe the solution's purpose, scope, and value proposition..."
-            helperText="Explain what this solution delivers to customers"
-          />
-
-          <FormControl fullWidth required>
-            <InputLabel>Solution License Tier</InputLabel>
-                <Select
-              value={licenseLevel}
-              onChange={(e) => setLicenseLevel(e.target.value as any)}
-              label="Solution License Tier"
-            >
-              <MenuItem value="Essential">Essential</MenuItem>
-              <MenuItem value="Advantage">Advantage</MenuItem>
-              <MenuItem value="Signature">Signature</MenuItem>
-                </Select>
-              </FormControl>
-          <Alert severity="info" sx={{ mt: 1 }}>
-            All underlying products will be set to the <strong>{licenseLevel}</strong> tier for simplicity.
-          </Alert>
-        </TabPanel>
-
-        {/* Products Tab */}
-        <TabPanel value={tabValue} index={1}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Select products to bundle into this solution. Customers will adopt all included products together at the {licenseLevel} tier.
-          </Typography>
-
-          {selectedProductIds.length === 0 && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              Please add at least one product to create a meaningful solution
-            </Alert>
-          )}
-
-          {selectedProducts.length > 0 && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                Included Products:
-              </Typography>
-              <List sx={{ bgcolor: 'background.paper', border: '1px solid #e0e0e0', borderRadius: 1 }}>
-                {selectedProducts.map((product, index) => (
-                  <ListItem
-                    key={product.id}
-                    secondaryAction={
-                      <IconButton
-                        edge="end"
-                        onClick={() => handleProductToggle(product.id)}
-                        color="error"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    }
-                  >
-                    <ListItemText
-                      primary={`${index + 1}. ${product.name}`}
-                      secondary={product.description}
-                    />
-                  </ListItem>
-                ))}
-              </List>
-            </Box>
-          )}
-
-          {availableProducts.length > 0 && (
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
-                Add Products:
-              </Typography>
-              <List sx={{ bgcolor: 'grey.50', border: '1px solid #e0e0e0', borderRadius: 1, maxHeight: 300, overflow: 'auto' }}>
-                {availableProducts.map((product) => (
-                  <ListItemButton
-                    key={product.id}
-                    onClick={() => handleProductToggle(product.id)}
-                    dense
-                  >
-                    <Checkbox
-                      edge="start"
-                      checked={false}
-                      disableRipple
-                    />
-                    <ListItemText
-                      primary={product.name}
-                      secondary={product.description}
-                    />
-                  </ListItemButton>
-                ))}
-              </List>
-            </Box>
-          )}
-        </TabPanel>
-
-        {/* Outcomes Tab */}
-        <TabPanel value={tabValue} index={2}>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Outcomes are inherited from products (read-only) and can be supplemented with solution-specific outcomes.
-          </Alert>
-
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setAddOutcomeDialog(true)}
-              size="small"
-            >
-              Add Solution Outcome
-            </Button>
+        <DialogTitle>
+          {solution ? 'Edit Solution' : 'Add New Solution'}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Tabs value={tabValue} onChange={handleTabChange} aria-label="solution tabs">
+              <Tab label="General" />
+              <Tab label={`Products (${selectedProductIds.length})`} />
+              <Tab label={`Outcomes (${allOutcomes.length})`} />
+              <Tab label={`Releases (${releases.filter(r => !r.delete).length})`} />
+              <Tab label={`Attributes (${Object.keys(customAttrs).length})`} />
+            </Tabs>
           </Box>
 
-          {allOutcomes.length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-              No outcomes yet. Add products or create solution-specific outcomes.
+          {/* General Tab */}
+          <TabPanel value={tabValue} index={0}>
+            <TextField
+              fullWidth
+              label="Solution Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              sx={{ mb: 2 }}
+              placeholder="e.g., Enterprise Security Bundle"
+              helperText="A descriptive name for your solution bundle"
+            />
+
+            <TextField
+              fullWidth
+              label="Description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              multiline
+              rows={4}
+              sx={{ mb: 2 }}
+              placeholder="Describe the solution's purpose, scope, and value proposition..."
+              helperText="Explain what this solution delivers to customers"
+            />
+
+            <FormControl fullWidth required>
+              <InputLabel>Solution License Tier</InputLabel>
+              <Select
+                value={licenseLevel}
+                onChange={(e) => setLicenseLevel(e.target.value as any)}
+                label="Solution License Tier"
+              >
+                <MenuItem value="Essential">Essential</MenuItem>
+                <MenuItem value="Advantage">Advantage</MenuItem>
+                <MenuItem value="Signature">Signature</MenuItem>
+              </Select>
+            </FormControl>
+            <Alert severity="info" sx={{ mt: 1 }}>
+              All underlying products will be set to the <strong>{licenseLevel}</strong> tier for simplicity.
+            </Alert>
+          </TabPanel>
+
+          {/* Products Tab */}
+          <TabPanel value={tabValue} index={1}>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Select products to bundle into this solution. Customers will adopt all included products together at the {licenseLevel} tier.
             </Typography>
-          ) : (
-            <Box>
-              {solutionOutcomes.filter(o => !o.delete).length > 0 && (
-                <>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: 'secondary.main' }}>
-                    Solution-Specific Outcomes:
-                  </Typography>
-                  <List dense>
-                    {solutionOutcomes.filter(o => !o.delete).map((outcome, idx) => (
-                      <ListItemButton
-                        key={`solution-${idx}`}
-                        onDoubleClick={() => {
-                          setEditingOutcome(outcome);
-                          setEditOutcomeDialog(true);
-                        }}
-                        sx={{ border: '1px solid #e0e0e0', borderRadius: 1, mb: 1 }}
-                      >
+
+            {selectedProductIds.length === 0 && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Please add at least one product to create a meaningful solution
+              </Alert>
+            )}
+
+            {selectedProducts.length > 0 && (
+              <Box sx={{ mb: 3 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                  Included Products:
+                </Typography>
+                <List sx={{ bgcolor: 'background.paper', border: '1px solid #e0e0e0', borderRadius: 1 }}>
+                  {selectedProducts.map((product, index) => (
+                    <ListItem
+                      key={product.id}
+                      secondaryAction={
+                        <IconButton
+                          edge="end"
+                          onClick={() => handleProductToggle(product.id)}
+                          color="error"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      }
+                    >
+                      <ListItemText
+                        primary={`${index + 1}. ${product.name}`}
+                        secondary={product.description}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              </Box>
+            )}
+
+            {availableProducts.length > 0 && (
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                  Add Products:
+                </Typography>
+                <List sx={{ bgcolor: 'grey.50', border: '1px solid #e0e0e0', borderRadius: 1, maxHeight: 300, overflow: 'auto' }}>
+                  {availableProducts.map((product) => (
+                    <ListItemButton
+                      key={product.id}
+                      onClick={() => handleProductToggle(product.id)}
+                      dense
+                    >
+                      <Checkbox
+                        edge="start"
+                        checked={false}
+                        disableRipple
+                      />
+                      <ListItemText
+                        primary={product.name}
+                        secondary={product.description}
+                      />
+                    </ListItemButton>
+                  ))}
+                </List>
+              </Box>
+            )}
+          </TabPanel>
+
+          {/* Outcomes Tab */}
+          <TabPanel value={tabValue} index={2}>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Outcomes are inherited from products (read-only) and can be supplemented with solution-specific outcomes.
+            </Alert>
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setAddOutcomeDialog(true)}
+                size="small"
+              >
+                Add Solution Outcome
+              </Button>
+            </Box>
+
+            {allOutcomes.length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                No outcomes yet. Add products or create solution-specific outcomes.
+              </Typography>
+            ) : (
+              <Box>
+                {solutionOutcomes.filter(o => !o.delete).length > 0 && (
+                  <>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: 'secondary.main' }}>
+                      Solution-Specific Outcomes:
+                    </Typography>
+                    <List dense>
+                      {solutionOutcomes.filter(o => !o.delete).map((outcome, idx) => (
+                        <ListItemButton
+                          key={`solution-${idx}`}
+                          onDoubleClick={() => {
+                            setEditingOutcome(outcome);
+                            setEditOutcomeDialog(true);
+                          }}
+                          sx={{ border: '1px solid #e0e0e0', borderRadius: 1, mb: 1 }}
+                        >
+                          <ListItemText
+                            primary={outcome.name}
+                            secondary={outcome.description || 'Double-click to edit'}
+                          />
+                          <IconButton
+                            edge="end"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingOutcome(outcome);
+                              setEditOutcomeDialog(true);
+                            }}
+                            size="small"
+                          >
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton
+                            edge="end"
+                            color="error"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteOutcome(outcome);
+                            }}
+                            size="small"
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </ListItemButton>
+                      ))}
+                    </List>
+                    <Divider sx={{ my: 2 }} />
+                  </>
+                )}
+
+                {inheritedOutcomes.length > 0 && (
+                  <>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: 'primary.main' }}>
+                      Inherited from Products:
+                    </Typography>
+                    <List dense>
+                      {inheritedOutcomes.map((outcome, idx) => (
+                        <ListItem
+                          key={`inherited-${idx}`}
+                          sx={{
+                            border: '1px solid #e0e0e0',
+                            borderRadius: 1,
+                            mb: 1,
+                            bgcolor: '#f5f5f5'
+                          }}
+                        >
+                          <ListItemText
+                            primary={
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <Typography variant="body2">{outcome.name}</Typography>
+                                <Chip
+                                  label={`From: ${outcome.sourceProductName}`}
+                                  size="small"
+                                  color="primary"
+                                  variant="outlined"
+                                />
+                                <Chip label="Read-Only" size="small" color="default" variant="outlined" />
+                              </Box>
+                            }
+                            secondary={outcome.description}
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </>
+                )}
+              </Box>
+            )}
+          </TabPanel>
+
+          {/* Releases Tab */}
+          <TabPanel value={tabValue} index={3}>
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Solution releases are independent and can map to underlying product releases.
+            </Alert>
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setAddReleaseDialog(true)}
+                size="small"
+              >
+                Add Release
+              </Button>
+            </Box>
+
+            {allProductReleases.length > 0 && (
+              <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1, mb: 2 }}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                  Product Releases Available:
+                </Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  {allProductReleases.map((rel, idx) => (
+                    <Chip
+                      key={idx}
+                      label={`${rel.productName}: ${rel.name} (v${rel.level})`}
+                      size="small"
+                      variant="outlined"
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {releases.filter(r => !r.delete).length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                No releases defined yet.
+              </Typography>
+            ) : (
+              <List dense>
+                {releases.filter(r => !r.delete).map((release, idx) => {
+                  // Get mapped product releases for display
+                  const mappedProductReleases: JSX.Element[] = [];
+                  if (release.productReleaseMapping) {
+                    Object.entries(release.productReleaseMapping).forEach(([productId, releaseIds]) => {
+                      const product = allProducts.find(p => p.id === productId);
+                      if (!product) return;
+
+                      if ((releaseIds as string[]).includes('__ALL_RELEASES__')) {
+                        mappedProductReleases.push(
+                          <Chip
+                            key={productId}
+                            label={`${product.name}: All Releases`}
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            sx={{ mr: 0.5, mb: 0.5 }}
+                          />
+                        );
+                      } else {
+                        (releaseIds as string[]).forEach(releaseId => {
+                          const productRelease = product.releases?.find((r: any) => r.id === releaseId);
+                          if (productRelease) {
+                            mappedProductReleases.push(
+                              <Chip
+                                key={`${productId}-${releaseId}`}
+                                label={`${product.name}: ${productRelease.name} (v${productRelease.level})`}
+                                size="small"
+                                variant="outlined"
+                                sx={{ mr: 0.5, mb: 0.5 }}
+                              />
+                            );
+                          }
+                        });
+                      }
+                    });
+                  }
+
+                  return (
+                    <ListItemButton
+                      key={idx}
+                      onDoubleClick={() => {
+                        setEditingRelease(release);
+                        setEditReleaseDialog(true);
+                      }}
+                      sx={{ border: '1px solid #e0e0e0', borderRadius: 1, mb: 1, flexDirection: 'column', alignItems: 'flex-start' }}
+                    >
+                      <Box sx={{ display: 'flex', width: '100%', alignItems: 'center' }}>
                         <ListItemText
-                          primary={outcome.name}
-                          secondary={outcome.description || 'Double-click to edit'}
+                          primary={
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <Typography variant="body2" fontWeight={600}>{release.name}</Typography>
+                              <Chip label={`v${release.level}`} size="small" color="primary" variant="outlined" />
+                            </Box>
+                          }
+                          secondary={release.description || 'Double-click to edit'}
                         />
                         <IconButton
                           edge="end"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setEditingOutcome(outcome);
-                            setEditOutcomeDialog(true);
+                            setEditingRelease(release);
+                            setEditReleaseDialog(true);
                           }}
                           size="small"
                         >
@@ -795,270 +962,103 @@ export const SolutionDialog: React.FC<Props> = ({
                           color="error"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteOutcome(outcome);
+                            handleDeleteRelease(release);
                           }}
                           size="small"
                         >
                           <DeleteIcon />
                         </IconButton>
-                      </ListItemButton>
-                    ))}
-                  </List>
-                  <Divider sx={{ my: 2 }} />
-                </>
-              )}
-
-              {inheritedOutcomes.length > 0 && (
-                <>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: 'primary.main' }}>
-                    Inherited from Products:
-                  </Typography>
-                  <List dense>
-                    {inheritedOutcomes.map((outcome, idx) => (
-                      <ListItem
-                        key={`inherited-${idx}`}
-                        sx={{
-                          border: '1px solid #e0e0e0',
-                          borderRadius: 1,
-                          mb: 1,
-                          bgcolor: '#f5f5f5'
-                        }}
-                      >
-                        <ListItemText
-                          primary={
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <Typography variant="body2">{outcome.name}</Typography>
-                              <Chip
-                                label={`From: ${outcome.sourceProductName}`}
-                                size="small"
-                                color="primary"
-                                variant="outlined"
-                              />
-                              <Chip label="Read-Only" size="small" color="default" variant="outlined" />
-                            </Box>
-                          }
-                          secondary={outcome.description}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                </>
-              )}
-            </Box>
-          )}
-        </TabPanel>
-
-        {/* Releases Tab */}
-        <TabPanel value={tabValue} index={3}>
-          <Alert severity="info" sx={{ mb: 2 }}>
-            Solution releases are independent and can map to underlying product releases.
-          </Alert>
-
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setAddReleaseDialog(true)}
-              size="small"
-            >
-              Add Release
-            </Button>
-          </Box>
-
-          {allProductReleases.length > 0 && (
-            <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1, mb: 2 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                Product Releases Available:
-                </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {allProductReleases.map((rel, idx) => (
-                  <Chip
-                    key={idx}
-                    label={`${rel.productName}: ${rel.name} (v${rel.level})`}
-                    size="small"
-                    variant="outlined"
-                  />
-                ))}
-              </Box>
-            </Box>
-          )}
-
-          {releases.filter(r => !r.delete).length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-              No releases defined yet.
-            </Typography>
-          ) : (
-            <List dense>
-              {releases.filter(r => !r.delete).map((release, idx) => {
-                // Get mapped product releases for display
-                const mappedProductReleases: JSX.Element[] = [];
-                if (release.productReleaseMapping) {
-                  Object.entries(release.productReleaseMapping).forEach(([productId, releaseIds]) => {
-                    const product = allProducts.find(p => p.id === productId);
-                    if (!product) return;
-                    
-                    if ((releaseIds as string[]).includes('__ALL_RELEASES__')) {
-                      mappedProductReleases.push(
-                        <Chip
-                          key={productId}
-                          label={`${product.name}: All Releases`}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                          sx={{ mr: 0.5, mb: 0.5 }}
-                        />
-                      );
-                    } else {
-                      (releaseIds as string[]).forEach(releaseId => {
-                        const productRelease = product.releases?.find((r: any) => r.id === releaseId);
-                        if (productRelease) {
-                          mappedProductReleases.push(
-                            <Chip
-                              key={`${productId}-${releaseId}`}
-                              label={`${product.name}: ${productRelease.name} (v${productRelease.level})`}
-                              size="small"
-                              variant="outlined"
-                              sx={{ mr: 0.5, mb: 0.5 }}
-                            />
-                          );
-                        }
-                      });
-                    }
-                  });
-                }
-
-                return (
-                  <ListItemButton
-                    key={idx}
-                    onDoubleClick={() => {
-                      setEditingRelease(release);
-                      setEditReleaseDialog(true);
-                    }}
-                    sx={{ border: '1px solid #e0e0e0', borderRadius: 1, mb: 1, flexDirection: 'column', alignItems: 'flex-start' }}
-                  >
-                    <Box sx={{ display: 'flex', width: '100%', alignItems: 'center' }}>
-                      <ListItemText
-                        primary={
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <Typography variant="body2" fontWeight={600}>{release.name}</Typography>
-                            <Chip label={`v${release.level}`} size="small" color="primary" variant="outlined" />
-                          </Box>
-                        }
-                        secondary={release.description || 'Double-click to edit'}
-                      />
-                      <IconButton
-                        edge="end"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingRelease(release);
-                          setEditReleaseDialog(true);
-                        }}
-                        size="small"
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton
-                        edge="end"
-                        color="error"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteRelease(release);
-                        }}
-                        size="small"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                    {mappedProductReleases.length > 0 && (
-                      <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', width: '100%' }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ mr: 1, fontWeight: 600 }}>
-                          Includes:
-                        </Typography>
-                        {mappedProductReleases}
                       </Box>
-                    )}
+                      {mappedProductReleases.length > 0 && (
+                        <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', width: '100%' }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ mr: 1, fontWeight: 600 }}>
+                            Includes:
+                          </Typography>
+                          {mappedProductReleases}
+                        </Box>
+                      )}
+                    </ListItemButton>
+                  );
+                })}
+              </List>
+            )}
+          </TabPanel>
+
+          {/* Custom Attributes Tab */}
+          <TabPanel value={tabValue} index={4}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+              <Button
+                variant="contained"
+                startIcon={<AddIcon />}
+                onClick={() => setAddCustomAttributeDialog(true)}
+                size="small"
+              >
+                Add Attribute
+              </Button>
+            </Box>
+
+            {Object.keys(customAttrs).length === 0 ? (
+              <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                No custom attributes defined.
+              </Typography>
+            ) : (
+              <List dense>
+                {Object.entries(customAttrs).map(([key, value]) => (
+                  <ListItemButton
+                    key={key}
+                    onDoubleClick={() => handleEditCustomAttribute({ key, value, type: typeof value })}
+                    sx={{ border: '1px solid #e0e0e0', borderRadius: 1, mb: 1 }}
+                  >
+                    <ListItemText
+                      primary={<Typography variant="subtitle2" fontWeight="bold">{key}</Typography>}
+                      secondary={typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    />
+                    <IconButton
+                      edge="end"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditCustomAttribute({ key, value, type: typeof value });
+                      }}
+                      size="small"
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      edge="end"
+                      color="error"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteCustomAttribute(key);
+                      }}
+                      size="small"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
                   </ListItemButton>
-                );
-              })}
-            </List>
+                ))}
+              </List>
+            )}
+          </TabPanel>
+
+          {error && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {error}
+            </Alert>
           )}
-        </TabPanel>
-
-        {/* Custom Attributes Tab */}
-        <TabPanel value={tabValue} index={4}>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => setAddCustomAttributeDialog(true)}
-              size="small"
-            >
-              Add Attribute
-            </Button>
-          </Box>
-
-          {Object.keys(customAttrs).length === 0 ? (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-              No custom attributes defined.
-            </Typography>
-          ) : (
-            <List dense>
-              {Object.entries(customAttrs).map(([key, value]) => (
-                <ListItemButton
-                  key={key}
-                  onDoubleClick={() => handleEditCustomAttribute({ key, value, type: typeof value })}
-                  sx={{ border: '1px solid #e0e0e0', borderRadius: 1, mb: 1 }}
-                >
-                  <ListItemText
-                    primary={<Typography variant="subtitle2" fontWeight="bold">{key}</Typography>}
-                    secondary={typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                  />
-                  <IconButton
-                    edge="end"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEditCustomAttribute({ key, value, type: typeof value });
-                    }}
-                    size="small"
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    edge="end"
-                    color="error"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteCustomAttribute(key);
-                    }}
-                    size="small"
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </ListItemButton>
-              ))}
-            </List>
-          )}
-        </TabPanel>
-
-        {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {error}
-          </Alert>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleSave} 
-          variant="contained" 
-          disabled={loading || !name.trim() || selectedProductIds.length === 0}
-        >
-          {loading ? 'Saving...' : solution ? 'Update Solution' : 'Create Solution'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onClose} disabled={loading}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            variant="contained"
+            disabled={loading || !name.trim() || selectedProductIds.length === 0}
+          >
+            {loading ? 'Saving...' : solution ? 'Update Solution' : 'Create Solution'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Sub-Dialogs - Rendered outside parent dialog to avoid z-index issues */}
       <CustomAttributeDialog

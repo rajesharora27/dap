@@ -605,7 +605,7 @@ export const typeDefs = gql`
   addCustomerTelemetryValue(input: AddCustomerTelemetryValueInput!): CustomerTelemetryValue!
   bulkAddCustomerTelemetryValues(inputs: [AddCustomerTelemetryValueInput!]!): [CustomerTelemetryValue!]!
   evaluateTaskTelemetry(customerTaskId: ID!): CustomerTask!
-  evaluateAllTasksTelemetry(adoptionPlanId: ID!): AdoptionPlan!
+
   
   # Telemetry Import/Export
   exportAdoptionPlanTelemetryTemplate(adoptionPlanId: ID!): TelemetryTemplateExport!
@@ -622,7 +622,7 @@ export const typeDefs = gql`
   updateCustomerSolutionTaskStatus(input: UpdateCustomerSolutionTaskStatusInput!): CustomerSolutionTask!
   bulkUpdateCustomerSolutionTaskStatus(solutionAdoptionPlanId: ID!, taskIds: [ID!]!, status: CustomerTaskStatus!, notes: String): [CustomerSolutionTask!]!
   evaluateSolutionTaskTelemetry(customerSolutionTaskId: ID!): CustomerSolutionTask!
-  evaluateAllSolutionTasksTelemetry(solutionAdoptionPlanId: ID!): SolutionAdoptionPlan!
+
   
   # Solution Telemetry Import/Export
   exportSolutionAdoptionPlanTelemetryTemplate(solutionAdoptionPlanId: ID!): TelemetryTemplateExport!

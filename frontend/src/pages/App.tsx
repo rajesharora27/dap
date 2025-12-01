@@ -51,8 +51,6 @@ import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
 import { UserProfileDialog } from '../components/UserProfileDialog';
 import { UserManagement } from '../components/UserManagement';
 import { RoleManagement } from '../components/RoleManagement';
-import { SolutionManagement } from '../components/SolutionManagement';
-import { SolutionManagementMain } from '../components/SolutionManagementMain';
 import { BackupManagementPanel } from '../components/BackupManagementPanel';
 import { ThemeSelector } from '../components/ThemeSelector';
 import { resolveImportTarget, type ResolveImportAbortReason } from '../utils/excelImportTarget';
@@ -378,6 +376,23 @@ const UPDATE_TASK = gql`
         id
         name
         level
+      }
+      telemetryAttributes {
+        id
+        name
+        description
+        dataType
+        isRequired
+        successCriteria
+        order
+        isActive
+        isSuccessful
+        currentValue {
+          id
+          value
+          source
+          createdAt
+        }
       }
     }
   }
@@ -1388,7 +1403,7 @@ export function App() {
       console.log('=== updateProductWithDetails called ===');
       console.log('Product ID:', id);
       console.log('Data:', JSON.stringify(data, null, 2));
-      
+
       try {
         // Update the product basic info
         console.log('Updating product basic info...');
@@ -2397,10 +2412,10 @@ export function App() {
       if (taskData.notes?.trim()) {
         input.notes = taskData.notes.trim();
       }
-      if (taskData.howToDoc && Array.isArray(taskData.howToDoc) && taskData.howToDoc.length > 0) {
+      if (taskData.howToDoc && Array.isArray(taskData.howToDoc)) {
         input.howToDoc = taskData.howToDoc;
       }
-      if (taskData.howToVideo && Array.isArray(taskData.howToVideo) && taskData.howToVideo.length > 0) {
+      if (taskData.howToVideo && Array.isArray(taskData.howToVideo)) {
         input.howToVideo = taskData.howToVideo;
       }
       if (taskData.licenseId) {
@@ -2414,6 +2429,25 @@ export function App() {
       }
       if (taskData.releaseIds !== undefined) {
         input.releaseIds = taskData.releaseIds;  // Send as-is: empty array or array of IDs
+      }
+
+      // Special case: If telemetryAttributes is explicitly empty array, send it to UPDATE_TASK
+      // to atomically delete all attributes. This avoids issues with manual deletion logic.
+      if (taskData.telemetryAttributes && Array.isArray(taskData.telemetryAttributes)) {
+        if (taskData.telemetryAttributes.length === 0) {
+          input.telemetryAttributes = [];
+        } else {
+          // If we have attributes, we need to map them to the input format expected by the backend
+          // The backend expects TelemetryAttributeNestedInput[]
+          input.telemetryAttributes = taskData.telemetryAttributes.map((attr: any) => ({
+            name: attr.name,
+            description: attr.description,
+            dataType: attr.dataType,
+            isRequired: attr.isRequired,
+            successCriteria: attr.successCriteria,
+            order: attr.order
+          }));
+        }
       }
 
       let finalTaskId: string;
@@ -2461,6 +2495,23 @@ export function App() {
                   name
                   level
                 }
+                telemetryAttributes {
+                  id
+                  name
+                  description
+                  dataType
+                  isRequired
+                  successCriteria
+                  order
+                  isActive
+                  isSuccessful
+                  currentValue {
+                    id
+                    value
+                    source
+                    createdAt
+                  }
+                }
               }
             }
           `,
@@ -2472,104 +2523,9 @@ export function App() {
       }
 
       // Handle telemetry attributes
-      if (taskData.telemetryAttributes) {
-        if (isEdit) {
-          // For edit: compare old and new attributes
-          const existingAttributes = editingTask?.telemetryAttributes || [];
-          const newAttributes = taskData.telemetryAttributes;
-
-          // Find attributes to delete
-          const attributesToDelete: string[] = [];
-          existingAttributes.forEach((existing: any) => {
-            const stillExists = newAttributes.find((attr: any) => attr.id === existing.id);
-            if (!stillExists) {
-              attributesToDelete.push(existing.id);
-            }
-          });
-
-          // Delete removed attributes
-          for (const attrId of attributesToDelete) {
-            await client.mutate({
-              mutation: DELETE_TELEMETRY_ATTRIBUTE,
-              variables: { id: attrId }
-            });
-          }
-
-          // Process new and updated attributes
-          for (const attr of newAttributes) {
-            if (attr.id) {
-              // Existing attribute - check if it needs updating
-              const existing = existingAttributes.find((e: any) => e.id === attr.id);
-
-              const criteriaChanged = JSON.stringify(existing.successCriteria) !== JSON.stringify(attr.successCriteria);
-
-              if (existing && (
-                existing.name !== attr.name ||
-                existing.description !== attr.description ||
-                existing.dataType !== attr.dataType ||
-                existing.isRequired !== attr.isRequired ||
-                criteriaChanged ||
-                existing.order !== attr.order ||
-                existing.isActive !== attr.isActive
-              )) {
-                const updateInput: any = {
-                  name: attr.name.trim(),
-                  description: attr.description || '',
-                  dataType: attr.dataType,
-                  isRequired: attr.isRequired || false,
-                  successCriteria: attr.successCriteria ? JSON.stringify(attr.successCriteria) : null,
-                  order: attr.order || 0,
-                  isActive: attr.isActive !== false
-                };
-                await client.mutate({
-                  mutation: UPDATE_TELEMETRY_ATTRIBUTE,
-                  variables: { id: attr.id, input: updateInput }
-                });
-              }
-            } else {
-              // New attribute
-              if (attr.name && attr.name.trim()) {
-                await client.mutate({
-                  mutation: CREATE_TELEMETRY_ATTRIBUTE,
-                  variables: {
-                    input: {
-                      taskId: finalTaskId,
-                      name: attr.name.trim(),
-                      description: attr.description || '',
-                      dataType: attr.dataType,
-                      isRequired: attr.isRequired || false,
-                      successCriteria: attr.successCriteria ? JSON.stringify(attr.successCriteria) : null,
-                      order: attr.order || 0,
-                      isActive: attr.isActive !== false
-                    }
-                  }
-                });
-              }
-            }
-          }
-        } else {
-          // For add: create all new attributes
-          for (const attr of taskData.telemetryAttributes) {
-            if (attr.name && attr.name.trim()) {
-              await client.mutate({
-                mutation: CREATE_TELEMETRY_ATTRIBUTE,
-                variables: {
-                  input: {
-                    taskId: finalTaskId,
-                    name: attr.name.trim(),
-                    description: attr.description || '',
-                    dataType: attr.dataType,
-                    isRequired: attr.isRequired || false,
-                    successCriteria: attr.successCriteria ? JSON.stringify(attr.successCriteria) : null,
-                    order: attr.order || 0,
-                    isActive: attr.isActive !== false
-                  }
-                }
-              });
-            }
-          }
-        }
-      }
+      // NOTE: We no longer need manual telemetry handling here because we are now sending 
+      // the full telemetryAttributes array (or empty array) to the updateTask mutation above.
+      // The backend handles the atomic update (delete all + create new).
 
       // Close dialogs and refresh
       if (isEdit) {

@@ -368,7 +368,7 @@ export const ProductDialog: React.FC<Props> = ({
       await onSave({
         name: name.trim(),
         description: description.trim() || undefined,
-        customAttrs: Object.keys(parsedAttrs).length > 0 ? parsedAttrs : undefined,
+        customAttrs: parsedAttrs,
         outcomes,
         licenses,
         releases

@@ -4,7 +4,7 @@ import { logAudit } from '../../lib/audit';
 import { LicenseLevel } from '@prisma/client';
 import { CustomerTelemetryExportService } from '../../services/telemetry/CustomerTelemetryExportService';
 import { CustomerTelemetryImportService } from '../../services/telemetry/CustomerTelemetryImportService';
-import { evaluateTelemetryAttribute } from '../../services/telemetry/evaluationEngine';
+import { evaluateTelemetryAttribute, evaluateTaskStatusFromTelemetry } from '../../services/telemetry/evaluationEngine';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -950,7 +950,7 @@ export const CustomerAdoptionMutationResolvers = {
     // Get ALL product tasks that match the license level (no outcome/release filtering)
     const licenseLevels = ['ESSENTIAL', 'ADVANTAGE', 'SIGNATURE'];
     const customerLicenseIndex = licenseLevels.indexOf(customerProduct.licenseLevel.toUpperCase());
-    
+
     const eligibleProductTasks = product.tasks.filter((task: any) => {
       const taskLicenseIndex = licenseLevels.indexOf(task.licenseLevel.toUpperCase());
       return taskLicenseIndex <= customerLicenseIndex; // Task license <= customer license
@@ -1102,6 +1102,8 @@ export const CustomerAdoptionMutationResolvers = {
         ...progress,
         selectedOutcomes: allProductOutcomeIds,
         selectedReleases: allProductReleaseIds,
+        productName: product.name,
+        licenseLevel: customerProduct.licenseLevel,
         lastSyncedAt: new Date(),
       },
       include: {
@@ -1429,33 +1431,12 @@ export const CustomerAdoptionMutationResolvers = {
       throw new Error('Customer task not found');
     }
 
-    const attributes = task.telemetryAttributes;
-    const requiredAttributes = attributes.filter((a: any) => a.isRequired && a.isActive);
-
-    // Manual status takes precedence over telemetry (except for NOT_STARTED)
-    // If user manually set status to IN_PROGRESS, DONE, or NOT_APPLICABLE, respect that
-    const hasManualStatus = task.statusUpdatedBy &&
-      task.statusUpdatedBy !== 'telemetry' &&
-      task.status !== 'NOT_STARTED';
-
-    // Evaluate each attribute (always evaluate to update isMet status for display)
-    let metCount = 0;
-    let metRequiredCount = 0;
-    let hasAnyTelemetryData = false;  // Track if any telemetry values exist
-    let requiredWithDataCount = 0;     // Track required attributes that have telemetry data
-
-    for (const attr of attributes) {
+    // Update isMet status for each attribute (for display purposes)
+    for (const attr of task.telemetryAttributes) {
       if (!attr.isActive) continue;
-
       const latestValue = attr.values[0];
-      if (latestValue) {
-        hasAnyTelemetryData = true;
-        if (attr.isRequired) requiredWithDataCount++;
-      }
-
       if (!latestValue) continue;
 
-      // Use the proper evaluation engine that handles the criteria structure from SimpleCriteriaBuilder
       let isMet = false;
       if (attr.successCriteria) {
         try {
@@ -1463,71 +1444,26 @@ export const CustomerAdoptionMutationResolvers = {
           isMet = evaluationResult.success;
         } catch (evalError) {
           console.error(`Failed to evaluate criteria for ${attr.name}:`, evalError);
-          isMet = false;
         }
       }
 
-      // Update attribute isMet status
       await prisma.customerTelemetryAttribute.update({
         where: { id: attr.id },
-        data: {
-          isMet,
-          lastCheckedAt: new Date(),
-        },
+        data: { isMet, lastCheckedAt: new Date() },
       });
-
-      if (isMet) {
-        metCount++;
-        if (attr.isRequired) metRequiredCount++;
-      }
     }
 
-    // Determine new status based on telemetry
-    // Logic:
-    // 1. All required telemetry met → DONE
-    // 2. Telemetry available but doesn't meet all criteria → IN_PROGRESS
-    // 3. No telemetry data at all → NOT_STARTED (unless manually set)
-    // 4. Was DONE (via telemetry) and now telemetry unavailable or doesn't meet → NO_LONGER_USING
-    let newStatus: CustomerTaskStatus = task.status;
-    const wasPreviouslyDoneByTelemetry = (task.status === 'DONE' || task.status === 'COMPLETED') && 
-                                          task.statusUpdateSource === 'TELEMETRY';
+    // Use SHARED evaluation logic for determining task status
+    const { newStatus, shouldUpdate, evaluationDetails } = await evaluateTaskStatusFromTelemetry(
+      { status: task.status, statusUpdateSource: task.statusUpdateSource },
+      task.telemetryAttributes
+    );
 
-    if (requiredAttributes.length > 0) {
-      // Has required attributes - evaluate based on those
-      if (metRequiredCount === requiredAttributes.length) {
-        // All required telemetry criteria met
-        newStatus = 'DONE';
-      } else if (wasPreviouslyDoneByTelemetry && (metRequiredCount < requiredAttributes.length || !hasAnyTelemetryData)) {
-        // Was previously DONE by telemetry, but now either:
-        // - Telemetry doesn't meet criteria anymore, OR
-        // - Telemetry data is no longer available
-        newStatus = 'NO_LONGER_USING' as CustomerTaskStatus;
-      } else if (hasAnyTelemetryData && requiredWithDataCount > 0) {
-        // Has telemetry data but doesn't meet all criteria - task is in progress
-        newStatus = 'IN_PROGRESS';
-      } else if (!hasAnyTelemetryData) {
-        // No telemetry data at all - not started (unless manually set otherwise)
-        newStatus = 'NOT_STARTED';
-      }
-    } else if (attributes.length > 0) {
-      // No required attributes, but has optional telemetry attributes
-      if (wasPreviouslyDoneByTelemetry && !hasAnyTelemetryData) {
-        // Was DONE by telemetry but telemetry data is no longer available
-        newStatus = 'NO_LONGER_USING' as CustomerTaskStatus;
-      } else if (wasPreviouslyDoneByTelemetry && metCount === 0) {
-        // Was DONE by telemetry but none of the criteria are met anymore
-        newStatus = 'NO_LONGER_USING' as CustomerTaskStatus;
-      } else if (hasAnyTelemetryData && metCount > 0) {
-        // Has telemetry data and some criteria are met
-        newStatus = 'DONE';
-      } else if (hasAnyTelemetryData) {
-        // Has telemetry data but criteria not met
-        newStatus = 'IN_PROGRESS';
-      }
-    }
-
-    // Special case: NO_LONGER_USING overrides manual status because it indicates regression from a telemetry-verified DONE state
-    const shouldOverrideManual = newStatus === ('NO_LONGER_USING' as CustomerTaskStatus) && wasPreviouslyDoneByTelemetry;
+    // Manual status takes precedence (except for NOT_STARTED or NO_LONGER_USING regression)
+    const hasManualStatus = task.statusUpdatedBy &&
+      task.statusUpdatedBy !== 'telemetry' &&
+      task.status !== 'NOT_STARTED';
+    const shouldOverrideManual = newStatus === 'NO_LONGER_USING' && evaluationDetails.wasPreviouslyDoneByTelemetry;
 
     // Only update task status if:
     // 1. Status has changed, AND
@@ -1576,71 +1512,8 @@ export const CustomerAdoptionMutationResolvers = {
 
       return updated;
     }
-
     // Status not updated - either no change or manual status takes precedence
     return task;
-  },
-
-  evaluateAllTasksTelemetry: async (_: any, { adoptionPlanId }: any, ctx: any) => {
-    const plan = await prisma.adoptionPlan.findUnique({
-      where: { id: adoptionPlanId },
-      include: {
-        tasks: {
-          include: {
-            telemetryAttributes: {
-              include: {
-                values: {
-                  orderBy: { createdAt: 'desc' },
-                  take: 1,
-                },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!plan) {
-      throw new Error('Adoption plan not found');
-    }
-
-    // Evaluate each task
-    // Note: evaluateTaskTelemetry handles manual vs telemetry status precedence internally
-    for (const task of plan.tasks) {
-      await CustomerAdoptionMutationResolvers.evaluateTaskTelemetry(
-        _,
-        { customerTaskId: task.id },
-        ctx
-      );
-    }
-
-    // Return updated plan
-    return await prisma.adoptionPlan.findUnique({
-      where: { id: adoptionPlanId },
-      include: {
-        customerProduct: {
-          include: {
-            customer: true,
-            product: true,
-          },
-        },
-        tasks: {
-          include: {
-            telemetryAttributes: {
-              include: {
-                values: {
-                  orderBy: { createdAt: 'desc' },
-                  take: 1,
-                },
-              },
-            },
-            outcomes: { include: { outcome: true } },
-            releases: { include: { release: true } },
-          },
-          orderBy: { sequenceNumber: 'asc' },
-        },
-      },
-    });
   },
 
   exportCustomerAdoptionToExcel: async (_: any, { customerId, customerProductId }: any, ctx: any) => {
@@ -2032,8 +1905,7 @@ export const CustomerAdoptionMutationResolvers = {
     // Import the telemetry values
     const result = await CustomerTelemetryImportService.importTelemetryValues(adoptionPlanId, fileBuffer);
 
-    // Evaluate all task statuses immediately after import
-    await CustomerAdoptionMutationResolvers.evaluateAllTasksTelemetry(_, { adoptionPlanId }, ctx);
+
 
     await logAudit('IMPORT_TELEMETRY_DATA', 'AdoptionPlan', adoptionPlanId, result.summary, ctx.user?.id);
 

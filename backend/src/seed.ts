@@ -12,24 +12,71 @@ async function main() {
     return nodeEnv !== 'production';
   })();
   if (seedDefaultUsers) {
-    const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@example.com';
-    const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'admin';
+    // Check if admin user already exists
+    const existingAdmin = await prisma.user.findUnique({
+      where: { username: 'admin' }
+    });
+
+    if (!existingAdmin) {
+      const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@dynamicadoptionplans.com';
+      const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'DAP123';
+      const passwordHash = await bcrypt.hash(adminPassword, 10);
+
+      // Create default admin user
+      const adminUser = await prisma.user.create({
+        data: {
+          username: 'admin',
+          email: adminEmail,
+          password: passwordHash,
+          fullName: 'System Administrator',
+          isAdmin: true,
+          isActive: true,
+          mustChangePassword: false, // Admin doesn't need to change default password on first login
+          role: 'ADMIN',
+          name: 'Admin' // Keep for backward compatibility if needed, though fullName is preferred
+        }
+      });
+
+      console.log(`[seed] Created default admin user: ${adminUser.username} (${adminUser.email})`);
+
+      // Create audit log for admin creation
+      await prisma.auditLog.create({
+        data: {
+          userId: adminUser.id,
+          action: 'create_user',
+          resourceType: 'user',
+          resourceId: adminUser.id,
+          details: { message: 'System initialization: Created default admin user' }
+        }
+      });
+
+      if (adminPassword === 'DAP123' && nodeEnv === 'production') {
+        console.warn('[seed] Weak default password used in production – change immediately.');
+      }
+    } else {
+      console.log('[seed] Admin user already exists');
+    }
+
+    // Create default regular user if configured
     const userEmail = process.env.DEFAULT_USER_EMAIL || 'user@example.com';
     const userPassword = process.env.DEFAULT_USER_PASSWORD || 'user';
-    const defaultUsers: Array<{ email: string; username: string; password: string; role: 'ADMIN' | 'USER'; name: string }> = [
-      { email: adminEmail, username: 'admin', password: adminPassword, role: 'ADMIN', name: 'Admin' },
-      { email: userEmail, username: 'user', password: userPassword, role: 'USER', name: 'User' }
-    ];
-    for (const u of defaultUsers) {
-      const existing = await prisma.user.findFirst({ where: { OR: [{ email: u.email }, { username: u.username }] } });
-      if (!existing) {
-        const hashed = await bcrypt.hash(u.password, 10);
-        await prisma.user.create({ data: { email: u.email, username: u.username, password: hashed, role: u.role, name: u.name } });
-        console.log(`[seed] Created default ${u.role} user: ${u.email}`);
-        if (['admin', 'user', 'password'].includes(u.password) && nodeEnv === 'production') {
-          console.warn('[seed] Weak default password used in production – change immediately.');
+
+    const existingUser = await prisma.user.findFirst({ where: { OR: [{ email: userEmail }, { username: 'user' }] } });
+    if (!existingUser) {
+      const hashed = await bcrypt.hash(userPassword, 10);
+      await prisma.user.create({
+        data: {
+          email: userEmail,
+          username: 'user',
+          password: hashed,
+          role: 'USER',
+          name: 'User',
+          fullName: 'Standard User',
+          isActive: true,
+          isAdmin: false
         }
-      }
+      });
+      console.log(`[seed] Created default user: ${userEmail}`);
     }
   } else {
     console.log('[seed] Skipping default users');
@@ -167,8 +214,8 @@ async function main() {
     for (const product of products) {
       const outcomeList = outcomesByProduct[product.id as keyof typeof outcomesByProduct] || [];
       for (const outcomeInfo of outcomeList) {
-        const existing = await prisma.outcome.findFirst({ 
-          where: { name: outcomeInfo.name, productId: product.id } 
+        const existing = await prisma.outcome.findFirst({
+          where: { name: outcomeInfo.name, productId: product.id }
         });
         if (!existing) {
           const outcome = await prisma.outcome.create({
@@ -219,8 +266,8 @@ async function main() {
     for (const product of products) {
       const licenseList = licensesByProduct[product.id as keyof typeof licensesByProduct] || [];
       for (const licenseInfo of licenseList) {
-        const existing = await prisma.license.findFirst({ 
-          where: { name: licenseInfo.name, productId: product.id } 
+        const existing = await prisma.license.findFirst({
+          where: { name: licenseInfo.name, productId: product.id }
         });
         if (!existing) {
           const license = await prisma.license.create({
@@ -272,8 +319,8 @@ async function main() {
     for (const product of products) {
       const releaseList = releasesByProduct[product.id as keyof typeof releasesByProduct] || [];
       for (const releaseInfo of releaseList) {
-        const existing = await prisma.release.findFirst({ 
-          where: { productId: product.id, level: releaseInfo.level } 
+        const existing = await prisma.release.findFirst({
+          where: { productId: product.id, level: releaseInfo.level }
         });
         if (!existing) {
           const release = await prisma.release.create({
@@ -829,15 +876,15 @@ async function main() {
       const taskList = tasksByProduct[product.id as keyof typeof tasksByProduct] || [];
       const productReleases = allReleases.filter(r => r.productId === product.id);
       const productOutcomes = allOutcomes.filter(o => o.productId === product.id);
-      
+
       for (let i = 0; i < taskList.length; i++) {
         const taskInfo = taskList[i];
         const sequenceNumber = i + 1;
-        
-        const existing = await prisma.task.findFirst({ 
-          where: { name: taskInfo.name, productId: product.id } 
+
+        const existing = await prisma.task.findFirst({
+          where: { name: taskInfo.name, productId: product.id }
         });
-        
+
         if (!existing) {
           const task = await prisma.task.create({
             data: {
@@ -856,7 +903,7 @@ async function main() {
 
           // Assign tasks to releases based on complexity and sequence
           const taskReleaseAssignments = [];
-          
+
           if (sequenceNumber <= 2) {
             // First 2 tasks -> First release
             if (productReleases[0]) taskReleaseAssignments.push(productReleases[0]);
@@ -887,7 +934,7 @@ async function main() {
           if (productOutcomes.length > 0) {
             const outcomeIndex = (sequenceNumber - 1) % productOutcomes.length;
             const assignedOutcome = productOutcomes[outcomeIndex];
-            
+
             await prisma.taskOutcome.create({
               data: {
                 taskId: task.id,
@@ -903,7 +950,7 @@ async function main() {
 
     // Create comprehensive telemetry sample data for ALL sample product tasks
     console.log('[seed] Creating telemetry sample data...');
-    
+
     // Get all tasks for Cisco sample products only (not user-created tasks)
     const sampleProductIds = [
       'prod-cisco-duo',
@@ -912,9 +959,9 @@ async function main() {
       'prod-cisco-ise',
       'prod-cisco-secure-access-sample'
     ];
-    
-    const allTasks = await prisma.task.findMany({ 
-      where: { 
+
+    const allTasks = await prisma.task.findMany({
+      where: {
         deletedAt: null,
         productId: { in: sampleProductIds }
       },
@@ -1106,7 +1153,7 @@ async function main() {
             const valueData = sampleValues[i];
             const daysBack = (sampleValues.length - i) * 2; // 6, 4, 2 days back
             const createdAt = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
-            
+
             await prisma.telemetryValue.create({
               data: {
                 attributeId: attribute.id,
@@ -1124,7 +1171,7 @@ async function main() {
         console.error(`[seed] Error creating telemetry data for task ${task.name}:`, error);
       }
     }
-    
+
     console.log(`[seed] Completed telemetry sample data creation for ${allTasks.length} tasks`);
     console.log('[seed] Each task has 5 telemetry attributes:');
     console.log('[seed]   1. Deployment Status (BOOLEAN) - with 3 historical values');

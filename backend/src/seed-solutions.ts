@@ -128,7 +128,10 @@ export async function seedSolutions() {
     // Create solution-specific releases for Hybrid Private Access
     const securityRelease = await prisma.release.upsert({
       where: {
-        id: 'hpa-sol-rel-1'
+        unique_solution_release_level: {
+          solutionId: securitySolution.id,
+          level: 1.0
+        }
       },
       update: {},
       create: {
@@ -336,44 +339,44 @@ export async function seedSolutions() {
         }
       });
 
-        // Link to both outcomes
+      // Link to both outcomes
+      await prisma.taskOutcome.upsert({
+        where: {
+          taskId_outcomeId: {
+            taskId: task.id,
+            outcomeId: digitalOutcome1.id
+          }
+        },
+        update: {},
+        create: {
+          taskId: task.id,
+          outcomeId: digitalOutcome1.id
+        }
+      });
+
+      if (taskData.sequenceNumber === 2) {
+        // Link transformation task to global performance outcome
         await prisma.taskOutcome.upsert({
           where: {
             taskId_outcomeId: {
               taskId: task.id,
-              outcomeId: digitalOutcome1.id
+              outcomeId: digitalOutcome2.id
             }
           },
           update: {},
           create: {
             taskId: task.id,
-            outcomeId: digitalOutcome1.id
+            outcomeId: digitalOutcome2.id
           }
         });
-
-        if (taskData.sequenceNumber === 2) {
-          // Link transformation task to global performance outcome
-          await prisma.taskOutcome.upsert({
-            where: {
-              taskId_outcomeId: {
-                taskId: task.id,
-                outcomeId: digitalOutcome2.id
-              }
-            },
-            update: {},
-            create: {
-              taskId: task.id,
-              outcomeId: digitalOutcome2.id
-            }
-          });
-        }
+      }
     }
 
     // Create test customers and assign solutions
     console.log('[seed-solutions] Creating test customers with solution assignments...');
-    
+
     const customers = await prisma.customer.findMany({ take: 3 });
-    
+
     if (customers.length > 0) {
       // Assign security solution to first customer
       const customerSolution1 = await prisma.customerSolution.upsert({

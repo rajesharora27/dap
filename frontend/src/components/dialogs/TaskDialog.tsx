@@ -203,37 +203,18 @@ export const TaskDialog: React.FC<Props> = ({
       const filteredOutcomes = selectedOutcomes.filter(id => id !== ALL_OUTCOMES_ID);
       const filteredReleases = selectedReleases.filter(id => id !== ALL_RELEASES_ID);
 
-      console.log('🚨 TaskDialog handleSave DEBUG:', {
-        selectedOutcomes,
-        selectedReleases,
-        filteredOutcomes,
-        filteredReleases,
-        'will send outcomeIds': filteredOutcomes,
-        'will send releaseIds': filteredReleases
-      });
-
-      telemetryAttributes.forEach((attr, idx) => {
-        console.log(`[TaskDialog] Attribute ${idx}:`, {
-          name: attr.name,
-          dataType: attr.dataType,
-          successCriteria: attr.successCriteria,
-          successCriteria_type: typeof attr.successCriteria,
-          successCriteria_stringified: JSON.stringify(attr.successCriteria)
-        });
-      });
-
       const taskData = {
         name: name.trim(),
         description: description.trim() || undefined,
         estMinutes: estMinutes,
         weight: weight,
         notes: notes.trim() || undefined,
-        howToDoc: howToDoc.filter(link => link.trim()).length > 0 ? howToDoc.filter(link => link.trim()) : undefined,
-        howToVideo: howToVideo.filter(link => link.trim()).length > 0 ? howToVideo.filter(link => link.trim()) : undefined,
+        howToDoc: howToDoc.filter(link => link.trim()),
+        howToVideo: howToVideo.filter(link => link.trim()),
         licenseId: selectedLicense || undefined,
         outcomeIds: filteredOutcomes,  // Send empty array [] if "All" selected, or array of IDs
         releaseIds: filteredReleases,   // Send empty array [] if "All" selected, or array of IDs
-        telemetryAttributes: telemetryAttributes.length > 0 ? telemetryAttributes : undefined
+        telemetryAttributes: telemetryAttributes
       };
       await onSave(taskData);
       onClose();
@@ -784,10 +765,7 @@ export const TaskDialog: React.FC<Props> = ({
               <TelemetryConfiguration
                 taskId={task?.id}
                 attributes={telemetryAttributes}
-                onChange={(attrs) => {
-                  console.log('[TaskDialog] TelemetryConfiguration onChange called with:', attrs);
-                  setTelemetryAttributes(attrs);
-                }}
+                onChange={setTelemetryAttributes}
                 disabled={loading}
               />
             </Box>

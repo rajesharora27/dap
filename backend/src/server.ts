@@ -31,7 +31,7 @@ export async function createApp() {
   // In development with no ALLOWED_ORIGINS set, allow all origins for SSH tunnel access
   const isDevelopment = process.env.NODE_ENV !== 'production';
   const hasCustomOrigins = !!process.env.ALLOWED_ORIGINS;
-  
+
   app.use(cors({
     origin: (isDevelopment && !hasCustomOrigins) ? true : getCorsOrigins(), // Allow all in dev for SSH tunnels
     credentials: true,
@@ -55,11 +55,11 @@ export async function createApp() {
 
   // REST endpoint for telemetry import (multipart file upload)
   const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-  
+
   // Configure multer for larger SQL backup files (up to 100MB)
-  const backupUpload = multer({ 
-    storage: multer.memoryStorage(), 
-    limits: { fileSize: 100 * 1024 * 1024 } 
+  const backupUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 100 * 1024 * 1024 }
   });
 
   app.post('/api/telemetry/import/:adoptionPlanId', upload.single('file'), async (req, res) => {
@@ -78,20 +78,15 @@ export async function createApp() {
       // Import the telemetry values
       const result = await CustomerTelemetryImportService.importTelemetryValues(adoptionPlanId, file.buffer);
 
-      // Evaluate all task statuses immediately after import (same as GraphQL mutation)
-      // Import the resolver dynamically to avoid circular dependencies
-      const { CustomerAdoptionMutationResolvers } = await import('./schema/resolvers/customerAdoption');
-      await CustomerAdoptionMutationResolvers.evaluateAllTasksTelemetry(
-        {}, 
-        { adoptionPlanId }, 
-        { user: { id: 'system', role: 'ADMIN' } }
-      );
+      // NOTE: Re-evaluation is now handled inside CustomerTelemetryImportService to support
+      // "missing data" logic (checking batch freshness). Calling evaluateAllTasksTelemetry here
+      // would override that logic and incorrectly set status back to DONE for missing tasks.
 
       res.json(result);
     } catch (error: any) {
       console.error('Telemetry import error:', error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: error.message || 'Import failed'
       });
     }
@@ -114,19 +109,13 @@ export async function createApp() {
       // Import the telemetry values
       const result = await CustomerTelemetryImportService.importSolutionTelemetryValues(solutionAdoptionPlanId, file.buffer);
 
-      // Evaluate all task statuses immediately after import
-      const { SolutionAdoptionMutationResolvers } = await import('./schema/resolvers/solutionAdoption');
-      await SolutionAdoptionMutationResolvers.evaluateAllSolutionTasksTelemetry(
-        {}, 
-        { solutionAdoptionPlanId }, 
-        { user: { id: 'system', role: 'ADMIN' } }
-      );
+      // NOTE: Re-evaluation is now handled inside CustomerTelemetryImportService
 
       res.json(result);
     } catch (error: any) {
       console.error('Solution telemetry import error:', error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: error.message || 'Import failed'
       });
     }
@@ -143,9 +132,9 @@ export async function createApp() {
 
       // Validate file extension
       if (!file.originalname.endsWith('.sql')) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'Invalid file type. Only .sql files are accepted.' 
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid file type. Only .sql files are accepted.'
         });
       }
 
@@ -164,15 +153,15 @@ export async function createApp() {
 
       // Import the BackupRestoreService dynamically
       const { BackupRestoreService } = await import('./services/BackupRestoreService');
-      
+
       // Restore from the uploaded file
       const result = await BackupRestoreService.restoreBackup(filename);
 
       res.json(result);
     } catch (error: any) {
       console.error('Backup restore from file error:', error);
-      res.status(500).json({ 
-        success: false, 
+      res.status(500).json({
+        success: false,
         message: error.message || 'Restore from file failed',
         error: error.message
       });
@@ -188,10 +177,10 @@ export async function createApp() {
   // Set SERVE_FRONTEND=true to enable this mode
   if (process.env.SERVE_FRONTEND === 'true') {
     const frontendDist = path.join(process.cwd(), '..', 'frontend', 'dist');
-    
+
     if (fs.existsSync(frontendDist)) {
       console.log(`Serving frontend static files from: ${frontendDist}`);
-      
+
       // Serve static assets with caching
       app.use(express.static(frontendDist, {
         maxAge: '1y',
@@ -202,13 +191,13 @@ export async function createApp() {
           }
         }
       }));
-      
+
       // Handle client-side routing (SPA) - must be last
       app.get('*', (req, res, next) => {
         // Don't interfere with API routes
-        if (req.path.startsWith('/graphql') || 
-            req.path.startsWith('/api/') || 
-            req.path.startsWith('/health')) {
+        if (req.path.startsWith('/graphql') ||
+          req.path.startsWith('/api/') ||
+          req.path.startsWith('/health')) {
           return next();
         }
         res.sendFile(path.join(frontendDist, 'index.html'));
@@ -233,7 +222,7 @@ if (isDirectRun) {
   createApp().then(async ({ httpServer }) => {
     const port = config.backend.port;
     const host = config.backend.host;
-    
+
     // Clear all sessions on startup to force re-authentication
     console.log('🔐 Server starting - clearing all sessions for security...');
     try {
@@ -241,7 +230,7 @@ if (isDirectRun) {
     } catch (e) {
       console.error('⚠️  Failed to clear sessions on startup:', (e as any).message);
     }
-    
+
     // Initialize auto-backup scheduler
     console.log('🔄 Initializing auto-backup scheduler...');
     try {
@@ -251,25 +240,25 @@ if (isDirectRun) {
     } catch (e) {
       console.error('⚠️  Failed to initialize auto-backup scheduler:', (e as any).message);
     }
-    
+
     // Run maintenance job every minute
     // - Clear old telemetry (30+ days)
     // - Clear expired sessions (7+ days)
     // - Clear expired locks
     setInterval(async () => {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      
+
       try {
         // Clean old telemetry data
         if (prisma && prisma.telemetry) {
-          const telemetryResult = await prisma.telemetry.deleteMany({ 
-            where: { createdAt: { lt: thirtyDaysAgo } } 
+          const telemetryResult = await prisma.telemetry.deleteMany({
+            where: { createdAt: { lt: thirtyDaysAgo } }
           });
           if (telemetryResult.count > 0) {
             console.log(`🧹 Cleaned up ${telemetryResult.count} old telemetry record(s)`);
           }
         }
-        
+
         // Run session maintenance
         await SessionManager.runMaintenance();
       } catch (e) {

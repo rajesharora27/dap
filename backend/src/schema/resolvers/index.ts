@@ -805,8 +805,8 @@ export const resolvers = {
       if (!user) throw new Error('INVALID_CREDENTIALS');
       const ok = await bcrypt.compare(password, user.password);
       if (!ok) throw new Error('INVALID_CREDENTIALS');
-      return jwt.sign({ 
-        uid: user.id, 
+      return jwt.sign({
+        uid: user.id,
         role: user.role,
         username: user.username,
         email: user.email,
@@ -829,8 +829,8 @@ export const resolvers = {
       if (!user) throw new Error('INVALID_CREDENTIALS');
       const ok = await bcrypt.compare(password, user.password);
       if (!ok) throw new Error('INVALID_CREDENTIALS');
-      return jwt.sign({ 
-        uid: user.id, 
+      return jwt.sign({
+        uid: user.id,
         role: user.role,
         username: user.username,
         email: user.email,
@@ -1719,7 +1719,6 @@ export const resolvers = {
           }))
         });
       }
-
       await logAudit('CREATE_TASK', 'Task', task.id, { input }, ctx.user?.id);
       return task;
     },
@@ -2529,7 +2528,7 @@ export const resolvers = {
     addCustomerTelemetryValue: CustomerAdoptionMutationResolvers.addCustomerTelemetryValue,
     bulkAddCustomerTelemetryValues: CustomerAdoptionMutationResolvers.bulkAddCustomerTelemetryValues,
     evaluateTaskTelemetry: CustomerAdoptionMutationResolvers.evaluateTaskTelemetry,
-    evaluateAllTasksTelemetry: CustomerAdoptionMutationResolvers.evaluateAllTasksTelemetry,
+
     exportCustomerAdoptionToExcel: CustomerAdoptionMutationResolvers.exportCustomerAdoptionToExcel,
     importCustomerAdoptionFromExcel: CustomerAdoptionMutationResolvers.importCustomerAdoptionFromExcel,
     exportAdoptionPlanTelemetryTemplate: CustomerAdoptionMutationResolvers.exportAdoptionPlanTelemetryTemplate,
@@ -2546,7 +2545,7 @@ export const resolvers = {
     updateCustomerSolutionTaskStatus: SolutionAdoptionMutationResolvers.updateCustomerSolutionTaskStatus,
     bulkUpdateCustomerSolutionTaskStatus: SolutionAdoptionMutationResolvers.bulkUpdateCustomerSolutionTaskStatus,
     evaluateSolutionTaskTelemetry: SolutionAdoptionMutationResolvers.evaluateSolutionTaskTelemetry,
-    evaluateAllSolutionTasksTelemetry: SolutionAdoptionMutationResolvers.evaluateAllSolutionTasksTelemetry,
+
     exportSolutionAdoptionPlanTelemetryTemplate: SolutionAdoptionMutationResolvers.exportSolutionAdoptionPlanTelemetryTemplate,
     importSolutionAdoptionPlanTelemetry: SolutionAdoptionMutationResolvers.importSolutionAdoptionPlanTelemetry,
     addProductToSolutionEnhanced: SolutionAdoptionMutationResolvers.addProductToSolutionEnhanced,

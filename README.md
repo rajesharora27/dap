@@ -1,6 +1,15 @@
 # DAP (Digital Adoption Platform)
 
-**Production-ready customer adoption and product management platform with Excel import/export, telemetry tracking, and solution bundling.**
+**Version:** 2.1.0 | **Status:** ✅ Production Ready | **Last Updated:** November 30, 2025
+
+Production-ready customer adoption and product management platform with Excel import/export, telemetry tracking, and solution bundling.
+
+## 🌐 Access
+
+**Development:** http://myapps.cxsaaslab.com/dap/  
+**Production:** http://prod.rajarora.csslab/dap/  
+
+**Default Login:** `admin` / `DAP123` (change on first login)
 
 ## Overview
 
@@ -102,14 +111,38 @@ cd /data/dap
 
 ## Documentation
 
-- **[Quick Start Guide](QUICK_START.md)**: Detailed startup instructions
-- **[Deployment Guide](DEPLOYMENT_GUIDE.md)**: Production deployment instructions
-- **[Architecture](docs/ARCHITECTURE.md)**: System design and data flow
-- **[Features](docs/FEATURES.md)**: Complete feature list
-- **[Technical Documentation](docs/TECHNICAL-DOCUMENTATION.md)**: API and technical details
-- **[DAP Management](docs/DAP-MANAGEMENT.md)**: Script usage and options
-- **[Changelog](CHANGELOG.md)**: Version history
-- **[Release Notes](RELEASE_NOTES.md)**: Latest updates
+### 📚 Quick Links
+
+- **[Documentation Index](DOCUMENTATION_INDEX.md)** - Complete documentation catalog
+- **[Context Document](CONTEXT.md)** - Comprehensive app overview (AI assistants & developers)
+- **[Quick Start Guide](QUICK_START.md)** - Get started in minutes
+- **[Deployment Guide](DEPLOYMENT_COMPLETE_GUIDE.md)** - All deployment scenarios
+- **[Production Deployment](deploy/README.md)** - Production-specific deployment
+
+### 🔍 By Topic
+
+**Getting Started:**
+- [Quick Start](QUICK_START.md) - Fast setup
+- [Context](CONTEXT.md) - Complete overview
+- [Features](docs/FEATURES.md) - Feature list
+
+**Deployment:**
+- [Complete Deployment Guide](DEPLOYMENT_COMPLETE_GUIDE.md) - Master guide
+- [Production Deployment](deploy/README.md) - Production specifics
+- [Apache Deployment](APACHE_DEPLOYMENT_QUICKSTART.md) - Apache setup
+- [Latest Deployment](PRODUCTION_DEPLOYMENT_SUMMARY.md) - Current status
+
+**Technical:**
+- [Architecture](docs/ARCHITECTURE.md) - System design
+- [Technical Docs](docs/TECHNICAL-DOCUMENTATION.md) - API details
+- [Authentication](docs/AUTH_IMPLEMENTATION_SUMMARY.md) - Auth system
+
+**Operations:**
+- [Backup & Restore](AUTO_BACKUP_FEATURE.md) - Automated backups
+- [Troubleshooting](CLIENT_TROUBLESHOOTING.md) - Common issues
+- [Recovery Guide](RECOVERY_GUIDE.md) - Disaster recovery
+
+**📖 Full documentation:** See [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)
 
 ## Development
 
