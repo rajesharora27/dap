@@ -2060,7 +2060,7 @@ export const SolutionAdoptionMutationResolvers = {
 
   // Export telemetry template for solution adoption plan
   exportSolutionAdoptionPlanTelemetryTemplate: async (_: any, { solutionAdoptionPlanId }: { solutionAdoptionPlanId: string }, ctx: any) => {
-    ensureRole(ctx, 'ADMIN');
+    ensureRole(ctx, ['ADMIN', 'CS']);
 
     // Use the customer telemetry export service with solution-specific queries
     const { CustomerTelemetryExportService } = require('../../services/telemetry/CustomerTelemetryExportService');
@@ -2126,7 +2126,7 @@ export const SolutionAdoptionMutationResolvers = {
 
   // Import telemetry data for solution adoption plan
   importSolutionAdoptionPlanTelemetry: async (_: any, { solutionAdoptionPlanId, file }: { solutionAdoptionPlanId: string; file: any }, ctx: any) => {
-    ensureRole(ctx, 'ADMIN');
+    ensureRole(ctx, ['ADMIN', 'CS']);
 
     // Handle file upload - file is an Upload scalar
     const { createReadStream } = await file;
@@ -2152,7 +2152,7 @@ export const SolutionAdoptionMutationResolvers = {
 
   // Product management mutations
   addProductToSolutionEnhanced: async (_: any, { solutionId, productId, order }: any, ctx: any) => {
-    ensureRole(ctx, 'ADMIN');
+    ensureRole(ctx, ['ADMIN', 'SME']);
 
     // Get max order if not provided
     let effectiveOrder = order;
@@ -2177,7 +2177,7 @@ export const SolutionAdoptionMutationResolvers = {
   },
 
   removeProductFromSolutionEnhanced: async (_: any, { solutionId, productId }: any, ctx: any) => {
-    ensureRole(ctx, 'ADMIN');
+    ensureRole(ctx, ['ADMIN', 'SME']);
 
     await prisma.solutionProduct.deleteMany({
       where: { solutionId, productId }
@@ -2188,7 +2188,7 @@ export const SolutionAdoptionMutationResolvers = {
   },
 
   reorderProductsInSolution: async (_: any, { solutionId, productOrders }: any, ctx: any) => {
-    ensureRole(ctx, 'ADMIN');
+    ensureRole(ctx, ['ADMIN', 'SME']);
 
     // Update each product's order
     for (const { productId, order } of productOrders) {

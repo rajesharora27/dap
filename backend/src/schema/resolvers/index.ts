@@ -1142,7 +1142,7 @@ export const resolvers = {
       return true;
     },
     createLicense: async (_: any, { input }: any, ctx: any) => {
-      ensureRole(ctx, 'ADMIN');
+      ensureRole(ctx, ['ADMIN', 'SME']);
       if (fallbackActive) {
         const l = fbCreateLicense(input);
         await logAudit('CREATE_LICENSE', 'License', l.id, { input }, ctx.user?.id);
@@ -1161,7 +1161,7 @@ export const resolvers = {
       return l;
     },
     updateLicense: async (_: any, { id, input }: any, ctx: any) => {
-      ensureRole(ctx, 'ADMIN');
+      ensureRole(ctx, ['ADMIN', 'SME']);
       if (fallbackActive) {
         const before = fbUpdateLicense(id, {});
         const l = fbUpdateLicense(id, input);
@@ -1183,7 +1183,7 @@ export const resolvers = {
       return l;
     },
     deleteLicense: async (_: any, { id }: any, ctx: any) => {
-      ensureRole(ctx, 'ADMIN');
+      ensureRole(ctx, ['ADMIN', 'SME']);
       console.log(`Deleting license: ${id}`);
       if (fallbackActive) {
         fbDeleteLicense(id);
@@ -1202,7 +1202,7 @@ export const resolvers = {
     },
 
     createRelease: async (_: any, { input }: any, ctx: any) => {
-      ensureRole(ctx, 'ADMIN');
+      ensureRole(ctx, ['ADMIN', 'SME']);
 
       // Validate that either productId or solutionId is provided (but not both)
       if (!input.productId && !input.solutionId) {
@@ -1238,7 +1238,7 @@ export const resolvers = {
       }
     },
     updateRelease: async (_: any, { id, input }: any, ctx: any) => {
-      ensureRole(ctx, 'ADMIN');
+      ensureRole(ctx, ['ADMIN', 'SME']);
 
       // Validate that either productId or solutionId is provided (but not both) if either is specified
       if (input.productId && input.solutionId) {
@@ -1279,7 +1279,7 @@ export const resolvers = {
       }
     },
     deleteRelease: async (_: any, { id }: any, ctx: any) => {
-      ensureRole(ctx, 'ADMIN');
+      ensureRole(ctx, ['ADMIN', 'SME']);
       if (fallbackActive) {
         throw new Error('Release management not supported in fallback mode');
       }
@@ -1369,7 +1369,7 @@ export const resolvers = {
     },
     deleteOutcome: async (_: any, { id }: any, ctx: any) => {
       console.log(`deleteOutcome called for id: ${id}`);
-      ensureRole(ctx, 'ADMIN');
+      ensureRole(ctx, ['ADMIN', 'SME']);
       if (fallbackActive) {
         return fbSoftDeleteOutcome(id);
       }
@@ -1384,7 +1384,7 @@ export const resolvers = {
       return true;
     },
     addProductToSolution: async (_: any, { solutionId, productId }: any, ctx: any) => {
-      ensureRole(ctx, 'ADMIN');
+      ensureRole(ctx, ['ADMIN', 'SME']);
       if (fallbackActive) {
         fbAddProductToSolution(solutionId, productId);
         await logAudit('ADD_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id);
@@ -1405,13 +1405,13 @@ export const resolvers = {
       await logAudit('ADD_PRODUCT_SOLUTION', 'Solution', solutionId, { productId, order: nextOrder }, ctx.user?.id);
       return true;
     },
-    removeProductFromSolution: async (_: any, { solutionId, productId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbRemoveProductFromSolution(solutionId, productId); await logAudit('REMOVE_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); return true; } await prisma.solutionProduct.deleteMany({ where: { solutionId, productId } }); await logAudit('REMOVE_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); return true; },
-    addProductToCustomer: async (_: any, { customerId, productId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbAddProductToCustomer(customerId, productId); await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; } await prisma.customerProduct.upsert({ where: { customerId_productId: { customerId, productId } }, update: {}, create: { customerId, productId } }); await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; },
-    removeProductFromCustomer: async (_: any, { customerId, productId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbRemoveProductFromCustomer(customerId, productId); await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; } await prisma.customerProduct.deleteMany({ where: { customerId, productId } }); await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; },
-    addSolutionToCustomer: async (_: any, { customerId, solutionId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbAddSolutionToCustomer(customerId, solutionId); await logAudit('ADD_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; } await prisma.customerSolution.upsert({ where: { customerId_solutionId: { customerId, solutionId } }, update: {}, create: { customerId, solutionId } }); await logAudit('ADD_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; },
-    removeSolutionFromCustomer: async (_: any, { customerId, solutionId }: any, ctx: any) => { ensureRole(ctx, 'ADMIN'); if (fallbackActive) { fbRemoveSolutionFromCustomer(customerId, solutionId); await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; } await prisma.customerSolution.deleteMany({ where: { customerId, solutionId } }); await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; },
+    removeProductFromSolution: async (_: any, { solutionId, productId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'SME']); if (fallbackActive) { fbRemoveProductFromSolution(solutionId, productId); await logAudit('REMOVE_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); return true; } await prisma.solutionProduct.deleteMany({ where: { solutionId, productId } }); await logAudit('REMOVE_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); return true; },
+    addProductToCustomer: async (_: any, { customerId, productId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'CS']); if (fallbackActive) { fbAddProductToCustomer(customerId, productId); await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; } await prisma.customerProduct.upsert({ where: { customerId_productId: { customerId, productId } }, update: {}, create: { customerId, productId } }); await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; },
+    removeProductFromCustomer: async (_: any, { customerId, productId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'CS']); if (fallbackActive) { fbRemoveProductFromCustomer(customerId, productId); await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; } await prisma.customerProduct.deleteMany({ where: { customerId, productId } }); await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; },
+    addSolutionToCustomer: async (_: any, { customerId, solutionId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'CS']); if (fallbackActive) { fbAddSolutionToCustomer(customerId, solutionId); await logAudit('ADD_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; } await prisma.customerSolution.upsert({ where: { customerId_solutionId: { customerId, solutionId } }, update: {}, create: { customerId, solutionId } }); await logAudit('ADD_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; },
+    removeSolutionFromCustomer: async (_: any, { customerId, solutionId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'CS']); if (fallbackActive) { fbRemoveSolutionFromCustomer(customerId, solutionId); await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; } await prisma.customerSolution.deleteMany({ where: { customerId, solutionId } }); await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; },
     reorderTasks: async (_: any, { productId, solutionId, order }: any, ctx: any) => {
-      ensureRole(ctx, 'ADMIN');
+      ensureRole(ctx, ['ADMIN', 'SME']);
 
       const entityType = productId ? 'Product' : 'Solution';
       const entityId = productId || solutionId;
