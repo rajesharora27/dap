@@ -1,12 +1,12 @@
 import { createTheme, ThemeOptions } from '@mui/material/styles';
 
-// Define all available themes
+// Define all available themes - ALL LIGHT THEMES
 export const themes = {
-  // Cisco Official Dark Blue
-  ciscoDark: {
-    name: 'Cisco Dark Blue',
+  // Cisco Light (Default)
+  ciscoLight: {
+    name: 'Cisco Light',
     palette: {
-      mode: 'dark',
+      mode: 'light',
       primary: {
         main: '#049FD9', // Cisco Blue
         light: '#4BB8E8',
@@ -18,45 +18,19 @@ export const themes = {
         dark: '#56A034',
       },
       background: {
-        default: '#0D274D',
-        paper: '#1A3A5C',
+        default: '#F5F7FA',
+        paper: '#FFFFFF',
       },
       text: {
-        primary: '#FFFFFF',
-        secondary: '#B8D4E8',
-      },
-    },
-  },
-
-  // Cursor Dark Theme
-  cursorDark: {
-    name: 'Cursor Dark',
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#8B5CF6', // Purple
-        light: '#A78BFA',
-        dark: '#7C3AED',
-      },
-      secondary: {
-        main: '#10B981', // Green
-        light: '#34D399',
-        dark: '#059669',
-      },
-      background: {
-        default: '#1E1E1E',
-        paper: '#252526',
-      },
-      text: {
-        primary: '#D4D4D4',
-        secondary: '#9CA3AF',
+        primary: '#0D274D',
+        secondary: '#5A6F8A',
       },
     },
   },
 
   // Material Design Light
   materialLight: {
-    name: 'Material Light',
+    name: 'Material Blue',
     palette: {
       mode: 'light',
       primary: {
@@ -73,296 +47,16 @@ export const themes = {
         default: '#FAFAFA',
         paper: '#FFFFFF',
       },
-    },
-  },
-
-  // Material Design Dark
-  materialDark: {
-    name: 'Material Dark',
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#90CAF9',
-        light: '#B3E5FC',
-        dark: '#42A5F5',
-      },
-      secondary: {
-        main: '#F48FB1',
-        light: '#F8BBD0',
-        dark: '#EC407A',
-      },
-      background: {
-        default: '#121212',
-        paper: '#1E1E1E',
-      },
-    },
-  },
-
-  // GitHub Dark
-  githubDark: {
-    name: 'GitHub Dark',
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#58A6FF',
-        light: '#79B8FF',
-        dark: '#1F6FEB',
-      },
-      secondary: {
-        main: '#56D364',
-        light: '#7EE787',
-        dark: '#3FB950',
-      },
-      background: {
-        default: '#0D1117',
-        paper: '#161B22',
-      },
       text: {
-        primary: '#C9D1D9',
-        secondary: '#8B949E',
+        primary: '#212121',
+        secondary: '#757575',
       },
     },
   },
 
-  // VS Code Dark+
-  vsDark: {
-    name: 'VS Code Dark+',
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#007ACC',
-        light: '#3399CC',
-        dark: '#005A9E',
-      },
-      secondary: {
-        main: '#CE9178',
-        light: '#D7BA7D',
-        dark: '#B5835A',
-      },
-      background: {
-        default: '#1E1E1E',
-        paper: '#252526',
-      },
-      text: {
-        primary: '#D4D4D4',
-        secondary: '#858585',
-      },
-    },
-  },
-
-  // Dracula
-  dracula: {
-    name: 'Dracula',
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#BD93F9',
-        light: '#D6ACFF',
-        dark: '#9966FF',
-      },
-      secondary: {
-        main: '#50FA7B',
-        light: '#69FF94',
-        dark: '#3BE162',
-      },
-      background: {
-        default: '#282A36',
-        paper: '#44475A',
-      },
-      text: {
-        primary: '#F8F8F2',
-        secondary: '#6272A4',
-      },
-    },
-  },
-
-  // Nord
-  nord: {
-    name: 'Nord',
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#88C0D0',
-        light: '#A3D4E6',
-        dark: '#5E81AC',
-      },
-      secondary: {
-        main: '#A3BE8C',
-        light: '#B8D4A8',
-        dark: '#81A670',
-      },
-      background: {
-        default: '#2E3440',
-        paper: '#3B4252',
-      },
-      text: {
-        primary: '#ECEFF4',
-        secondary: '#D8DEE9',
-      },
-    },
-  },
-
-  // Monokai
-  monokai: {
-    name: 'Monokai',
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#66D9EF',
-        light: '#7FE0F3',
-        dark: '#4DAEC7',
-      },
-      secondary: {
-        main: '#A6E22E',
-        light: '#B8E962',
-        dark: '#8BC34A',
-      },
-      background: {
-        default: '#272822',
-        paper: '#3E3D32',
-      },
-      text: {
-        primary: '#F8F8F2',
-        secondary: '#75715E',
-      },
-    },
-  },
-
-  // Solarized Dark
-  solarizedDark: {
-    name: 'Solarized Dark',
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#268BD2',
-        light: '#4AA5E3',
-        dark: '#1E6AA1',
-      },
-      secondary: {
-        main: '#2AA198',
-        light: '#44B5AB',
-        dark: '#1F8178',
-      },
-      background: {
-        default: '#002B36',
-        paper: '#073642',
-      },
-      text: {
-        primary: '#839496',
-        secondary: '#586E75',
-      },
-    },
-  },
-
-  // One Dark Pro
-  oneDark: {
-    name: 'One Dark Pro',
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#61AFEF',
-        light: '#7EC4F5',
-        dark: '#4C8BBD',
-      },
-      secondary: {
-        main: '#98C379',
-        light: '#ABD18E',
-        dark: '#7AA261',
-      },
-      background: {
-        default: '#282C34',
-        paper: '#21252B',
-      },
-      text: {
-        primary: '#ABB2BF',
-        secondary: '#5C6370',
-      },
-    },
-  },
-
-  // Gruvbox Dark
-  gruvboxDark: {
-    name: 'Gruvbox Dark',
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#FE8019',
-        light: '#FE9B40',
-        dark: '#D65D0E',
-      },
-      secondary: {
-        main: '#B8BB26',
-        light: '#C7CA44',
-        dark: '#98971A',
-      },
-      background: {
-        default: '#282828',
-        paper: '#3C3836',
-      },
-      text: {
-        primary: '#EBDBB2',
-        secondary: '#A89984',
-      },
-    },
-  },
-
-  // Tokyo Night
-  tokyoNight: {
-    name: 'Tokyo Night',
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#7AA2F7',
-        light: '#8FB6FA',
-        dark: '#5B80D4',
-      },
-      secondary: {
-        main: '#BB9AF7',
-        light: '#C7A8FA',
-        dark: '#9777D4',
-      },
-      background: {
-        default: '#1A1B26',
-        paper: '#24283B',
-      },
-      text: {
-        primary: '#C0CAF5',
-        secondary: '#9AA5CE',
-      },
-    },
-  },
-
-  // Ayu Dark
-  ayuDark: {
-    name: 'Ayu Dark',
-    palette: {
-      mode: 'dark',
-      primary: {
-        main: '#59C2FF',
-        light: '#73CCFF',
-        dark: '#3FA8E6',
-      },
-      secondary: {
-        main: '#FFB454',
-        light: '#FFC36D',
-        dark: '#E69A3B',
-      },
-      background: {
-        default: '#0A0E14',
-        paper: '#0D1117',
-      },
-      text: {
-        primary: '#B3B1AD',
-        secondary: '#626A73',
-      },
-    },
-  },
-
-  // ===== TOP LIGHT THEMES =====
-
-  // Google Light (Most Popular)
+  // Google Light
   googleLight: {
-    name: 'Google Light',
+    name: 'Google',
     palette: {
       mode: 'light',
       primary: {
@@ -388,7 +82,7 @@ export const themes = {
 
   // Apple Light
   appleLight: {
-    name: 'Apple Light',
+    name: 'Apple',
     palette: {
       mode: 'light',
       primary: {
@@ -412,9 +106,61 @@ export const themes = {
     },
   },
 
+  // GitHub Light
+  githubLight: {
+    name: 'GitHub',
+    palette: {
+      mode: 'light',
+      primary: {
+        main: '#0969DA',
+        light: '#218BFF',
+        dark: '#0550AE',
+      },
+      secondary: {
+        main: '#1F883D',
+        light: '#2DA44E',
+        dark: '#116329',
+      },
+      background: {
+        default: '#FFFFFF',
+        paper: '#F6F8FA',
+      },
+      text: {
+        primary: '#1F2328',
+        secondary: '#656D76',
+      },
+    },
+  },
+
+  // VS Code Light
+  vsLight: {
+    name: 'VS Code Light',
+    palette: {
+      mode: 'light',
+      primary: {
+        main: '#0066B8',
+        light: '#1177BB',
+        dark: '#004E8C',
+      },
+      secondary: {
+        main: '#008000',
+        light: '#22AA22',
+        dark: '#006600',
+      },
+      background: {
+        default: '#FFFFFF',
+        paper: '#F3F3F3',
+      },
+      text: {
+        primary: '#333333',
+        secondary: '#717171',
+      },
+    },
+  },
+
   // Notion Light
   notionLight: {
-    name: 'Notion Light',
+    name: 'Notion',
     palette: {
       mode: 'light',
       primary: {
@@ -423,9 +169,9 @@ export const themes = {
         dark: '#1A5BB8',
       },
       secondary: {
-        main: '#37352F',
-        light: '#605E59',
-        dark: '#25231F',
+        main: '#EB5757',
+        light: '#F07676',
+        dark: '#C94444',
       },
       background: {
         default: '#FFFFFF',
@@ -440,7 +186,7 @@ export const themes = {
 
   // Slack Light
   slackLight: {
-    name: 'Slack Light',
+    name: 'Slack',
     palette: {
       mode: 'light',
       primary: {
@@ -466,7 +212,7 @@ export const themes = {
 
   // Figma Light
   figmaLight: {
-    name: 'Figma Light',
+    name: 'Figma',
     palette: {
       mode: 'light',
       primary: {
@@ -486,6 +232,188 @@ export const themes = {
       text: {
         primary: '#000000',
         secondary: '#666666',
+      },
+    },
+  },
+
+  // Solarized Light
+  solarizedLight: {
+    name: 'Solarized',
+    palette: {
+      mode: 'light',
+      primary: {
+        main: '#268BD2',
+        light: '#4AA5E3',
+        dark: '#1E6AA1',
+      },
+      secondary: {
+        main: '#2AA198',
+        light: '#44B5AB',
+        dark: '#1F8178',
+      },
+      background: {
+        default: '#FDF6E3',
+        paper: '#EEE8D5',
+      },
+      text: {
+        primary: '#657B83',
+        secondary: '#93A1A1',
+      },
+    },
+  },
+
+  // Nord Light
+  nordLight: {
+    name: 'Nord Frost',
+    palette: {
+      mode: 'light',
+      primary: {
+        main: '#5E81AC',
+        light: '#81A1C1',
+        dark: '#4C6789',
+      },
+      secondary: {
+        main: '#A3BE8C',
+        light: '#B8D4A8',
+        dark: '#81A670',
+      },
+      background: {
+        default: '#ECEFF4',
+        paper: '#E5E9F0',
+      },
+      text: {
+        primary: '#2E3440',
+        secondary: '#4C566A',
+      },
+    },
+  },
+
+  // Ocean Blue
+  oceanBlue: {
+    name: 'Ocean Blue',
+    palette: {
+      mode: 'light',
+      primary: {
+        main: '#0077B6',
+        light: '#00A8E8',
+        dark: '#005082',
+      },
+      secondary: {
+        main: '#00B4D8',
+        light: '#48CAE4',
+        dark: '#0096C7',
+      },
+      background: {
+        default: '#F0F9FF',
+        paper: '#FFFFFF',
+      },
+      text: {
+        primary: '#023047',
+        secondary: '#4A6B7C',
+      },
+    },
+  },
+
+  // Forest Green
+  forestGreen: {
+    name: 'Forest',
+    palette: {
+      mode: 'light',
+      primary: {
+        main: '#2D6A4F',
+        light: '#40916C',
+        dark: '#1B4332',
+      },
+      secondary: {
+        main: '#52B788',
+        light: '#74C69D',
+        dark: '#40916C',
+      },
+      background: {
+        default: '#F0FFF4',
+        paper: '#FFFFFF',
+      },
+      text: {
+        primary: '#1B4332',
+        secondary: '#4A7C59',
+      },
+    },
+  },
+
+  // Sunset Warm
+  sunsetWarm: {
+    name: 'Sunset',
+    palette: {
+      mode: 'light',
+      primary: {
+        main: '#E85D04',
+        light: '#F48C06',
+        dark: '#DC2F02',
+      },
+      secondary: {
+        main: '#FFBA08',
+        light: '#FAA307',
+        dark: '#E85D04',
+      },
+      background: {
+        default: '#FFFAF0',
+        paper: '#FFFFFF',
+      },
+      text: {
+        primary: '#370617',
+        secondary: '#6A4C4A',
+      },
+    },
+  },
+
+  // Lavender Purple
+  lavenderPurple: {
+    name: 'Lavender',
+    palette: {
+      mode: 'light',
+      primary: {
+        main: '#7B2CBF',
+        light: '#9D4EDD',
+        dark: '#5A189A',
+      },
+      secondary: {
+        main: '#C77DFF',
+        light: '#E0AAFF',
+        dark: '#9D4EDD',
+      },
+      background: {
+        default: '#FAF5FF',
+        paper: '#FFFFFF',
+      },
+      text: {
+        primary: '#240046',
+        secondary: '#5E4A7E',
+      },
+    },
+  },
+
+  // Rose Pink
+  rosePink: {
+    name: 'Rose',
+    palette: {
+      mode: 'light',
+      primary: {
+        main: '#BE185D',
+        light: '#DB2777',
+        dark: '#9D174D',
+      },
+      secondary: {
+        main: '#F472B6',
+        light: '#F9A8D4',
+        dark: '#EC4899',
+      },
+      background: {
+        default: '#FFF5F7',
+        paper: '#FFFFFF',
+      },
+      text: {
+        primary: '#831843',
+        secondary: '#9D5A6D',
       },
     },
   },
@@ -631,5 +559,5 @@ export const getThemeOptions = () => {
 };
 
 // Default theme
-export const DEFAULT_THEME: ThemeKey = 'ciscoDark';
+export const DEFAULT_THEME: ThemeKey = 'ciscoLight';
 

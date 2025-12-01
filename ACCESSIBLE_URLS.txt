@@ -9,7 +9,7 @@ HTTP URLs:
 1. http://myapps.cxsaaslab.com/dap/
 2. http://myapps.rajarora.csslab/dap/
 3. http://centos1.rajarora.csslab/dap/
-4. http://172.22.156.32/dap/
+4. http://172.22.156.33/dap/
 
 HTTPS URLs:
 ───────────

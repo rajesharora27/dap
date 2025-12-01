@@ -49,7 +49,7 @@ if [ $? -eq 0 ]; then
     echo "  http://myapps.rajarora.csslab/dap/"
     echo "  http://centos1.rajarora.csslab/dap/"
     echo "  https://myapps-8321890.ztna.sse.cisco.io/dap/"
-    echo "  http://172.22.156.32/dap/"
+    echo "  http://172.22.156.33/dap/"
     echo ""
 else
     echo ""

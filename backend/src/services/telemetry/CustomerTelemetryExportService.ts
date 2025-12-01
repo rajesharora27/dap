@@ -373,12 +373,11 @@ export class CustomerTelemetryExportService {
 
       for (const attr of task.telemetryAttributes) {
         // Get current value from latest telemetry value if it exists
-        const latestValue = await prisma.customerSolutionTelemetryValue.findFirst({
+        const latestValue = await prisma.customerTelemetryValue.findFirst({
           where: {
-            taskId: task.id,
-            attributeId: attr.id
+            customerAttributeId: attr.id
           },
-          orderBy: { timestamp: 'desc' }
+          orderBy: { createdAt: 'desc' }
         });
 
         const currentValue = latestValue?.value || '';

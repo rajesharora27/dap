@@ -127,28 +127,7 @@ const IMPORT_SOLUTION_TELEMETRY = gql`
   }
 `;
 
-const EVALUATE_ALL_SOLUTION_TASKS_TELEMETRY = gql`
-  mutation EvaluateAllSolutionTasksTelemetry($solutionAdoptionPlanId: ID!) {
-    evaluateAllSolutionTasksTelemetry(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
-      id
-      progressPercentage
-      totalTasks
-      completedTasks
-      tasks {
-        id
-        name
-        status
-        statusUpdatedAt
-        statusUpdatedBy
-        statusUpdateSource
-        telemetryAttributes {
-          id
-          isMet
-        }
-      }
-    }
-  }
-`;
+
 
 interface Props {
   customerId: string;
@@ -174,11 +153,11 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
     }
 
     const solutions = data.customer.solutions;
-    
+
     // Try to load last selected solution from localStorage
     const lastSelectedKey = `lastSolutionAdoptionPlan_${customerId}`;
     const lastSelectedId = localStorage.getItem(lastSelectedKey);
-    
+
     // Check if last selected solution still exists
     if (lastSelectedId && solutions.some((s: any) => s.id === lastSelectedId)) {
       setSelectedSolutionId(lastSelectedId);
@@ -199,7 +178,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   }, [selectedSolutionId, customerId]);
 
   // Memoize selected solution and adoption plan ID to prevent unnecessary re-renders
-  const selectedSolutionData = React.useMemo(() => 
+  const selectedSolutionData = React.useMemo(() =>
     data?.customer?.solutions?.find((cs: any) => cs.id === selectedSolutionId),
     [data?.customer?.solutions, selectedSolutionId]
   );
@@ -254,12 +233,12 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   const [exportTelemetryTemplate] = useMutation(EXPORT_SOLUTION_TELEMETRY_TEMPLATE, {
     onCompleted: async (data) => {
       const { url, filename } = data.exportSolutionAdoptionPlanTelemetryTemplate;
-      
+
       try {
         // Prepend base path if deployed at subpath (e.g., /dap/)
         const basePath = import.meta.env.BASE_URL || '/';
         const fileUrl = basePath === '/' ? url : `${basePath.replace(/\/$/, '')}${url}`;
-        
+
         // Use relative path for download - works with Vite proxy and production reverse proxy
         const response = await fetch(fileUrl, {
           credentials: 'include',
@@ -290,17 +269,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
     }
   });
 
-  const [evaluateAllTasks] = useMutation(EVALUATE_ALL_SOLUTION_TASKS_TELEMETRY, {
-    onCompleted: () => {
-      refetch();
-      refetchPlan();
-      alert('All tasks re-evaluated successfully');
-    },
-    onError: (err) => {
-      console.error('Evaluation error:', err);
-      alert('Failed to evaluate tasks: ' + err.message);
-    }
-  });
+
 
   const handleSync = () => {
     const adoptionPlanId = selectedCustomerSolution?.adoptionPlan?.id;
@@ -325,23 +294,23 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   const handleImportTelemetry = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     const adoptionPlanId = selectedCustomerSolution?.adoptionPlan?.id;
-    
+
     if (!file || !adoptionPlanId) {
       alert('Please select a file and solution');
       return;
     }
-    
+
     try {
       // Use REST API for file upload (simpler than GraphQL file uploads)
       const formData = new FormData();
       formData.append('file', file);
-      
+
       // Prepend BASE_URL for subpath deployment support
       const basePath = import.meta.env.BASE_URL || '/';
-      const uploadUrl = basePath === '/' 
+      const uploadUrl = basePath === '/'
         ? `/api/solution-telemetry/import/${adoptionPlanId}`
         : `${basePath.replace(/\/$/, '')}/api/solution-telemetry/import/${adoptionPlanId}`;
-      
+
       const response = await fetch(uploadUrl, {
         method: 'POST',
         headers: {
@@ -349,13 +318,13 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
         },
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error(`Upload failed: ${response.statusText}`);
       }
-      
+
       const result = await response.json();
-      
+
       if (result.success) {
         refetch();
         refetchPlan();
@@ -367,17 +336,12 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
       console.error('Import error:', err);
       alert(`Failed to import telemetry: ${err.message}`);
     }
-    
+
     // Reset the input so the same file can be re-uploaded
     event.target.value = '';
   };
 
-  const handleEvaluateAll = () => {
-    const adoptionPlanId = selectedCustomerSolution?.adoptionPlan?.id;
-    if (adoptionPlanId) {
-      evaluateAllTasks({ variables: { solutionAdoptionPlanId: adoptionPlanId } });
-    }
-  };
+
 
   if (!customerId) {
     return (
@@ -415,11 +379,11 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   return (
     <Box>
       {/* Solution Selector and Actions */}
-      <Paper 
+      <Paper
         elevation={1}
-        sx={{ 
-          p: { xs: 1.5, sm: 2, md: 2.5 }, 
-          mb: { xs: 2, md: 3 }, 
+        sx={{
+          p: { xs: 1.5, sm: 2, md: 2.5 },
+          mb: { xs: 2, md: 3 },
           borderRadius: 2,
           border: '1.5px solid',
           borderColor: '#E0E0E0'
@@ -461,43 +425,26 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
               </Tooltip>
               {selectedCustomerSolution?.adoptionPlan && (
                 <>
-              <Tooltip title="Recalculate solution adoption plan progress from underlying product and solution adoption plans">
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<Sync />}
-                  onClick={handleSync}
-                  disabled={syncLoading}
-                  sx={{
-                    borderColor: '#6B778C',
-                    color: '#42526E',
-                    '&:hover': {
-                      borderColor: '#42526E',
-                      backgroundColor: 'rgba(66, 82, 110, 0.04)'
-                    }
-                  }}
-                >
-                  {syncLoading ? 'Syncing...' : 'Sync Solution Adoption Plan'}
-                </Button>
-              </Tooltip>
-              <Tooltip title="Re-evaluate all tasks based on telemetry criteria">
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<Assessment />}
-                  onClick={handleEvaluateAll}
-                  sx={{
-                    borderColor: '#6B778C',
-                    color: '#42526E',
-                    '&:hover': {
-                      borderColor: '#42526E',
-                      backgroundColor: 'rgba(66, 82, 110, 0.04)'
-                    }
-                  }}
-                >
-                  Re-evaluate
-                </Button>
-              </Tooltip>
+                  <Tooltip title="Recalculate solution adoption plan progress from underlying product and solution adoption plans">
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<Sync />}
+                      onClick={handleSync}
+                      disabled={syncLoading}
+                      sx={{
+                        borderColor: '#6B778C',
+                        color: '#42526E',
+                        '&:hover': {
+                          borderColor: '#42526E',
+                          backgroundColor: 'rgba(66, 82, 110, 0.04)'
+                        }
+                      }}
+                    >
+                      {syncLoading ? 'Syncing...' : 'Sync Solution Adoption Plan'}
+                    </Button>
+                  </Tooltip>
+
                 </>
               )}
             </>
@@ -506,10 +453,10 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
 
         {/* Solution Summary Cards */}
         {customerSolutions.length === 0 && (
-          <Box 
-            sx={{ 
-              textAlign: 'center', 
-              py: 6, 
+          <Box
+            sx={{
+              textAlign: 'center',
+              py: 6,
               px: 3,
               backgroundColor: 'background.default',
               borderRadius: 2,
@@ -544,13 +491,13 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
 
       {selectedSolutionId && !selectedCustomerSolution?.adoptionPlan && (
         <Alert severity="warning" sx={{ mt: 2 }} action={
-          <Button 
-            color="inherit" 
-            size="small" 
+          <Button
+            color="inherit"
+            size="small"
             onClick={async () => {
               try {
-                await createAdoptionPlan({ 
-                  variables: { customerSolutionId: selectedSolutionId } 
+                await createAdoptionPlan({
+                  variables: { customerSolutionId: selectedSolutionId }
                 });
                 refetch();
               } catch (err: any) {
@@ -614,9 +561,9 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
           <Button onClick={() => setDeleteConfirmDialogOpen(false)}>
             Cancel
           </Button>
-          <Button 
-            onClick={handleDelete} 
-            color="error" 
+          <Button
+            onClick={handleDelete}
+            color="error"
             variant="contained"
             disabled={removeLoading}
           >

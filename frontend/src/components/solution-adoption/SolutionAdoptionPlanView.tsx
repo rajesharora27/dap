@@ -21,11 +21,12 @@ import { Sync, Assessment, FilterList } from '@mui/icons-material';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { ProductAdoptionGroup } from './ProductAdoptionGroup';
 import { SolutionTasksGroup } from './SolutionTasksGroup';
+import { TelemetryImportResultDialog } from '../shared/TelemetryImportResultDialog';
 import { 
-  exportProductTelemetryTemplate, 
+  downloadFileFromUrl,
   importProductTelemetry,
-  exportSolutionTelemetryTemplate,
-  importSolutionTelemetry 
+  importSolutionTelemetry,
+  ImportResultDialogState
 } from '../../utils/telemetryOperations';
 
 const ALL_RELEASES_ID = '__ALL_RELEASES__';
@@ -115,6 +116,7 @@ const GET_SOLUTION_ADOPTION_PLAN = gql`
                 value
                 createdAt
                 notes
+                criteriaMet
               }
             }
             outcomes {
@@ -159,6 +161,7 @@ const GET_SOLUTION_ADOPTION_PLAN = gql`
             value
             createdAt
             notes
+            criteriaMet
           }
         }
         outcomes {
@@ -206,6 +209,29 @@ const SYNC_SOLUTION_ADOPTION_PLAN = gql`
   }
 `;
 
+// Export telemetry template for product adoption plan
+const EXPORT_PRODUCT_TELEMETRY_TEMPLATE = gql`
+  mutation ExportTelemetryTemplate($adoptionPlanId: ID!) {
+    exportAdoptionPlanTelemetryTemplate(adoptionPlanId: $adoptionPlanId) {
+      url
+      filename
+      taskCount
+      attributeCount
+    }
+  }
+`;
+
+// Export telemetry template for solution adoption plan
+const EXPORT_SOLUTION_TELEMETRY_TEMPLATE = gql`
+  mutation ExportSolutionTelemetryTemplate($solutionAdoptionPlanId: ID!) {
+    exportSolutionAdoptionPlanTelemetryTemplate(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
+      url
+      filename
+      taskCount
+      attributeCount
+    }
+  }
+`;
 
 interface Props {
   solutionAdoptionPlanId: string;
@@ -218,6 +244,10 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
 }) => {
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [importResultDialog, setImportResultDialog] = useState<ImportResultDialogState>({
+    open: false,
+    success: false,
+  });
   
   // Filter states for UI display filtering
   const [filterReleases, setFilterReleases] = useState<string[]>([]);
@@ -254,6 +284,33 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     onError: (err) => setError(err.message)
   });
 
+  // Export product telemetry template mutation
+  const [exportProductTelemetryTemplate] = useMutation(EXPORT_PRODUCT_TELEMETRY_TEMPLATE, {
+    onCompleted: async (data) => {
+      const { url, filename } = data.exportAdoptionPlanTelemetryTemplate;
+      try {
+        await downloadFileFromUrl(url, filename);
+        setSuccess('Template exported successfully');
+      } catch (err: any) {
+        setError(`Download failed: ${err.message}`);
+      }
+    },
+    onError: (err) => setError(`Export failed: ${err.message}`)
+  });
+
+  // Export solution telemetry template mutation
+  const [exportSolutionTelemetryTemplate] = useMutation(EXPORT_SOLUTION_TELEMETRY_TEMPLATE, {
+    onCompleted: async (data) => {
+      const { url, filename } = data.exportSolutionAdoptionPlanTelemetryTemplate;
+      try {
+        await downloadFileFromUrl(url, filename);
+        setSuccess('Template exported successfully');
+      } catch (err: any) {
+        setError(`Download failed: ${err.message}`);
+      }
+    },
+    onError: (err) => setError(`Export failed: ${err.message}`)
+  });
 
   // Extract solution tasks (must be called before any conditional returns - rules of hooks)
   const allSolutionTasks = useMemo(() => {
@@ -397,51 +454,53 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     });
   };
 
-  // Handlers for product telemetry (using shared utilities)
-  const handleExportProductTelemetry = async (adoptionPlanId: string) => {
-    try {
-      await exportProductTelemetryTemplate(adoptionPlanId);
-      setSuccess('Template exported successfully');
-    } catch (err: any) {
-      setError(`Export failed: ${err.message}`);
-    }
+  // Handlers for product telemetry
+  const handleExportProductTelemetry = (adoptionPlanId: string) => {
+    exportProductTelemetryTemplate({ variables: { adoptionPlanId } });
   };
 
   const handleImportProductTelemetry = async (adoptionPlanId: string, file: File) => {
     try {
       const result = await importProductTelemetry(adoptionPlanId, file);
       refetch();
-      if (result.success) {
-        setSuccess(`Import successful: ${result.summary?.attributesUpdated || 0} attributes updated`);
-      } else {
-        setError(result.error || 'Import failed');
-      }
+      setImportResultDialog({
+        open: true,
+        success: result.success,
+        summary: result.summary,
+        taskResults: result.taskResults,
+        errorMessage: result.error,
+      });
     } catch (err: any) {
-      setError(`Import failed: ${err.message}`);
+      setImportResultDialog({
+        open: true,
+        success: false,
+        errorMessage: err.message,
+      });
     }
   };
 
-  // Handlers for solution telemetry (using shared utilities)
-  const handleExportSolutionTelemetry = async () => {
-    try {
-      await exportSolutionTelemetryTemplate(solutionAdoptionPlanId);
-      setSuccess('Template exported successfully');
-    } catch (err: any) {
-      setError(`Export failed: ${err.message}`);
-    }
+  // Handlers for solution telemetry
+  const handleExportSolutionTelemetry = () => {
+    exportSolutionTelemetryTemplate({ variables: { solutionAdoptionPlanId } });
   };
 
   const handleImportSolutionTelemetry = async (file: File) => {
     try {
       const result = await importSolutionTelemetry(solutionAdoptionPlanId, file);
       refetch();
-      if (result.success) {
-        setSuccess(`Import successful: ${result.summary?.attributesUpdated || 0} attributes updated`);
-      } else {
-        setError(result.error || 'Import failed');
-      }
+      setImportResultDialog({
+        open: true,
+        success: result.success,
+        summary: result.summary,
+        taskResults: result.taskResults,
+        errorMessage: result.error,
+      });
     } catch (err: any) {
-      setError(`Import failed: ${err.message}`);
+      setImportResultDialog({
+        open: true,
+        success: false,
+        errorMessage: err.message,
+      });
     }
   };
 
@@ -738,6 +797,12 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
           </Typography>
         </Paper>
       )}
+
+      {/* Import Result Dialog */}
+      <TelemetryImportResultDialog
+        state={importResultDialog}
+        onClose={() => setImportResultDialog({ ...importResultDialog, open: false })}
+      />
     </Box>
   );
 };

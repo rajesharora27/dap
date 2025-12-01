@@ -35,7 +35,7 @@ import {
  * Main evaluation engine class for telemetry success criteria
  */
 export class TelemetryEvaluationEngine {
-  
+
   /**
    * Evaluates a telemetry attribute against its success criteria
    * 
@@ -62,7 +62,7 @@ export class TelemetryEvaluationEngine {
 
       // Get the latest value for evaluation
       const latestValue = attribute.values[0]; // Assuming values are ordered by createdAt desc
-      
+
       // Parse success criteria from JSON if needed
       let criteria: SuccessCriteria;
       if (typeof attribute.successCriteria === 'string') {
@@ -73,7 +73,7 @@ export class TelemetryEvaluationEngine {
 
       // Evaluate the criteria
       return await this.evaluateCriteria(criteria, latestValue, attribute.dataType);
-      
+
     } catch (error) {
       return {
         success: false,
@@ -91,36 +91,66 @@ export class TelemetryEvaluationEngine {
    * @returns Promise<EvaluationResult> - The evaluation result
    */
   private static async evaluateCriteria(
-    criteria: SuccessCriteria, 
-    value: TelemetryValue, 
+    criteria: SuccessCriteria,
+    value: TelemetryValue,
     dataType: TelemetryDataType
   ): Promise<EvaluationResult> {
-    
-    switch (criteria.type) {
+
+    let type = criteria.type?.toLowerCase();
+
+    // Handle legacy/malformed criteria where type is missing
+    if (!type) {
+      const c = criteria as any;
+      if (typeof c.value === 'boolean') {
+        type = SuccessCriteriaType.BOOLEAN_FLAG;
+        // Backfill expectedValue from value if missing
+        if (c.expectedValue === undefined) c.expectedValue = c.value;
+      } else if (typeof c.value === 'number' && c.operator) {
+        type = SuccessCriteriaType.NUMBER_THRESHOLD;
+        // Backfill threshold from value if missing
+        if (c.threshold === undefined) c.threshold = c.value;
+
+        // Map legacy operators
+        const opMap: Record<string, string> = {
+          '>=': 'greater_than_or_equal',
+          '<=': 'less_than_or_equal',
+          '>': 'greater_than',
+          '<': 'less_than',
+          '==': 'equals',
+          '=': 'equals'
+        };
+
+        if (opMap[c.operator]) {
+          c.operator = opMap[c.operator];
+        }
+      }
+    }
+
+    switch (type) {
       case SuccessCriteriaType.BOOLEAN_FLAG:
         return this.evaluateBooleanFlag(criteria as BooleanFlagCriteria, value);
-        
+
       case SuccessCriteriaType.NUMBER_THRESHOLD:
         return this.evaluateNumberThreshold(criteria as NumberThresholdCriteria, value);
-        
+
       case SuccessCriteriaType.STRING_MATCH:
         return this.evaluateStringMatch(criteria as StringMatchCriteria, value);
-        
+
       case SuccessCriteriaType.STRING_NOT_NULL:
         return this.evaluateStringNotNull(value);
-        
+
       case SuccessCriteriaType.TIMESTAMP_COMPARISON:
         return this.evaluateTimestampComparison(criteria as TimestampComparisonCriteria, value);
-        
+
       case SuccessCriteriaType.TIMESTAMP_NOT_NULL:
         return this.evaluateTimestampNotNull(value);
-        
+
       case SuccessCriteriaType.COMPOSITE_AND:
         return this.evaluateCompositeAnd(criteria as CompositeAndCriteria, value, dataType);
-        
+
       case SuccessCriteriaType.COMPOSITE_OR:
         return this.evaluateCompositeOr(criteria as CompositeOrCriteria, value, dataType);
-        
+
       default:
         return {
           success: false,
@@ -135,13 +165,16 @@ export class TelemetryEvaluationEngine {
   private static evaluateBooleanFlag(criteria: BooleanFlagCriteria, value: TelemetryValue): EvaluationResult {
     try {
       const boolValue = this.parseBoolean(value.value);
-      const success = boolValue === criteria.expectedValue;
-      
+      // Normalize expectedValue using the same parser to handle "true", 1, etc.
+      const expectedBool = this.parseBoolean(criteria.expectedValue);
+
+      const success = boolValue === expectedBool;
+
       return {
         success,
-        details: success 
-          ? `Boolean value ${boolValue} matches expected ${criteria.expectedValue}`
-          : `Boolean value ${boolValue} does not match expected ${criteria.expectedValue}`
+        details: success
+          ? `Boolean value ${boolValue} matches expected ${expectedBool}`
+          : `Boolean value ${boolValue} does not match expected ${expectedBool}`
       };
     } catch (error) {
       return {
@@ -164,29 +197,41 @@ export class TelemetryEvaluationEngine {
         };
       }
 
+      // Normalize threshold
+      const threshold = typeof criteria.threshold === 'number'
+        ? criteria.threshold
+        : parseFloat(String(criteria.threshold));
+
+      if (isNaN(threshold)) {
+        return {
+          success: false,
+          error: `Invalid threshold value: ${criteria.threshold}`
+        };
+      }
+
       let success = false;
       let comparison = '';
 
       switch (criteria.operator) {
         case NumberOperator.GREATER_THAN:
-          success = numValue > criteria.threshold;
-          comparison = `${numValue} > ${criteria.threshold}`;
+          success = numValue > threshold;
+          comparison = `${numValue} > ${threshold}`;
           break;
         case NumberOperator.LESS_THAN:
-          success = numValue < criteria.threshold;
-          comparison = `${numValue} < ${criteria.threshold}`;
+          success = numValue < threshold;
+          comparison = `${numValue} < ${threshold}`;
           break;
         case NumberOperator.EQUALS:
-          success = numValue === criteria.threshold;
-          comparison = `${numValue} = ${criteria.threshold}`;
+          success = numValue === threshold;
+          comparison = `${numValue} = ${threshold}`;
           break;
         case NumberOperator.GREATER_THAN_OR_EQUAL:
-          success = numValue >= criteria.threshold;
-          comparison = `${numValue} >= ${criteria.threshold}`;
+          success = numValue >= threshold;
+          comparison = `${numValue} >= ${threshold}`;
           break;
         case NumberOperator.LESS_THAN_OR_EQUAL:
-          success = numValue <= criteria.threshold;
-          comparison = `${numValue} <= ${criteria.threshold}`;
+          success = numValue <= threshold;
+          comparison = `${numValue} <= ${threshold}`;
           break;
       }
 
@@ -209,12 +254,12 @@ export class TelemetryEvaluationEngine {
     try {
       const stringValue = value.value;
       let pattern = criteria.pattern;
-      
+
       // Handle case sensitivity
       if (!criteria.caseSensitive) {
         pattern = pattern.toLowerCase();
       }
-      
+
       const testValue = criteria.caseSensitive ? stringValue : stringValue.toLowerCase();
       let success = false;
       let method = '';
@@ -253,7 +298,7 @@ export class TelemetryEvaluationEngine {
   private static evaluateStringNotNull(value: TelemetryValue): EvaluationResult {
     try {
       const stringValue = value.value;
-      
+
       // Handle different value types
       if (stringValue === null || stringValue === undefined) {
         return {
@@ -261,14 +306,14 @@ export class TelemetryEvaluationEngine {
           details: 'String value is null or undefined'
         };
       }
-      
+
       // Convert to string if needed
       const strVal = typeof stringValue === 'string' ? stringValue : String(stringValue);
       const success = strVal.trim() !== '';
-      
+
       return {
         success,
-        details: success 
+        details: success
           ? `String value is not null/empty: "${strVal}"`
           : 'String value is empty'
       };
@@ -295,7 +340,7 @@ export class TelemetryEvaluationEngine {
 
       const now = new Date();
       let referenceTime: Date;
-      
+
       if (criteria.referenceTime === 'now' || !criteria.referenceTime) {
         referenceTime = now;
       } else {
@@ -356,13 +401,13 @@ export class TelemetryEvaluationEngine {
           details: 'Timestamp value is null or undefined'
         };
       }
-      
+
       const timestamp = new Date(value.value);
       const success = !isNaN(timestamp.getTime());
-      
+
       return {
         success,
-        details: success 
+        details: success
           ? `Timestamp is valid: ${timestamp.toISOString()}`
           : `Timestamp is invalid: ${value.value}`
       };
@@ -378,17 +423,17 @@ export class TelemetryEvaluationEngine {
    * Evaluates composite AND criteria (all must be true)
    */
   private static async evaluateCompositeAnd(
-    criteria: CompositeAndCriteria, 
-    value: TelemetryValue, 
+    criteria: CompositeAndCriteria,
+    value: TelemetryValue,
     dataType: TelemetryDataType
   ): Promise<EvaluationResult> {
     try {
       const results: EvaluationResult[] = [];
-      
+
       for (const subCriteria of criteria.criteria) {
         const result = await this.evaluateCriteria(subCriteria, value, dataType);
         results.push(result);
-        
+
         // Early exit if any criteria fails
         if (!result.success) {
           return {
@@ -414,18 +459,18 @@ export class TelemetryEvaluationEngine {
    * Evaluates composite OR criteria (at least one must be true)
    */
   private static async evaluateCompositeOr(
-    criteria: CompositeOrCriteria, 
-    value: TelemetryValue, 
+    criteria: CompositeOrCriteria,
+    value: TelemetryValue,
     dataType: TelemetryDataType
   ): Promise<EvaluationResult> {
     try {
       const results: EvaluationResult[] = [];
       const failures: string[] = [];
-      
+
       for (const subCriteria of criteria.criteria) {
         const result = await this.evaluateCriteria(subCriteria, value, dataType);
         results.push(result);
-        
+
         // Early exit if any criteria succeeds
         if (result.success) {
           return {
@@ -433,7 +478,7 @@ export class TelemetryEvaluationEngine {
             details: `OR criteria passed: ${result.details}`
           };
         }
-        
+
         failures.push(result.details || result.error || 'Unknown failure');
       }
 
@@ -450,16 +495,30 @@ export class TelemetryEvaluationEngine {
   }
 
   /**
-   * Parses a string value to boolean
+   * Parses a value to boolean (handles boolean, string, and number inputs)
    */
-  private static parseBoolean(value: string): boolean {
-    const lowercaseValue = value.toLowerCase();
-    if (['true', '1', 'yes', 'on'].includes(lowercaseValue)) {
-      return true;
+  private static parseBoolean(value: any): boolean {
+    // Already a boolean
+    if (typeof value === 'boolean') {
+      return value;
     }
-    if (['false', '0', 'no', 'off'].includes(lowercaseValue)) {
-      return false;
+
+    // Number (1 = true, 0 = false)
+    if (typeof value === 'number') {
+      return value !== 0;
     }
+
+    // String
+    if (typeof value === 'string') {
+      const lowercaseValue = value.toLowerCase().trim();
+      if (['true', '1', 'yes', 'on', 't', 'y'].includes(lowercaseValue)) {
+        return true;
+      }
+      if (['false', '0', 'no', 'off', 'f', 'n'].includes(lowercaseValue)) {
+        return false;
+      }
+    }
+
     throw new Error(`Cannot parse "${value}" as boolean`);
   }
 }
@@ -490,6 +549,138 @@ export async function evaluateMultipleAttributes(
       attributeId: attribute.id
     };
   });
-  
+
   return Promise.all(evaluationPromises);
+}
+
+/**
+ * SHARED: Determine task status based on telemetry evaluation
+ * Used by BOTH product tasks (CustomerTask) and solution tasks (CustomerSolutionTask)
+ * 
+ * @param task - The task with current status and statusUpdateSource
+ * @param telemetryAttributes - Array of telemetry attributes with values
+ * @returns Promise<{ newStatus: string, shouldUpdate: boolean, evaluationDetails: any }>
+ */
+export async function evaluateTaskStatusFromTelemetry(
+  task: { status: string; statusUpdateSource?: string | null },
+  telemetryAttributes: any[],
+  options?: { currentBatchId?: string }
+): Promise<{ newStatus: string; shouldUpdate: boolean; evaluationDetails: any }> {
+  const attributes = telemetryAttributes.filter((a: any) => a.isActive);
+  const requiredAttributes = attributes.filter((a: any) => a.isRequired);
+
+  let metCount = 0;
+  let metRequiredCount = 0;
+  let hasAnyTelemetryData = false;
+  let requiredWithDataCount = 0;
+
+  // Evaluate each attribute
+  for (const attr of attributes) {
+    const latestValue = attr.values && attr.values[0];
+
+    // Check if data is present and fresh (if batch ID provided)
+    let isFresh = false;
+    if (latestValue) {
+      if (options?.currentBatchId) {
+        isFresh = latestValue.batchId === options.currentBatchId;
+      } else {
+        isFresh = true;
+      }
+    }
+
+    if (isFresh) {
+      hasAnyTelemetryData = true;
+      if (attr.isRequired) requiredWithDataCount++;
+    }
+
+    if (!latestValue || !isFresh) continue;
+
+    // Evaluate criteria
+    let isMet = false;
+    if (attr.successCriteria) {
+      try {
+        const evaluationResult = await TelemetryEvaluationEngine.evaluateAttribute(attr);
+        isMet = evaluationResult.success;
+      } catch (evalError) {
+        console.error(`Failed to evaluate criteria for ${attr.name}:`, evalError);
+        isMet = false;
+      }
+    }
+
+    if (isMet) {
+      metCount++;
+      if (attr.isRequired) metRequiredCount++;
+    }
+  }
+
+  // Determine new status using consistent logic
+  // Status values: NOT_STARTED, IN_PROGRESS, DONE, NO_LONGER_USING, NOT_APPLICABLE
+  const wasPreviouslyDoneByTelemetry =
+    (task.status === 'DONE' || task.status === 'COMPLETED') &&
+    task.statusUpdateSource?.toUpperCase() === 'TELEMETRY';
+
+  const wasPreviouslyDoneByUser =
+    (task.status === 'DONE' || task.status === 'COMPLETED') &&
+    task.statusUpdateSource?.toUpperCase() !== 'TELEMETRY';
+
+  const wasPreviouslyDone = wasPreviouslyDoneByTelemetry || wasPreviouslyDoneByUser;
+
+  let newStatus = task.status;
+
+  if (requiredAttributes.length > 0) {
+    // Has required attributes - evaluate based on those
+    if (metRequiredCount === requiredAttributes.length) {
+      // All required telemetry criteria met
+      newStatus = 'DONE';
+    } else if (wasPreviouslyDoneByTelemetry && !hasAnyTelemetryData) {
+      // DONE by Telemetry + No Data -> NO_LONGER_USING
+      newStatus = 'NO_LONGER_USING';
+    } else if (wasPreviouslyDoneByUser && !hasAnyTelemetryData) {
+      // DONE by User + No Data -> Stay DONE
+      newStatus = 'DONE';
+    } else if (wasPreviouslyDone && hasAnyTelemetryData && metRequiredCount < requiredAttributes.length) {
+      // DONE (any source) + Has Data + Criteria Failed -> IN_PROGRESS
+      newStatus = 'IN_PROGRESS';
+    } else if (hasAnyTelemetryData && requiredWithDataCount > 0) {
+      // Has telemetry data but doesn't meet all criteria (and wasn't previously done)
+      newStatus = 'IN_PROGRESS';
+    } else if (!hasAnyTelemetryData && !wasPreviouslyDone) {
+      // No telemetry data at all and not previously done
+      newStatus = 'NOT_STARTED';
+    }
+  } else if (attributes.length > 0) {
+    // No required attributes, but has optional telemetry attributes
+    if (wasPreviouslyDoneByTelemetry && !hasAnyTelemetryData) {
+      newStatus = 'NO_LONGER_USING';
+    } else if (wasPreviouslyDoneByUser && !hasAnyTelemetryData) {
+      newStatus = 'DONE';
+    } else if (wasPreviouslyDone && hasAnyTelemetryData && metCount === 0) {
+      // DONE + Has Data + No criteria met -> NO_LONGER_USING? 
+      // User said "if criteria fails - it should go to in progress".
+      // But for optional attributes, usually 0 met means no usage.
+      // Let's stick to IN_PROGRESS for consistency with required logic if that's what user wants,
+      // OR keep NO_LONGER_USING if it implies "stopped using".
+      // User said: "if criteria fails - it should go to in progress".
+      newStatus = 'IN_PROGRESS';
+    } else if (hasAnyTelemetryData && metCount > 0) {
+      newStatus = 'DONE';
+    } else if (hasAnyTelemetryData) {
+      newStatus = 'IN_PROGRESS';
+    }
+  }
+
+  return {
+    newStatus,
+    shouldUpdate: newStatus !== task.status,
+    evaluationDetails: {
+      totalAttributes: attributes.length,
+      requiredAttributes: requiredAttributes.length,
+      metCount,
+      metRequiredCount,
+      hasAnyTelemetryData,
+      requiredWithDataCount,
+      wasPreviouslyDoneByTelemetry,
+      wasPreviouslyDoneByUser
+    }
+  };
 }
