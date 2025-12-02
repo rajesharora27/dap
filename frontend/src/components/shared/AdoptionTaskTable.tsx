@@ -159,6 +159,12 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
             <TableCell width={120}>
               <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
             </TableCell>
+            <TableCell width={80} sx={{ whiteSpace: 'nowrap' }}>
+              <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Weight</Typography>
+            </TableCell>
+            <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
+              <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Telemetry</Typography>
+            </TableCell>
             <TableCell width={100}>
               <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Updated Via</Typography>
             </TableCell>
@@ -170,7 +176,7 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
         <TableBody>
           {tasks.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} align="center">
+              <TableCell colSpan={7} align="center">
                 <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
                   No tasks found
                 </Typography>
@@ -279,6 +285,95 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
                       <Typography variant="caption" color="text.secondary">-</Typography>
                     )}
                   </Box>
+                </TableCell>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.weight ? `${task.weight}%` : '-'}</TableCell>
+                <TableCell>
+                  {(() => {
+                    const totalAttributes = task.telemetryAttributes?.length || 0;
+                    const attributesWithValues = task.telemetryAttributes?.filter((attr: any) =>
+                      attr.values && attr.values.length > 0
+                    ).length || 0;
+
+                    const attributesWithCriteriaMet = task.telemetryAttributes?.filter((attr: any) =>
+                      attr.isMet === true
+                    ).length || 0;
+
+                    const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) =>
+                      attr.successCriteria && attr.successCriteria !== 'No criteria'
+                    ).length || 0;
+
+                    if (totalAttributes === 0) {
+                      return <Typography variant="caption" color="text.secondary">-</Typography>;
+                    }
+
+                    const hasData = attributesWithValues > 0;
+                    const percentage = attributesWithCriteria > 0 ? Math.round((attributesWithCriteriaMet / attributesWithCriteria) * 100) : 0;
+
+                    return (
+                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap' }}>
+                        <Tooltip
+                          title={
+                            <Box>
+                              <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Telemetry Values Filled</Typography>
+                              <Typography variant="caption" display="block">
+                                {attributesWithValues} out of {totalAttributes} telemetry attributes have imported values
+                              </Typography>
+                              {!hasData && (
+                                <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
+                                  No telemetry data imported yet
+                                </Typography>
+                              )}
+                            </Box>
+                          }
+                          arrow
+                        >
+                          <Chip
+                            label={`${attributesWithValues}/${totalAttributes}`}
+                            size="small"
+                            variant="outlined"
+                            color={hasData ? 'info' : 'default'}
+                            sx={{ fontSize: '0.7rem', height: 20 }}
+                          />
+                        </Tooltip>
+                        {attributesWithCriteria > 0 && (
+                          <Tooltip
+                            title={
+                              <Box>
+                                <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Success Criteria Met</Typography>
+                                <Typography variant="caption" display="block">
+                                  {attributesWithCriteriaMet} out of {attributesWithCriteria} success criteria are currently met
+                                </Typography>
+                                {percentage === 100 && (
+                                  <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'success.light' }}>
+                                    ✓ All criteria met! Task can be marked as "Done via Telemetry"
+                                  </Typography>
+                                )}
+                                {percentage < 100 && percentage > 0 && (
+                                  <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
+                                    {percentage}% complete - Some criteria still need to be met
+                                  </Typography>
+                                )}
+                                {percentage === 0 && (
+                                  <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'error.light' }}>
+                                    No criteria met yet
+                                  </Typography>
+                                )}
+                              </Box>
+                            }
+                            arrow
+                          >
+                            <Chip
+                              label={`${attributesWithCriteriaMet}/${attributesWithCriteria} ✓`}
+                              size="small"
+                              variant="outlined"
+                              color={percentage === 100 ? 'success' : percentage > 0 ? 'warning' : 'default'}
+                              sx={{ fontSize: '0.7rem', height: 20 }}
+                            />
+                          </Tooltip>
+                        )}
+                      </Box>
+                    );
+                  })()}
                 </TableCell>
                 <TableCell>
                   {task.statusUpdateSource ? (
@@ -429,10 +524,10 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
               <Chip
                 label={`${progress}%`}
                 size="small"
+                variant="outlined"
+                color={progress === 100 ? 'success' : progress > 0 ? 'primary' : 'default'}
                 sx={{
                   fontWeight: 600,
-                  bgcolor: progress === 100 ? '#4caf50' : progress > 0 ? titleColor : '#9e9e9e',
-                  color: 'white',
                 }}
               />
               <Typography variant="body2" sx={{ color: titleColor, opacity: 0.8 }}>
