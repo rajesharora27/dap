@@ -748,13 +748,11 @@ export const SolutionAdoptionMutationResolvers = {
     }, ctx.user?.id);
 
     // Create adoption plans for all underlying products
-    // Find customer products that match the solution name pattern
+    // Use the customerSolutionId relationship to find products assigned to this solution
     const customerProducts = await prisma.customerProduct.findMany({
       where: {
-        customerId: customerSolution.customerId,
-        name: {
-          startsWith: `${customerSolution.name} - `
-        }
+        customerSolutionId: customerSolutionId, // Use proper FK relationship
+        customerId: customerSolution.customerId  // Ensure customer match for safety
       },
       include: {
         product: {
