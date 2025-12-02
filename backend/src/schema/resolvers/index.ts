@@ -2654,6 +2654,7 @@ export const resolvers = {
     , revokePermission: AuthMutationResolvers.revokePermission
     , activateUser: AuthMutationResolvers.activateUser
     , deactivateUser: AuthMutationResolvers.deactivateUser
+    , updateRolePermissions: AuthMutationResolvers.updateRolePermissions
   },
   Subscription: {
     productUpdated: {

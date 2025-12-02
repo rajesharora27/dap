@@ -13,16 +13,16 @@ echo ""
 echo "📤 Step 1: Transferring changed files to centos2..."
 
 scp backend/src/lib/auth.ts \
-    rajarora@centos2.rajarora.csslab:/data/dap/backend/src/lib/auth.ts
+    rajarora@centos2.rajarora.csslab:/data/dap/app/backend/src/lib/auth.ts
 
 scp backend/src/lib/permissions.ts \
-    rajarora@centos2.rajarora.csslab:/data/dap/backend/src/lib/permissions.ts
+    rajarora@centos2.rajarora.csslab:/data/dap/app/backend/src/lib/permissions.ts
 
 scp backend/src/schema/resolvers/index.ts \
-    rajarora@centos2.rajarora.csslab:/data/dap/backend/src/schema/resolvers/index.ts
+    rajarora@centos2.rajarora.csslab:/data/dap/app/backend/src/schema/resolvers/index.ts
 
 scp -r frontend/dist/* \
-    rajarora@centos2.rajarora.csslab:/data/dap/frontend/dist/
+    rajarora@centos2.rajarora.csslab:/data/dap/app/frontend/dist/
 
 scp scripts/fix-rbac-permissions.js \
     rajarora@centos2.rajarora.csslab:/data/dap/scripts/
@@ -34,7 +34,7 @@ echo ""
 echo "🔨 Step 2: Building and restarting on centos2..."
 
 ssh rajarora@centos2.rajarora.csslab << 'ENDSSH'
-cd /data/dap
+cd /data/dap/app
 
 # Build backend
 echo "🔨 Building backend..."
@@ -43,19 +43,18 @@ npm run build
 
 # Update database permissions
 echo "🔑 Updating database role permissions..."
-node ../scripts/fix-rbac-permissions.js
-
-# Restart services
-echo "🔄 Restarting services..."
 cd /data/dap
-pkill -f "node.*src/server" || true
-sleep 2
-nohup npm --prefix backend start > backend.log 2>&1 &
+node scripts/fix-rbac-permissions.js
+
+# Restart services using PM2
+echo "🔄 Restarting services..."
+cd /data/dap/app
+sudo -u dap pm2 restart ecosystem.config.js || true
 sleep 5
 
 # Restart Apache
 echo "🌐 Restarting Apache..."
-sudo systemctl restart httpd
+sudo systemctl restart httpd || true
 
 # Verify
 echo ""

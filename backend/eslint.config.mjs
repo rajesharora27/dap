@@ -31,5 +31,17 @@ export default tseslint.config(
       'no-useless-catch': 'off',
       'prefer-const': 'off'
     }
+  },
+  {
+    files: ['**/*.js'],
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        fetch: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+        __dirname: 'readonly'
+      }
+    }
   }
 );

@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import pino from 'pino';
 import jwt from 'jsonwebtoken';
+import { envConfig } from './config/env';
 
 export const fallbackActive = (process.env.AUTH_FALLBACK || '').toLowerCase() === '1' || (process.env.AUTH_FALLBACK || '').toLowerCase() === 'true';
 
@@ -17,7 +18,11 @@ const prismaStub: any = {
 
 // Use real Prisma only if not in fallback mode
 export const prisma: any = fallbackActive ? prismaStub : new PrismaClient();
-export const logger = pino({ transport: { target: 'pino-pretty' } });
+export const logger = pino({
+  level: envConfig.logging.level,
+  transport: envConfig.logging.pretty ? { target: 'pino-pretty' } : undefined,
+  redact: envConfig.logging.redact
+});
 
 const fallbackUsers = [
   { id: 'u-admin', username: 'admin', email: 'admin@example.com', password: 'admin', role: 'ADMIN' },
@@ -39,7 +44,7 @@ export async function createContext({ req }: any): Promise<Context> {
   if (authHeader && authHeader.startsWith('Bearer ')) {
     try {
       const token = authHeader.substring(7);
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret') as any;
+      const decoded = jwt.verify(token, envConfig.auth.jwtSecret) as any;
       user = {
         userId: decoded.userId || decoded.uid, // Support both new and old format
         username: decoded.username,
@@ -56,7 +61,12 @@ export async function createContext({ req }: any): Promise<Context> {
     }
   }
 
-  // Fallback authentication for development/testing
+  // Development authentication bypass
+  if (!user && envConfig.auth.bypassEnabled) {
+    user = { ...envConfig.auth.defaultDevUser };
+    console.log('🔓 DEV MODE: Using default dev user');
+  }
+
   if (!user && fallbackActive) {
     user = { id: 'admin', username: 'admin', role: 'ADMIN', isAdmin: true };
   }

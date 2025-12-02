@@ -1,3 +1,5 @@
+/* eslint-env node */
+
 // Simple test script for authentication
 // Run with: node test-auth.js
 
