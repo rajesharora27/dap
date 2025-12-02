@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState } from 'react';
-import ExcelJS from 'exceljs';
+import type { Workbook } from 'exceljs';
 import {
   Box,
   CssBaseline,
@@ -106,6 +106,22 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+type ExcelModule = typeof import('exceljs');
+let excelModulePromise: Promise<ExcelModule> | null = null;
+
+async function loadExcelModule(): Promise<ExcelModule> {
+  if (!excelModulePromise) {
+    excelModulePromise = import('exceljs');
+  }
+  return excelModulePromise;
+}
+
+async function createExcelWorkbook(): Promise<Workbook> {
+  const excelModule = await loadExcelModule();
+  const ExcelJS = (excelModule as any).Workbook ? excelModule : (excelModule as any).default;
+  return new ExcelJS.Workbook();
+}
 
 // GraphQL queries for fetching data with relationships
 const PRODUCTS = gql`
@@ -3801,7 +3817,7 @@ export function App() {
       const productTasks = (tasksResult.data?.tasks?.edges || []).map((edge: any) => edge.node);
 
       // Create Excel workbook
-      const workbook = new ExcelJS.Workbook();
+      const workbook = await createExcelWorkbook();
       workbook.creator = 'DAP Application';
       workbook.created = new Date();
 
@@ -4180,7 +4196,7 @@ export function App() {
 
       try {
         const buffer = await file.arrayBuffer();
-        const workbook = new ExcelJS.Workbook();
+        const workbook = await createExcelWorkbook();
         await workbook.xlsx.load(buffer);
 
         const toPlainString = (cellValue: any): string => {

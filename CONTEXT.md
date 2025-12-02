@@ -506,9 +506,11 @@ cd /data/dap
 
 | Script | Purpose | Location |
 |--------|---------|----------|
+| `release-manager.sh` | **Main deployment orchestration** (deploy/patch/rollback) | `/data/dap/deploy/` |
+| `health-check.sh` | System health verification (14 checks) | `/data/dap/deploy/` |
+| `migration-manager.sh` | Database migration management | `/data/dap/deploy/` |
 | `create-release.sh` | Create versioned release package | `/data/dap/deploy/` |
-| `release-to-prod.sh` | Deploy release to production | `/data/dap/deploy/` |
-| `APPLY_RBAC_PATCH.sh` | Quick patch for bug fixes | `/data/dap/` |
+| `release-to-prod.sh` | Legacy deployment script | `/data/dap/deploy/` |
 
 ### Rollback Procedure
 
@@ -530,7 +532,9 @@ curl -X POST http://localhost:4000/graphql \
 
 ### Deployment Documentation
 
-- **Complete Process**: `deploy/RELEASE_PROCESS.md`
+- **Robust Release Process**: `deploy/ROBUST_RELEASE_PROCESS.md` ⭐ (Complete guide with rollback)
+- **Deployment Summary**: `deploy/DEPLOYMENT_SUMMARY.md` (Quick commands)
+- **Standard Process**: `deploy/RELEASE_PROCESS.md` (Original workflow)
 - **Quick Reference**: `deploy/QUICK_DEPLOY_GUIDE.md`
 - **Testing Checklist**: `deploy/testing-checklist.md`
 - **Deployment Index**: `DEPLOYMENT_INDEX.md`

@@ -493,6 +493,111 @@ export const AuthMutationResolvers = {
     return true;
   },
 
+  updateRolePermissions: async (_: any, { roleId, roleName, permissions }: any, context: any) => {
+    if (!context.user) {
+      throw new Error('Not authenticated');
+    }
+
+    // Only admins can update role permissions
+    const requester = await context.prisma.user.findUnique({
+      where: { id: context.user.userId }
+    });
+    if (!requester?.isAdmin) {
+      throw new Error('Only admins can update role permissions');
+    }
+
+    // Find role by ID or name
+    let role;
+    if (roleId) {
+      role = await context.prisma.role.findUnique({
+        where: { id: roleId }
+      });
+    } else if (roleName) {
+      role = await context.prisma.role.findUnique({
+        where: { name: roleName }
+      });
+    } else {
+      throw new Error('Must provide either roleId or roleName');
+    }
+
+    if (!role) {
+      throw new Error(`Role not found: ${roleName || roleId}`);
+    }
+
+    // Update permissions in a transaction
+    const result = await context.prisma.$transaction(async (tx: any) => {
+      // Delete existing permissions
+      await tx.rolePermission.deleteMany({
+        where: { roleId: role.id }
+      });
+
+      // Create new permissions
+      if (permissions && permissions.length > 0) {
+        await tx.rolePermission.createMany({
+          data: permissions.map((p: any) => ({
+            roleId: role.id,
+            resourceType: p.resourceType,
+            resourceId: p.resourceId || null,
+            permissionLevel: p.permissionLevel
+          }))
+        });
+      }
+
+      // Fetch the role with updated permissions
+      return tx.role.findUnique({
+        where: { id: role.id },
+        include: {
+          permissions: true,
+          userRoles: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  username: true,
+                  email: true,
+                  fullName: true
+                }
+              }
+            }
+          }
+        }
+      });
+    });
+
+    // Log audit entry
+    await context.prisma.auditLog.create({
+      data: {
+        userId: context.user.userId,
+        action: 'update_role_permissions',
+        details: { 
+          roleId: result.id, 
+          roleName: result.name,
+          permissionsCount: permissions.length 
+        }
+      }
+    });
+
+    return {
+      id: result.id,
+      name: result.name,
+      description: result.description,
+      userCount: result.userRoles.length,
+      users: result.userRoles.map((ur: any) => ({
+        id: ur.user.id,
+        username: ur.user.username,
+        email: ur.user.email,
+        fullName: ur.user.fullName
+      })),
+      permissions: result.permissions.map((p: any) => ({
+        id: p.id,
+        resourceType: p.resourceType,
+        resourceId: p.resourceId,
+        resourceName: p.resourceId === 'ALL' ? 'All Resources' : p.resourceId,
+        permissionLevel: p.permissionLevel
+      }))
+    };
+  },
+
   createRole: async (_: any, { input }: any, context: any) => {
     if (!context.user) {
       throw new Error('Not authenticated');

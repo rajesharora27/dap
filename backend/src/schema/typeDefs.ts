@@ -1299,5 +1299,11 @@ export const typeDefs = gql`
     Deactivate user (admin only)
     """
     deactivateUser(userId: ID!): Boolean!
+
+    """
+    Bulk update role permissions (admin only)
+    Replaces all permissions for a role with the provided set
+    """
+    updateRolePermissions(roleId: ID, roleName: String, permissions: [ResourcePermissionInput!]!): RoleWithPermissions!
   }
 `;

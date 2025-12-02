@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@as-integrations/express5';
 import { createServer } from 'http';
@@ -13,27 +15,63 @@ import { typeDefs } from './schema/typeDefs';
 import { resolvers } from './schema/resolvers';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { createContext, prisma } from './context';
-import { config, getCorsOrigins } from './config/app.config';
+import { config as appConfig } from './config/app.config';
+import { envConfig } from './config/env';
 import { CustomerTelemetryImportService } from './services/telemetry/CustomerTelemetryImportService';
 import { SessionManager } from './utils/sessionManager';
 import { AutoBackupScheduler } from './services/AutoBackupScheduler';
+import { ApolloServerPluginLandingPageLocalDefault, ApolloServerPluginLandingPageProductionDefault } from '@apollo/server/plugin/landingPage/default';
 // Force restart to load permission enforcement - 2025-11-11
 
 export async function createApp() {
   const app = express();
+  const isProduction = envConfig.isProd;
 
   // Trust reverse proxy in production
-  if (process.env.TRUST_PROXY === 'true' || process.env.NODE_ENV === 'production') {
+  if (process.env.TRUST_PROXY === 'true' || isProduction) {
     app.set('trust proxy', 1);
+  }
+
+  // Security headers
+  app.use(helmet({
+    contentSecurityPolicy: isProduction ? undefined : false,
+    crossOriginEmbedderPolicy: false
+  }));
+
+  const shouldRateLimit = envConfig.rateLimiting.enabled;
+  const windowMs = envConfig.rateLimiting.windowMs;
+  const maxRequests = envConfig.rateLimiting.max;
+
+  const generalRateLimiter = shouldRateLimit ? rateLimit({
+    windowMs,
+    max: maxRequests,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'Too many requests, please try again later.'
+  }) : null;
+
+  const graphqlRateLimiter = shouldRateLimit ? rateLimit({
+    windowMs,
+    max: envConfig.rateLimiting.graphqlMax,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    message: 'GraphQL rate limit exceeded.'
+  }) : null;
+
+  if (shouldRateLimit && generalRateLimiter) {
+    app.use((req, res, next) => {
+      if (req.path === '/health') {
+        return next();
+      }
+      return generalRateLimiter(req, res, next);
+    });
   }
 
   // Configure CORS to allow frontend requests
   // In development with no ALLOWED_ORIGINS set, allow all origins for SSH tunnel access
-  const isDevelopment = process.env.NODE_ENV !== 'production';
-  const hasCustomOrigins = !!process.env.ALLOWED_ORIGINS;
-
+  const corsOrigin = envConfig.cors.origin === '*' ? true : envConfig.cors.origin;
   app.use(cors({
-    origin: (isDevelopment && !hasCustomOrigins) ? true : getCorsOrigins(), // Allow all in dev for SSH tunnels
+    origin: corsOrigin,
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'Apollo-Require-Preflight', 'authorization'], // Allow Apollo headers
     methods: ['GET', 'POST', 'OPTIONS']
@@ -41,8 +79,13 @@ export async function createApp() {
 
   // Simple health / readiness endpoint
   app.get('/health', (_req, res) => {
-    const fb = (process.env.AUTH_FALLBACK || '').toLowerCase();
-    res.json({ status: 'ok', uptime: process.uptime(), fallbackAuth: fb === '1' || fb === 'true', timestamp: new Date().toISOString() });
+    res.json({
+      status: 'ok',
+      uptime: process.uptime(),
+      fallbackAuth: envConfig.auth.bypassEnabled,
+      rateLimiting: shouldRateLimit,
+      timestamp: new Date().toISOString()
+    });
   });
 
   // Serve telemetry export files
@@ -169,9 +212,22 @@ export async function createApp() {
   });
 
   const schema = makeExecutableSchema({ typeDefs, resolvers });
-  const apollo = new ApolloServer({ schema });
+  const apollo = new ApolloServer({
+    schema,
+    introspection: envConfig.features.introspection,
+    plugins: envConfig.features.graphqlPlayground
+      ? [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })]
+      : [ApolloServerPluginLandingPageProductionDefault({ footer: false })]
+  });
   await apollo.start();
-  app.use('/graphql', bodyParser.json(), expressMiddleware(apollo, { context: createContext }));
+  const graphqlMiddleware: any[] = [
+    bodyParser.json(),
+    expressMiddleware(apollo, { context: createContext })
+  ];
+  if (graphqlRateLimiter) {
+    graphqlMiddleware.unshift(graphqlRateLimiter);
+  }
+  app.use('/graphql', ...graphqlMiddleware);
 
   // Optional: Serve frontend static files in production (if using single-server deployment)
   // Set SERVE_FRONTEND=true to enable this mode
@@ -220,8 +276,8 @@ export async function createApp() {
 const isDirectRun = typeof require !== 'undefined' && require.main === module;
 if (isDirectRun) {
   createApp().then(async ({ httpServer }) => {
-    const port = config.backend.port;
-    const host = config.backend.host;
+    const port = appConfig.backend.port;
+    const host = appConfig.backend.host;
 
     // Clear all sessions on startup to force re-authentication
     console.log('🔐 Server starting - clearing all sessions for security...');

@@ -1,3 +1,6 @@
+/* eslint-env node */
+/* eslint-disable @typescript-eslint/no-require-imports */
+
 /**
  * Script to update existing CustomerProduct records that have NULL names
  * Gives them a default name based on their product name
