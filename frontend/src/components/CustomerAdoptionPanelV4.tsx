@@ -1439,7 +1439,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                         <Chip
                           label={sortedProducts?.length || 0}
                           size="small"
-                          sx={{ height: 22, bgcolor: '#e0f2f1', color: '#00897b', fontWeight: 600 }}
+                          variant="outlined"
+                          color="success"
+                          sx={{ height: 22, fontWeight: 600 }}
                         />
                       </Box>
                       <Button
@@ -1506,9 +1508,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                       <Chip
                                         label={cp.licenseLevel}
                                         size="small"
-                                        color="primary"
                                         variant="outlined"
-                                        sx={{ height: 22, fontWeight: 500, fontSize: { xs: '0.7rem', md: '0.75rem' } }}
+                                        color="primary"
+                                        sx={{ height: 22, fontWeight: 500, fontSize: '0.75rem' }}
                                       />
                                     </Box>
                                   </Box>
@@ -1625,7 +1627,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                         <Chip
                           label={selectedCustomer.solutions?.length || 0}
                           size="small"
-                          sx={{ height: 22, bgcolor: '#f3e5f5', color: '#8e24aa', fontWeight: 600 }}
+                          variant="outlined"
+                          color="secondary"
+                          sx={{ height: 22, fontWeight: 600 }}
                         />
                       </Box>
                       <Button
@@ -1686,9 +1690,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                     <Chip
                                       label={cs.licenseLevel}
                                       size="small"
-                                      color="primary"
                                       variant="outlined"
-                                      sx={{ height: 22, fontWeight: 500, fontSize: { xs: '0.7rem', md: '0.75rem' } }}
+                                      color="secondary"
+                                      sx={{ height: 22, fontWeight: 500, fontSize: '0.75rem' }}
                                     />
                                   </Box>
                                 </Box>
@@ -1967,7 +1971,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                   </IconButton>
                                 </Tooltip>
                                 {planData.adoptionPlan.needsSync && (
-                                  <Chip label="Sync Needed" color="warning" icon={<Sync />} size="small" />
+                                  <Chip label="Sync Needed" variant="outlined" color="warning" icon={<Sync />} size="small" />
                                 )}
                               </Box>
                             </Box>
@@ -2047,6 +2051,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                                 key={id}
                                                 label={release?.name || id}
                                                 size="small"
+                                                variant="outlined"
                                               />
                                             );
                                           })
@@ -2122,6 +2127,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                                 key={id}
                                                 label={outcome?.name || id}
                                                 size="small"
+                                                variant="outlined"
                                               />
                                             );
                                           })
@@ -2356,6 +2362,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                                   <Chip
                                                     label={`${attributesWithValues}/${totalAttributes}`}
                                                     size="small"
+                                                    variant="outlined"
                                                     color={hasData ? 'info' : 'default'}
                                                     sx={{ fontSize: '0.7rem', height: 20 }}
                                                   />
@@ -2390,6 +2397,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                                     <Chip
                                                       label={`${attributesWithCriteriaMet}/${attributesWithCriteria} ✓`}
                                                       size="small"
+                                                      variant="outlined"
                                                       color={percentage === 100 ? 'success' : percentage > 0 ? 'warning' : 'default'}
                                                       sx={{ fontSize: '0.7rem', height: 20 }}
                                                     />
@@ -2853,7 +2861,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
       </Menu>
 
       {/* Dialogs - Removed duplicate AssignProductDialog (was rendered twice, causing overlay issues) */}
-      
+
       {selectedCustomerProduct && (
         <EditEntitlementsDialog
           open={editEntitlementsDialogOpen}
