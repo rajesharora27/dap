@@ -527,6 +527,8 @@ export const SolutionAdoptionMutationResolvers = {
               include: {
                 product: {
                   include: {
+                    outcomes: true,
+                    releases: true,
                     tasks: {
                       where: { deletedAt: null },
                       orderBy: { sequenceNumber: 'asc' },
@@ -748,39 +750,73 @@ export const SolutionAdoptionMutationResolvers = {
     }, ctx.user?.id);
 
     // Create adoption plans for all underlying products
-    // Use the customerSolutionId relationship to find products assigned to this solution
-    const customerProducts = await prisma.customerProduct.findMany({
-      where: {
-        customerSolutionId: customerSolutionId, // Use proper FK relationship
-        customerId: customerSolution.customerId  // Ensure customer match for safety
-      },
-      include: {
-        product: {
-          include: {
-            tasks: {
-              where: { deletedAt: null },
-              orderBy: { sequenceNumber: 'asc' },
-              include: {
-                outcomes: { include: { outcome: true } },
-                releases: { include: { release: true } },
-                telemetryAttributes: true
-              }
-            }
-          }
+    // Iterate over ALL products defined in the solution to ensure complete coverage
+    for (const solutionProduct of customerSolution.solution.products) {
+      const product = solutionProduct.product;
+
+      // 1. Find existing CustomerProduct linked to this solution
+      let customerProduct = await prisma.customerProduct.findFirst({
+        where: {
+          customerSolutionId: customerSolutionId,
+          productId: product.id
         },
-        adoptionPlan: true
+        include: { adoptionPlan: true }
+      });
+
+      // 2. If not found, look for unlinked existing product for this customer
+      if (!customerProduct) {
+        const unlinked = await prisma.customerProduct.findFirst({
+          where: {
+            customerId: customerSolution.customerId,
+            productId: product.id,
+            customerSolutionId: null
+          }
+        });
+
+        if (unlinked) {
+          // Link it to the solution
+          customerProduct = await prisma.customerProduct.update({
+            where: { id: unlinked.id },
+            data: { customerSolutionId: customerSolutionId },
+            include: { adoptionPlan: true }
+          });
+        } else {
+          // Create new CustomerProduct
+          // Filter outcomes/releases for this product based on solution selection
+          const allProductOutcomeIds = product.outcomes?.map((o: any) => o.id) || [];
+          const allProductReleaseIds = product.releases?.map((r: any) => r.id) || [];
+
+          const productOutcomeIds = selectedOutcomes.length > 0
+            ? allProductOutcomeIds.filter((id: string) => selectedOutcomes.includes(id))
+            : [];
+
+          const productReleaseIds = selectedReleases.length > 0
+            ? allProductReleaseIds.filter((id: string) => selectedReleases.includes(id))
+            : [];
+
+          customerProduct = await prisma.customerProduct.create({
+            data: {
+              customerId: customerSolution.customerId,
+              productId: product.id,
+              name: `${customerSolution.name} - ${product.name}`,
+              licenseLevel: customerSolution.licenseLevel,
+              selectedOutcomes: productOutcomeIds,
+              selectedReleases: productReleaseIds,
+              customerSolutionId: customerSolutionId
+            },
+            include: { adoptionPlan: true }
+          });
+        }
       }
-    });
 
-    // Create adoption plan for each product if it doesn't exist
-    for (const customerProduct of customerProducts) {
+      // 3. Create adoption plan if it doesn't exist
       if (!customerProduct.adoptionPlan) {
-        // Import the createAdoptionPlan logic inline (simplified version)
-        const selectedOutcomes = (customerProduct.selectedOutcomes as string[]) || [];
-        const selectedReleases = (customerProduct.selectedReleases as string[]) || [];
+        // Use selected outcomes/releases from the customer product
+        const prodSelectedOutcomes = (customerProduct.selectedOutcomes as string[]) || [];
+        const prodSelectedReleases = (customerProduct.selectedReleases as string[]) || [];
 
-        // Filter tasks by license level, outcomes, releases (same logic as product adoption)
-        const filteredTasks = customerProduct.product.tasks.filter((task: any) => {
+        // Filter tasks by license level, outcomes, releases
+        const filteredTasks = product.tasks.filter((task: any) => {
           // Filter by license level
           const licenseMap: { [key: string]: number } = { 'ESSENTIAL': 1, 'ADVANTAGE': 2, 'SIGNATURE': 3 };
           const customerLevel = licenseMap[customerProduct.licenseLevel];
@@ -788,16 +824,16 @@ export const SolutionAdoptionMutationResolvers = {
           if (taskLevel > customerLevel) return false;
 
           // Filter by outcomes (if any selected)
-          if (selectedOutcomes.length > 0) {
+          if (prodSelectedOutcomes.length > 0) {
             const taskOutcomeIds = task.outcomes.map((to: any) => to.outcome.id);
-            const hasMatchingOutcome = taskOutcomeIds.some((id: string) => selectedOutcomes.includes(id));
+            const hasMatchingOutcome = taskOutcomeIds.some((id: string) => prodSelectedOutcomes.includes(id));
             if (!hasMatchingOutcome) return false;
           }
 
           // Filter by releases (if any selected)
-          if (selectedReleases.length > 0) {
+          if (prodSelectedReleases.length > 0) {
             const taskReleaseIds = task.releases.map((tr: any) => tr.release.id);
-            const hasMatchingRelease = taskReleaseIds.some((id: string) => selectedReleases.includes(id));
+            const hasMatchingRelease = taskReleaseIds.some((id: string) => prodSelectedReleases.includes(id));
             if (!hasMatchingRelease) return false;
           }
 
@@ -811,10 +847,10 @@ export const SolutionAdoptionMutationResolvers = {
           data: {
             customerProductId: customerProduct.id,
             productId: customerProduct.productId,
-            productName: customerProduct.product.name,
+            productName: product.name,
             licenseLevel: customerProduct.licenseLevel,
-            selectedOutcomes: selectedOutcomes,
-            selectedReleases: selectedReleases,
+            selectedOutcomes: prodSelectedOutcomes,
+            selectedReleases: prodSelectedReleases,
             totalTasks: filteredTasks.length,
             completedTasks: 0,
             totalWeight: totalWeight,
@@ -889,7 +925,7 @@ export const SolutionAdoptionMutationResolvers = {
           solutionAdoptionPlanId: adoptionPlan.id
         }, ctx.user?.id);
 
-        console.log(`Created adoption plan for product "${customerProduct.product.name}" as part of solution adoption plan`);
+        console.log(`Created adoption plan for product "${product.name}" as part of solution adoption plan`);
       }
     }
 
@@ -897,10 +933,8 @@ export const SolutionAdoptionMutationResolvers = {
     // Re-fetch customer products with their newly created adoption plans
     const customerProductsWithPlans = await prisma.customerProduct.findMany({
       where: {
-        customerId: customerSolution.customerId,
-        name: {
-          startsWith: `${customerSolution.name} - `
-        }
+        customerSolutionId: customerSolutionId,
+        customerId: customerSolution.customerId
       },
       include: {
         adoptionPlan: {
