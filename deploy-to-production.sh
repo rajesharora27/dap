@@ -126,8 +126,34 @@ cd "$DAP_ROOT"
 
 if command -v pm2 &> /dev/null; then
   echo "Restarting via PM2..."
-  pm2 restart ecosystem.config.js --update-env || pm2 start ecosystem.config.js
+  
+  # Use reload for zero-downtime restart in cluster mode
+  if pm2 reload ecosystem.config.js; then
+    echo "✅ PM2 reload successful"
+  else
+    echo "⚠️  PM2 reload failed, attempting restart..."
+    if pm2 restart ecosystem.config.js; then
+      echo "✅ PM2 restart successful"
+    else
+      echo "⚠️  PM2 restart failed, attempting start..."
+      pm2 start ecosystem.config.js || {
+        echo "❌ PM2 start failed! Manual intervention required."
+        pm2 list
+        exit 1
+      }
+    fi
+  fi
+  
   sleep 5
+  
+  # Verify PM2 processes are running
+  if pm2 list | grep -q "online"; then
+    echo "✅ PM2 processes confirmed online"
+  else
+    echo "❌ WARNING: No PM2 processes found online!"
+    pm2 list
+    exit 1
+  fi
 else
   echo "Stopping old processes..."
   pkill -f "node.*src/server" || true
@@ -138,6 +164,15 @@ else
   cd "$DAP_ROOT"
   nohup npm --prefix backend start > backend.log 2>&1 &
   sleep 8
+  
+  # Verify process started
+  if pgrep -f "node.*src/server" > /dev/null || pgrep -f "node.*dist/server" > /dev/null; then
+    echo "✅ Backend process started"
+  else
+    echo "❌ Backend failed to start! Check logs."
+    tail -50 backend.log
+    exit 1
+  fi
 fi
 
 echo "✅ Backend restarted"

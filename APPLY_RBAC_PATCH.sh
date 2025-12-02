@@ -46,15 +46,44 @@ echo "🔑 Updating database role permissions..."
 cd /data/dap
 node scripts/fix-rbac-permissions.js
 
-# Restart services using PM2
+# Restart services using PM2 with proper error handling
 echo "🔄 Restarting services..."
 cd /data/dap/app
-sudo -u dap pm2 restart ecosystem.config.js || true
+
+# Use reload for zero-downtime restart in cluster mode
+if sudo -u dap pm2 reload ecosystem.config.js; then
+  echo "✅ PM2 reload successful"
+else
+  echo "⚠️  PM2 reload failed, attempting restart..."
+  if sudo -u dap pm2 restart ecosystem.config.js; then
+    echo "✅ PM2 restart successful"
+  else
+    echo "❌ PM2 restart failed! Services may be down."
+    sudo -u dap pm2 list
+    exit 1
+  fi
+fi
+
 sleep 5
 
-# Restart Apache
-echo "🌐 Restarting Apache..."
-sudo systemctl restart httpd || true
+# Verify PM2 processes are running
+if sudo -u dap pm2 list | grep -q "online"; then
+  echo "✅ PM2 processes confirmed online"
+else
+  echo "❌ WARNING: No PM2 processes found online!"
+  sudo -u dap pm2 list
+  exit 1
+fi
+
+# Restart Apache (or Nginx if that's what's running)
+echo "🌐 Restarting web server..."
+if systemctl is-active --quiet httpd; then
+  sudo systemctl restart httpd && echo "✅ Apache restarted"
+elif systemctl is-active --quiet nginx; then
+  sudo systemctl restart nginx && echo "✅ Nginx restarted"
+else
+  echo "⚠️  No web server found (httpd/nginx)"
+fi
 
 # Verify
 echo ""
