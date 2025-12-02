@@ -67,11 +67,33 @@ echo "🔑 Updating database role permissions..."
 cd /data/dap
 node scripts/fix-rbac-permissions.js
 
-# Restart PM2
+# Restart PM2 with proper error handling
 echo "🔄 Restarting services..."
 cd /data/dap/app
-pm2 restart ecosystem.config.js --update-env
+
+# Use reload for zero-downtime restart in cluster mode
+if pm2 reload ecosystem.config.js; then
+  echo "✅ PM2 reload successful"
+else
+  echo "⚠️  PM2 reload failed, attempting restart..."
+  if pm2 restart ecosystem.config.js; then
+    echo "✅ PM2 restart successful"
+  else
+    echo "❌ PM2 restart failed! Services may be down."
+    exit 1
+  fi
+fi
+
 sleep 5
+
+# Verify PM2 processes are running
+if pm2 list | grep -q "online"; then
+  echo "✅ PM2 processes confirmed online"
+else
+  echo "❌ WARNING: No PM2 processes found online!"
+  pm2 list
+  exit 1
+fi
 
 DAPCMDS
 
