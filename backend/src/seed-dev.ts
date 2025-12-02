@@ -85,14 +85,19 @@ export async function seedDev() {
         })
       ]);
 
-      await tx.customer.upsert({
-        where: { name: 'Dev Customer' },
-        update: {},
-        create: {
-          name: 'Dev Customer',
-          description: 'Sample customer for development'
-        }
+      // Create customer if it doesn't exist
+      const existingCustomer = await tx.customer.findFirst({
+        where: { name: 'Dev Customer' }
       });
+
+      if (!existingCustomer) {
+        await tx.customer.create({
+          data: {
+            name: 'Dev Customer',
+            description: 'Sample customer for development'
+          }
+        });
+      }
 
       console.log(`✅ Dev seed completed in ${Date.now() - start}ms (Products: ${products.length})`);
     });
