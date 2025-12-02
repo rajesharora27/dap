@@ -1,3 +1,5 @@
+process.env.AUTH_FALLBACK = '1';
+
 import { createApp } from '../../src/server';
 import request from 'supertest';
 
