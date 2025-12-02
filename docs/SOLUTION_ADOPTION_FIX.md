@@ -86,42 +86,54 @@ model CustomerProduct {
 
 ---
 
-## The Fix
+### The Fix: Robust "Find or Create" Strategy
 
-### Updated Code
+Instead of relying on existing `CustomerProduct` records, we now:
+
+1. **Iterate over the Solution's defined products**
+   - Ensures we process every product that *should* be there.
+
+2. **Find or Create CustomerProduct**
+   - Check if `CustomerProduct` exists linked to solution.
+   - If not, check if unlinked `CustomerProduct` exists (and link it).
+   - If neither, **CREATE** the `CustomerProduct` record on the fly.
+
+3. **Create Adoption Plan**
+   - Now that we have a guaranteed `CustomerProduct`, create the adoption plan.
 
 ```typescript
-// Create adoption plans for all underlying products
-// Use the customerSolutionId relationship to find products assigned to this solution
-const customerProducts = await prisma.customerProduct.findMany({
-  where: {
-    customerSolutionId: customerSolutionId, // ✅ Use proper FK relationship
-    customerId: customerSolution.customerId  // ✅ Safety check
+// Iterate over ALL products defined in the solution
+for (const solutionProduct of customerSolution.solution.products) {
+  const product = solutionProduct.product;
+  
+  // 1. Find existing CustomerProduct linked to this solution
+  let customerProduct = await prisma.customerProduct.findFirst({
+    where: { customerSolutionId, productId: product.id }
+  });
+
+  // 2. If not found, look for unlinked existing product
+  if (!customerProduct) {
+     // ... check for unlinked ...
+     // ... or create new ...
   }
-});
+
+  // 3. Create adoption plan
+  // ...
+}
 ```
 
 ### Why This Works
 
-1. **Uses Database Schema**
-   - Leverages existing `customerSolutionId` foreign key
-   - Proper relational query
-   - Schema-enforced relationship
+1. **Self-Healing**
+   - If `assignSolutionToCustomer` failed or wasn't used, this fixes the data.
+   - Handles legacy data where links might be missing.
 
-2. **Reliable Across Environments**
-   - Does not depend on naming conventions
-   - Works regardless of how names are formatted
-   - Consistent behavior dev/prod
+2. **Guaranteed Consistency**
+   - Ensures every product in the solution gets an adoption plan.
+   - No more silent omissions.
 
-3. **Explicit Relationship**
-   - Clear intent: "Get products linked to this solution"
-   - Not dependent on string matching
-   - Database-level integrity
-
-4. **Safety Check**
-   - Still includes `customerId` for paranoid validation
-   - Ensures customer match
-   - Defense-in-depth approach
+3. **Environment Agnostic**
+   - Works regardless of naming conventions or previous state.
 
 ---
 
@@ -133,14 +145,8 @@ const customerProducts = await prisma.customerProduct.findMany({
 User: "Create solution adoption plan"
 System: 
   ✅ SolutionAdoptionPlan created
-  ✅ Solution tasks created
-  ❌ Product adoption plans NOT created (query returned zero)
-  ❌ Product tasks NOT accessible
-  ❌ Cannot track individual product progress
-  ❌ Telemetry import for products would fail
+  ❌ Product adoption plans NOT created (if links missing or names don't match)
 ```
-
-**Result:** Incomplete solution adoption data
 
 ### After Fix
 
@@ -148,11 +154,8 @@ System:
 User: "Create solution adoption plan"
 System:
   ✅ SolutionAdoptionPlan created
-  ✅ Solution tasks created
-  ✅ Product adoption plans created (via FK relationship)
-  ✅ Product tasks created and accessible
-  ✅ Individual product progress tracking works
-  ✅ Telemetry import for products works
+  ✅ Missing CustomerProducts created/linked automatically
+  ✅ Product adoption plans created for ALL products
 ```
 
 **Result:** Complete solution adoption data
