@@ -1,0 +1,43 @@
+#!/bin/bash
+# DAP development launcher
+
+set -e
+
+echo "🚀 Starting DAP development environment"
+
+if [ ! -d "backend/node_modules" ] || [ ! -d "frontend/node_modules" ]; then
+  echo "📦 Installing dependencies..."
+  (cd backend && npm ci)
+  (cd frontend && npm ci)
+fi
+
+if ! docker ps | grep -q dap_postgres_dev; then
+  echo "🐘 Starting PostgreSQL (docker)..."
+  docker run -d --name dap_postgres_dev \
+    -e POSTGRES_PASSWORD=dev \
+    -e POSTGRES_DB=dap_dev \
+    -p 5432:5432 \
+    postgres:16-alpine >/dev/null
+  sleep 3
+fi
+
+(
+  cd backend
+  npx prisma migrate deploy >/dev/null 2>&1 || true
+  if [ "${AUTO_SEED:-true}" = "true" ]; then
+    npm run seed:dev >/dev/null 2>&1 || true
+  fi
+) &
+
+(cd backend && npm run dev 2>&1 | sed 's/^/[BACKEND] /') &
+BACKEND_PID=$!
+
+(cd frontend && npm run dev 2>&1 | sed 's/^/[FRONTEND] /') &
+FRONTEND_PID=$!
+
+trap "echo '🛑 Stopping dev environment'; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; docker stop dap_postgres_dev >/dev/null" INT
+
+echo "✅ Frontend: http://localhost:5173"
+echo "✅ Backend:  http://localhost:4000"
+wait
+
