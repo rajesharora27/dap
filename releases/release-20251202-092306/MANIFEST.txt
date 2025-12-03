@@ -1,0 +1,80 @@
+DAP Release Manifest
+====================
+Version: 2.1.02
+Date: 2025-12-02 09:24:16
+Built On: centos1.rajarora.csslab
+Target: centos2.rajarora.csslab
+
+Changed Files:
+./backend/src/check-data.ts
+./backend/src/check_entity.ts
+./backend/src/config/app.config.ts
+./backend/src/config/env.ts
+./backend/src/context.ts
+./backend/src/graphql/auth.ts
+./backend/src/inspect_task.ts
+./backend/src/lib/audit.ts
+./backend/src/lib/auth.ts
+./backend/src/lib/changes.ts
+./backend/src/lib/csvSamples.ts
+./backend/src/lib/csv.ts
+./backend/src/lib/fallbackStore.ts
+./backend/src/lib/lock.ts
+./backend/src/lib/pagination.ts
+./backend/src/lib/permissions.ts
+./backend/src/lib/pubsub.ts
+./backend/src/lib/__tests__/permissions.test.ts
+./backend/src/middleware/authMiddleware.ts
+./backend/src/reproduce_manual_delete.ts
+./backend/src/reproduce_missing_import.ts
+./backend/src/reproduce_solution_sync.ts
+./backend/src/reproduce_sync_issue.ts
+./backend/src/reproduce_update_task_empty.ts
+./backend/src/schema/dataManagement.ts
+./backend/src/schema/resolvers/auth.ts
+./backend/src/schema/resolvers/backup.ts
+./backend/src/schema/resolvers/customerAdoption.ts
+./backend/src/schema/resolvers/index.ts
+./backend/src/schema/resolvers/solutionAdoption.ts
+./backend/src/schema/resolvers/telemetry/index.ts
+./backend/src/schema/resolvers/telemetry/resolvers.ts
+./backend/src/schema/typeDefs.ts
+./backend/src/seed-dev.ts
+./backend/src/seed-solutions.ts
+./backend/src/seed.ts
+./backend/src/server.ts
+./backend/src/services/authService.ts
+./backend/src/services/AutoBackupScheduler.ts
+./backend/src/services/BackupRestoreService.ts
+./backend/src/services/excel/ExcelExportService.ts
+./backend/src/services/excel/ExcelImportService.ts
+./backend/src/services/excel/index.ts
+./backend/src/services/solutionReportingService.ts
+./backend/src/services/telemetry/CustomerTelemetryExportService.ts
+./backend/src/services/telemetry/CustomerTelemetryImportService.ts
+./backend/src/services/telemetry/evaluationEngine.ts
+./backend/src/services/telemetry/index.ts
+./backend/src/services/telemetry/telemetryService.ts
+./backend/src/services/telemetry/types.ts
+./backend/src/__tests__/auth.test.js
+./backend/src/__tests__/pagination_auth_changesets.test.ts
+./backend/src/__tests__/products_fallback.test.ts
+./backend/src/__tests__/products.test.ts
+./backend/src/__tests__/search_task_revert.test.ts
+./backend/src/utils/sessionManager.ts
+./backend/src/verify_case_insensitive.ts
+./backend/src/verify_solution_import_status.ts
+./frontend/dist/assets/exceljs.min-CAm9aFc4.js
+./frontend/dist/assets/index-RT6_OLQw.js
+./scripts/fix-rbac-permissions.js
+./scripts/reset-test-passwords.js
+./scripts/test-with-real-user.js
+./scripts/update-role-permissions.js
+
+Total Files: 100
+Total Size: 3.7M
+
+Backend Bundle: 16 files
+Frontend Bundle: frontend/dist/assets/exceljs.min-CAm9aFc4.js
+frontend/dist/assets/index-RT6_OLQw.js
+

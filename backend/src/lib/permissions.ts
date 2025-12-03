@@ -10,6 +10,10 @@ const PERMISSION_HIERARCHY: { [key in PermissionLevel]: number } = {
   ADMIN: 3
 };
 
+interface UserRoleWithRole {
+  role?: { name: string } | null;
+}
+
 /**
  * Check if user has required permission level for a specific resource
  * 
@@ -50,7 +54,7 @@ export async function checkUserPermission(
     where: { userId },
     include: { role: true }
   });
-  const roleNames = userRolesForSystemCheck.map((ur: any) => ur.role?.name).filter(Boolean) as string[];
+  const roleNames = userRolesForSystemCheck.map((ur: UserRoleWithRole) => ur.role?.name).filter(Boolean) as string[];
   const effectiveRoles = [user.role, ...roleNames];
 
   const isSME = effectiveRoles.includes('SME');
@@ -401,7 +405,7 @@ export async function getUserAccessibleResources(
     where: { userId },
     include: { role: true }
   });
-  const roleNames = userRolesList.map((ur: any) => ur.role?.name).filter(Boolean) as string[];
+  const roleNames = userRolesList.map((ur: UserRoleWithRole) => ur.role?.name).filter(Boolean) as string[];
   const effectiveRoles = [user.role, ...roleNames];
 
   const isSME = effectiveRoles.includes('SME');
@@ -772,6 +776,8 @@ export async function canUserAccessResource(
  * Get user's permission level for a specific resource
  * Returns the highest permission level the user has
  */
+
+
 export async function getUserPermissionLevel(
   userId: string,
   resourceType: ResourceType,
@@ -796,7 +802,7 @@ export async function getUserPermissionLevel(
     where: { userId },
     include: { role: true }
   });
-  const roleNames = userRolesForSystemCheck.map((ur: any) => ur.role?.name).filter(Boolean) as string[];
+  const roleNames = userRolesForSystemCheck.map((ur: UserRoleWithRole) => ur.role?.name).filter(Boolean) as string[];
   const effectiveRoles = [user.role, ...roleNames];
 
   const isSME = effectiveRoles.includes('SME');

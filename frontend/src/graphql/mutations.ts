@@ -1,6 +1,22 @@
 import { gql } from '@apollo/client';
 
-// Product mutations
+export const REORDER_TASKS = gql`
+  mutation ReorderTasks($productId: ID, $solutionId: ID, $order: [ID!]!) {
+    reorderTasks(productId: $productId, solutionId: $solutionId, order: $order)
+  }
+`;
+
+export const CREATE_PRODUCT = gql`
+  mutation CreateProduct($input: ProductInput!) {
+    createProduct(input: $input) {
+      id
+      name
+      description
+      statusPercent
+    }
+  }
+`;
+
 export const UPDATE_PRODUCT = gql`
   mutation UpdateProduct($id: ID!, $input: ProductInput!) {
     updateProduct(id: $id, input: $input) {
@@ -19,7 +35,6 @@ export const DELETE_PRODUCT = gql`
   }
 `;
 
-// Task mutations
 export const CREATE_TASK = gql`
   mutation CreateTask($input: TaskCreateInput!) {
     createTask(input: $input) {
@@ -46,6 +61,23 @@ export const CREATE_TASK = gql`
         id
         name
         level
+      }
+      telemetryAttributes {
+        id
+        name
+        description
+        dataType
+        isRequired
+        successCriteria
+        order
+        isActive
+        isSuccessful
+        currentValue {
+          id
+          value
+          source
+          createdAt
+        }
       }
     }
   }
@@ -78,6 +110,23 @@ export const UPDATE_TASK = gql`
         name
         level
       }
+      telemetryAttributes {
+        id
+        name
+        description
+        dataType
+        isRequired
+        successCriteria
+        order
+        isActive
+        isSuccessful
+        currentValue {
+          id
+          value
+          source
+          createdAt
+        }
+      }
     }
   }
 `;
@@ -88,19 +137,18 @@ export const DELETE_TASK = gql`
   }
 `;
 
-export const REORDER_TASKS = gql`
-  mutation ReorderTasks($productId: ID!, $order: [ID!]!) {
-    reorderTasks(productId: $productId, order: $order)
-  }
-`;
-
 export const PROCESS_DELETION_QUEUE = gql`
   mutation ProcessDeletionQueue {
     processDeletionQueue
   }
 `;
 
-// License mutations
+export const DELETE_SOLUTION = gql`
+  mutation DeleteSolution($id: ID!) {
+    deleteSolution(id: $id)
+  }
+`;
+
 export const CREATE_LICENSE = gql`
   mutation CreateLicense($input: LicenseInput!) {
     createLicense(input: $input) {
@@ -131,7 +179,6 @@ export const DELETE_LICENSE = gql`
   }
 `;
 
-// Release mutations
 export const CREATE_RELEASE = gql`
   mutation CreateRelease($input: ReleaseInput!) {
     createRelease(input: $input) {
@@ -162,7 +209,6 @@ export const DELETE_RELEASE = gql`
   }
 `;
 
-// Outcome mutations
 export const CREATE_OUTCOME = gql`
   mutation CreateOutcome($input: OutcomeInput!) {
     createOutcome(input: $input) {
@@ -189,11 +235,11 @@ export const DELETE_OUTCOME = gql`
   }
 `;
 
-// Telemetry mutations
 export const CREATE_TELEMETRY_ATTRIBUTE = gql`
   mutation CreateTelemetryAttribute($input: TelemetryAttributeInput!) {
     createTelemetryAttribute(input: $input) {
       id
+      taskId
       name
       description
       dataType
@@ -209,6 +255,7 @@ export const UPDATE_TELEMETRY_ATTRIBUTE = gql`
   mutation UpdateTelemetryAttribute($id: ID!, $input: TelemetryAttributeUpdateInput!) {
     updateTelemetryAttribute(id: $id, input: $input) {
       id
+      taskId
       name
       description
       dataType
@@ -226,103 +273,20 @@ export const DELETE_TELEMETRY_ATTRIBUTE = gql`
   }
 `;
 
-// Solution mutations
-export const CREATE_SOLUTION = gql`
-  mutation CreateSolution($input: SolutionInput!) {
-    createSolution(input: $input) {
-      id
-      name
-      description
-      customAttrs
-    }
-  }
-`;
-
-export const UPDATE_SOLUTION = gql`
-  mutation UpdateSolution($id: ID!, $input: SolutionInput!) {
-    updateSolution(id: $id, input: $input) {
-      id
-      name
-      description
-      customAttrs
-    }
-  }
-`;
-
-export const DELETE_SOLUTION = gql`
-  mutation DeleteSolution($id: ID!) {
-    deleteSolution(id: $id)
-  }
-`;
-
 export const ADD_PRODUCT_TO_SOLUTION_ENHANCED = gql`
-  mutation AddProductToSolutionEnhanced($solutionId: ID!, $productId: ID!, $order: Int) {
-    addProductToSolutionEnhanced(solutionId: $solutionId, productId: $productId, order: $order)
+  mutation AddProductToSolution($solutionId: ID!, $productId: ID!, $order: Int) {
+    addProductToSolution(solutionId: $solutionId, productId: $productId, order: $order)
   }
 `;
 
 export const REMOVE_PRODUCT_FROM_SOLUTION_ENHANCED = gql`
-  mutation RemoveProductFromSolutionEnhanced($solutionId: ID!, $productId: ID!) {
-    removeProductFromSolutionEnhanced(solutionId: $solutionId, productId: $productId)
+  mutation RemoveProductFromSolution($solutionId: ID!, $productId: ID!) {
+    removeProductFromSolution(solutionId: $solutionId, productId: $productId)
   }
 `;
 
 export const REORDER_PRODUCTS_IN_SOLUTION = gql`
-  mutation ReorderProductsInSolution($solutionId: ID!, $productOrders: [ProductOrderInput!]!) {
+  mutation ReorderProductsInSolution($solutionId: ID!, $productOrders: [SolutionProductOrderInput!]!) {
     reorderProductsInSolution(solutionId: $solutionId, productOrders: $productOrders)
-  }
-`;
-
-// Solution Adoption mutations
-export const ASSIGN_SOLUTION_TO_CUSTOMER = gql`
-  mutation AssignSolutionToCustomer($input: AssignSolutionToCustomerInput!) {
-    assignSolutionToCustomer(input: $input) {
-      id
-      name
-      licenseLevel
-      purchasedAt
-      customer {
-        id
-        name
-      }
-      solution {
-        id
-        name
-      }
-    }
-  }
-`;
-
-export const CREATE_SOLUTION_ADOPTION_PLAN = gql`
-  mutation CreateSolutionAdoptionPlan($customerSolutionId: ID!) {
-    createSolutionAdoptionPlan(customerSolutionId: $customerSolutionId) {
-      id
-      solutionName
-      totalTasks
-      completedTasks
-      progressPercentage
-    }
-  }
-`;
-
-export const UPDATE_CUSTOMER_SOLUTION_TASK_STATUS = gql`
-  mutation UpdateCustomerSolutionTaskStatus($input: UpdateCustomerSolutionTaskStatusInput!) {
-    updateCustomerSolutionTaskStatus(input: $input) {
-      id
-      status
-      isComplete
-      completedAt
-    }
-  }
-`;
-
-export const SYNC_SOLUTION_ADOPTION_PLAN = gql`
-  mutation SyncSolutionAdoptionPlan($solutionAdoptionPlanId: ID!) {
-    syncSolutionAdoptionPlan(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
-      id
-      progressPercentage
-      totalTasks
-      completedTasks
-    }
   }
 `;

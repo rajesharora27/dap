@@ -1,42 +1,74 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
-// Proxy /graphql (HTTP & WS) to backend port 4000 so browser only needs firewall-open 5173
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  
+  const isDev = mode === 'development';
+
+  const allowedHosts = [
+    'dap-8321890.ztna.sse.cisco.io',
+    'dap.cxsaaslab.com',
+    '172.22.156.32',
+    'localhost',
+    'centos1.rajarora.csslab',
+    '.ztna.sse.cisco.io',
+    '.cxsaaslab.com',
+    '.rajarora.csslab'
+  ];
+
   return {
-    // Base path for Apache deployment at /dap/ (set via env or default to '/')
     base: env.VITE_BASE_PATH || '/',
-    plugins: [react()],
+    plugins: [
+      react({
+        fastRefresh: true,
+        babel: isDev
+          ? {
+              parserOpts: { plugins: ['classProperties', 'classPrivateProperties'] }
+            }
+          : undefined
+      })
+    ],
     server: {
       host: env.FRONTEND_HOST || '0.0.0.0',
-      port: parseInt(env.FRONTEND_PORT || '5173'),
+      port: parseInt(env.FRONTEND_PORT || '5173', 10),
       strictPort: true,
-      // Allow access through reverse proxy domains
-      allowedHosts: [
-        'dap-8321890.ztna.sse.cisco.io',
-        'dap.cxsaaslab.com',              // CNAME record
-        '172.22.156.32',
-        'localhost',
-        'centos1.rajarora.csslab',        // Direct hostname access
-        '.ztna.sse.cisco.io',             // Allow all subdomains
-        '.cxsaaslab.com',                 // Allow all cxsaaslab.com subdomains
-        '.rajarora.csslab'                // Allow all rajarora.csslab subdomains
-      ],
+      hmr: { overlay: true },
+      allowedHosts,
       proxy: {
         '/graphql': {
-          target: 'http://localhost:4000',  // Backend GraphQL server
+          target: env.VITE_GRAPHQL_PROXY || 'http://localhost:4000',
           changeOrigin: true,
-          ws: true,  // WebSocket support for subscriptions
+          ws: true,
           secure: false
         },
         '/api': {
-          target: 'http://localhost:4000',  // Backend REST API and file downloads
+          target: env.VITE_API_PROXY || 'http://localhost:4000',
           changeOrigin: true,
           secure: false
         }
       }
-    }
+    },
+    optimizeDeps: {
+      include: ['react', 'react-dom', '@apollo/client', '@mui/material', '@mui/icons-material'],
+      force: false
+    },
+    css: {
+      devSourcemap: isDev
+    },
+    esbuild: {
+      logOverride: { 'this-is-undefined-in-esm': 'silent' }
+    },
+    build: {
+      sourcemap: isDev,
+      target: isDev ? 'esnext' : 'es2018',
+      minify: isDev ? false : 'esbuild',
+      cssCodeSplit: true
+    },
+    warmup: isDev
+      ? {
+          clientFiles: ['src/pages/**/*.tsx', 'src/components/**/*.tsx'],
+          serverFiles: ['src/apollo/**/*.ts', 'src/graphql/**/*.ts']
+        }
+      : undefined
   };
 });
