@@ -105,6 +105,18 @@ export class BackupRestoreService {
   }
 
   /**
+   * Check if a command exists in the system path
+   */
+  private static async checkCommand(cmd: string): Promise<boolean> {
+    try {
+      await execPromise(`which ${cmd}`);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * Get record counts for all major tables
    */
   private static async getRecordCounts() {
@@ -168,11 +180,15 @@ export class BackupRestoreService {
       // Create backup
       // In production, we use native pg_dump as the database is running as a system service
       // In development, we use podman exec to run pg_dump inside the container
-      const containerName = 'dap_db_1';
+      const containerName = process.env.DB_CONTAINER_NAME || 'dap_db_1';
       let command: string;
       const env = { ...process.env, PGPASSWORD: dbConfig.password };
 
-      if (process.env.NODE_ENV === 'production') {
+      // Check if pg_dump is available natively
+      const hasPgDump = await this.checkCommand('pg_dump');
+      const forceContainer = process.env.DB_FORCE_CONTAINER === 'true';
+
+      if (hasPgDump && !forceContainer) {
         // Native Postgres
         command = `pg_dump -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
       } else {
@@ -286,7 +302,12 @@ export class BackupRestoreService {
       }
 
       const dbConfig = this.parseDatabaseUrl();
-      const containerName = 'dap_db_1';
+      const containerName = process.env.DB_CONTAINER_NAME || 'dap_db_1';
+
+      // Check if psql is available natively
+      const hasPsql = await this.checkCommand('psql');
+      const forceContainer = process.env.DB_FORCE_CONTAINER === 'true';
+      const useNative = hasPsql && !forceContainer;
 
       // IMPORTANT: Save existing user passwords before restore
       console.log('Saving existing user passwords...');
@@ -312,13 +333,17 @@ export class BackupRestoreService {
 
       // Fastest approach: Drop and recreate the public schema
       // This avoids all the CASCADE locking issues with TRUNCATE
+      console.log('Disconnecting Prisma client...');
+      await prisma.$disconnect();
+
       console.log('Clearing database before restore...');
 
       try {
         // First, terminate other connections (except ours)
         console.log('Terminating active connections...');
         try {
-          const terminateCmd = process.env.NODE_ENV === 'production'
+
+          const terminateCmd = useNative
             ? `psql -U ${dbConfig.user} -h ${dbConfig.host} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbConfig.database}' AND pid <> pg_backend_pid();"`
             : `podman exec ${containerName} psql -U ${dbConfig.user} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbConfig.database}' AND pid <> pg_backend_pid();"`;
 
@@ -330,7 +355,7 @@ export class BackupRestoreService {
 
         // Drop the public schema (this drops all tables, functions, etc.)
         console.log('Dropping public schema...');
-        const dropCmd = process.env.NODE_ENV === 'production'
+        const dropCmd = useNative
           ? `psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -c "DROP SCHEMA IF EXISTS public CASCADE;"`
           : `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "DROP SCHEMA IF EXISTS public CASCADE;"`;
 
@@ -338,7 +363,7 @@ export class BackupRestoreService {
 
         // Recreate the public schema
         console.log('Recreating public schema...');
-        const createCmd = process.env.NODE_ENV === 'production'
+        const createCmd = useNative
           ? `psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -c "CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO ${dbConfig.user}; GRANT ALL ON SCHEMA public TO public;"`
           : `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO ${dbConfig.user}; GRANT ALL ON SCHEMA public TO public;"`;
 
@@ -360,7 +385,7 @@ export class BackupRestoreService {
       let restoreCommand: string;
       const env = { ...process.env, PGPASSWORD: dbConfig.password };
 
-      if (process.env.NODE_ENV === 'production') {
+      if (useNative) {
         restoreCommand = `cat "${filePath}" | psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -q 2>&1`;
       } else {
         restoreCommand = `cat "${filePath}" | podman exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -q 2>&1`;
@@ -397,6 +422,10 @@ export class BackupRestoreService {
           throw new Error(`Restore failed: ${restoreError.message}`);
         }
       }
+
+      // Reconnect Prisma client
+      console.log('Reconnecting Prisma client...');
+      await prisma.$connect();
 
       // IMPORTANT: Restore existing user passwords after restore
       if (existingPasswords.size > 0) {
@@ -440,6 +469,9 @@ export class BackupRestoreService {
         recordsRestored,
       };
     } catch (error: any) {
+      // Ensure Prisma is reconnected even if restore failed
+      try { await prisma.$connect(); } catch (e) { console.error('Failed to reconnect Prisma:', e); }
+
       console.error('Restore error:', error);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);

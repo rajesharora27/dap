@@ -16,6 +16,13 @@ npm run build
 echo "✅ Frontend built"
 echo ""
 
+# Step 1.5: Build backend
+echo "📦 Step 1.5: Building backend..."
+cd /data/dap/backend
+npm run build
+echo "✅ Backend built"
+echo ""
+
 # Step 2: Prepare files for transfer
 echo "📦 Step 2: Preparing files..."
 cd /data/dap
@@ -25,7 +32,9 @@ cp backend/package.json /tmp/dap-deploy/
 cp backend/package-lock.json /tmp/dap-deploy/ 2>/dev/null || true
 cp backend/tsconfig.json /tmp/dap-deploy/
 cp backend/eslint.config.mjs /tmp/dap-deploy/ 2>/dev/null || true
+cp -r backend/dist /tmp/dap-deploy/backend-dist
 cp -r frontend/dist /tmp/dap-deploy/frontend-dist
+cp .env.production /tmp/dap-deploy/.env
 cp -r scripts /tmp/dap-deploy/scripts-new 2>/dev/null || true
 echo "✅ Files prepared in /tmp/dap-deploy"
 echo ""
@@ -33,7 +42,7 @@ echo ""
 # Step 3: Transfer to production
 echo "📤 Step 3: Transferring to centos2..."
 ssh rajarora@centos2.rajarora.csslab "rm -rf /tmp/dap-deploy-prod && mkdir -p /tmp/dap-deploy-prod"
-scp -r /tmp/dap-deploy/* rajarora@centos2.rajarora.csslab:/tmp/dap-deploy-prod/
+scp -r /tmp/dap-deploy/. rajarora@centos2.rajarora.csslab:/tmp/dap-deploy-prod/
 echo "✅ Transfer complete"
 echo ""
 
@@ -65,8 +74,14 @@ fi
 
 # Create directory structure if needed
 mkdir -p "$DAP_ROOT/backend/src"
+mkdir -p "$DAP_ROOT/backend/dist"
+mkdir -p "$DAP_ROOT/frontend/dist"
 mkdir -p "$DAP_ROOT/frontend/dist"
 mkdir -p "/data/dap/scripts"
+
+# Copy .env
+cp /tmp/dap-deploy-prod/.env "$DAP_ROOT/.env"
+echo "✅ Environment file updated"
 
 # Backup current backend source
 if [ -d "$DAP_ROOT/backend/src" ] && [ "$(ls -A $DAP_ROOT/backend/src)" ]; then
@@ -87,6 +102,12 @@ cp /tmp/dap-deploy-prod/tsconfig.json "$DAP_ROOT/backend/"
 [ -f /tmp/dap-deploy-prod/eslint.config.mjs ] && cp /tmp/dap-deploy-prod/eslint.config.mjs "$DAP_ROOT/backend/"
 
 echo "✅ Backend files copied"
+
+echo "📝 Copying backend dist..."
+# Remove old dist files
+rm -rf "$DAP_ROOT/backend/dist"/*
+cp -r /tmp/dap-deploy-prod/backend-dist/* "$DAP_ROOT/backend/dist/"
+echo "✅ Backend dist copied"
 
 echo "📝 Copying frontend files..."
 # Copy frontend dist
@@ -113,12 +134,12 @@ if [ ! -d "node_modules" ]; then
   npm install
 else
   echo "Updating dependencies if needed..."
-  npm install --production 2>/dev/null || npm install
+  npm install --production --legacy-peer-deps 2>/dev/null || npm install --legacy-peer-deps
 fi
 
 echo "Building TypeScript..."
-npm run build
-echo "✅ Backend built successfully"
+# npm run build  <-- Skipped, using pre-built dist
+echo "✅ Backend built successfully (using pre-built dist)"
 
 # Restart using PM2 if available, otherwise use npm
 echo "🔄 Restarting backend..."
@@ -180,8 +201,18 @@ echo "✅ Backend restarted"
 DAPCMDS
 
 # Restart Apache (needs root)
-echo "🌐 Restarting Apache..."
-sudo systemctl restart httpd
+# Restart Web Server
+echo "🌐 Restarting Web Server..."
+if systemctl is-active --quiet nginx; then
+    sudo systemctl restart nginx
+    echo "✅ Nginx restarted"
+elif systemctl is-active --quiet httpd; then
+    sudo systemctl restart httpd
+    echo "✅ Apache restarted"
+else
+    echo "⚠️  Neither Nginx nor Apache active. Attempting to start Nginx..."
+    sudo systemctl start nginx || sudo systemctl start httpd
+fi
 sleep 3
 
 # Verify deployment
@@ -263,11 +294,10 @@ echo "  ✅ Scripts: Latest utility scripts"
 echo "  ✅ Services: Restarted and verified"
 echo ""
 echo "✨ New Features in this deployment:"
-echo "  • Weight column added to Solution adoption plans"
-echo "  • Telemetry column added to Solution adoption plans"
-echo "  • All chips converted to outlined variant (consistent UI)"
-echo "  • Enhanced RBAC for CSS role"
-echo "  • Dev speed optimization documentation added"
+echo "  • Fixed Backup Download URL (subpath support)"
+echo "  • Enhanced Production Backup Reliability (podman fallback)"
+echo "  • Fixed About Menu visibility"
+echo "  • Updated Build & Deploy GUI text"
 echo ""
 echo "🧪 Testing checklist:"
 echo "  1. Login as cssuser / cssuser"

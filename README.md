@@ -1,6 +1,6 @@
 # DAP (Digital Adoption Platform)
 
-**Version:** 2.1.0 | **Status:** ✅ Production Ready | **Last Updated:** November 30, 2025
+**Version:** 2.2.0 | **Status:** ✅ Production Ready | **Last Updated:** December 3, 2025
 
 Production-ready customer adoption and product management platform with Excel import/export, telemetry tracking, and solution bundling.
 
@@ -23,6 +23,7 @@ DAP helps organizations manage product adoption through structured implementatio
 - **Multi-Sheet Excel Workflow**: Import/export products, tasks, licenses, releases, outcomes, and telemetry
 - **Telemetry Integration**: Task-level telemetry with success criteria tracking and automatic status updates
 - **Solution Bundles**: Group products into solutions with unified adoption plans and progress tracking
+- **Backup & Restore**: Full database backup and restore capabilities with production reliability (podman fallback)
 
 ## Technology Stack
 
@@ -111,38 +112,29 @@ cd /data/dap
 
 ## Documentation
 
-### 📚 Quick Links
+### 📚 Complete Documentation Index
 
-- **[Documentation Index](DOCUMENTATION_INDEX.md)** - Complete documentation catalog
+**[📖 DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** - Your central hub for all DAP documentation
+
+The Documentation Index provides a comprehensive, categorized list of all documentation with quick navigation to:
+- Getting Started guides
+- User guides and features
+- Technical documentation
+- Deployment guides
+- Development resources
+- Operations and troubleshooting
+
+### 🎯 Quick Links
+
+- **[Quick Start](QUICK_START.md)** - Get started in minutes
 - **[Context Document](CONTEXT.md)** - Comprehensive app overview (AI assistants & developers)
-- **[Quick Start Guide](QUICK_START.md)** - Get started in minutes
-- **[Deployment Guide](DEPLOYMENT_COMPLETE_GUIDE.md)** - All deployment scenarios
-- **[Production Deployment](deploy/README.md)** - Production-specific deployment
+- **[Features](docs/FEATURES.md)** - Complete feature list
+- **[Architecture](docs/ARCHITECTURE.md)** - System design
+- **[Deployment Guide](deploy/README.md)** - Production deployment
 
-### 🔍 By Topic
+### 📖 Full Documentation
 
-**Getting Started:**
-- [Quick Start](QUICK_START.md) - Fast setup
-- [Context](CONTEXT.md) - Complete overview
-- [Features](docs/FEATURES.md) - Feature list
-
-**Deployment:**
-- [Complete Deployment Guide](DEPLOYMENT_COMPLETE_GUIDE.md) - Master guide
-- [Production Deployment](deploy/README.md) - Production specifics
-- [Apache Deployment](APACHE_DEPLOYMENT_QUICKSTART.md) - Apache setup
-- [Latest Deployment](PRODUCTION_DEPLOYMENT_SUMMARY.md) - Current status
-
-**Technical:**
-- [Architecture](docs/ARCHITECTURE.md) - System design
-- [Technical Docs](docs/TECHNICAL-DOCUMENTATION.md) - API details
-- [Authentication](docs/AUTH_IMPLEMENTATION_SUMMARY.md) - Auth system
-
-**Operations:**
-- [Backup & Restore](AUTO_BACKUP_FEATURE.md) - Automated backups
-- [Troubleshooting](CLIENT_TROUBLESHOOTING.md) - Common issues
-- [Recovery Guide](RECOVERY_GUIDE.md) - Disaster recovery
-
-**📖 Full documentation:** See [DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)
+For a complete, categorized list of all documentation, see **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)**.
 
 ## Development
 
@@ -183,6 +175,19 @@ npm run build
 cd ../backend
 npm run build
 ```
+
+### Deploying to Production
+
+To deploy changes to the production server (`centos2`):
+
+```bash
+./deploy-to-production.sh
+```
+
+This script:
+1. Builds frontend and backend locally
+2. Transfers files to production server
+3. Restarts services (Nginx, Backend via PM2)
 
 ## Troubleshooting
 

@@ -19,7 +19,7 @@ async function main() {
 
     if (!existingAdmin) {
       const adminEmail = process.env.DEFAULT_ADMIN_EMAIL || 'admin@dynamicadoptionplans.com';
-      const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'DAP123';
+      const adminPassword = process.env.DEFAULT_ADMIN_PASSWORD || 'DAP123!!!';
       const passwordHash = await bcrypt.hash(adminPassword, 10);
 
       // Create default admin user
@@ -50,7 +50,7 @@ async function main() {
         }
       });
 
-      if (adminPassword === 'DAP123' && nodeEnv === 'production') {
+      if (adminPassword === 'DAP123!!!' && nodeEnv === 'production') {
         console.warn('[seed] Weak default password used in production – change immediately.');
       }
     } else {

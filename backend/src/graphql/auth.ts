@@ -216,7 +216,7 @@ export const authResolvers = {
 
       const authService = createAuthService(context.prisma);
       const permissions = await authService.getUserPermissions(id);
-      
+
       const userRoles = await context.prisma.userRole.findMany({
         where: { userId: id }
       });
@@ -441,9 +441,22 @@ export const authResolvers = {
       try {
         const authService = createAuthService(context.prisma);
         const decoded = authService.verifyToken(refreshToken);
-        
+
+        // Verify session exists
+        if (!decoded.sessionId) {
+          throw new Error('Invalid refresh token format');
+        }
+
+        const session = await context.prisma.session.findUnique({
+          where: { id: decoded.sessionId }
+        });
+
+        if (!session) {
+          throw new Error('Session expired or invalid');
+        }
+
         const user = await context.prisma.user.findUnique({
-          where: { 
+          where: {
             id: decoded.userId,
             isActive: true
           }
@@ -465,8 +478,8 @@ export const authResolvers = {
         };
 
         return {
-          token: authService.generateToken(userData, permissions),
-          refreshToken: authService.generateRefreshToken(user.id)
+          token: authService.generateToken(userData, permissions, session.id),
+          refreshToken: authService.generateRefreshToken(user.id, session.id)
         };
       } catch (error) {
         throw new Error('Invalid refresh token');
@@ -536,7 +549,7 @@ export const authResolvers = {
 
       const { userId, resourceType, resourceId, permissionLevel } = input;
       const authService = createAuthService(context.prisma);
-      
+
       await authService.grantPermission(
         context.user.userId,
         userId,
@@ -584,347 +597,347 @@ export const authResolvers = {
       return true;
     },
 
-  createRole: async (_: any, { input }: any, context: any) => {
-    if (!context.user) {
-      throw new Error('Not authenticated');
-    }
-
-    // Only admins can create roles
-    const requester = await context.prisma.user.findUnique({
-      where: { id: context.user.userId }
-    });
-    if (!requester?.isAdmin) {
-      throw new Error('Only admins can create roles');
-    }
-
-    // Check if role already exists
-    const existing = await context.prisma.role.findUnique({
-      where: { name: input.name }
-    });
-    if (existing) {
-      throw new Error('Role with this name already exists');
-    }
-
-    // Create role with permissions in a transaction
-    const role = await context.prisma.$transaction(async (tx: any) => {
-      // Create the role
-      const newRole = await tx.role.create({
-        data: {
-          name: input.name,
-          description: input.description || null
-        }
-      });
-
-      // Create permissions if provided
-      if (input.permissions && input.permissions.length > 0) {
-        await tx.rolePermission.createMany({
-          data: input.permissions.map((p: any) => ({
-            roleId: newRole.id,
-            resourceType: p.resourceType,
-            resourceId: p.resourceId || null,
-            permissionLevel: p.permissionLevel
-          }))
-        });
+    createRole: async (_: any, { input }: any, context: any) => {
+      if (!context.user) {
+        throw new Error('Not authenticated');
       }
 
-      // Fetch the complete role with permissions
-      return await tx.role.findUnique({
-        where: { id: newRole.id },
-        include: {
-          permissions: true,
-          userRoles: true
-        }
+      // Only admins can create roles
+      const requester = await context.prisma.user.findUnique({
+        where: { id: context.user.userId }
       });
-    });
-
-    // Log the action
-    await context.prisma.auditLog.create({
-      data: {
-        userId: context.user.userId,
-        action: 'create_role',
-        resourceType: 'Role',
-        resourceId: role.id,
-        details: JSON.stringify({ name: input.name, permissionsCount: input.permissions?.length || 0 })
+      if (!requester?.isAdmin) {
+        throw new Error('Only admins can create roles');
       }
-    });
 
-    return {
-      id: role.id,
-      name: role.name,
-      description: role.description,
-      userCount: 0,
-      permissions: role.permissions.map((p: any) => ({
-        id: p.id,
-        resourceType: p.resourceType,
-        resourceId: p.resourceId,
-        permissionLevel: p.permissionLevel
-      }))
-    };
-  },
-
-  updateRole: async (_: any, { roleId, input }: any, context: any) => {
-    if (!context.user) {
-      throw new Error('Not authenticated');
-    }
-
-    // Only admins can update roles
-    const requester = await context.prisma.user.findUnique({
-      where: { id: context.user.userId }
-    });
-    if (!requester?.isAdmin) {
-      throw new Error('Only admins can update roles');
-    }
-
-    // Check if role exists
-    const existingRole = await context.prisma.role.findUnique({
-      where: { id: roleId },
-      include: { permissions: true }
-    });
-    if (!existingRole) {
-      throw new Error('Role not found');
-    }
-
-    // If changing name, check for conflicts
-    if (input.name && input.name !== existingRole.name) {
-      const nameConflict = await context.prisma.role.findUnique({
+      // Check if role already exists
+      const existing = await context.prisma.role.findUnique({
         where: { name: input.name }
       });
-      if (nameConflict) {
+      if (existing) {
         throw new Error('Role with this name already exists');
       }
-    }
 
-    // Update role and permissions in a transaction
-    const role = await context.prisma.$transaction(async (tx: any) => {
-      // Update basic role info
-      const updatedRole = await tx.role.update({
-        where: { id: roleId },
-        data: {
-          name: input.name || existingRole.name,
-          description: input.description !== undefined ? input.description : existingRole.description
-        }
-      });
-
-      // If permissions are provided, replace all existing permissions
-      if (input.permissions !== undefined) {
-        // Delete existing permissions
-        await tx.rolePermission.deleteMany({
-          where: { roleId }
+      // Create role with permissions in a transaction
+      const role = await context.prisma.$transaction(async (tx: any) => {
+        // Create the role
+        const newRole = await tx.role.create({
+          data: {
+            name: input.name,
+            description: input.description || null
+          }
         });
 
-        // Create new permissions
-        if (input.permissions.length > 0) {
+        // Create permissions if provided
+        if (input.permissions && input.permissions.length > 0) {
           await tx.rolePermission.createMany({
             data: input.permissions.map((p: any) => ({
-              roleId,
+              roleId: newRole.id,
               resourceType: p.resourceType,
               resourceId: p.resourceId || null,
               permissionLevel: p.permissionLevel
             }))
           });
         }
-      }
 
-      // Fetch the complete updated role
-      return await tx.role.findUnique({
-        where: { id: roleId },
-        include: {
-          permissions: true,
-          userRoles: true
+        // Fetch the complete role with permissions
+        return await tx.role.findUnique({
+          where: { id: newRole.id },
+          include: {
+            permissions: true,
+            userRoles: true
+          }
+        });
+      });
+
+      // Log the action
+      await context.prisma.auditLog.create({
+        data: {
+          userId: context.user.userId,
+          action: 'create_role',
+          resourceType: 'Role',
+          resourceId: role.id,
+          details: JSON.stringify({ name: input.name, permissionsCount: input.permissions?.length || 0 })
         }
       });
-    });
 
-    // Log the action
-    await context.prisma.auditLog.create({
-      data: {
-        userId: context.user.userId,
-        action: 'update_role',
-        resourceType: 'Role',
-        resourceId: roleId,
-        details: JSON.stringify({ name: input.name, permissionsCount: input.permissions?.length })
+      return {
+        id: role.id,
+        name: role.name,
+        description: role.description,
+        userCount: 0,
+        permissions: role.permissions.map((p: any) => ({
+          id: p.id,
+          resourceType: p.resourceType,
+          resourceId: p.resourceId,
+          permissionLevel: p.permissionLevel
+        }))
+      };
+    },
+
+    updateRole: async (_: any, { roleId, input }: any, context: any) => {
+      if (!context.user) {
+        throw new Error('Not authenticated');
       }
-    });
 
-    return {
-      id: role.id,
-      name: role.name,
-      description: role.description,
-      userCount: role.userRoles.length,
-      permissions: role.permissions.map((p: any) => ({
-        id: p.id,
-        resourceType: p.resourceType,
-        resourceId: p.resourceId,
-        permissionLevel: p.permissionLevel
-      }))
-    };
-  },
-
-  deleteRole: async (_: any, { roleId }: any, context: any) => {
-    if (!context.user) {
-      throw new Error('Not authenticated');
-    }
-
-    // Only admins can delete roles
-    const requester = await context.prisma.user.findUnique({
-      where: { id: context.user.userId }
-    });
-    if (!requester?.isAdmin) {
-      throw new Error('Only admins can delete roles');
-    }
-
-    // Check if role exists
-    const role = await context.prisma.role.findUnique({
-      where: { id: roleId },
-      include: { userRoles: true }
-    });
-
-    if (!role) {
-      throw new Error('Role not found');
-    }
-
-    // Log before deletion
-    await context.prisma.auditLog.create({
-      data: {
-        userId: context.user.userId,
-        action: 'delete_role',
-        resourceType: 'Role',
-        resourceId: roleId,
-        details: JSON.stringify({ 
-          name: role.name, 
-          usersAffected: role.userRoles.length 
-        })
+      // Only admins can update roles
+      const requester = await context.prisma.user.findUnique({
+        where: { id: context.user.userId }
+      });
+      if (!requester?.isAdmin) {
+        throw new Error('Only admins can update roles');
       }
-    });
 
-    // Delete the role (cascade will handle permissions and user assignments)
-    await context.prisma.role.delete({
-      where: { id: roleId }
-    });
-
-    return true;
-  },
-
-  assignRoleToUser: async (_: any, { userId, roleId }: any, context: any) => {
-    if (!context.user) {
-      throw new Error('Not authenticated');
-    }
-
-    // Only admins can assign roles
-    const requester = await context.prisma.user.findUnique({
-      where: { id: context.user.userId }
-    });
-    if (!requester?.isAdmin) {
-      throw new Error('Only admins can assign roles');
-    }
-
-    // Verify user exists
-    const user = await context.prisma.user.findUnique({
-      where: { id: userId }
-    });
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // Verify role exists
-    const role = await context.prisma.role.findUnique({
-      where: { id: roleId }
-    });
-    if (!role) {
-      throw new Error('Role not found');
-    }
-
-    // Check if user already has this role
-    const existing = await context.prisma.userRole.findFirst({
-      where: {
-        userId,
-        roleId
+      // Check if role exists
+      const existingRole = await context.prisma.role.findUnique({
+        where: { id: roleId },
+        include: { permissions: true }
+      });
+      if (!existingRole) {
+        throw new Error('Role not found');
       }
-    });
 
-    if (existing) {
-      throw new Error('User already has this role');
-    }
-
-    // Assign role to user
-    await context.prisma.userRole.create({
-      data: {
-        userId,
-        roleId
+      // If changing name, check for conflicts
+      if (input.name && input.name !== existingRole.name) {
+        const nameConflict = await context.prisma.role.findUnique({
+          where: { name: input.name }
+        });
+        if (nameConflict) {
+          throw new Error('Role with this name already exists');
+        }
       }
-    });
 
-    // Log the action
-    await context.prisma.auditLog.create({
-      data: {
-        userId: context.user.userId,
-        action: 'assign_role',
-        resourceType: 'UserRole',
-        details: JSON.stringify({ 
-          targetUser: user.username,
-          roleName: role.name 
-        })
+      // Update role and permissions in a transaction
+      const role = await context.prisma.$transaction(async (tx: any) => {
+        // Update basic role info
+        const updatedRole = await tx.role.update({
+          where: { id: roleId },
+          data: {
+            name: input.name || existingRole.name,
+            description: input.description !== undefined ? input.description : existingRole.description
+          }
+        });
+
+        // If permissions are provided, replace all existing permissions
+        if (input.permissions !== undefined) {
+          // Delete existing permissions
+          await tx.rolePermission.deleteMany({
+            where: { roleId }
+          });
+
+          // Create new permissions
+          if (input.permissions.length > 0) {
+            await tx.rolePermission.createMany({
+              data: input.permissions.map((p: any) => ({
+                roleId,
+                resourceType: p.resourceType,
+                resourceId: p.resourceId || null,
+                permissionLevel: p.permissionLevel
+              }))
+            });
+          }
+        }
+
+        // Fetch the complete updated role
+        return await tx.role.findUnique({
+          where: { id: roleId },
+          include: {
+            permissions: true,
+            userRoles: true
+          }
+        });
+      });
+
+      // Log the action
+      await context.prisma.auditLog.create({
+        data: {
+          userId: context.user.userId,
+          action: 'update_role',
+          resourceType: 'Role',
+          resourceId: roleId,
+          details: JSON.stringify({ name: input.name, permissionsCount: input.permissions?.length })
+        }
+      });
+
+      return {
+        id: role.id,
+        name: role.name,
+        description: role.description,
+        userCount: role.userRoles.length,
+        permissions: role.permissions.map((p: any) => ({
+          id: p.id,
+          resourceType: p.resourceType,
+          resourceId: p.resourceId,
+          permissionLevel: p.permissionLevel
+        }))
+      };
+    },
+
+    deleteRole: async (_: any, { roleId }: any, context: any) => {
+      if (!context.user) {
+        throw new Error('Not authenticated');
       }
-    });
 
-    return true;
-  },
-
-  removeRoleFromUser: async (_: any, { userId, roleId }: any, context: any) => {
-    if (!context.user) {
-      throw new Error('Not authenticated');
-    }
-
-    // Only admins can remove roles
-    const requester = await context.prisma.user.findUnique({
-      where: { id: context.user.userId }
-    });
-    if (!requester?.isAdmin) {
-      throw new Error('Only admins can remove roles');
-    }
-
-    // Verify user exists
-    const user = await context.prisma.user.findUnique({
-      where: { id: userId }
-    });
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // Verify role exists and user has it
-    const userRole = await context.prisma.userRole.findFirst({
-      where: {
-        userId,
-        roleId
-      },
-      include: {
-        role: true
+      // Only admins can delete roles
+      const requester = await context.prisma.user.findUnique({
+        where: { id: context.user.userId }
+      });
+      if (!requester?.isAdmin) {
+        throw new Error('Only admins can delete roles');
       }
-    });
 
-    if (!userRole) {
-      throw new Error('User does not have this role');
-    }
+      // Check if role exists
+      const role = await context.prisma.role.findUnique({
+        where: { id: roleId },
+        include: { userRoles: true }
+      });
 
-    // Log before removal
-    await context.prisma.auditLog.create({
-      data: {
-        userId: context.user.userId,
-        action: 'remove_role',
-        resourceType: 'UserRole',
-        details: JSON.stringify({ 
-          targetUser: user.username,
-          roleName: userRole.role?.name 
-        })
+      if (!role) {
+        throw new Error('Role not found');
       }
-    });
 
-    // Remove role from user
-    await context.prisma.userRole.delete({
-      where: { id: userRole.id }
-    });
+      // Log before deletion
+      await context.prisma.auditLog.create({
+        data: {
+          userId: context.user.userId,
+          action: 'delete_role',
+          resourceType: 'Role',
+          resourceId: roleId,
+          details: JSON.stringify({
+            name: role.name,
+            usersAffected: role.userRoles.length
+          })
+        }
+      });
 
-    return true;
-  }
+      // Delete the role (cascade will handle permissions and user assignments)
+      await context.prisma.role.delete({
+        where: { id: roleId }
+      });
+
+      return true;
+    },
+
+    assignRoleToUser: async (_: any, { userId, roleId }: any, context: any) => {
+      if (!context.user) {
+        throw new Error('Not authenticated');
+      }
+
+      // Only admins can assign roles
+      const requester = await context.prisma.user.findUnique({
+        where: { id: context.user.userId }
+      });
+      if (!requester?.isAdmin) {
+        throw new Error('Only admins can assign roles');
+      }
+
+      // Verify user exists
+      const user = await context.prisma.user.findUnique({
+        where: { id: userId }
+      });
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Verify role exists
+      const role = await context.prisma.role.findUnique({
+        where: { id: roleId }
+      });
+      if (!role) {
+        throw new Error('Role not found');
+      }
+
+      // Check if user already has this role
+      const existing = await context.prisma.userRole.findFirst({
+        where: {
+          userId,
+          roleId
+        }
+      });
+
+      if (existing) {
+        throw new Error('User already has this role');
+      }
+
+      // Assign role to user
+      await context.prisma.userRole.create({
+        data: {
+          userId,
+          roleId
+        }
+      });
+
+      // Log the action
+      await context.prisma.auditLog.create({
+        data: {
+          userId: context.user.userId,
+          action: 'assign_role',
+          resourceType: 'UserRole',
+          details: JSON.stringify({
+            targetUser: user.username,
+            roleName: role.name
+          })
+        }
+      });
+
+      return true;
+    },
+
+    removeRoleFromUser: async (_: any, { userId, roleId }: any, context: any) => {
+      if (!context.user) {
+        throw new Error('Not authenticated');
+      }
+
+      // Only admins can remove roles
+      const requester = await context.prisma.user.findUnique({
+        where: { id: context.user.userId }
+      });
+      if (!requester?.isAdmin) {
+        throw new Error('Only admins can remove roles');
+      }
+
+      // Verify user exists
+      const user = await context.prisma.user.findUnique({
+        where: { id: userId }
+      });
+      if (!user) {
+        throw new Error('User not found');
+      }
+
+      // Verify role exists and user has it
+      const userRole = await context.prisma.userRole.findFirst({
+        where: {
+          userId,
+          roleId
+        },
+        include: {
+          role: true
+        }
+      });
+
+      if (!userRole) {
+        throw new Error('User does not have this role');
+      }
+
+      // Log before removal
+      await context.prisma.auditLog.create({
+        data: {
+          userId: context.user.userId,
+          action: 'remove_role',
+          resourceType: 'UserRole',
+          details: JSON.stringify({
+            targetUser: user.username,
+            roleName: userRole.role?.name
+          })
+        }
+      });
+
+      // Remove role from user
+      await context.prisma.userRole.delete({
+        where: { id: userRole.id }
+      });
+
+      return true;
+    }
   }
 };

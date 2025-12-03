@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -8,7 +9,7 @@ export async function seedDev() {
 
   try {
     await prisma.$transaction(async (tx) => {
-      const adminPassword = '$2a$10$7uW1Nqbn0N6NtqZVNudZLebpXCMV2.fAnCmvY/fx/n6PvJEa3TBcW'; // "admin"
+      const adminPassword = await bcrypt.hash('DAP123!!!', 10);
 
       await tx.user.upsert({
         where: { username: 'admin' },
