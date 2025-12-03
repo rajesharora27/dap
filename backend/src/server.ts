@@ -20,12 +20,59 @@ import { envConfig } from './config/env';
 import { CustomerTelemetryImportService } from './services/telemetry/CustomerTelemetryImportService';
 import { SessionManager } from './utils/sessionManager';
 import { AutoBackupScheduler } from './services/AutoBackupScheduler';
+import { initSentry, captureException } from './lib/sentry';
 import { ApolloServerPluginLandingPageLocalDefault, ApolloServerPluginLandingPageProductionDefault } from '@apollo/server/plugin/landingPage/default';
+import devToolsRouter, { addLogEntry } from './api/devTools';
 // Force restart to load permission enforcement - 2025-11-11
 
 export async function createApp() {
   const app = express();
   const isProduction = envConfig.isProd;
+
+  // Initialize Sentry for error tracking
+  initSentry();
+
+  // Enable JSON body parsing for all routes
+  app.use(express.json());
+
+  // Capture console logs for DevTools (only in dev mode)
+  if (process.env.NODE_ENV !== 'production' && !(global as any).__consoleOverridden) {
+    (global as any).__consoleOverridden = true;
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    const originalConsoleWarn = console.warn;
+
+    console.log = (...args) => {
+      addLogEntry('info', args.map(a => String(a)).join(' '));
+      originalConsoleLog.apply(console, args);
+    };
+
+    console.error = (...args) => {
+      addLogEntry('error', args.map(a => String(a)).join(' '));
+      originalConsoleError.apply(console, args);
+    };
+
+    console.warn = (...args) => {
+      addLogEntry('warn', args.map(a => String(a)).join(' '));
+      originalConsoleWarn.apply(console, args);
+    };
+  }
+
+  // Request logging middleware for DevTools
+  if (process.env.NODE_ENV !== 'production') {
+    app.use((req, res, next) => {
+      const start = Date.now();
+      res.on('finish', () => {
+        const duration = Date.now() - start;
+        const level = res.statusCode >= 400 ? 'error' : 'info';
+        // Don't log dev tools polling to avoid noise
+        if (!req.url.includes('/api/dev/logs') && !req.url.includes('/api/dev/performance')) {
+          addLogEntry(level, `${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`);
+        }
+      });
+      next();
+    });
+  }
 
   // Trust reverse proxy in production
   if (process.env.TRUST_PROXY === 'true' || isProduction) {
@@ -211,9 +258,13 @@ export async function createApp() {
     }
   });
 
+  // Development Tools API (Dev mode only)
+  app.use('/api/dev', devToolsRouter);
+
   const schema = makeExecutableSchema({ typeDefs, resolvers });
   const apollo = new ApolloServer({
     schema,
+    csrfPrevention: false,
     introspection: envConfig.features.introspection,
     plugins: envConfig.features.graphqlPlayground
       ? [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })]
@@ -221,7 +272,6 @@ export async function createApp() {
   });
   await apollo.start();
   const graphqlMiddleware: any[] = [
-    bodyParser.json(),
     expressMiddleware(apollo, { context: createContext })
   ];
   if (graphqlRateLimiter) {

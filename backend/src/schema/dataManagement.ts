@@ -91,7 +91,8 @@ const dataManagementResolvers = {
     },
 
     // Reset sample data
-    async resetSampleData(_: any, __: any, { prisma }: Context) {
+    async resetSampleData(_: any, __: any, ctx: Context) {
+      const { prisma } = ctx;
       try {
         // Delete existing sample products
         const deleted = await prisma.product.deleteMany({
@@ -103,7 +104,7 @@ const dataManagementResolvers = {
         });
 
         // Recreate sample products
-        const result = await this.createSampleData(_, __, { prisma });
+        const result = await this.createSampleData(_, __, ctx);
 
         return {
           success: true,

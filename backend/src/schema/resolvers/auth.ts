@@ -72,7 +72,7 @@ export const AuthQueryResolvers = {
         const permissionsWithNames = await Promise.all(
           role.permissions.map(async (p: any) => {
             let resourceName = null;
-            
+
             // Fetch resource name if resourceId is specified
             if (p.resourceId) {
               try {
@@ -99,7 +99,7 @@ export const AuthQueryResolvers = {
                 console.error(`Error fetching resource name for ${p.resourceType}:${p.resourceId}`, err);
               }
             }
-            
+
             return {
               id: p.id,
               resourceType: p.resourceType,
@@ -109,7 +109,7 @@ export const AuthQueryResolvers = {
             };
           })
         );
-        
+
         return {
           id: role.id,
           name: role.name,
@@ -120,7 +120,7 @@ export const AuthQueryResolvers = {
         };
       })
     );
-    
+
     return rolePermissionsWithNames;
   },
 
@@ -271,7 +271,7 @@ export const AuthQueryResolvers = {
 
     const authService = createAuthService(context.prisma);
     const permissions = await authService.getUserPermissions(id);
-    
+
     const userRoles = await context.prisma.userRole.findMany({
       where: { userId: id }
     });
@@ -350,9 +350,22 @@ export const AuthMutationResolvers = {
     try {
       const authService = createAuthService(context.prisma);
       const decoded = authService.verifyToken(refreshToken);
-      
+
+      if (!decoded.sessionId) {
+        throw new Error('Invalid token: missing session ID');
+      }
+
+      // Verify session exists and is active
+      const session = await context.prisma.session.findUnique({
+        where: { id: decoded.sessionId }
+      });
+
+      if (!session || session.expiresAt < new Date()) {
+        throw new Error('Session expired or invalid');
+      }
+
       const user = await context.prisma.user.findUnique({
-        where: { 
+        where: {
           id: decoded.userId,
           isActive: true
         }
@@ -374,8 +387,8 @@ export const AuthMutationResolvers = {
       };
 
       return {
-        token: authService.generateToken(userData, permissions),
-        refreshToken: authService.generateRefreshToken(user.id)
+        token: authService.generateToken(userData, permissions, session.id),
+        refreshToken: authService.generateRefreshToken(user.id, session.id)
       };
     } catch (error) {
       throw new Error('Invalid refresh token');
@@ -445,7 +458,7 @@ export const AuthMutationResolvers = {
 
     const { userId, resourceType, resourceId, permissionLevel } = input;
     const authService = createAuthService(context.prisma);
-    
+
     await authService.grantPermission(
       context.user.userId,
       userId,
@@ -569,10 +582,10 @@ export const AuthMutationResolvers = {
       data: {
         userId: context.user.userId,
         action: 'update_role_permissions',
-        details: { 
-          roleId: result.id, 
+        details: {
+          roleId: result.id,
           roleName: result.name,
-          permissionsCount: permissions.length 
+          permissionsCount: permissions.length
         }
       }
     });
@@ -801,8 +814,8 @@ export const AuthMutationResolvers = {
       data: {
         userId: context.user.userId,
         action: 'delete_role',
-        details: { 
-          roleId, 
+        details: {
+          roleId,
           roleName: role.name,
           affectedUsers: role.userRoles.length
         }
@@ -866,7 +879,7 @@ export const AuthMutationResolvers = {
       data: {
         userId: context.user.userId,
         action: 'assign_role',
-        details: { 
+        details: {
           targetUserId: userId,
           roleId,
           roleName: role.name
@@ -919,7 +932,7 @@ export const AuthMutationResolvers = {
       data: {
         userId: context.user.userId,
         action: 'remove_role',
-        details: { 
+        details: {
           targetUserId: userId,
           roleId,
           roleName: role.name

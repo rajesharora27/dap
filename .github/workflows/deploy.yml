@@ -1,0 +1,157 @@
+name: Deploy to Production
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags (e.g., v1.0.0)
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://myapps.cxsaaslab.com/dap/
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22.x'
+    
+    - name: Install SSH key
+      uses: shimataro/ssh-key-action@v2
+      with:
+        key: ${{ secrets.DEPLOY_SSH_KEY }}
+        known_hosts: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+    
+    - name: Create deployment package
+      run: |
+        echo "Creating deployment package..."
+        cd /tmp
+        git clone ${{ github.server_url }}/${{ github.repository }} dap-deploy
+        cd dap-deploy
+        git checkout ${{ github.ref }}
+        
+        # Create release tarball
+        tar -czf /tmp/release.tar.gz \
+          --exclude='.git' \
+          --exclude='node_modules' \
+          --exclude='*.log' \
+          --exclude='.env' \
+          backend/ frontend/ deploy/ package.json README.md
+    
+    - name: Backup production database
+      run: |
+        ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+          "cd /data/dap && ./deploy/scripts/backup-db.sh"
+    
+    - name: Upload release package
+      run: |
+        scp /tmp/release.tar.gz \
+          ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:/tmp/
+    
+    - name: Deploy application
+      run: |
+        ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} << 'ENDSSH'
+          set -e
+          
+          echo "Stopping application..."
+          cd /data/dap
+          ./dap stop
+          
+          echo "Extracting new version..."
+          tar -xzf /tmp/release.tar.gz -C /data/dap --strip-components=0
+          
+          echo "Installing backend dependencies..."
+          cd /data/dap/backend
+          npm ci --legacy-peer-deps --production
+          
+          echo "Running database migrations..."
+          npx prisma migrate deploy
+          npx prisma generate
+          
+          echo "Building backend..."
+          npm run build
+          
+          echo "Installing frontend dependencies..."
+          cd /data/dap/frontend
+          npm ci --legacy-peer-deps
+          
+          echo "Building frontend..."
+          npm run build
+          
+          echo "Starting application..."
+          cd /data/dap
+          ./dap start
+          
+          echo "Deployment complete!"
+        ENDSSH
+    
+    - name: Health check
+      run: |
+        echo "Waiting for application to start..."
+        sleep 10
+        
+        HEALTH_URL="${{ secrets.DEPLOY_URL }}/health"
+        for i in {1..10}; do
+          if curl -f "$HEALTH_URL"; then
+            echo "✅ Health check passed!"
+            exit 0
+          fi
+          echo "Attempt $i failed, retrying..."
+          sleep 5
+        done
+        
+        echo "❌ Health check failed!"
+        exit 1
+    
+    - name: Rollback on failure
+      if: failure()
+      run: |
+        echo "Deployment failed, initiating rollback..."
+        ssh ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }} \
+          "cd /data/dap && ./deploy/scripts/rollback.sh"
+    
+    - name: Notify deployment status
+      if: always()
+      uses: 8398a7/action-slack@v3
+      with:
+        status: ${{ job.status }}
+        text: |
+          Deployment ${{ job.status }}
+          Version: ${{ github.ref }}
+          Environment: Production
+        webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+      continue-on-error: true
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Generate changelog
+      id: changelog
+      run: |
+        echo "## Changes" > CHANGELOG.md
+        git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- %s (%h)" >> CHANGELOG.md
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        body_path: CHANGELOG.md
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

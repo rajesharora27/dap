@@ -3,7 +3,8 @@
  */
 
 interface JWTPayload {
-  uid: string;
+  uid?: string;
+  userId?: string;
   username?: string;
   email?: string;
   fullName?: string;
@@ -79,7 +80,7 @@ export function getUserFromToken(token: string): any | null {
   }
 
   return {
-    id: payload.uid,
+    id: payload.userId || payload.uid,
     username: payload.username,
     email: payload.email,
     fullName: payload.fullName,

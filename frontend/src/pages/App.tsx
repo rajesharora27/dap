@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import {
   Box,
   CssBaseline,
@@ -37,12 +37,15 @@ import {
   TableHead,
   TableRow,
   Tabs,
-  Tab
+  Tab,
+  CircularProgress
 } from '@mui/material';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
-import { ProductsPage } from './ProductsPage';
-import { SolutionsPage } from './SolutionsPage';
-import { CustomersPage } from './CustomersPage';
+
+// Code splitting: Lazy load heavy page components
+const ProductsPage = lazy(() => import('./ProductsPage').then(m => ({ default: m.ProductsPage })));
+const SolutionsPage = lazy(() => import('./SolutionsPage').then(m => ({ default: m.SolutionsPage })));
+const CustomersPage = lazy(() => import('./CustomersPage').then(m => ({ default: m.CustomersPage })));
 import { ProductDialog } from '../components/dialogs/ProductDialog';
 import { SolutionDialog } from '../components/dialogs/SolutionDialog';
 import { LicenseDialog } from '../components/dialogs/LicenseDialog';
@@ -55,6 +58,7 @@ import { UserManagement } from '../components/UserManagement';
 import { RoleManagement } from '../components/RoleManagement';
 import { BackupManagementPanel } from '../components/BackupManagementPanel';
 import { ThemeSelector } from '../components/ThemeSelector';
+import { AboutPage } from '../components/AboutPage';
 import { License, Outcome } from '../types/shared';
 import {
   Inventory2 as ProductIcon,
@@ -83,11 +87,36 @@ import {
   AdminPanelSettings as AdminIcon,
   People as UsersIcon,
   Security as RolesIcon,
-  Palette as PaletteIcon
+  Palette as PaletteIcon,
+  Info as AboutIcon
 } from '@mui/icons-material';
 import { AuthBar } from '../components/AuthBar';
 import { useAuth } from '../components/AuthContext';
 import { LoginPage } from '../components/LoginPage';
+// Development Tools
+import { DevelopmentTestsPanel } from '../components/dev/DevelopmentTestsPanel';
+import { DevelopmentCICDPanel } from '../components/dev/DevelopmentCICDPanel';
+import { DevelopmentDocsPanel } from '../components/dev/DevelopmentDocsPanel';
+import { DatabaseManagementPanel } from '../components/dev/DatabaseManagementPanel';
+import { LogsViewerPanel } from '../components/dev/LogsViewerPanel';
+import { BuildDeployPanel } from '../components/dev/BuildDeployPanel';
+import { EnvironmentPanel } from '../components/dev/EnvironmentPanel';
+import { APITestingPanel } from '../components/dev/APITestingPanel';
+import { CodeQualityPanel } from '../components/dev/CodeQualityPanel';
+import { PerformancePanel, GitIntegrationPanel, TaskRunnerPanel } from '../components/dev/AdvancedPanels';
+
+// Dev Icons
+import DeveloperModeIcon from '@mui/icons-material/DeveloperMode';
+import StorageIcon from '@mui/icons-material/Storage';
+import ArticleIcon from '@mui/icons-material/Article';
+import BuildIcon from '@mui/icons-material/Build';
+import SettingsIcon from '@mui/icons-material/Settings';
+import ApiIcon from '@mui/icons-material/Api';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import SpeedIcon from '@mui/icons-material/Speed';
+import GitHubIcon from '@mui/icons-material/GitHub';
+import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
+import BugReportIcon from '@mui/icons-material/BugReport';
 import { gql, useQuery, useApolloClient, ApolloError } from '@apollo/client';
 import {
   DndContext,
@@ -757,15 +786,38 @@ export function App() {
   const client = useApolloClient();
   const { token, isAuthenticated, isLoading, user } = useAuth();
 
-  // State management
-  const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers' | 'admin'>('products');
+  useEffect(() => {
+    console.log('DEBUG: App State', {
+      user,
+      isAuthenticated,
+      isAdmin: user?.isAdmin,
+      role: user?.role,
+      selectedSection
+    });
+  }, [user, isAuthenticated]);
 
+  // State management
+  const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers' | 'admin' | 'development'>('products');
+
+  // Development menu state
+  const [devExpanded, setDevExpanded] = useState(false);
+  const [selectedDevSubSection, setSelectedDevSubSection] = useState<
+    'tests' | 'cicd' | 'docs' | 'database' | 'logs' | 'build' | 'env' | 'api' | 'quality' | 'performance' | 'git' | 'tasks'
+  >('tests');
+
+  // Development menu is available in dev mode OR for admin users in any mode
+  const isDevelopmentMode = import.meta.env.DEV || import.meta.env.MODE === 'development';
+
+  // Debug logging for dev menu
+  useEffect(() => {
+    console.log('[DevMenu] selectedSection:', selectedSection, 'selectedDevSubSection:', selectedDevSubSection, 'isDevelopmentMode:', isDevelopmentMode, 'user?.isAdmin:', user?.isAdmin);
+  }, [selectedSection, selectedDevSubSection, isDevelopmentMode, user?.isAdmin]);
 
   const [selectedCustomer, setSelectedCustomer] = useState('');
 
 
 
-  const [selectedAdminSubSection, setSelectedAdminSubSection] = useState<'users' | 'roles' | 'backup' | 'theme'>('users');
+  const [selectedAdminSubSection, setSelectedAdminSubSection] = useState<'users' | 'roles' | 'backup' | 'theme' | 'about'>('users');
   const [productsExpanded, setProductsExpanded] = useState(true);
   const [solutionsExpanded, setSolutionsExpanded] = useState(true);
   const [customersExpanded, setCustomersExpanded] = useState(true);
@@ -867,21 +919,7 @@ export function App() {
       customAttrs: normalizedCustomAttrs
     };
   }) || [];
-  const { data: solutionsData, loading: solutionsLoading, error: solutionsError, refetch: refetchSolutions } = useQuery(gql`
-    query Solutions {
-      solutions {
-        id
-        name
-        description
-        product {
-          id
-          name
-        }
-      }
-    }
-  `, {
-    skip: !isAuthenticated
-  });
+
 
 
 
@@ -960,7 +998,8 @@ export function App() {
       (selectedSection === 'products' && hasProducts) ||
       (selectedSection === 'solutions' && hasSolutions) ||
       (selectedSection === 'customers' && hasCustomers) ||
-      (selectedSection === 'admin' && user?.isAdmin);
+      (selectedSection === 'admin' && user?.isAdmin) ||
+      (selectedSection === 'development' && isDevelopmentMode);
 
     // If current section is not accessible, redirect to first available section
     if (!sectionAccessible) {
@@ -976,7 +1015,7 @@ export function App() {
       // If no sections available, selectedSection will remain as is
       // (handled in main content rendering)
     }
-  }, [isAuthenticated, selectedSection, hasProducts, hasSolutions, hasCustomers, user?.isAdmin]);
+  }, [isAuthenticated, selectedSection, hasProducts, hasSolutions, hasCustomers, user?.isAdmin, isDevelopmentMode]);
 
   // Memoized callbacks to prevent infinite loops (MUST be before early returns)
 
@@ -2158,6 +2197,7 @@ export function App() {
                 </ListItemButton>
                 <Collapse in={adminExpanded} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding>
+
                     <ListItemButton
                       sx={{
                         pl: 4,
@@ -2270,6 +2310,204 @@ export function App() {
                       </ListItemIcon>
                       <ListItemText primary="Theme" />
                     </ListItemButton>
+                    <ListItemButton
+                      sx={{
+                        pl: 4,
+                        '&.Mui-selected': {
+                          backgroundColor: 'rgba(4, 159, 217, 0.08)',
+                          '& .MuiListItemIcon-root': {
+                            color: '#049FD9'
+                          },
+                          '& .MuiListItemText-primary': {
+                            color: '#049FD9',
+                            fontWeight: 600
+                          }
+                        },
+                        '&.Mui-selected:hover': {
+                          backgroundColor: 'rgba(4, 159, 217, 0.12)'
+                        }
+                      }}
+                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'about'}
+                      onClick={() => {
+                        setSelectedSection('admin');
+                        setSelectedAdminSubSection('about');
+                      }}
+                    >
+                      <ListItemIcon>
+                        <AboutIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="About" />
+                    </ListItemButton>
+
+                  </List>
+                </Collapse>
+              </>
+            )}
+
+            {/* Development Section (Dev Mode + Admin Only) */}
+            {isDevelopmentMode && (
+              <>
+                <Divider sx={{ my: 1 }} />
+                <ListItemButton
+                  selected={selectedSection === 'development'}
+                  onClick={() => {
+                    setSelectedSection('development');
+                    setDevExpanded(!devExpanded);
+                  }}
+                  sx={{
+                    '&.Mui-selected': {
+                      backgroundColor: 'rgba(156, 39, 176, 0.08)',
+                      '& .MuiListItemIcon-root': { color: '#9C27B0' },
+                      '& .MuiListItemText-primary': { color: '#9C27B0', fontWeight: 600 }
+                    }
+                  }}
+                >
+                  <ListItemIcon><DeveloperModeIcon /></ListItemIcon>
+                  <ListItemText
+                    primary="Development"
+                    secondary="Toolkit"
+                    secondaryTypographyProps={{ variant: 'caption', color: 'warning.main' }}
+                  />
+                  {devExpanded ? <ExpandLess /> : <ExpandMore />}
+                </ListItemButton>
+
+                <Collapse in={devExpanded} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {/* Core Tools */}
+                    <Tooltip title="Manage database migrations, seed data, and schema" placement="right" arrow>
+                      <ListItemButton
+                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+                        selected={selectedSection === 'development' && selectedDevSubSection === 'database'}
+                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('database'); }}
+                      >
+                        <ListItemIcon><StorageIcon /></ListItemIcon>
+                        <ListItemText primary="Database" />
+                      </ListItemButton>
+                    </Tooltip>
+
+                    <Tooltip title="View real-time application logs and debugging output" placement="right" arrow>
+                      <ListItemButton
+                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+                        selected={selectedSection === 'development' && selectedDevSubSection === 'logs'}
+                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('logs'); }}
+                      >
+                        <ListItemIcon><ArticleIcon /></ListItemIcon>
+                        <ListItemText primary="Logs" />
+                      </ListItemButton>
+                    </Tooltip>
+
+                    <Tooltip title="Run unit tests, integration tests, and view coverage reports" placement="right" arrow>
+                      <ListItemButton
+                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+                        selected={selectedSection === 'development' && selectedDevSubSection === 'tests'}
+                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('tests'); }}
+                      >
+                        <ListItemIcon><BugReportIcon /></ListItemIcon>
+                        <ListItemText primary="Tests" />
+                      </ListItemButton>
+                    </Tooltip>
+
+                    {/* DevOps */}
+                    <Tooltip title="Build frontend/backend and deploy to production environments" placement="right" arrow>
+                      <ListItemButton
+                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+                        selected={selectedSection === 'development' && selectedDevSubSection === 'build'}
+                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('build'); }}
+                      >
+                        <ListItemIcon><BuildIcon /></ListItemIcon>
+                        <ListItemText primary="Build & Deploy" />
+                      </ListItemButton>
+                    </Tooltip>
+
+                    <Tooltip title="View GitHub Actions workflows and pipeline status" placement="right" arrow>
+                      <ListItemButton
+                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+                        selected={selectedSection === 'development' && selectedDevSubSection === 'cicd'}
+                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('cicd'); }}
+                      >
+                        <ListItemIcon><GitHubIcon /></ListItemIcon>
+                        <ListItemText primary="CI/CD" />
+                      </ListItemButton>
+                    </Tooltip>
+
+                    {/* Utilities */}
+                    <Tooltip title="View and manage environment variables and configuration" placement="right" arrow>
+                      <ListItemButton
+                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+                        selected={selectedSection === 'development' && selectedDevSubSection === 'env'}
+                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('env'); }}
+                      >
+                        <ListItemIcon><SettingsIcon /></ListItemIcon>
+                        <ListItemText primary="Environment" />
+                      </ListItemButton>
+                    </Tooltip>
+
+                    <Tooltip title="Test GraphQL API endpoints and explore schema" placement="right" arrow>
+                      <ListItemButton
+                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+                        selected={selectedSection === 'development' && selectedDevSubSection === 'api'}
+                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('api'); }}
+                      >
+                        <ListItemIcon><ApiIcon /></ListItemIcon>
+                        <ListItemText primary="API Testing" />
+                      </ListItemButton>
+                    </Tooltip>
+
+                    <Tooltip title="Browse project documentation, guides, and technical references" placement="right" arrow>
+                      <ListItemButton
+                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+                        selected={selectedSection === 'development' && selectedDevSubSection === 'docs'}
+                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('docs'); }}
+                      >
+                        <ListItemIcon><ArticleIcon /></ListItemIcon>
+                        <ListItemText primary="Docs" />
+                      </ListItemButton>
+                    </Tooltip>
+
+                    {/* Advanced */}
+                    <Tooltip title="View code quality metrics, linting results, and test coverage" placement="right" arrow>
+                      <ListItemButton
+                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+                        selected={selectedSection === 'development' && selectedDevSubSection === 'quality'}
+                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('quality'); }}
+                      >
+                        <ListItemIcon><AssessmentIcon /></ListItemIcon>
+                        <ListItemText primary="Quality" />
+                      </ListItemButton>
+                    </Tooltip>
+
+                    <Tooltip title="Monitor system performance, memory usage, and uptime" placement="right" arrow>
+                      <ListItemButton
+                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+                        selected={selectedSection === 'development' && selectedDevSubSection === 'performance'}
+                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('performance'); }}
+                      >
+                        <ListItemIcon><SpeedIcon /></ListItemIcon>
+                        <ListItemText primary="Performance" />
+                      </ListItemButton>
+                    </Tooltip>
+
+                    <Tooltip title="View Git repository status, branches, and commit history" placement="right" arrow>
+                      <ListItemButton
+                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+                        selected={selectedSection === 'development' && selectedDevSubSection === 'git'}
+                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('git'); }}
+                      >
+                        <ListItemIcon><GitHubIcon /></ListItemIcon>
+                        <ListItemText primary="Git" />
+                      </ListItemButton>
+                    </Tooltip>
+
+                    <Tooltip title="Execute npm scripts and custom development tasks" placement="right" arrow>
+                      <ListItemButton
+                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+                        selected={selectedSection === 'development' && selectedDevSubSection === 'tasks'}
+                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('tasks'); }}
+                      >
+                        <ListItemIcon><PlaylistPlayIcon /></ListItemIcon>
+                        <ListItemText primary="Tasks" />
+                      </ListItemButton>
+                    </Tooltip>
                   </List>
                 </Collapse>
               </>
@@ -2296,22 +2534,42 @@ export function App() {
             {/* Products Section */}
             {
               selectedSection === 'products' && (
-                <ProductsPage
-                  onEditProduct={(product) => {
-                    setEditingProduct({ ...product });
-                    setEditProductDialog(true);
-                  }}
-                />
+                <Suspense fallback={
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                    <CircularProgress size={60} />
+                  </Box>
+                }>
+                  <ProductsPage
+                    onEditProduct={(product) => {
+                      setEditingProduct({ ...product });
+                      setEditProductDialog(true);
+                    }}
+                  />
+                </Suspense>
               )
             }
 
             {/* Solutions Section */}
             {selectedSection === 'solutions' && (
-              <SolutionsPage />
+              <Suspense fallback={
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                  <CircularProgress size={60} />
+                </Box>
+              }>
+                <SolutionsPage />
+              </Suspense>
             )}
 
             {/* Customers Section */}
-            {selectedSection === 'customers' && <CustomersPage />}
+            {selectedSection === 'customers' && (
+              <Suspense fallback={
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                  <CircularProgress size={60} />
+                </Box>
+              }>
+                <CustomersPage />
+              </Suspense>
+            )}
 
             {/* Admin Section (Admin Only) */}
             {selectedSection === 'admin' && user?.isAdmin && (
@@ -2320,7 +2578,26 @@ export function App() {
                 {selectedAdminSubSection === 'roles' && <RoleManagement />}
                 {selectedAdminSubSection === 'backup' && <BackupManagementPanel />}
                 {selectedAdminSubSection === 'theme' && <ThemeSelector />}
+                {selectedAdminSubSection === 'about' && <AboutPage />}
               </>
+            )}
+
+            {/* Development Section (Dev Mode + Admin Only) */}
+            {selectedSection === 'development' && isDevelopmentMode && (
+              <Box sx={{ p: 3 }}>
+                {selectedDevSubSection === 'tests' && <DevelopmentTestsPanel />}
+                {selectedDevSubSection === 'cicd' && <DevelopmentCICDPanel />}
+                {selectedDevSubSection === 'docs' && <DevelopmentDocsPanel />}
+                {selectedDevSubSection === 'database' && <DatabaseManagementPanel />}
+                {selectedDevSubSection === 'logs' && <LogsViewerPanel />}
+                {selectedDevSubSection === 'build' && <BuildDeployPanel />}
+                {selectedDevSubSection === 'env' && <EnvironmentPanel />}
+                {selectedDevSubSection === 'api' && <APITestingPanel />}
+                {selectedDevSubSection === 'quality' && <CodeQualityPanel />}
+                {selectedDevSubSection === 'performance' && <PerformancePanel />}
+                {selectedDevSubSection === 'git' && <GitIntegrationPanel />}
+                {selectedDevSubSection === 'tasks' && <TaskRunnerPanel />}
+              </Box>
             )}
 
             {/* No Access Message - Show when user has no access to any section */}
@@ -2390,7 +2667,7 @@ export function App() {
               open={addSolutionDialog}
               onClose={() => setAddSolutionDialog(false)}
               onSave={() => {
-                refetchSolutions();
+                // refetchSolutions();
                 setAddSolutionDialog(false);
               }}
               solution={null}

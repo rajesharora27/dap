@@ -23,8 +23,8 @@ export default defineConfig(({ mode }) => {
         fastRefresh: true,
         babel: isDev
           ? {
-              parserOpts: { plugins: ['classProperties', 'classPrivateProperties'] }
-            }
+            parserOpts: { plugins: ['classProperties', 'classPrivateProperties'] }
+          }
           : undefined
       })
     ],
@@ -35,6 +35,19 @@ export default defineConfig(({ mode }) => {
       hmr: { overlay: true },
       allowedHosts,
       proxy: {
+        '/dap/graphql': {
+          target: env.VITE_GRAPHQL_PROXY || 'http://localhost:4000',
+          changeOrigin: true,
+          ws: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/dap/, '')
+        },
+        '/dap/api': {
+          target: env.VITE_API_PROXY || 'http://localhost:4000',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/dap/, '')
+        },
         '/graphql': {
           target: env.VITE_GRAPHQL_PROXY || 'http://localhost:4000',
           changeOrigin: true,
@@ -66,9 +79,13 @@ export default defineConfig(({ mode }) => {
     },
     warmup: isDev
       ? {
-          clientFiles: ['src/pages/**/*.tsx', 'src/components/**/*.tsx'],
-          serverFiles: ['src/apollo/**/*.ts', 'src/graphql/**/*.ts']
-        }
-      : undefined
+        clientFiles: ['src/pages/**/*.tsx', 'src/components/**/*.tsx'],
+        serverFiles: ['src/apollo/**/*.ts', 'src/graphql/**/*.ts']
+      }
+      : undefined,
+    define: {
+      __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '2.1.0'),
+      __BUILD_TIMESTAMP__: JSON.stringify(new Date().toISOString())
+    }
   };
 });

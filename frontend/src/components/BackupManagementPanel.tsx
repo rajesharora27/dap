@@ -354,7 +354,13 @@ export const BackupManagementPanel: React.FC = () => {
   };
 
   const handleDownload = (filename: string) => {
-    const url = `${window.location.origin}/api/downloads/backups/${encodeURIComponent(filename)}`;
+    // Use BASE_URL for subpath deployment support
+    const basePath = import.meta.env.BASE_URL || '/';
+    const downloadPath = basePath === '/'
+      ? `/api/downloads/backups/${encodeURIComponent(filename)}`
+      : `${basePath.replace(/\/$/, '')}/api/downloads/backups/${encodeURIComponent(filename)}`;
+
+    const url = `${window.location.origin}${downloadPath}`;
     window.open(url, '_blank');
   };
 

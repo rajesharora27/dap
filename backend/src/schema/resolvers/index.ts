@@ -220,6 +220,20 @@ export const resolvers = {
         where: { productId: parent.id, deletedAt: null },
         orderBy: { level: 'asc' }
       });
+    },
+    solutions: async (parent: any) => {
+      if (fallbackActive) {
+        const { solutions } = require('../../lib/fallbackStore');
+        return solutions.filter((s: any) => parent.solutionIds?.includes(s.id));
+      }
+      // Fetch SolutionProduct records and extract Solution objects
+      const solutionProducts = await prisma.solutionProduct.findMany({
+        where: { productId: parent.id },
+        include: { solution: true },
+        orderBy: { order: 'asc' }
+      });
+      // Return actual Solution objects
+      return solutionProducts.map((sp: any) => sp.solution).filter((s: any) => s && !s.deletedAt);
     }
   },
   Solution: {
@@ -789,7 +803,20 @@ export const resolvers = {
     signup: async (_: any, { email, username, password, role, name }: any) => {
       const hashed = await bcrypt.hash(password, 10);
       const user = await prisma.user.create({ data: { email, username: username || email.split('@')[0], password: hashed, role, name } });
-      const token = jwt.sign({ uid: user.id, role: user.role }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
+
+      // Create session
+      const session = await prisma.session.create({
+        data: {
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        }
+      });
+
+      const token = jwt.sign({
+        uid: user.id,
+        sessionId: session.id,
+        role: user.role
+      }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '7d' });
       return token;
     },
     login: async (_: any, { email, username, password }: any) => {
@@ -818,8 +845,17 @@ export const resolvers = {
       const roleNames = userRoles.map((ur: any) => ur.role?.name).filter(Boolean) as string[];
       const roles = [user.role, ...roleNames];
 
+      // Create session
+      const session = await prisma.session.create({
+        data: {
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        }
+      });
+
       return jwt.sign({
         uid: user.id,
+        sessionId: session.id,
         role: user.role,
         roles: roles,
         username: user.username,
@@ -852,8 +888,17 @@ export const resolvers = {
       const roleNames = userRoles.map((ur: any) => ur.role?.name).filter(Boolean) as string[];
       const roles = [user.role, ...roleNames];
 
+      // Create session
+      const session = await prisma.session.create({
+        data: {
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        }
+      });
+
       return jwt.sign({
         uid: user.id,
+        sessionId: session.id,
         role: user.role,
         roles: roles,
         username: user.username,

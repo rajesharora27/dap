@@ -146,6 +146,7 @@ manage_docker() {
     local action=$1
     
     case $action in
+
         start)
             log_info "Starting PostgreSQL database container..."
             if docker ps -a --format "table {{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
@@ -463,11 +464,66 @@ clean_database() {
     # No need to run npm run seed here as it would duplicate data
 }
 
+# Development Mode (Interactive)
+dev_mode() {
+    log_header "STARTING DEVELOPMENT ENVIRONMENT"
+    
+    # 1. Start Database
+    manage_docker start || exit 1
+    
+    # 2. Install Dependencies if needed
+    if [ ! -d "$BACKEND_DIR/node_modules" ]; then
+        log_info "Installing backend dependencies..."
+        (cd "$BACKEND_DIR" && npm install)
+    fi
+    if [ ! -d "$FRONTEND_DIR/node_modules" ]; then
+        log_info "Installing frontend dependencies..."
+        (cd "$FRONTEND_DIR" && npm install)
+    fi
+    
+    # 3. Run Migrations
+    log_info "Running database migrations..."
+    (cd "$BACKEND_DIR" && npx prisma migrate deploy) || log_warning "Migration failed, continuing..."
+    
+    # 3.5 Seed Development Data
+    log_info "Seeding development data..."
+    (cd "$BACKEND_DIR" && npm run seed:dev) || log_warning "Seeding failed, continuing..."
+    
+    # 4. Start Services in Foreground
+    log_info "Starting services in development mode..."
+    log_info "Press Ctrl+C to stop all services"
+    echo ""
+    
+    # Kill any existing processes first
+    kill_node_processes
+    
+    # Trap Ctrl+C
+    trap 'trap - INT TERM EXIT; echo ""; log_warning "Stopping development environment..."; kill 0' INT TERM EXIT
+    
+    # Start Backend
+    (cd "$BACKEND_DIR" && npm run dev 2>&1 | sed "s/^/${BLUE}[BACKEND]${NC} /") &
+    
+    # Start Frontend
+    (cd "$FRONTEND_DIR" && npm run dev 2>&1 | sed "s/^/${GREEN}[FRONTEND]${NC} /") &
+    
+    # Wait for all background processes
+    wait
+}
+
 # Start all services
 start_all() {
     log_header "STARTING $APP_NAME"
     
     manage_docker start || exit 1
+    
+    # Run Migrations
+    log_info "Running database migrations..."
+    (cd "$BACKEND_DIR" && npx prisma migrate deploy) || log_warning "Migration failed, continuing..."
+
+    # Seed Development Data
+    log_info "Seeding development data..."
+    (cd "$BACKEND_DIR" && npm run seed:dev) || log_warning "Seeding failed, continuing..."
+
     start_backend || exit 1
     start_frontend || exit 1
     
@@ -1150,6 +1206,9 @@ main() {
     cd "$PROJECT_DIR"
     
     case "${1:-}" in
+        dev)
+            dev_mode
+            ;;
         start)
             start_all
             ;;

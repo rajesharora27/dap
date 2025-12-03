@@ -43,9 +43,11 @@ export class AuthService {
   }
 
   // Generate JWT token
-  generateToken(user: User, permissions: Permission[]): string {
+  // Generate JWT token
+  generateToken(user: User, permissions: Permission[], sessionId: string): string {
     const payload = {
       userId: user.id,
+      sessionId,
       username: user.username,
       email: user.email,
       isAdmin: user.isAdmin,
@@ -57,8 +59,9 @@ export class AuthService {
   }
 
   // Generate refresh token
-  generateRefreshToken(userId: string): string {
-    return jwt.sign({ userId }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+  // Generate refresh token
+  generateRefreshToken(userId: string, sessionId: string): string {
+    return jwt.sign({ userId, sessionId }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
   }
 
   // Verify token
@@ -123,6 +126,7 @@ export class AuthService {
     const permissions = await this.getUserPermissions(user.id);
 
     // Generate tokens
+    // Generate tokens
     const userData: User = {
       id: user.id,
       username: user.username,
@@ -133,8 +137,16 @@ export class AuthService {
       mustChangePassword: user.mustChangePassword
     };
 
-    const token = this.generateToken(userData, permissions);
-    const refreshToken = this.generateRefreshToken(user.id);
+    // Create session
+    const session = await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+      }
+    });
+
+    const token = this.generateToken(userData, permissions, session.id);
+    const refreshToken = this.generateRefreshToken(user.id, session.id);
 
     // Log successful login
     await this.logAudit(user.id, 'login', null, null, 'User logged in successfully');

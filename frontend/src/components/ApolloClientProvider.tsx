@@ -8,10 +8,10 @@ interface WrapperProps { children: React.ReactNode }
 export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
   // Use configuration system for API URL
   const configApiUrl = getApiUrl();
-  
+
   // For development/localhost, use the proxy. For production, use direct URL
-  const httpUrl = (isDevelopment() && configApiUrl.includes('localhost')) 
-    ? '/graphql' 
+  const httpUrl = (isDevelopment() && configApiUrl.includes('localhost'))
+    ? '/graphql'
     : configApiUrl;
 
   console.log('🚀 Enhanced Apollo Client with debugging (configured connection) v4:', {
@@ -35,13 +35,14 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
           console.error(
             `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
           );
-          
+
           // Check for authentication errors
-          if (message.includes('Authentication required') || 
-              message.includes('Not authenticated') ||
-              message.includes('Invalid token') ||
-              message.includes('User not found') ||
-              message.includes('prisma.user.findUnique') && message.includes('undefined')) {
+          if (message.includes('Authentication required') ||
+            message.includes('Not authenticated') ||
+            message.includes('Invalid token') ||
+            message.includes('User not found') ||
+            message.includes('Invalid or expired session') ||
+            message.includes('prisma.user.findUnique') && message.includes('undefined')) {
             console.warn('🔒 Authentication error detected - clearing session');
             localStorage.removeItem('token');
             localStorage.removeItem('user');
@@ -53,8 +54,16 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
         });
       }
 
-      if (networkError && networkError.name !== 'AbortError') {
+      if (networkError) {
         console.error(`[Network error]: ${networkError}`);
+        if ('statusCode' in networkError && networkError.statusCode === 401) {
+          console.warn('🔒 401 Unauthorized detected - clearing session');
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          sessionStorage.clear();
+          const basePath = getBasePath();
+          setTimeout(() => window.location.href = basePath || '/', 100);
+        }
       }
     });
 
@@ -131,7 +140,7 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
             console.log('🔄 Fetch aborted (expected during navigation)');
             throw error; // Still throw it so Apollo can handle it
           }
-          
+
           console.error('🚨 Fetch Error:', error);
           throw error;
         });

@@ -56,4 +56,16 @@ export const getFrontendUrl = (): string => frontendConfig.frontendUrl;
 export const isProduction = (): boolean => frontendConfig.environment === 'production';
 export const isDevelopment = (): boolean => frontendConfig.environment === 'development';
 
+// Get the base URL for dev tools API endpoints
+// Returns relative URL when in production (via Apache) or absolute localhost URL for development
+export const getDevApiBaseUrl = (): string => {
+  const basePath = getBasePath();
+  // If we're running in the browser and not on localhost, use relative URLs through Apache proxy
+  if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
+    return basePath; // Returns '/dap' for subpath deployment
+  }
+  // Local development - use localhost
+  return 'http://localhost:4000';
+};
+
 export default frontendConfig;

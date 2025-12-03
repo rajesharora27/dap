@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.1.1  
-**Last Updated:** December 1, 2025  
+**Version:** 2.1.2  
+**Last Updated:** December 3, 2025  
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -264,6 +264,96 @@ Product ──────────────────┐
 - Change tracking
 - Search and filtering
 - Theme customization (light/dark mode)
+
+### 8. Development Toolkit
+
+**Admin-only development tools** for monitoring, testing, and managing the application during development.
+
+#### Available Development Tools
+
+**Core Tools:**
+1. **Database Management**
+   - Run migrations (Prisma schema updates)
+   - Seed development data
+   - Generate Prisma client
+   - Reset database (destructive)
+   - View migration history
+
+2. **Logs Viewer**
+   - Real-time application logs
+   - Filter by level (Error, Warn, Info, Debug)
+   - Search log messages
+   - Export to text file
+   - Auto-refresh every 2 seconds
+
+3. **Tests**
+   - Run unit tests
+   - Generate coverage reports
+   - Run linting
+   - View test output in real-time
+
+**DevOps Tools:**
+4. **Build & Deploy**
+   - Build frontend (React → static assets)
+   - Build backend (TypeScript → JavaScript)
+   - Deployment simulation
+
+5. **CI/CD**
+   - View GitHub Actions workflows
+   - Monitor pipeline status
+   - Track build results
+
+**Utilities:**
+6. **Environment Variables**
+   - View .env configuration
+   - Show/hide sensitive values
+   - Identify secrets vs public variables
+
+7. **API Testing**
+   - Execute GraphQL queries
+   - Test mutations
+   - Pass variables in JSON
+   - View formatted responses
+
+8. **Documentation Browser**
+   - Search 90+ documentation files
+   - Browse by category
+   - View markdown content
+   - Quick navigation to guides
+
+**Advanced:**
+9. **Code Quality**
+   - Test coverage statistics
+   - Linting results
+   - Quality metrics
+
+10. **Performance Monitor**
+    - Real-time memory usage
+    - CPU statistics
+    - System uptime
+    - Auto-refresh
+
+11. **Git Integration**
+    - Current branch status
+    - Commit history
+    - Changed files
+    - Repository info
+
+12. **Task Runner**
+    - Execute npm scripts
+    - View package.json tasks
+    - Real-time output
+
+#### Access Requirements
+- **Admin users only** in production
+- **Any user in development mode** (import.meta.env.DEV)
+- Accessed via Development menu in sidebar
+- Each tool has contextual help and tooltips
+
+#### Documentation
+- **Complete Documentation Index**: See `DOCUMENTATION_INDEX.md`
+- **Development Menu Guide**: See `DEVELOPMENT_MENU_GUIDE.md`
+- **Panel Enhancement Progress**: See `DEV_PANELS_ENHANCEMENT_PROGRESS.md`
 
 ---
 
@@ -752,6 +842,92 @@ sudo tail -f /var/log/httpd/error_log
 ---
 
 ## Recent Changes & Fixes
+
+### Version 2.1.2 (December 3, 2025)
+
+#### Development Menu Enhancements
+
+**Enhancement 1: Fixed All Development Submenus**
+- **Issue**: "Docs" submenu was not loading documentation files
+- **Root Cause**: Backend API route regex pattern incorrect (`/^\/docs\/(.*)` → `/^\/docs(.*)`)
+- **Fix**:
+  - Corrected regex pattern in `/data/dap/backend/src/api/devTools.ts`
+  - Fixed project root path resolution (from `../..` to `../../..`)
+  - All 12 Development submenus now functional
+- **Files Changed**:
+  - `backend/src/api/devTools.ts` (lines  135-143)
+
+**Enhancement 2: Added Tooltips to All Development Menu Items**
+- **Feature**: All 12 Development menu items now have hover tooltips
+- **Implementation**: Wrapped each `ListItemButton` in Material-UI `Tooltip` component
+- **Tooltips Added**:
+  - Database: "Manage database migrations, seed data, and schema"
+  - Logs: "View real-time application logs and debugging output"
+  - Tests: "Run unit tests, integration tests, and view coverage reports"
+  - Build & Deploy: "Build frontend/backend and deploy to production environments"
+  - CI/CD: "View GitHub Actions workflows and pipeline status"
+  - Environment: "View and manage environment variables and configuration"
+  - API Testing: "Test GraphQL API endpoints and explore schema"
+  - Docs: "Browse project documentation, guides, and technical references"
+  - Quality: "View code quality metrics, linting results, and test coverage"
+  - Performance: "Monitor system performance, memory usage, and uptime"
+  - Git: "View Git repository status, branches, and commit history"
+  - Tasks: "Execute npm scripts and custom development tasks"
+- **Files Changed**:
+  - `frontend/src/pages/App.tsx` (lines 2334-2471)
+
+**Enhancement 3: Added Overview Sections to Development Panels**
+- **Feature**: Development panels now have overview sections explaining:
+  - Purpose and functionality
+  - Available operations/features
+  - Requirements to use the panel
+  - Step-by-step usage instructions
+- **Panels Enhanced** (3 of 12 complete):
+  1. **Tests Panel**: Overview + tooltips on all buttons (Run All Tests, individual Run buttons)
+  2. **Database Panel**: Overview + tooltips on all 5 buttons (Refresh, Run Migrations, Seed, Generate, Reset)
+  3. **Logs Viewer Panel**: Overview + tooltips on all 4 buttons (Pause/Resume, Refresh, Export, Clear)
+- **Files Changed**:
+  - `frontend/src/components/dev/DevelopmentTestsPanel.tsx`
+  - `frontend/src/components/dev/DatabaseManagementPanel.tsx`
+  - `frontend/src/components/dev/LogsViewerPanel.tsx`
+
+**Enhancement 4: Consolidated Documentation**
+- **Created**: Comprehensive Documentation Index (`DOCUMENTATION_INDEX.md`)
+- **Features**:
+  - 90+ documentation files indexed and categorized
+  - 7 main categories (Getting Started, User Guides, Technical, Deployment, Development, Operations, Archive)
+  - Direct links to all documents
+  - Quick navigation paths for different user types (New Users, Developers, DevOps, Troubleshooting)
+  - Professional formatting with tables and descriptions
+- **Updated**: README.md documentation section to prominently feature new index
+- **Files Created**:
+  - `/data/dap/DOCUMENTATION_INDEX.md`
+- **Files Modified**:
+  - `/data/dap/README.md` (documentation section)
+
+**Enhancement 5: Fixed Test Command Issues**
+- **Issue**: Tests were failing because `test:integration` npm script doesn't exist
+- **Fix**: Updated test commands to use actual available npm scripts from backend/package.json
+  - Changed "Integration Tests" to use `npm test` (same as unit tests)
+  - All test commands now match available scripts
+- **Files Changed**:
+  - `frontend/src/components/dev/DevelopmentTestsPanel.tsx`
+
+#### Documentation Created
+- `DEV_MENU_IMPROVEMENTS.md` - Summary of menu and docs fixes
+- `DEV_PANELS_ENHANCEMENT_PROGRESS.md` - Progress tracking for panel enhancements
+- `DEV_MENU_COMPLETE_SUMMARY.md` - Comprehensive status of all work
+- `REMAINING_PANELS_GUIDE.md` - Quick reference for remaining panel enhancements
+
+#### Benefits & Impact
+- **Better UX**: Users understand tools before using them (tooltips)
+- **Working Tools**: All Development submenus functional (Docs fix)
+- **Easy Discovery**: Documentation index makes finding docs effortless
+- **Self-Service**: Tooltips and overviews reduce need for support
+- **Consistent Design**: All panels following same pattern
+- **Developer Productivity**: Faster onboarding, less confusion
+
+---
 
 ### Version 2.1.1 (December 1, 2025)
 
