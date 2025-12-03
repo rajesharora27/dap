@@ -1257,7 +1257,7 @@ main() {
                 exit 1
             fi
             
-            if npm run build; then
+            if npm run build -- --mode development; then
                 log_success "Frontend built successfully"
             else
                 log_error "Failed to build frontend"

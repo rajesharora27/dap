@@ -806,7 +806,7 @@ export function App() {
   >('tests');
 
   // Development menu is available in dev mode OR for admin users in any mode
-  const isDevelopmentMode = import.meta.env.DEV || import.meta.env.MODE === 'development';
+  const isDevelopmentMode = import.meta.env.DEV || import.meta.env.MODE === 'development' || import.meta.env.VITE_SHOW_DEV_MENU === 'true';
 
   // Debug logging for dev menu
   useEffect(() => {
