@@ -1,0 +1,69 @@
+type BackupMetadata {
+  id: String!
+  filename: String!
+  timestamp: DateTime!
+  size: Int!
+  databaseUrl: String!
+  recordCounts: BackupRecordCounts!
+}
+
+type BackupRecordCounts {
+  users: Int!
+  products: Int!
+  solutions: Int!
+  customers: Int!
+  customerProducts: Int!
+  customerSolutions: Int!
+  adoptionPlans: Int!
+  solutionAdoptionPlans: Int!
+  tasks: Int!
+  customerTasks: Int!
+  customerSolutionTasks: Int!
+}
+
+type BackupResult {
+  success: Boolean!
+  filename: String
+  size: Int
+  url: String
+  metadata: BackupMetadata
+  message: String
+  error: String
+}
+
+type RestoreResult {
+  success: Boolean!
+  message: String!
+  recordsRestored: BackupRecordCounts
+  error: String
+}
+
+type DeleteBackupResult {
+  success: Boolean!
+  message: String!
+}
+
+extend type Query {
+  """
+  List all available database backups
+  """
+  listBackups: [BackupMetadata!]!
+}
+
+extend type Mutation {
+  """
+  Create a new database backup (snapshot)
+  """
+  createBackup: BackupResult!
+
+  """
+  Restore database from a backup file
+  """
+  restoreBackup(filename: String!): RestoreResult!
+
+  """
+  Delete a backup file
+  """
+  deleteBackup(filename: String!): DeleteBackupResult!
+}
+

@@ -55,8 +55,13 @@ echo "🔨 Building backend..."
 npm run build
 
 echo "🔑 Updating database permissions..."
-cd /data/dap/backend
-node ../scripts/fix-rbac-permissions.js
+cd /data/dap
+PERMISSIONS_SCRIPT="/data/dap/scripts/fix-rbac-permissions.js"
+if [ ! -f "$PERMISSIONS_SCRIPT" ]; then
+  echo "❌ Missing permissions script at $PERMISSIONS_SCRIPT"
+  exit 1
+fi
+node "$PERMISSIONS_SCRIPT"
 
 echo "🔄 Restarting services..."
 cd /data/dap

@@ -7,6 +7,29 @@ echo "========================================="
 echo "🔧 Applying RBAC Fixes to Production"
 echo "========================================="
 
+# Validate required source assets before packaging
+REQUIRED_PATHS=(
+  "backend/src/lib/auth.ts"
+  "backend/src/lib/permissions.ts"
+  "backend/src/schema/resolvers/index.ts"
+  "backend/package.json"
+  "backend/tsconfig.json"
+  "scripts/fix-rbac-permissions.js"
+)
+
+for path in "${REQUIRED_PATHS[@]}"; do
+  if [ ! -f "$path" ]; then
+    echo "❌ Missing required file: $path"
+    exit 1
+  fi
+done
+
+if [ ! -d "frontend/dist" ] || [ -z "$(ls -A frontend/dist 2>/dev/null)" ]; then
+  echo "❌ Frontend build not found in frontend/dist"
+  echo "Please run the frontend build before deploying."
+  exit 1
+fi
+
 # Step 1: Prepare files
 echo ""
 echo "📦 Step 1: Preparing files..."
@@ -39,8 +62,10 @@ echo "📝 Copying files as dap user..."
 sudo -u dap bash << 'DAPCMDS'
 set -e
 
-# Create src directory if needed
+# Create target directories if needed
 mkdir -p /data/dap/app/backend/src
+mkdir -p /data/dap/app/frontend/dist
+mkdir -p /data/dap/scripts
 
 # Copy backend source files
 cp -r /tmp/dap-patch-prod/backend-src/* /data/dap/app/backend/src/

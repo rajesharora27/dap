@@ -48,6 +48,10 @@ import {
 import { ResourceType, PermissionLevel } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { CreateProductSchema, UpdateProductSchema, CreateSolutionSchema, UpdateSolutionSchema, CreateCustomerSchema, UpdateCustomerSchema } from '../../validation/schemas';
+import { ProductService } from '../../services/ProductService';
+import { SolutionService } from '../../services/SolutionService';
+import { CustomerService } from '../../services/CustomerService';
 
 const JSONScalar = new GraphQLScalarType({
   name: 'JSON',
@@ -589,7 +593,7 @@ export const resolvers = {
       requireUser(ctx);
 
       if (fallbackActive) return fallbackConnections.products();
-      
+
       // Get accessible product IDs for this user
       const accessibleIds = await getUserAccessibleResources(
         ctx.user.userId,
@@ -861,6 +865,9 @@ export const resolvers = {
     createProduct: async (_: any, { input }: any, ctx: any) => {
       requireUser(ctx);
 
+      // Validate input
+      const validatedInput = CreateProductSchema.parse(input);
+
       if (fallbackActive) {
         const product = fbCreateProduct(input);
         await logAudit('CREATE_PRODUCT', 'Product', product.id, { input }, ctx.user?.id); return product;
@@ -869,34 +876,16 @@ export const resolvers = {
       // Check if user has WRITE permission for products (system-wide)
       await requirePermission(ctx, ResourceType.PRODUCT, null, PermissionLevel.WRITE);
 
-      // Extract license IDs from input and handle relationship
-      const { licenseIds, ...productData } = input;
+      // Call Service
+      const product = await ProductService.createProduct(ctx.user.id, validatedInput);
 
-      // Create a new product
-      const product = await prisma.product.create({
-        data: {
-          name: productData.name,
-          description: productData.description,
-          customAttrs: productData.customAttrs
-        }
-      });
-
-      // Handle license relationship if licenseIds provided
-      if (licenseIds && licenseIds.length > 0) {
-        await prisma.license.updateMany({
-          where: {
-            id: { in: licenseIds },
-            deletedAt: null  // Only update active licenses
-          },
-          data: { productId: product.id }
-        });
-      }
-
-      await logAudit('CREATE_PRODUCT', 'Product', product.id, { input }, ctx.user?.id);
       return product;
     },
     updateProduct: async (_: any, { id, input }: any, ctx: any) => {
       requireUser(ctx);
+
+      // Validate input
+      const validatedInput = UpdateProductSchema.parse(input);
 
       if (fallbackActive) {
         const before = fbUpdateProduct(id, {});
@@ -909,42 +898,9 @@ export const resolvers = {
       // Check if user has WRITE permission for this specific product
       await requirePermission(ctx, ResourceType.PRODUCT, id, PermissionLevel.WRITE);
 
-      const before = await prisma.product.findUnique({ where: { id } });
+      // Call Service
+      const updated = await ProductService.updateProduct(ctx.user.id, id, validatedInput);
 
-      // Extract license IDs from input and handle relationship update
-      const { licenseIds, ...productData } = input;
-
-      // Update the product with basic data
-      const updated = await prisma.product.update({
-        where: { id },
-        data: productData
-      });
-
-      // Handle license relationship updates if licenseIds provided
-      if (licenseIds !== undefined) {
-        // First, clear existing licenses for this product
-        await prisma.license.updateMany({
-          where: { productId: id },
-          data: { productId: null }
-        });
-
-        // Then, assign new licenses to this product
-        if (licenseIds.length > 0) {
-          await prisma.license.updateMany({
-            where: {
-              id: { in: licenseIds },
-              deletedAt: null  // Only update active licenses
-            },
-            data: { productId: id }
-          });
-        }
-      }
-
-      if (before) {
-        const cs = await createChangeSet();
-        await recordChange(cs.id, 'Product', id, before, updated);
-      }
-      await logAudit('UPDATE_PRODUCT', 'Product', id, { before, after: updated });
       pubsub.publish(PUBSUB_EVENTS.PRODUCT_UPDATED, { productUpdated: updated });
       return updated;
     },
@@ -960,42 +916,10 @@ export const resolvers = {
       // Check if user has ADMIN permission for this specific product (deletion requires highest level)
       await requirePermission(ctx, ResourceType.PRODUCT, id, PermissionLevel.ADMIN);
 
-      try {
-        // Hard delete: Remove all related entities first, then delete the product
-        // This ensures cascading deletes work properly and no orphaned data remains
-
-        // Delete related tasks
-        await prisma.task.deleteMany({ where: { productId: id } });
-
-        // Delete related outcomes
-        await prisma.outcome.deleteMany({ where: { productId: id } });
-
-        // Delete related licenses
-        await prisma.license.deleteMany({ where: { productId: id } });
-
-        // Delete related releases
-        await prisma.release.deleteMany({ where: { productId: id } });
-
-        // Delete product-solution relationships
-        await prisma.solutionProduct.deleteMany({ where: { productId: id } });
-
-        // Delete product-customer relationships
-        await prisma.customerProduct.deleteMany({ where: { productId: id } });
-
-        // Finally, delete the product itself
-        await prisma.product.delete({ where: { id } });
-
-        await logAudit('DELETE_PRODUCT', 'Product', id, {});
-      } catch (error) {
-        console.error('Error deleting product:', error);
-        throw new Error(`Failed to delete product: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-
-      return true;
+      return ProductService.deleteProduct(ctx.user.id, id);
     },
     createSolution: async (_: any, { input }: any, ctx: any) => {
       requireUser(ctx);
-
 
       if (fallbackActive) {
         const solution = fbCreateSolution(input);
@@ -1003,28 +927,13 @@ export const resolvers = {
         return solution;
       }
 
+      // Validate input
+      const validatedInput = CreateSolutionSchema.parse(input);
+
       // Check if user has ADMIN permission for solutions (creation requires highest level)
-      // Note: For creation, we check against "all solutions" permission (resourceId = null)
       await requirePermission(ctx, ResourceType.SOLUTION, null, PermissionLevel.ADMIN);
 
-      // Defensive: Filter licenseLevel from customAttrs (it's a separate field, not a custom attribute)
-      let safeCustomAttrs = input.customAttrs;
-      if (safeCustomAttrs && typeof safeCustomAttrs === 'object') {
-        safeCustomAttrs = Object.fromEntries(
-          Object.entries(safeCustomAttrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
-        );
-      }
-
-      const solution = await prisma.solution.create({
-        data: {
-          name: input.name,
-          description: input.description,
-          customAttrs: safeCustomAttrs
-        }
-      });
-
-      await logAudit('CREATE_SOLUTION', 'Solution', solution.id, { input }, ctx.user?.id);
-      return solution;
+      return SolutionService.createSolution(ctx.user.id, validatedInput);
     },
     updateSolution: async (_: any, { id, input }: any, ctx: any) => {
       requireUser(ctx);
@@ -1036,31 +945,13 @@ export const resolvers = {
         return updated;
       }
 
+      // Validate input
+      const validatedInput = UpdateSolutionSchema.parse(input);
+
       // Check if user has WRITE permission for this specific solution
       await requirePermission(ctx, ResourceType.SOLUTION, id, PermissionLevel.WRITE);
 
-      const before = await prisma.solution.findUnique({ where: { id } });
-
-      // Defensive: Filter licenseLevel from customAttrs (it's a separate field, not a custom attribute)
-      const safeInput = { ...input };
-      if (safeInput.customAttrs && typeof safeInput.customAttrs === 'object') {
-        safeInput.customAttrs = Object.fromEntries(
-          Object.entries(safeInput.customAttrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
-        );
-      }
-
-      const updated = await prisma.solution.update({
-        where: { id },
-        data: safeInput
-      });
-
-      if (before) {
-        const cs = await createChangeSet(ctx.user?.id);
-        await recordChange(cs.id, 'Solution', id, before, updated);
-      }
-
-      await logAudit('UPDATE_SOLUTION', 'Solution', id, { before, after: updated }, ctx.user?.id);
-      return updated;
+      return SolutionService.updateSolution(ctx.user.id, id, validatedInput);
     },
     deleteSolution: async (_: any, { id }: any, ctx: any) => {
       requireUser(ctx);
@@ -1074,17 +965,7 @@ export const resolvers = {
       // Check if user has ADMIN permission for this specific solution (deletion requires highest level)
       await requirePermission(ctx, ResourceType.SOLUTION, id, PermissionLevel.ADMIN);
 
-      try {
-        console.log(`Deleting solution: ${id}`);
-        await prisma.solution.delete({ where: { id } });
-        console.log(`Solution deleted successfully: ${id}`);
-      } catch (error: any) {
-        console.error(`Failed to delete solution ${id}:`, error.message);
-        throw new Error(`Failed to delete solution: ${error.message}`);
-      }
-
-      await logAudit('DELETE_SOLUTION', 'Solution', id, {}, ctx.user?.id);
-      return true;
+      return SolutionService.deleteSolution(ctx.user.id, id);
     },
     createCustomer: async (_: any, { input }: any, ctx: any) => {
       requireUser(ctx);
@@ -1095,18 +976,13 @@ export const resolvers = {
         return customer;
       }
 
+      // Validate input
+      const validatedInput = CreateCustomerSchema.parse(input);
+
       // Check if user has ADMIN permission for customers (creation requires highest level)
       await requirePermission(ctx, ResourceType.CUSTOMER, null, PermissionLevel.ADMIN);
 
-      const customer = await prisma.customer.create({
-        data: {
-          name: input.name,
-          description: input.description
-        }
-      });
-
-      await logAudit('CREATE_CUSTOMER', 'Customer', customer.id, { input }, ctx.user?.id);
-      return customer;
+      return CustomerService.createCustomer(ctx.user.id, validatedInput);
     },
     updateCustomer: async (_: any, { id, input }: any, ctx: any) => {
       requireUser(ctx);
@@ -1118,22 +994,13 @@ export const resolvers = {
         return updated;
       }
 
+      // Validate input
+      const validatedInput = UpdateCustomerSchema.parse(input);
+
       // Check if user has WRITE permission for this specific customer
       await requirePermission(ctx, ResourceType.CUSTOMER, id, PermissionLevel.WRITE);
 
-      const before = await prisma.customer.findUnique({ where: { id } });
-      const updated = await prisma.customer.update({
-        where: { id },
-        data: { ...input }
-      });
-
-      if (before) {
-        const cs = await createChangeSet(ctx.user?.id);
-        await recordChange(cs.id, 'Customer', id, before, updated);
-      }
-
-      await logAudit('UPDATE_CUSTOMER', 'Customer', id, { before, after: updated }, ctx.user?.id);
-      return updated;
+      return CustomerService.updateCustomer(ctx.user.id, id, validatedInput);
     },
     deleteCustomer: async (_: any, { id }: any, ctx: any) => {
       requireUser(ctx);
@@ -1144,17 +1011,8 @@ export const resolvers = {
         return true;
       }
 
-      // Check if user has ADMIN permission for this specific customer (deletion requires highest level)
+      // Check if user has ADMIN permission for this specific customer
       await requirePermission(ctx, ResourceType.CUSTOMER, id, PermissionLevel.ADMIN);
-
-      try {
-        console.log(`Deleting customer: ${id}`);
-        await prisma.customer.delete({ where: { id } });
-        console.log(`Customer deleted successfully: ${id}`);
-      } catch (error: any) {
-        console.error(`Failed to delete customer ${id}:`, error.message);
-        throw new Error(`Failed to delete customer: ${error.message}`);
-      }
 
       await logAudit('DELETE_CUSTOMER', 'Customer', id, {}, ctx.user?.id);
       return true;

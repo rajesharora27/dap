@@ -8,6 +8,39 @@ echo "========================================="
 echo "🔧 Applying RBAC Fixes to Production"
 echo "========================================="
 
+# Validate required source files before transfer
+REQUIRED_FILES=(
+  "backend/src/lib/auth.ts"
+  "backend/src/lib/permissions.ts"
+  "backend/src/schema/resolvers/index.ts"
+  "scripts/fix-rbac-permissions.js"
+)
+
+for file in "${REQUIRED_FILES[@]}"; do
+  if [ ! -f "$file" ]; then
+    echo "❌ Missing required file: $file"
+    exit 1
+  fi
+done
+
+if [ ! -d "frontend/dist" ] || [ -z "$(ls -A frontend/dist 2>/dev/null)" ]; then
+  echo "❌ Frontend build not found in frontend/dist"
+  echo "Please run the frontend build before deploying."
+  exit 1
+fi
+
+# Ensure destination directories exist before transfer
+DEST_DIRS=(
+  "/data/dap/app/backend/src/lib"
+  "/data/dap/app/backend/src/schema/resolvers"
+  "/data/dap/app/frontend/dist"
+  "/data/dap/scripts"
+)
+
+echo ""
+echo "📁 Ensuring destination directories exist..."
+ssh rajarora@centos2.rajarora.csslab "mkdir -p ${DEST_DIRS[*]}"
+
 # Step 1: Transfer changed files
 echo ""
 echo "📤 Step 1: Transferring changed files to centos2..."
@@ -34,6 +67,8 @@ echo ""
 echo "🔨 Step 2: Building and restarting on centos2..."
 
 ssh rajarora@centos2.rajarora.csslab << 'ENDSSH'
+set -e
+
 cd /data/dap/app
 
 # Build backend
