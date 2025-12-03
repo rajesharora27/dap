@@ -1,6 +1,6 @@
 # DAP (Digital Adoption Platform)
 
-**Version:** 2.2.0 | **Status:** ✅ Production Ready | **Last Updated:** December 3, 2025
+**Version:** 2.2.2 | **Status:** ✅ Production Ready | **Last Updated:** December 3, 2025
 
 Production-ready customer adoption and product management platform with Excel import/export, telemetry tracking, and solution bundling.
 
