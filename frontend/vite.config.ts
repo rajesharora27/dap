@@ -19,6 +19,7 @@ export default defineConfig(({ mode }) => {
   ];
 
   return {
+    envDir: '..',
     base: env.VITE_BASE_PATH || '/',
     plugins: [
       react({
