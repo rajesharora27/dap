@@ -20,3 +20,4 @@ archive/
 # Backup files
 backend/temp/backups/
 **/temp/backups/
+releases/

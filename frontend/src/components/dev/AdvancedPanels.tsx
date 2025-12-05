@@ -39,16 +39,20 @@ import {
 // --- Performance Panel ---
 export const PerformancePanel: React.FC = () => {
     const [stats, setStats] = useState<any>(null);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
                 const res = await fetch(`${getDevApiBaseUrl()}/api/dev/performance/stats`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')} ` }
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 setStats(await res.json());
-            } catch (err) {
+                setError(null);
+            } catch (err: any) {
                 console.error(err);
+                setError(err.message);
             }
         };
         fetchStats();
@@ -56,6 +60,7 @@ export const PerformancePanel: React.FC = () => {
         return () => clearInterval(interval);
     }, []);
 
+    if (error) return <Alert severity="error">Failed to load performance stats: {error}</Alert>;
     if (!stats) return <LinearProgress />;
 
     const formatBytes = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(2)} MB`;
@@ -143,15 +148,19 @@ export const GitIntegrationPanel: React.FC = () => {
     const [commitMessage, setCommitMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+    const [error, setError] = useState<string | null>(null);
 
     const fetchGit = async () => {
         try {
             const res = await fetch(`${getDevApiBaseUrl()}/api/dev/git/status`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')} ` }
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
             });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             setGitInfo(await res.json());
-        } catch (err) {
+            setError(null);
+        } catch (err: any) {
             console.error(err);
+            setError(err.message);
         }
     };
 
@@ -171,7 +180,7 @@ export const GitIntegrationPanel: React.FC = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')} `
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
                 body: JSON.stringify({ message: commitMessage })
             });
@@ -199,7 +208,7 @@ export const GitIntegrationPanel: React.FC = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')} `
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }
             });
 
@@ -217,6 +226,7 @@ export const GitIntegrationPanel: React.FC = () => {
         }
     };
 
+    if (error) return <Alert severity="error">Failed to load git status: {error}</Alert>;
     if (!gitInfo) return <LinearProgress />;
 
     return (
@@ -380,7 +390,7 @@ export const TaskRunnerPanel: React.FC = () => {
         const fetchScripts = async () => {
             try {
                 const res = await fetch(`${getDevApiBaseUrl()}/api/dev/tasks/scripts`, {
-                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')} ` }
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 });
                 const data = await res.json();
                 setScripts(data.scripts);
@@ -399,7 +409,7 @@ export const TaskRunnerPanel: React.FC = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')} `
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
                 },
                 body: JSON.stringify({ script })
             });

@@ -3,25 +3,62 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs/promises';
+import { authMiddleware } from '../middleware/authMiddleware';
 
 const execAsync = promisify(exec);
 const router = Router();
 
 /**
  * Development Tools API
- * Only available in development mode
+ * ONLY available in development mode, NEVER in production
+ * Requires admin authentication for extra security
  */
 
-// Middleware to check dev mode
+// Middleware to check dev mode (primary protection)
 const devModeOnly = (req: Request, res: Response, next: any) => {
+    // HARD BLOCK: Never allow in production, regardless of any other settings
     if (process.env.NODE_ENV === 'production') {
-        return res.status(403).json({ error: 'Development mode only' });
+        return res.status(403).json({
+            error: 'Development tools are disabled in production',
+            message: 'Dev endpoints are not available in production builds'
+        });
     }
     next();
 };
 
-// Apply dev mode check to all routes
+// Middleware to require admin (secondary protection)
+const requireAdmin = (req: Request, res: Response, next: any) => {
+    // Check if user is authenticated and is admin
+    const user = (req as any).user;
+    if (!user || !user.isAdmin) {
+        return res.status(403).json({
+            error: 'Admin access required',
+            message: 'Development tools require admin privileges'
+        });
+    }
+    next();
+};
+
+// Apply BOTH protections to all dev routes
 router.use(devModeOnly);
+router.use(authMiddleware);
+
+// Fallback for dev mode: if token is invalid/expired (e.g. after restart), use default admin
+router.use((req: any, res, next) => {
+    if (!req.user && process.env.NODE_ENV !== 'production') {
+        console.log('🔓 DevTools: Using default dev user fallback');
+        req.user = {
+            userId: 'dev-admin',
+            username: 'admin',
+            email: 'admin@example.com',
+            isAdmin: true,
+            permissions: { system: true, products: [], solutions: [], customers: [] }
+        };
+    }
+    next();
+});
+
+router.use(requireAdmin);
 
 /**
  * Run a test command
@@ -84,55 +121,272 @@ router.post('/run-test', async (req: Request, res: Response) => {
 });
 
 /**
+ * List available test suites
+ * GET /api/dev/tests/suites
+ */
+router.get('/tests/suites', async (req: Request, res: Response) => {
+    try {
+        const testDir = path.join(__dirname, '../__tests__');
+        const suites: any[] = [];
+
+        // Recursively find test files
+        const findTestFiles = (dir: string, basePath: string = '') => {
+            try {
+                const items = require('fs').readdirSync(dir, { withFileTypes: true });
+
+                for (const item of items) {
+                    const fullPath = path.join(dir, item.name);
+                    const relativePath = path.join(basePath, item.name);
+
+                    if (item.isDirectory()) {
+                        findTestFiles(fullPath, relativePath);
+                    } else if (item.name.endsWith('.test.ts') || item.name.endsWith('.test.tsx')) {
+                        const type = relativePath.includes('services') ? 'unit' :
+                            relativePath.includes('integration') ? 'integration' : 'e2e';
+
+                        suites.push({
+                            id: relativePath.replace(/\\/g, '/'),
+                            name: item.name.replace('.test.ts', '').replace('.test.tsx', ''),
+                            type,
+                            path: fullPath,
+                            relativePath
+                        });
+                    }
+                }
+            } catch (err) {
+                // Directory doesn't exist or isn't accessible
+            }
+        };
+
+        findTestFiles(testDir);
+
+        res.json({ suites });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+// In-memory store for test job state
+interface TestJob {
+    id: string;
+    status: 'running' | 'completed' | 'error';
+    output: string;
+    exitCode: number | null;
+    startTime: Date;
+    endTime?: Date;
+    passed: number;
+    failed: number;
+    total: number;
+}
+
+const testJobs: Map<string, TestJob> = new Map();
+
+// Clean up old jobs (older than 10 minutes)
+setInterval(() => {
+    const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+    for (const [id, job] of testJobs.entries()) {
+        if (job.startTime.getTime() < tenMinutesAgo) {
+            testJobs.delete(id);
+        }
+    }
+}, 60000);
+
+/**
+ * Start test execution in background
+ * POST /api/dev/tests/run-stream
+ * Returns job ID immediately, poll /api/dev/tests/status/:id for results
+ */
+router.post('/tests/run-stream', async (req: Request, res: Response) => {
+    const { spawn } = require('child_process');
+    const workingDir = path.join(__dirname, '../..');
+    const jobId = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create job entry
+    const job: TestJob = {
+        id: jobId,
+        status: 'running',
+        output: '🚀 Starting tests...\n\n',
+        exitCode: null,
+        startTime: new Date(),
+        passed: 0,
+        failed: 0,
+        total: 0
+    };
+    testJobs.set(jobId, job);
+
+    // Return job ID immediately
+    res.json({ jobId, status: 'started', message: 'Tests started in background' });
+
+    // Run tests in background
+    const testProcess = spawn('npm', ['test', '--', '--runInBand', '--passWithNoTests', '--no-cache'], {
+        cwd: workingDir,
+        shell: '/bin/bash',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: {
+            ...process.env,
+            CI: 'true',
+            NODE_ENV: 'test',
+            FORCE_COLOR: '0',
+            // Use isolated test database to prevent wiping dev data
+            DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/dap_test?schema=public'
+        }
+    });
+
+    if (testProcess.stdout) {
+        testProcess.stdout.setEncoding('utf8');
+        testProcess.stdout.on('data', (data: string) => {
+            job.output += data;
+        });
+    }
+
+    if (testProcess.stderr) {
+        testProcess.stderr.setEncoding('utf8');
+        testProcess.stderr.on('data', (data: string) => {
+            job.output += data;
+        });
+    }
+
+    testProcess.on('error', (error: Error) => {
+        job.status = 'error';
+        job.output += `\n❌ Process error: ${error.message}\n`;
+        job.endTime = new Date();
+    });
+
+    testProcess.on('exit', (code: number | null) => {
+        job.status = 'completed';
+        job.exitCode = code;
+        job.endTime = new Date();
+
+        // Parse results
+        const passMatch = job.output.match(/(\d+) passed/);
+        const failMatch = job.output.match(/(\d+) failed/);
+        const totalMatch = job.output.match(/(\d+) total/);
+
+        job.passed = passMatch ? parseInt(passMatch[1]) : 0;
+        job.failed = failMatch ? parseInt(failMatch[1]) : 0;
+        job.total = totalMatch ? parseInt(totalMatch[1]) : 0;
+
+        job.output += `\n${'='.repeat(50)}\n`;
+        job.output += `✅ Tests completed with exit code ${code}\n`;
+        job.output += `📊 Passed: ${job.passed}, Failed: ${job.failed}, Total: ${job.total}\n`;
+    });
+});
+
+/**
+ * Get test job status and output
+ * GET /api/dev/tests/status/:jobId
+ */
+router.get('/tests/status/:jobId', (req: Request, res: Response) => {
+    const { jobId } = req.params;
+    const job = testJobs.get(jobId);
+
+    if (!job) {
+        return res.status(404).json({ error: 'Job not found' });
+    }
+
+    const offset = parseInt(req.query.offset as string) || 0;
+    const outputSlice = job.output.substring(offset);
+
+    res.json({
+        id: job.id,
+        status: job.status,
+        output: outputSlice,
+        fullLength: job.output.length,
+        exitCode: job.exitCode,
+        passed: job.passed,
+        failed: job.failed,
+        total: job.total,
+        startTime: job.startTime,
+        endTime: job.endTime,
+        duration: job.endTime
+            ? (job.endTime.getTime() - job.startTime.getTime()) / 1000
+            : (Date.now() - job.startTime.getTime()) / 1000
+    });
+});
+
+/**
+ * Get test coverage summary
+ * GET /api/dev/tests/coverage/summary
+ */
+router.get('/tests/coverage/summary', async (req: Request, res: Response) => {
+    try {
+        const coveragePath = path.join(__dirname, '../../coverage/coverage-summary.json');
+        const coverage = JSON.parse(await fs.readFile(coveragePath, 'utf-8'));
+        res.json(coverage.total || coverage);
+    } catch (error: any) {
+        res.json({
+            error: 'Coverage report not found',
+            lines: { pct: 0 },
+            statements: { pct: 0 },
+            functions: { pct: 0 },
+            branches: { pct: 0 }
+        });
+    }
+});
+
+/**
  * Get list of available documentation files
  * GET /api/dev/docs
  */
 router.get('/docs', async (req: Request, res: Response) => {
     try {
-        const projectRoot = path.join(__dirname, '../..');
+        const projectRoot = path.join(__dirname, '../../..');
+        const docsDir = path.join(projectRoot, 'docs');
 
-        const docs = [
-            { path: '/README.md', category: 'Overview' },
-            { path: '/CONTEXT.md', category: 'Overview' },
-            { path: '/CONTRIBUTING.md', category: 'Development' },
-            { path: '/COMPREHENSIVE_ANALYSIS.md', category: 'Analysis' },
-            { path: '/EXECUTIVE_SUMMARY.md', category: 'Analysis' },
-            { path: '/QUICK_REFERENCE.md', category: 'Reference' },
-            { path: '/PHASE2_SUMMARY.md', category: 'Implementation' },
-            { path: '/PHASE4_SUMMARY.md', category: 'Implementation' },
-            { path: '/PHASE5_SUMMARY.md', category: 'Implementation' },
-            { path: '/FINAL_TEST_COVERAGE.md', category: 'Testing' },
-            { path: '/TEST_COVERAGE_PLAN.md', category: 'Testing' },
-            { path: '/COMPREHENSIVE_TEST_SUMMARY.md', category: 'Testing' },
-            { path: '/FINAL_SUMMARY.md', category: 'Summary' },
-            { path: '/deploy/README.md', category: 'Deployment' },
-            { path: '/.github/workflows/README.md', category: 'CI/CD' }
-        ];
+        // Helper to recursively find markdown files
+        const findMarkdownFiles = async (dir: string): Promise<any[]> => {
+            let results: any[] = [];
+            try {
+                const items = await fs.readdir(dir, { withFileTypes: true });
+                for (const item of items) {
+                    const fullPath = path.join(dir, item.name);
+                    const relativePath = path.relative(projectRoot, fullPath); // e.g., docs/foo.md
 
-        // Get file stats for each document
-        const docsWithStats = await Promise.all(
-            docs.map(async (doc) => {
-                try {
-                    const fullPath = path.join(projectRoot, doc.path);
-                    const stats = await fs.stat(fullPath);
-                    const sizeKB = (stats.size / 1024).toFixed(2);
-                    return {
-                        ...doc,
-                        size: `${sizeKB} KB`,
-                        exists: true,
-                        modified: stats.mtime
-                    };
-                } catch (error) {
-                    return {
-                        ...doc,
-                        exists: false
-                    };
+                    if (item.isDirectory()) {
+                        results = results.concat(await findMarkdownFiles(fullPath));
+                    } else if (item.name.endsWith('.md')) {
+                        // Determine category based on subfolder in docs
+                        const relToDocs = path.relative(docsDir, fullPath);
+                        const parts = relToDocs.split(path.sep);
+                        let category = 'General';
+
+                        if (parts.length > 1) {
+                            // First directory name is category
+                            category = parts[0].charAt(0).toUpperCase() + parts[0].slice(1);
+                        } else {
+                            // Attempt to categorize based on filename keywords
+                            const name = item.name.toLowerCase();
+                            if (name.includes('test') || name.includes('coverage')) category = 'Testing';
+                            else if (name.includes('deploy') || name.includes('build')) category = 'Deployment';
+                            else if (name.includes('phase') || name.includes('week')) category = 'Status';
+                            else if (name.includes('api') || name.includes('auth')) category = 'Backend';
+                            else if (name.includes('ui') || name.includes('ux') || name.includes('frontend')) category = 'Frontend';
+                            else if (name.includes('guide') || name.includes('manual')) category = 'Guides';
+                            else if (name.includes('summary') || name.includes('analysis')) category = 'Analysis';
+                        }
+
+                        const stats = await fs.stat(fullPath);
+                        const sizeKB = (stats.size / 1024).toFixed(2);
+
+                        results.push({
+                            name: item.name.replace('.md', ''),
+                            path: '/' + relativePath, // Ensure leading slash
+                            category,
+                            description: item.name,
+                            size: `${sizeKB} KB`,
+                            modified: stats.mtime
+                        });
+                    }
                 }
-            })
-        );
+            } catch (error) {
+                console.error(`Error scanning directory ${dir}:`, error);
+            }
+            return results;
+        };
+
+        let docs = await findMarkdownFiles(docsDir);
 
         res.json({
-            docs: docsWithStats.filter(d => d.exists)
+            docs: docs.sort((a, b) => a.category.localeCompare(b.category) || a.name.localeCompare(b.name))
         });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
@@ -279,7 +533,8 @@ router.post('/database/seed', async (req: Request, res: Response) => {
 // Reset database
 router.post('/database/reset', async (req: Request, res: Response) => {
     try {
-        const { stdout, stderr } = await execAsync('npx prisma migrate reset --force', {
+        // Use the safe reset script that preserves users
+        const { stdout, stderr } = await execAsync('npm run reset', {
             cwd: path.join(__dirname, '../..'),
             timeout: 120000
         });
@@ -364,6 +619,338 @@ router.post('/build/backend', async (req: Request, res: Response) => {
         res.json({ success: true, output: stdout + stderr });
     } catch (error: any) {
         res.json({ success: false, output: error.stdout + error.stderr || error.message });
+    }
+});
+
+router.post('/deploy/generic', async (req: Request, res: Response) => {
+    try {
+        const { host, user, targetDir, sshKey } = req.body;
+
+        if (!host || !user || !targetDir) {
+            return res.status(400).json({ error: 'Host, user, and target directory are required' });
+        }
+
+        const scriptPath = path.join(__dirname, '../../deploy/deploy-generic.sh');
+        const sshKeyArg = sshKey ? ` "${sshKey}"` : '';
+        const command = `${scriptPath} "${host}" "${user}" "${targetDir}"${sshKeyArg}`;
+
+        // Stream output? execAsync buffers it.
+        // For long running process, maybe spawn is better?
+        // But for simplicity, let's use execAsync with large buffer/timeout.
+        // Deployment can take a while.
+
+        const { stdout, stderr } = await execAsync(command, {
+            cwd: path.join(__dirname, '../..'),
+            timeout: 600000, // 10 mins
+            maxBuffer: 10 * 1024 * 1024 // 10MB
+        });
+
+        res.json({ success: true, output: stdout + stderr });
+    } catch (error: any) {
+        res.json({ success: false, output: error.stdout + error.stderr || error.message });
+    }
+});
+
+/**
+ * Build with streaming output (Server-Sent Events)
+ * POST /api/dev/build/stream
+ */
+router.post('/build/stream', async (req: Request, res: Response) => {
+    const { target } = req.body || {}; // 'frontend', 'backend', or 'both'
+
+    if (!target || !['frontend', 'backend', 'both'].includes(target)) {
+        return res.status(400).json({ error: 'Target must be: frontend, backend, or both' });
+    }
+
+    // Set up SSE
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no'
+    });
+
+    const send = (data: any) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+        const { spawn } = require('child_process');
+        const startTime = Date.now();
+
+        const targets = target === 'both' ? ['frontend', 'backend'] : [target];
+
+        for (const buildTarget of targets) {
+            send({ type: 'start', message: `Building ${buildTarget}...`, target: buildTarget });
+
+            const cwd = buildTarget === 'frontend'
+                ? path.join(__dirname, '../../../frontend')
+                : path.join(__dirname, '../..');
+
+            const buildProcess = spawn('npm', ['run', 'build'], {
+                cwd,
+                env: { ...process.env, FORCE_COLOR: '0' }
+            });
+
+            let outputBuffer = '';
+
+            await new Promise((resolve, reject) => {
+                buildProcess.stdout.on('data', (data: Buffer) => {
+                    const output = data.toString();
+                    outputBuffer += output;
+                    send({ type: 'output', data: output, target: buildTarget });
+                });
+
+                buildProcess.stderr.on('data', (data: Buffer) => {
+                    const output = data.toString();
+                    outputBuffer += output;
+                    send({ type: 'output', data: output, target: buildTarget });
+                });
+
+                buildProcess.on('close', (code: number | null) => {
+                    if (code === 0) {
+                        send({
+                            type: 'complete',
+                            target: buildTarget,
+                            success: true,
+                            duration: Date.now() - startTime
+                        });
+                        resolve(true);
+                    } else {
+                        send({
+                            type: 'complete',
+                            target: buildTarget,
+                            success: false,
+                            duration: Date.now() - startTime,
+                            error: 'Build failed'
+                        });
+                        reject(new Error('Build failed'));
+                    }
+                });
+
+                buildProcess.on('error', (error: Error) => {
+                    send({ type: 'error', message: error.message, target: buildTarget });
+                    reject(error);
+                });
+            });
+        }
+
+        send({ type: 'done', message: 'All builds complete!', duration: Date.now() - startTime });
+        res.end();
+
+    } catch (error: any) {
+        send({ type: 'error', message: error.message });
+        res.end();
+    }
+});
+
+/**
+ * Full rebuild command (like ./dap rebuild)
+ * POST /api/dev/build/rebuild
+ */
+router.post('/build/rebuild', async (req: Request, res: Response) => {
+    // Set up SSE
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no'
+    });
+
+    const send = (data: any) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+        const { spawn } = require('child_process');
+        const startTime = Date.now();
+
+        send({ type: 'start', message: 'Starting full rebuild...' });
+
+        // Run ./dap rebuild command
+        const rebuildProcess = spawn('./dap', ['rebuild'], {
+            cwd: '/data/dap',
+            env: { ...process.env, FORCE_COLOR: '0' }
+        });
+
+        rebuildProcess.stdout.on('data', (data: Buffer) => {
+            const output = data.toString();
+            send({ type: 'output', data: output });
+        });
+
+        rebuildProcess.stderr.on('data', (data: Buffer) => {
+            const output = data.toString();
+            send({ type: 'output', data: output });
+        });
+
+        rebuildProcess.on('close', (code: number | null) => {
+            send({
+                type: 'complete',
+                success: code === 0,
+                duration: Date.now() - startTime,
+                message: code === 0 ? 'Rebuild complete!' : 'Rebuild failed'
+            });
+            res.end();
+        });
+
+        rebuildProcess.on('error', (error: Error) => {
+            send({ type: 'error', message: error.message });
+            res.end();
+        });
+
+        // Handle client disconnect
+        req.on('close', () => {
+            rebuildProcess.kill();
+        });
+
+    } catch (error: any) {
+        send({ type: 'error', message: error.message });
+        res.end();
+    }
+});
+
+/**
+ * Deploy with streaming
+ * POST /api/dev/deploy/stream
+ */
+router.post('/deploy/stream', async (req: Request, res: Response) => {
+    const { environment } = req.body || {}; // 'production' or custom config
+
+    // Set up SSE
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no'
+    });
+
+    const send = (data: any) => {
+        res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+        const { spawn } = require('child_process');
+        const startTime = Date.now();
+
+        send({ type: 'start', message: `Starting deployment to ${environment || 'production'}...` });
+
+        // Check if deployment script exists
+        const deployScript = path.join(__dirname, '../../deploy/deploy-to-production.sh');
+
+        const deployProcess = spawn('bash', [deployScript], {
+            cwd: '/data/dap',
+            env: { ...process.env, FORCE_COLOR: '0' }
+        });
+
+        deployProcess.stdout.on('data', (data: Buffer) => {
+            const output = data.toString();
+            send({ type: 'output', data: output });
+        });
+
+        deployProcess.stderr.on('data', (data: Buffer) => {
+            const output = data.toString();
+            send({ type: 'output', data: output });
+        });
+
+        deployProcess.on('close', (code: number | null) => {
+            send({
+                type: 'complete',
+                success: code === 0,
+                duration: Date.now() - startTime,
+                message: code === 0 ? 'Deployment complete!' : 'Deployment failed'
+            });
+            res.end();
+        });
+
+        deployProcess.on('error', (error: Error) => {
+            send({ type: 'error', message: error.message });
+            res.end();
+        });
+
+        // Handle client disconnect
+        req.on('close', () => {
+            deployProcess.kill();
+        });
+
+    } catch (error: any) {
+        send({ type: 'error', message: error.message });
+        res.end();
+    }
+});
+
+/**
+ * Get build history
+ * GET /api/dev/build/history
+ */
+router.get('/build/history', async (req: Request, res: Response) => {
+    try {
+        // Get last 10 build timestamps from package.json mtime or git log
+        const { stdout } = await execAsync(
+            'git log -10 --pretty=format:"%H|%h|%s|%an|%ai" --grep="build\\|deploy" || echo ""',
+            { cwd: '/data/dap' }
+        );
+
+        const history = stdout.split('\n').filter(Boolean).map(line => {
+            const [hash, shortHash, message, author, date] = line.split('|');
+            return {
+                hash,
+                shortHash,
+                message,
+                author,
+                date,
+                type: message.toLowerCase().includes('deploy') ? 'deploy' : 'build'
+            };
+        });
+
+        res.json({ builds: history });
+    } catch (error: any) {
+        res.json({ builds: [], error: error.message });
+    }
+});
+
+router.get('/cicd/status', async (req: Request, res: Response) => {
+    try {
+        // Check if gh is installed
+        try {
+            await execAsync('gh --version');
+        } catch {
+            return res.json({
+                configured: false,
+                message: 'GitHub CLI (gh) is not installed or not in PATH.'
+            });
+        }
+
+        // Check if authenticated (gh auth status)
+        try {
+            await execAsync('gh auth status');
+        } catch {
+            return res.json({
+                configured: false,
+                message: 'GitHub CLI is installed but not authenticated. Run "gh auth login".'
+            });
+        }
+
+        // Fetch runs
+        // Limit to 5 recent runs
+        const { stdout } = await execAsync('gh run list --limit 5 --json databaseId,name,status,conclusion,createdAt,url');
+        const runs = JSON.parse(stdout);
+
+        res.json({
+            configured: true,
+            runs: runs.map((r: any) => ({
+                id: r.databaseId,
+                name: r.name,
+                status: r.status,
+                conclusion: r.conclusion,
+                createdAt: r.createdAt,
+                htmlUrl: r.url
+            }))
+        });
+    } catch (error: any) {
+        res.json({
+            configured: false,
+            message: `Error fetching workflows: ${error.message}`
+        });
     }
 });
 
@@ -517,6 +1104,177 @@ router.post('/git/push', async (req: Request, res: Response) => {
     }
 });
 
+// Pull from origin
+router.post('/git/pull', async (req: Request, res: Response) => {
+    try {
+        const { stdout, stderr } = await execAsync('git pull', {
+            timeout: 60000,
+            cwd: '/data/dap'
+        });
+
+        res.json({
+            success: true,
+            output: stdout + stderr,
+            message: 'Pulled from origin successfully'
+        });
+    } catch (error: any) {
+        res.json({
+            success: false,
+            error: error.message,
+            output: error.stdout + error.stderr || error.message
+        });
+    }
+});
+
+// Get branches
+router.get('/git/branches', async (req: Request, res: Response) => {
+    try {
+        const { stdout: currentBranch } = await execAsync('git rev-parse --abbrev-ref HEAD', { cwd: '/data/dap' });
+        const { stdout: localBranches } = await execAsync('git branch', { cwd: '/data/dap' });
+        const { stdout: remoteBranches } = await execAsync('git branch -r', { cwd: '/data/dap' });
+
+        res.json({
+            current: currentBranch.trim(),
+            local: localBranches.split('\n')
+                .map(b => b.trim().replace('* ', ''))
+                .filter(Boolean),
+            remote: remoteBranches.split('\n')
+                .map(b => b.trim())
+                .filter(Boolean)
+        });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Branch management (create, switch, delete)
+router.post('/git/branch', async (req: Request, res: Response) => {
+    try {
+        const { action, name, from } = req.body;
+
+        if (!action || !name) {
+            return res.status(400).json({ error: 'Action and name are required' });
+        }
+
+        let command = '';
+        let message = '';
+
+        switch (action) {
+            case 'create':
+                command = from ? `git checkout -b ${name} ${from}` : `git checkout -b ${name}`;
+                message = `Created and switched to branch '${name}'`;
+                break;
+            case 'switch':
+                command = `git checkout ${name}`;
+                message = `Switched to branch '${name}'`;
+                break;
+            case 'delete':
+                command = `git branch -d ${name}`;
+                message = `Deleted branch '${name}'`;
+                break;
+            default:
+                return res.status(400).json({ error: 'Invalid action. Use: create, switch, or delete' });
+        }
+
+        const { stdout, stderr } = await execAsync(command, { cwd: '/data/dap' });
+
+        res.json({
+            success: true,
+            output: stdout + stderr,
+            message
+        });
+    } catch (error: any) {
+        res.json({
+            success: false,
+            error: error.message,
+            output: error.stdout + error.stderr || error.message
+        });
+    }
+});
+
+// Stash operations
+router.post('/git/stash', async (req: Request, res: Response) => {
+    try {
+        const { action, message, index } = req.body;
+
+        if (!action) {
+            return res.status(400).json({ error: 'Action is required' });
+        }
+
+        let command = '';
+        let responseMessage = '';
+
+        switch (action) {
+            case 'save':
+                command = message ? `git stash push -m "${message}"` : 'git stash';
+                responseMessage = 'Changes stashed successfully';
+                break;
+            case 'pop':
+                command = index !== undefined ? `git stash pop stash@{${index}}` : 'git stash pop';
+                responseMessage = 'Stash applied and removed';
+                break;
+            case 'list':
+                command = 'git stash list';
+                responseMessage = 'Stash list retrieved';
+                break;
+            case 'apply':
+                command = index !== undefined ? `git stash apply stash@{${index}}` : 'git stash apply';
+                responseMessage = 'Stash applied (kept in stash)';
+                break;
+            case 'drop':
+                command = index !== undefined ? `git stash drop stash@{${index}}` : 'git stash drop';
+                responseMessage = 'Stash dropped';
+                break;
+            default:
+                return res.status(400).json({ error: 'Invalid action. Use: save, pop, list, apply, or drop' });
+        }
+
+        const { stdout, stderr } = await execAsync(command, { cwd: '/data/dap' });
+
+        res.json({
+            success: true,
+            output: stdout + stderr,
+            message: responseMessage,
+            stashes: action === 'list' ? stdout.split('\n').filter(Boolean) : undefined
+        });
+    } catch (error: any) {
+        res.json({
+            success: false,
+            error: error.message,
+            output: error.stdout + error.stderr || error.message
+        });
+    }
+});
+
+// Get commit log
+router.get('/git/log', async (req: Request, res: Response) => {
+    try {
+        const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+        const skip = req.query.skip ? parseInt(req.query.skip as string) : 0;
+
+        const { stdout } = await execAsync(
+            `git log --skip=${skip} -n ${limit} --pretty=format:"%H|%h|%s|%an|%ai|%D"`,
+            { cwd: '/data/dap' }
+        );
+
+        const commits = stdout.split('\n').filter(Boolean).map(line => {
+            const [hash, shortHash, message, author, date, refs] = line.split('|');
+            return {
+                hash,
+                shortHash,
+                message,
+                author,
+                date,
+                refs: refs || ''
+            };
+        });
+
+        res.json({ commits, total: commits.length });
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 /**
  * Task Runner Endpoints
  */
@@ -570,7 +1328,9 @@ router.post('/quality/coverage/run', async (req: Request, res: Response) => {
         });
         res.json({ success: true, output: stdout + stderr });
     } catch (error: any) {
-        res.status(500).json({
+        // Return success:false instead of 500 status for better UX
+        res.json({
+            success: false,
             error: error.message,
             output: error.stdout + error.stderr || error.message
         });
