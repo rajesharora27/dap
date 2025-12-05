@@ -478,19 +478,59 @@ export const EnhancedGitPanel: React.FC = () => {
                         <Select
                             value={branchAction}
                             label="Action"
-                            onChange={(e) => setBranchAction(e.target.value as any)}
+                            onChange={(e) => {
+                                setBranchAction(e.target.value as any);
+                                setBranchName('');
+                            }}
                         >
                             <MenuItem value="create">Create New Branch</MenuItem>
                             <MenuItem value="switch">Switch Branch</MenuItem>
                             <MenuItem value="delete">Delete Branch</MenuItem>
                         </Select>
                     </FormControl>
-                    <TextField
-                        fullWidth
-                        label="Branch Name"
-                        value={branchName}
-                        onChange={(e) => setBranchName(e.target.value)}
-                    />
+
+                    {branchAction === 'create' ? (
+                        <TextField
+                            fullWidth
+                            label="New Branch Name"
+                            value={branchName}
+                            onChange={(e) => setBranchName(e.target.value)}
+                            placeholder="e.g., feature/my-new-feature"
+                        />
+                    ) : (
+                        <FormControl fullWidth>
+                            <InputLabel>Select Branch</InputLabel>
+                            <Select
+                                value={branchName}
+                                label="Select Branch"
+                                onChange={(e) => setBranchName(e.target.value)}
+                            >
+                                {branches?.local
+                                    .filter(b => branchAction === 'delete' ? b !== branches.current : b !== branches.current)
+                                    .map((branch) => (
+                                        <MenuItem key={branch} value={branch}>
+                                            {branch} {branch === branches?.current && '(current)'}
+                                        </MenuItem>
+                                    ))
+                                }
+                                {branchAction === 'switch' && branches?.remote
+                                    .filter(r => !branches.local.includes(r.replace('origin/', '')))
+                                    .map((branch) => (
+                                        <MenuItem key={branch} value={branch}>
+                                            {branch} (remote)
+                                        </MenuItem>
+                                    ))
+                                }
+                            </Select>
+                        </FormControl>
+                    )}
+
+                    {/* Show current branch info */}
+                    {branches && (
+                        <Alert severity="info" sx={{ mt: 2 }}>
+                            Current branch: <strong>{branches.current}</strong>
+                        </Alert>
+                    )}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setBranchDialogOpen(false)}>Cancel</Button>
