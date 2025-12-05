@@ -19,6 +19,7 @@ set -e
 APP_NAME="DAP Application"
 DB_CONTAINER="$(docker ps -a --format '{{.Names}}' | grep -E '^dap[-_]db[-_]1$|^dap_db_1$|^dap-db-1$|^db$' | head -n 1)"
 BACKEND_PORT="${BACKEND_PORT:-4000}"
+DEVTOOLS_PORT="${DEVTOOLS_PORT:-4001}"
 FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 # Use the directory of this script as the project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -79,15 +80,37 @@ kill_port() {
 }
 
 # Kill Node.js processes related to the project
+# Stop backend only
+stop_backend() {
+    log_info "Stopping Backend..."
+    pkill -f "ts-node-dev.*src/server.ts" 2>/dev/null || true
+    pkill -f "npm.*exec.*ts-node-dev" 2>/dev/null || true
+    pkill -f "node.*backend.*server" 2>/dev/null || true
+    kill_port $BACKEND_PORT "Backend API"
+}
+
+# Stop frontend only
+stop_frontend() {
+    log_info "Stopping Frontend..."
+    pkill -f "vite.*--port.*5173" 2>/dev/null || true
+    pkill -f "npm.*exec.*vite" 2>/dev/null || true
+    pkill -f "node.*frontend.*vite" 2>/dev/null || true
+    kill_port $FRONTEND_PORT "Frontend Dev Server"
+}
+
+# Stop devtools only
+stop_devtools() {
+    log_info "Stopping DevTools..."
+    pkill -f "ts-node-dev.*src/devtools-service.ts" 2>/dev/null || true
+    kill_port $DEVTOOLS_PORT "DevTools Server"
+}
+
+# Kill Node.js processes related to the project
 kill_node_processes() {
     log_info "Stopping all Node.js processes related to the project..."
-    pkill -f "ts-node-dev.*src/server.ts" 2>/dev/null || true
-    pkill -f "vite.*--port.*5173" 2>/dev/null || true
-    pkill -f "npm.*exec.*ts-node-dev" 2>/dev/null || true
-    pkill -f "npm.*exec.*vite" 2>/dev/null || true
-    sleep 2
-    kill_port $BACKEND_PORT "Backend API"
-    kill_port $FRONTEND_PORT "Frontend Dev Server"
+    stop_backend
+    stop_frontend
+    stop_devtools
     log_success "Node.js processes stopped"
 }
 
@@ -301,6 +324,43 @@ start_frontend() {
     done
 }
 
+# Start devtools
+start_devtools() {
+    log_header "DEVTOOLS SERVER"
+    log_info "Starting DevTools Server..."
+    
+    if check_port $DEVTOOLS_PORT; then
+        log_warning "DevTools already running on port $DEVTOOLS_PORT"
+        return 0
+    fi
+    
+    cd "$BACKEND_DIR"
+    
+    log_info "Starting devtools server on port $DEVTOOLS_PORT..."
+    nohup npm run dev:devtools > ../devtools.log 2>&1 &
+    local devtools_pid=$!
+    
+    local max_attempts=20
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        if check_port $DEVTOOLS_PORT; then
+            log_success "DevTools Server started successfully (PID: $devtools_pid)"
+            log_success "DevTools available at: http://localhost:$DEVTOOLS_PORT/api/dev"
+            return 0
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            log_error "DevTools failed to start within 20 seconds. Check devtools.log"
+            return 1
+        fi
+        
+        echo -n "."
+        sleep 1
+        ((attempt++))
+    done
+}
+
 # Show application status
 show_status() {
     log_header "APPLICATION STATUS"
@@ -485,9 +545,13 @@ dev_mode() {
     log_info "Running database migrations..."
     (cd "$BACKEND_DIR" && npx prisma migrate deploy) || log_warning "Migration failed, continuing..."
     
-    # 3.5 Seed Development Data
-    log_info "Seeding development data..."
-    (cd "$BACKEND_DIR" && npm run seed:dev) || log_warning "Seeding failed, continuing..."
+    # 3.5 Seed Development Data (only if explicitly requested)
+    if [ "${SEED_ON_RESTART:-false}" = "true" ]; then
+        log_info "Seeding development data..."
+        (cd "$BACKEND_DIR" && npm run seed:dev) || log_warning "Seeding failed, continuing..."
+    else
+        log_info "Skipping seed (set SEED_ON_RESTART=true to enable)"
+    fi
     
     # 4. Start Services in Foreground
     log_info "Starting services in development mode..."
@@ -516,19 +580,49 @@ start_all() {
     
     manage_docker start || exit 1
     
-    # Run Migrations
-    log_info "Running database migrations..."
-    (cd "$BACKEND_DIR" && npx prisma migrate deploy) || log_warning "Migration failed, continuing..."
+    # Run Migrations (only if requested)
+    if [ "${RUN_MIGRATIONS:-false}" = "true" ]; then
+        log_info "Running database migrations..."
+        (cd "$BACKEND_DIR" && npx prisma migrate deploy) || log_warning "Migration failed, continuing..."
+    fi
 
-    # Seed Development Data
-    log_info "Seeding development data..."
-    (cd "$BACKEND_DIR" && npm run seed:dev) || log_warning "Seeding failed, continuing..."
+    # Seed Development Data (only if explicitly requested)
+    if [ "${SEED_ON_RESTART:-false}" = "true" ]; then
+        log_info "Seeding development data..."
+        (cd "$BACKEND_DIR" && npm run seed:dev) || log_warning "Seeding failed, continuing..."
+    fi
 
     start_backend || exit 1
+    start_devtools || exit 1
     start_frontend || exit 1
     
     echo ""
     log_success "All services started successfully!"
+    log_info "Database: PostgreSQL running in container"
+    log_info "Backend API: http://localhost:$BACKEND_PORT/graphql"
+    log_info "Frontend App: http://localhost:$FRONTEND_PORT"
+}
+
+# Restart devtools only
+restart_devtools() {
+    log_header "RESTARTING DEVTOOLS"
+    stop_devtools
+    sleep 1
+    start_devtools
+}
+
+# Start services without migrations or seeding
+start_services() {
+    log_header "STARTING SERVICES"
+    
+    manage_docker start || exit 1
+    
+    start_backend || exit 1
+    start_devtools || exit 1
+    start_frontend || exit 1
+    
+    echo ""
+    log_success "Services started successfully!"
     log_info "Database: PostgreSQL running in container"
     log_info "Backend API: http://localhost:$BACKEND_PORT/graphql"
     log_info "Frontend App: http://localhost:$FRONTEND_PORT"
@@ -666,11 +760,30 @@ run_comprehensive_test() {
 clean_restart() {
     log_header "CLEAN RESTART WITH SAMPLE DATA"
     
-    log_warning "⚠️  WARNING: This will DELETE ALL DATA including user-created products!"
-    log_warning "⚠️  To preserve user data, use './dap add-sample' instead"
+    echo -e "${RED}╔═══════════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║  ⚠️  DANGER: THIS WILL PERMANENTLY DELETE ALL YOUR DATA!         ║${NC}"
+    echo -e "${RED}║                                                                   ║${NC}"
+    echo -e "${RED}║  The following will be DELETED:                                   ║${NC}"
+    echo -e "${RED}║    • ALL products (including your custom products)                ║${NC}"
+    echo -e "${RED}║    • ALL tasks, outcomes, licenses, releases                      ║${NC}"
+    echo -e "${RED}║    • ALL customers and their adoption plans                       ║${NC}"
+    echo -e "${RED}║    • ALL solutions and assignments                                ║${NC}"
+    echo -e "${RED}║                                                                   ║${NC}"
+    echo -e "${RED}║  Users will be PRESERVED (admin accounts will remain)             ║${NC}"
+    echo -e "${RED}╚═══════════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo "This command is for complete database reset only."
-    echo "Press Ctrl+C now to cancel, or wait 5 seconds to continue..."
+    echo "To preserve your data, use './dap add-sample' instead."
+    echo ""
+    echo -e "${YELLOW}Type 'DELETE' to confirm, or press Ctrl+C to cancel:${NC}"
+    read -r confirmation
+    
+    if [ "$confirmation" != "DELETE" ]; then
+        log_info "Operation cancelled. Your data is safe."
+        exit 0
+    fi
+    
+    echo ""
+    log_warning "⏱️  Starting in 5 seconds... Press Ctrl+C to abort!"
     sleep 5
     
     # Use force kill to ensure clean shutdown
@@ -1146,8 +1259,9 @@ show_help() {
     echo "Commands:"
     echo -e "  ${GREEN}start${NC}          - Start all application services"
     echo -e "  ${RED}stop${NC}           - Stop all application services" 
-    echo -e "  ${YELLOW}restart${NC}        - Force kill and restart all services (keeps existing data)"
-    echo -e "  ${CYAN}rebuild${NC}        - ✅ Rebuild frontend & backend (preserves database)"
+    echo -e "  ${YELLOW}restart${NC}        - Restart services (optional: frontend|backend) [preserves data]"
+    echo -e "  ${CYAN}rebuild${NC}        - ✅ Rebuild components (optional: frontend|backend) [preserves data]"
+    echo -e "  ${BLUE}migrate${NC}        - Run database migrations (explicit only)"
     echo -e "  ${PURPLE}full-rebuild${NC}   - ⚠️  Rebuild all + clean restart (wipes database)"
     echo -e "  ${CYAN}clean-restart${NC}  - ⚠️  FORCE KILL, WIPES ALL DATA, then loads fresh sample data"
     echo -e "  ${BLUE}add-sample${NC}     - ✅ Add sample data (preserves existing user data)"
@@ -1157,8 +1271,10 @@ show_help() {
     echo -e "  ${PURPLE}help${NC}           - Show this help message"
     echo ""
     echo "Examples:"
-    echo "  $0 start           # Start for daily development"
-    echo "  $0 rebuild         # ✅ Rebuild after code changes (preserves data)"
+    echo "  $0 start                # Start for daily development"
+    echo "  $0 restart frontend     # Restart only frontend"
+    echo "  $0 rebuild backend      # Rebuild and restart backend only"
+    echo "  $0 migrate              # Run pending database migrations"
     echo "  $0 add-sample      # ✅ Add sample data (preserves your data)"
     echo "  $0 reset-sample    # ✅ Remove sample data (preserves your data)"
     echo "  $0 full-rebuild    # ⚠️  Rebuild everything + fresh database"
@@ -1216,65 +1332,91 @@ main() {
             stop_all
             ;;
         restart)
-            restart_all
+            shift
+            target=${1:-all}
+            log_header "RESTARTING ${target^^}"
+            
+            if [ "$target" == "backend" ]; then
+                stop_backend
+                start_backend
+            elif [ "$target" == "frontend" ]; then
+                stop_frontend
+                start_frontend
+            else
+                restart_all
+            fi
             ;;
-        clean-restart)
-            clean_restart
+        migrate)
+            log_header "RUNNING DATABASE MIGRATIONS"
+            (cd "$BACKEND_DIR" && npx prisma migrate deploy) || log_error "Migration failed"
             ;;
         rebuild)
-            log_header "REBUILDING APPLICATION COMPONENTS"
-            log_info "This will rebuild frontend and backend without affecting database data"
+            shift
+            target=${1:-all}
+            log_header "REBUILDING ${target^^}"
+            log_info "This will rebuild components without affecting database data"
             echo ""
             
-            # Stop services first
-            log_info "Stopping running services..."
-            kill_node_processes
-            
             # Rebuild Backend
-            log_info "🔨 Rebuilding Backend..."
-            cd "$BACKEND_DIR"
-            if npm install --legacy-peer-deps; then
-                log_success "Backend dependencies installed"
-            else
-                log_error "Failed to install backend dependencies"
-                exit 1
-            fi
-            
-            if npm run build; then
-                log_success "Backend built successfully"
-            else
-                log_error "Failed to build backend"
-                exit 1
+            if [ "$target" == "backend" ] || [ "$target" == "all" ]; then
+                log_info "Stopping backend..."
+                stop_backend
+                
+                log_info "🔨 Rebuilding Backend..."
+                cd "$BACKEND_DIR"
+                if npm install --legacy-peer-deps && npm run build; then
+                    log_success "Backend built successfully"
+                else
+                    log_error "Failed to build backend"
+                    exit 1
+                fi
             fi
             
             # Rebuild Frontend
-            log_info "🔨 Rebuilding Frontend..."
-            cd "$FRONTEND_DIR"
-            if npm install; then
-                log_success "Frontend dependencies installed"
-            else
-                log_error "Failed to install frontend dependencies"
-                exit 1
-            fi
-            
-            if npm run build -- --mode development; then
-                log_success "Frontend built successfully"
-            else
-                log_error "Failed to build frontend"
-                exit 1
+            if [ "$target" == "frontend" ] || [ "$target" == "all" ]; then
+                log_info "Stopping frontend..."
+                stop_frontend
+                
+                log_info "🔨 Rebuilding Frontend..."
+                cd "$FRONTEND_DIR"
+                if npm install && npm run build -- --mode development; then
+                    log_success "Frontend built successfully"
+                else
+                    log_error "Failed to build frontend"
+                    exit 1
+                fi
             fi
             
             cd "$PROJECT_DIR"
-            
             log_success "✅ Rebuild complete!"
             echo ""
-            log_info "Starting services with rebuilt components..."
-            start_all
+            
+            # Restart services
+            if [ "$target" == "backend" ]; then
+                start_backend
+            elif [ "$target" == "frontend" ]; then
+                start_frontend
+            else
+                start_services
+            fi
+            ;;
+        restart-devtools)
+            restart_devtools
             ;;
         full-rebuild)
             log_header "FULL REBUILD WITH CLEAN DATABASE"
-            log_warning "⚠️  This will rebuild all components AND wipe database!"
+            echo -e "${RED}╔════════════════════════════════════════════════════════════╗${NC}"
+            echo -e "${RED}║  ⚠️  WARNING: This will REBUILD + WIPE DATABASE!           ║${NC}"
+            echo -e "${RED}║  All products, tasks, customers will be DELETED!           ║${NC}"
+            echo -e "${RED}╚════════════════════════════════════════════════════════════╝${NC}"
             echo ""
+            echo -e "${YELLOW}Type 'REBUILD' to confirm, or press Ctrl+C to cancel:${NC}"
+            read -r confirmation
+            
+            if [ "$confirmation" != "REBUILD" ]; then
+                log_info "Operation cancelled. Use './dap rebuild' for safe rebuild."
+                exit 0
+            fi
             
             log_info "🔨 Rebuilding Backend..."
             cd "$BACKEND_DIR"

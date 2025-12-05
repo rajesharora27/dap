@@ -67,7 +67,7 @@ import {
   Backup as BackupIcon,
   Edit,
   Delete,
-  Add,
+
   DragIndicator,
   ImportExport,
   FileDownload,
@@ -94,16 +94,17 @@ import { AuthBar } from '../components/AuthBar';
 import { useAuth } from '../components/AuthContext';
 import { LoginPage } from '../components/LoginPage';
 // Development Tools
-import { DevelopmentTestsPanel } from '../components/dev/DevelopmentTestsPanel';
+import { EnhancedTestsPanel } from '../components/dev/EnhancedTestsPanel';
 import { DevelopmentCICDPanel } from '../components/dev/DevelopmentCICDPanel';
 import { DevelopmentDocsPanel } from '../components/dev/DevelopmentDocsPanel';
 import { DatabaseManagementPanel } from '../components/dev/DatabaseManagementPanel';
 import { LogsViewerPanel } from '../components/dev/LogsViewerPanel';
-import { BuildDeployPanel } from '../components/dev/BuildDeployPanel';
+import { EnhancedBuildDeployPanel } from '../components/dev/EnhancedBuildDeployPanel';
 import { EnvironmentPanel } from '../components/dev/EnvironmentPanel';
-import { APITestingPanel } from '../components/dev/APITestingPanel';
+import { EnhancedAPITestingPanel } from '../components/dev/EnhancedAPITestingPanel';
 import { CodeQualityPanel } from '../components/dev/CodeQualityPanel';
-import { PerformancePanel, GitIntegrationPanel, TaskRunnerPanel } from '../components/dev/AdvancedPanels';
+import { PerformancePanel, TaskRunnerPanel } from '../components/dev/AdvancedPanels';
+import { EnhancedGitPanel } from '../components/dev/EnhancedGitPanel';
 
 // Dev Icons
 import DeveloperModeIcon from '@mui/icons-material/DeveloperMode';
@@ -779,22 +780,63 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
   );
 }
 
+const DEFAULT_DEV_MENU_ITEMS = [
+  { id: 'database', label: 'Database', tooltip: 'Manage database migrations, seed data, and schema' },
+  { id: 'logs', label: 'Logs', tooltip: 'View real-time application logs and debugging output' },
+  { id: 'tests', label: 'Tests', tooltip: 'Run unit tests, integration tests, and view coverage reports' },
+  { id: 'build', label: 'Build & Deploy', tooltip: 'Build frontend/backend and deploy to production environments' },
+  { id: 'cicd', label: 'CI/CD', tooltip: 'View GitHub Actions workflows and pipeline status' },
+  { id: 'env', label: 'Environment', tooltip: 'View and manage environment variables and configuration' },
+  { id: 'api', label: 'API Testing', tooltip: 'Test GraphQL API endpoints and explore schema' },
+  { id: 'docs', label: 'Docs', tooltip: 'Browse project documentation, guides, and technical references' },
+  { id: 'quality', label: 'Quality', tooltip: 'View code quality metrics, linting results, and test coverage' },
+  { id: 'performance', label: 'Performance', tooltip: 'Monitor system performance, memory usage, and uptime' },
+  { id: 'git', label: 'Git', tooltip: 'View Git repository status, branches, and commit history' },
+  { id: 'tasks', label: 'Tasks', tooltip: 'Execute npm scripts and custom development tasks' }
+];
+
+function SortableDevMenuItem({ item, selected, onClick, onContextMenu, icon }: any) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} onContextMenu={(e) => onContextMenu(e, item.id)}>
+      <Tooltip title={item.tooltip} placement="right" arrow>
+        <ListItemButton
+          sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+          selected={selected}
+          onClick={onClick}
+        >
+          {/* Drag handle - only this part is draggable */}
+          <Box {...attributes} {...listeners} sx={{ cursor: 'grab', mr: 1, display: 'flex', alignItems: 'center' }}>
+            <DragIndicator fontSize="small" sx={{ color: 'text.secondary' }} />
+          </Box>
+          <ListItemIcon>{icon}</ListItemIcon>
+          <ListItemText primary={item.label} />
+        </ListItemButton>
+      </Tooltip>
+    </div>
+  );
+}
+
 const drawerWidth = 240;
 
 export function App() {
   // Apollo client for mutations
   const client = useApolloClient();
   const { token, isAuthenticated, isLoading, user } = useAuth();
-
-  useEffect(() => {
-    console.log('DEBUG: App State', {
-      user,
-      isAuthenticated,
-      isAdmin: user?.isAdmin,
-      role: user?.role,
-      selectedSection
-    });
-  }, [user, isAuthenticated]);
 
   // State management
   const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers' | 'admin' | 'development'>('products');
@@ -805,22 +847,111 @@ export function App() {
     'tests' | 'cicd' | 'docs' | 'database' | 'logs' | 'build' | 'env' | 'api' | 'quality' | 'performance' | 'git' | 'tasks'
   >('tests');
 
-  // Development menu is available in dev mode OR for admin users in any mode
-  const isDevelopmentMode = import.meta.env.DEV || import.meta.env.MODE === 'development' || import.meta.env.VITE_SHOW_DEV_MENU === 'true';
+  // Dev Menu Order State
+  const [devMenuItems, setDevMenuItems] = useState(() => {
+    const saved = localStorage.getItem('devMenuOrder');
+    if (saved) {
+      try {
+        const savedOrder = JSON.parse(saved);
+        // Merge with default to handle new items or items removed
+        const base = DEFAULT_DEV_MENU_ITEMS.filter(i => savedOrder.includes(i.id));
+        const missing = DEFAULT_DEV_MENU_ITEMS.filter(i => !savedOrder.includes(i.id));
+        // Reorder base according to savedOrder
+        const orderedBase = savedOrder
+          .map((id: string) => base.find(i => i.id === id))
+          .filter(Boolean);
+        return [...orderedBase, ...missing];
+      } catch (e) { return DEFAULT_DEV_MENU_ITEMS; }
+    }
+    return DEFAULT_DEV_MENU_ITEMS;
+  });
 
-  // Debug logging for dev menu
+  const [contextMenu, setContextMenu] = useState<{ mouseX: number; mouseY: number; itemId: string } | null>(null);
+
   useEffect(() => {
-    console.log('[DevMenu] selectedSection:', selectedSection, 'selectedDevSubSection:', selectedDevSubSection, 'isDevelopmentMode:', isDevelopmentMode, 'user?.isAdmin:', user?.isAdmin);
-  }, [selectedSection, selectedDevSubSection, isDevelopmentMode, user?.isAdmin]);
+    localStorage.setItem('devMenuOrder', JSON.stringify(devMenuItems.map(i => i.id)));
+  }, [devMenuItems]);
+
+  const devMenuSensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDevMenuDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      setDevMenuItems((items: any) => {
+        const oldIndex = items.findIndex((i: any) => i.id === active.id);
+        const newIndex = items.findIndex((i: any) => i.id === over.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
+  };
+
+  const handleDevContextMenu = (event: React.MouseEvent, itemId: string) => {
+    event.preventDefault();
+    setContextMenu(
+      contextMenu === null
+        ? { mouseX: event.clientX + 2, mouseY: event.clientY - 6, itemId }
+        : null,
+    );
+  };
+
+  const handleContextAction = (action: 'up' | 'down' | 'top' | 'bottom') => {
+    if (!contextMenu) return;
+    const items = [...devMenuItems];
+    const index = items.findIndex(i => i.id === contextMenu.itemId);
+    if (index === -1) return;
+
+    if (action === 'up' && index > 0) {
+      [items[index], items[index - 1]] = [items[index - 1], items[index]];
+    } else if (action === 'down' && index < items.length - 1) {
+      [items[index], items[index + 1]] = [items[index + 1], items[index]];
+    } else if (action === 'top') {
+      const item = items.splice(index, 1)[0];
+      items.unshift(item);
+    } else if (action === 'bottom') {
+      const item = items.splice(index, 1)[0];
+      items.push(item);
+    }
+
+    setDevMenuItems(items);
+    setContextMenu(null);
+  };
+
+  const getDevIcon = (id: string) => {
+    switch (id) {
+      case 'database': return <StorageIcon />;
+      case 'logs': return <ArticleIcon />;
+      case 'tests': return <BugReportIcon />;
+      case 'build': return <BuildIcon />;
+      case 'cicd': return <GitHubIcon />;
+      case 'env': return <SettingsIcon />;
+      case 'api': return <ApiIcon />;
+      case 'docs': return <ArticleIcon />;
+      case 'quality': return <AssessmentIcon />;
+      case 'performance': return <SpeedIcon />;
+      case 'git': return <GitHubIcon />;
+      case 'tasks': return <PlaylistPlayIcon />;
+      default: return <SettingsIcon />;
+    }
+  };
+
+  // Development menu is ONLY available in development mode, NEVER in production
+  // This ensures dev tools are completely disabled in production builds
+  const isDevelopmentMode =
+    import.meta.env.MODE !== 'production' &&
+    (import.meta.env.DEV || import.meta.env.MODE === 'development');
+
 
   const [selectedCustomer, setSelectedCustomer] = useState('');
 
 
 
   const [selectedAdminSubSection, setSelectedAdminSubSection] = useState<'users' | 'roles' | 'backup' | 'theme' | 'about'>('users');
-  const [productsExpanded, setProductsExpanded] = useState(true);
-  const [solutionsExpanded, setSolutionsExpanded] = useState(true);
-  const [customersExpanded, setCustomersExpanded] = useState(true);
+
   const [adminExpanded, setAdminExpanded] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(() => {
@@ -999,7 +1130,7 @@ export function App() {
       (selectedSection === 'solutions' && hasSolutions) ||
       (selectedSection === 'customers' && hasCustomers) ||
       (selectedSection === 'admin' && user?.isAdmin) ||
-      (selectedSection === 'development' && isDevelopmentMode);
+      (selectedSection === 'development' && isDevelopmentMode && isAdminUser);
 
     // If current section is not accessible, redirect to first available section
     if (!sectionAccessible) {
@@ -1977,7 +2108,6 @@ export function App() {
                   selected={selectedSection === 'products'}
                   onClick={() => {
                     setSelectedSection('products');
-                    setProductsExpanded(true); // Always expand when clicked
                   }}
                   sx={{
                     '&.Mui-selected': {
@@ -1999,35 +2129,7 @@ export function App() {
                     <ProductIcon />
                   </ListItemIcon>
                   <ListItemText primary="Products" />
-                  {productsExpanded ? <ExpandLess /> : <ExpandMore />}
                 </ListItemButton>
-
-                <Collapse in={productsExpanded && selectedSection === 'products'} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    {/* Add Product Button */}
-                    <ListItemButton
-                      sx={{
-                        pl: 4,
-                        backgroundColor: 'action.hover',
-                        '&:hover': {
-                          backgroundColor: 'action.selected',
-                        }
-                      }}
-                      onClick={() => setAddProductDialog(true)}
-                    >
-                      <ListItemIcon>
-                        <Add />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary="Add Product"
-                        primaryTypographyProps={{
-                          fontWeight: 'medium',
-                          color: 'primary.main'
-                        }}
-                      />
-                    </ListItemButton>
-                  </List>
-                </Collapse>
               </>
             )}
 
@@ -2038,7 +2140,6 @@ export function App() {
                   selected={selectedSection === 'solutions'}
                   onClick={() => {
                     setSelectedSection('solutions');
-                    setSolutionsExpanded(true); // Always expand when clicked
                   }}
                   sx={{
                     '&.Mui-selected': {
@@ -2060,35 +2161,7 @@ export function App() {
                     <SolutionIcon />
                   </ListItemIcon>
                   <ListItemText primary="Solutions" />
-                  {solutionsExpanded ? <ExpandLess /> : <ExpandMore />}
                 </ListItemButton>
-
-                <Collapse in={solutionsExpanded && selectedSection === 'solutions'} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    {/* Add Solution Button */}
-                    <ListItemButton
-                      sx={{
-                        pl: 4,
-                        backgroundColor: 'action.hover',
-                        '&:hover': {
-                          backgroundColor: 'action.selected',
-                        }
-                      }}
-                      onClick={() => setAddSolutionDialog(true)}
-                    >
-                      <ListItemIcon>
-                        <Add />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary="Add Solution"
-                        primaryTypographyProps={{
-                          fontWeight: 'medium',
-                          color: 'primary.main'
-                        }}
-                      />
-                    </ListItemButton>
-                  </List>
-                </Collapse>
               </>
             )}
 
@@ -2099,7 +2172,6 @@ export function App() {
                   selected={selectedSection === 'customers'}
                   onClick={() => {
                     setSelectedSection('customers');
-                    setCustomersExpanded(true); // Always expand when clicked
                   }}
                   sx={{
                     '&.Mui-selected': {
@@ -2121,46 +2193,7 @@ export function App() {
                     <CustomerIcon />
                   </ListItemIcon>
                   <ListItemText primary="Customers" />
-                  {customersExpanded ? <ExpandLess /> : <ExpandMore />}
                 </ListItemButton>
-
-                <Collapse in={customersExpanded && selectedSection === 'customers'} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    {/* Add Customer Button */}
-                    <ListItemButton
-                      sx={{
-                        pl: 4,
-                        backgroundColor: 'action.hover',
-                        '&:hover': {
-                          backgroundColor: 'action.selected',
-                        }
-                      }}
-                      onClick={() => {
-                        // Clear localStorage to prevent auto-selection
-                        localStorage.removeItem('lastSelectedCustomerId');
-                        setSelectedCustomerId(null);
-                        setSelectedSection('customers');
-                        // Open the add customer dialog directly
-                        setTimeout(() => {
-                          if ((window as any).__openAddCustomerDialog) {
-                            (window as any).__openAddCustomerDialog();
-                          }
-                        }, 100);
-                      }}
-                    >
-                      <ListItemIcon>
-                        <Add />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary="Add Customer"
-                        primaryTypographyProps={{
-                          fontWeight: 'medium',
-                          color: 'primary.main'
-                        }}
-                      />
-                    </ListItemButton>
-                  </List>
-                </Collapse>
               </>
             )}
 
@@ -2345,7 +2378,7 @@ export function App() {
             )}
 
             {/* Development Section (Dev Mode + Admin Only) */}
-            {isDevelopmentMode && (
+            {isDevelopmentMode && isAdminUser && (
               <>
                 <Divider sx={{ my: 1 }} />
                 <ListItemButton
@@ -2373,141 +2406,50 @@ export function App() {
 
                 <Collapse in={devExpanded} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding>
-                    {/* Core Tools */}
-                    <Tooltip title="Manage database migrations, seed data, and schema" placement="right" arrow>
-                      <ListItemButton
-                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
-                        selected={selectedSection === 'development' && selectedDevSubSection === 'database'}
-                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('database'); }}
+                    <DndContext
+                      sensors={devMenuSensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDevMenuDragEnd}
+                    >
+                      <SortableContext
+                        items={devMenuItems.map(i => i.id)}
+                        strategy={verticalListSortingStrategy}
                       >
-                        <ListItemIcon><StorageIcon /></ListItemIcon>
-                        <ListItemText primary="Database" />
-                      </ListItemButton>
-                    </Tooltip>
+                        <List component="div" disablePadding>
+                          {devMenuItems.map((item: any) => (
+                            <SortableDevMenuItem
+                              key={item.id}
+                              item={item}
+                              selected={selectedSection === 'development' && selectedDevSubSection === item.id}
+                              onClick={() => {
+                                setSelectedSection('development');
+                                setSelectedDevSubSection(item.id as any);
+                              }}
+                              onContextMenu={handleDevContextMenu}
+                              icon={getDevIcon(item.id)}
+                            />
+                          ))}
+                        </List>
+                      </SortableContext>
+                    </DndContext>
 
-                    <Tooltip title="View real-time application logs and debugging output" placement="right" arrow>
-                      <ListItemButton
-                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
-                        selected={selectedSection === 'development' && selectedDevSubSection === 'logs'}
-                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('logs'); }}
-                      >
-                        <ListItemIcon><ArticleIcon /></ListItemIcon>
-                        <ListItemText primary="Logs" />
-                      </ListItemButton>
-                    </Tooltip>
-
-                    <Tooltip title="Run unit tests, integration tests, and view coverage reports" placement="right" arrow>
-                      <ListItemButton
-                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
-                        selected={selectedSection === 'development' && selectedDevSubSection === 'tests'}
-                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('tests'); }}
-                      >
-                        <ListItemIcon><BugReportIcon /></ListItemIcon>
-                        <ListItemText primary="Tests" />
-                      </ListItemButton>
-                    </Tooltip>
-
-                    {/* DevOps */}
-                    <Tooltip title="Build frontend/backend and deploy to production environments" placement="right" arrow>
-                      <ListItemButton
-                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
-                        selected={selectedSection === 'development' && selectedDevSubSection === 'build'}
-                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('build'); }}
-                      >
-                        <ListItemIcon><BuildIcon /></ListItemIcon>
-                        <ListItemText primary="Build & Deploy" />
-                      </ListItemButton>
-                    </Tooltip>
-
-                    <Tooltip title="View GitHub Actions workflows and pipeline status" placement="right" arrow>
-                      <ListItemButton
-                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
-                        selected={selectedSection === 'development' && selectedDevSubSection === 'cicd'}
-                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('cicd'); }}
-                      >
-                        <ListItemIcon><GitHubIcon /></ListItemIcon>
-                        <ListItemText primary="CI/CD" />
-                      </ListItemButton>
-                    </Tooltip>
-
-                    {/* Utilities */}
-                    <Tooltip title="View and manage environment variables and configuration" placement="right" arrow>
-                      <ListItemButton
-                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
-                        selected={selectedSection === 'development' && selectedDevSubSection === 'env'}
-                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('env'); }}
-                      >
-                        <ListItemIcon><SettingsIcon /></ListItemIcon>
-                        <ListItemText primary="Environment" />
-                      </ListItemButton>
-                    </Tooltip>
-
-                    <Tooltip title="Test GraphQL API endpoints and explore schema" placement="right" arrow>
-                      <ListItemButton
-                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
-                        selected={selectedSection === 'development' && selectedDevSubSection === 'api'}
-                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('api'); }}
-                      >
-                        <ListItemIcon><ApiIcon /></ListItemIcon>
-                        <ListItemText primary="API Testing" />
-                      </ListItemButton>
-                    </Tooltip>
-
-                    <Tooltip title="Browse project documentation, guides, and technical references" placement="right" arrow>
-                      <ListItemButton
-                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
-                        selected={selectedSection === 'development' && selectedDevSubSection === 'docs'}
-                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('docs'); }}
-                      >
-                        <ListItemIcon><ArticleIcon /></ListItemIcon>
-                        <ListItemText primary="Docs" />
-                      </ListItemButton>
-                    </Tooltip>
-
-                    {/* Advanced */}
-                    <Tooltip title="View code quality metrics, linting results, and test coverage" placement="right" arrow>
-                      <ListItemButton
-                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
-                        selected={selectedSection === 'development' && selectedDevSubSection === 'quality'}
-                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('quality'); }}
-                      >
-                        <ListItemIcon><AssessmentIcon /></ListItemIcon>
-                        <ListItemText primary="Quality" />
-                      </ListItemButton>
-                    </Tooltip>
-
-                    <Tooltip title="Monitor system performance, memory usage, and uptime" placement="right" arrow>
-                      <ListItemButton
-                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
-                        selected={selectedSection === 'development' && selectedDevSubSection === 'performance'}
-                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('performance'); }}
-                      >
-                        <ListItemIcon><SpeedIcon /></ListItemIcon>
-                        <ListItemText primary="Performance" />
-                      </ListItemButton>
-                    </Tooltip>
-
-                    <Tooltip title="View Git repository status, branches, and commit history" placement="right" arrow>
-                      <ListItemButton
-                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
-                        selected={selectedSection === 'development' && selectedDevSubSection === 'git'}
-                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('git'); }}
-                      >
-                        <ListItemIcon><GitHubIcon /></ListItemIcon>
-                        <ListItemText primary="Git" />
-                      </ListItemButton>
-                    </Tooltip>
-
-                    <Tooltip title="Execute npm scripts and custom development tasks" placement="right" arrow>
-                      <ListItemButton
-                        sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
-                        selected={selectedSection === 'development' && selectedDevSubSection === 'tasks'}
-                        onClick={() => { setSelectedSection('development'); setSelectedDevSubSection('tasks'); }}
-                      >
-                        <ListItemIcon><PlaylistPlayIcon /></ListItemIcon>
-                        <ListItemText primary="Tasks" />
-                      </ListItemButton>
-                    </Tooltip>
+                    {/* Context Menu for Reordering */}
+                    <Menu
+                      open={contextMenu !== null}
+                      onClose={() => setContextMenu(null)}
+                      anchorReference="anchorPosition"
+                      anchorPosition={
+                        contextMenu !== null
+                          ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                          : undefined
+                      }
+                    >
+                      <MenuItem onClick={() => handleContextAction('up')} disabled={devMenuItems.findIndex(i => i.id === contextMenu?.itemId) === 0}>Move Up</MenuItem>
+                      <MenuItem onClick={() => handleContextAction('down')} disabled={devMenuItems.findIndex(i => i.id === contextMenu?.itemId) === devMenuItems.length - 1}>Move Down</MenuItem>
+                      <Divider />
+                      <MenuItem onClick={() => handleContextAction('top')} disabled={devMenuItems.findIndex(i => i.id === contextMenu?.itemId) === 0}>Move to Top</MenuItem>
+                      <MenuItem onClick={() => handleContextAction('bottom')} disabled={devMenuItems.findIndex(i => i.id === contextMenu?.itemId) === devMenuItems.length - 1}>Move to Bottom</MenuItem>
+                    </Menu>
                   </List>
                 </Collapse>
               </>
@@ -2544,6 +2486,7 @@ export function App() {
                       setEditingProduct({ ...product });
                       setEditProductDialog(true);
                     }}
+                    onAddProduct={() => setAddProductDialog(true)}
                   />
                 </Suspense>
               )
@@ -2556,7 +2499,7 @@ export function App() {
                   <CircularProgress size={60} />
                 </Box>
               }>
-                <SolutionsPage />
+                <SolutionsPage onAddSolution={() => setAddSolutionDialog(true)} />
               </Suspense>
             )}
 
@@ -2567,7 +2510,18 @@ export function App() {
                   <CircularProgress size={60} />
                 </Box>
               }>
-                <CustomersPage />
+                <CustomersPage
+                  onAddCustomer={() => {
+                    localStorage.removeItem('lastSelectedCustomerId');
+                    setSelectedCustomerId(null);
+                    setSelectedSection('customers');
+                    setTimeout(() => {
+                      if ((window as any).__openAddCustomerDialog) {
+                        (window as any).__openAddCustomerDialog();
+                      }
+                    }, 100);
+                  }}
+                />
               </Suspense>
             )}
 
@@ -2583,19 +2537,19 @@ export function App() {
             )}
 
             {/* Development Section (Dev Mode + Admin Only) */}
-            {selectedSection === 'development' && isDevelopmentMode && (
+            {selectedSection === 'development' && isDevelopmentMode && isAdminUser && (
               <Box sx={{ p: 3 }}>
-                {selectedDevSubSection === 'tests' && <DevelopmentTestsPanel />}
+                {selectedDevSubSection === 'tests' && <EnhancedTestsPanel />}
                 {selectedDevSubSection === 'cicd' && <DevelopmentCICDPanel />}
                 {selectedDevSubSection === 'docs' && <DevelopmentDocsPanel />}
                 {selectedDevSubSection === 'database' && <DatabaseManagementPanel />}
                 {selectedDevSubSection === 'logs' && <LogsViewerPanel />}
-                {selectedDevSubSection === 'build' && <BuildDeployPanel />}
+                {selectedDevSubSection === 'build' && <EnhancedBuildDeployPanel />}
                 {selectedDevSubSection === 'env' && <EnvironmentPanel />}
-                {selectedDevSubSection === 'api' && <APITestingPanel />}
+                {selectedDevSubSection === 'api' && <EnhancedAPITestingPanel />}
                 {selectedDevSubSection === 'quality' && <CodeQualityPanel />}
                 {selectedDevSubSection === 'performance' && <PerformancePanel />}
-                {selectedDevSubSection === 'git' && <GitIntegrationPanel />}
+                {selectedDevSubSection === 'git' && <EnhancedGitPanel />}
                 {selectedDevSubSection === 'tasks' && <TaskRunnerPanel />}
               </Box>
             )}

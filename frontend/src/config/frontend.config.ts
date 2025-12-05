@@ -23,7 +23,7 @@ export const getBasePath = (): string => {
 const getConfig = (): FrontendConfig => {
   const environment = isViteEnv ? import.meta.env.MODE : 'development';
   const basePath = getBasePath();
-  
+
   const configs = {
     development: {
       // Development: Use relative paths with BASE_URL support
@@ -62,10 +62,10 @@ export const getDevApiBaseUrl = (): string => {
   const basePath = getBasePath();
   // If we're running in the browser and not on localhost, use relative URLs through Apache proxy
   if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
-    return basePath; // Returns '/dap' for subpath deployment
+    return '/dap'; // Force /dap prefix to match Apache ProxyPass rule
   }
-  // Local development - use localhost
-  return 'http://localhost:4000';
+  // Local development - use dedicated DevTools server port
+  return 'http://localhost:4001';
 };
 
 export default frontendConfig;

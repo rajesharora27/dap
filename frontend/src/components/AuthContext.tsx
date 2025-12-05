@@ -2,8 +2,8 @@ import * as React from 'react';
 import { createContext, useContext, useState, useEffect } from 'react';
 import { isTokenValid, getUserFromToken, clearAuth } from '../utils/auth';
 
-interface AuthState { 
-  token: string | null; 
+interface AuthState {
+  token: string | null;
   setToken: (t: string | null) => void;
   user: any | null;
   setUser: (u: any | null) => void;
@@ -12,9 +12,9 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
-const AuthCtx = createContext<AuthState>({ 
-  token: null, 
-  setToken: () => { }, 
+const AuthCtx = createContext<AuthState>({
+  token: null,
+  setToken: () => { },
   user: null,
   setUser: () => { },
   logout: () => { },
@@ -34,11 +34,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const validateSession = () => {
       const savedToken = localStorage.getItem('token');
-      
+
       if (savedToken && isTokenValid(savedToken)) {
         // Token is valid
         setTokenState(savedToken);
-        
+
         // Try to get user from localStorage first
         const savedUser = localStorage.getItem('user');
         if (savedUser) {
@@ -60,16 +60,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.setItem('user', JSON.stringify(userFromToken));
           }
         }
-        
+
         setIsAuthenticated(true);
       } else {
-        // Token is invalid or expired - clear everything
-        clearAuth();
+        // Token is invalid or expired
+        console.warn('Session validation failed:', savedToken ? 'Token invalid/expired' : 'No token found');
+        // Do not aggressively clear localStorage here to prevent loops on some refreshes, just clear state
         setTokenState(null);
         setUserState(null);
         setIsAuthenticated(false);
       }
-      
+
       setIsLoading(false);
     };
 
@@ -79,14 +80,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Check token validity periodically (every 5 minutes)
   useEffect(() => {
     if (!token) return;
-    
+
     const interval = setInterval(() => {
       if (!isTokenValid(token)) {
         console.warn('Token expired, logging out...');
         logout();
       }
     }, 5 * 60 * 1000); // 5 minutes
-    
+
     return () => clearInterval(interval);
   }, [token]);
 
@@ -111,26 +112,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    console.log('Logging out...');
     clearAuth();
     setTokenState(null);
     setUserState(null);
     setIsAuthenticated(false);
-    // Use BASE_URL for subpath deployment support
-    const basePath = (typeof import.meta !== 'undefined' && import.meta.env) 
-      ? (import.meta.env.BASE_URL || '/').replace(/\/$/, '') 
-      : '/';
-    window.location.href = basePath || '/';
+    // Remove hard redirect to avoid refresh loops
   };
 
   return (
-    <AuthCtx.Provider value={{ 
-      token, 
-      setToken, 
-      user, 
-      setUser, 
-      logout, 
-      isLoading, 
-      isAuthenticated 
+    <AuthCtx.Provider value={{
+      token,
+      setToken,
+      user,
+      setUser,
+      logout,
+      isLoading,
+      isAuthenticated
     }}>
       {children}
     </AuthCtx.Provider>
