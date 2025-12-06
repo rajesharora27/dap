@@ -1309,4 +1309,49 @@ export const typeDefs = gql`
     """
     updateRolePermissions(roleId: ID, roleName: String, permissions: [ResourcePermissionInput!]!): RoleWithPermissions!
   }
+
+  # ============================================================
+  # AI Agent Types
+  # ============================================================
+
+  """
+  Metadata about an AI query execution
+  """
+  type AIQueryMetadata {
+    """Time to execute in milliseconds"""
+    executionTime: Int!
+    """Number of rows returned"""
+    rowCount: Int!
+    """Whether results were truncated"""
+    truncated: Boolean!
+    """Whether result was cached"""
+    cached: Boolean!
+    """Template ID if a template was matched"""
+    templateUsed: String
+  }
+
+  """
+  Response from the AI Agent
+  """
+  type AIQueryResponse {
+    """Natural language answer"""
+    answer: String!
+    """Raw data results (JSON string)"""
+    data: String
+    """The generated query (for transparency)"""
+    query: String
+    """Suggested follow-up questions"""
+    suggestions: [String!]
+    """Error message if query failed"""
+    error: String
+    """Query execution metadata"""
+    metadata: AIQueryMetadata
+  }
+
+  extend type Query {
+    """
+    Ask the AI agent a natural language question about the data
+    """
+    askAI(question: String!, conversationId: String): AIQueryResponse!
+  }
 `;

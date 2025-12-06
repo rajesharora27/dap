@@ -36,6 +36,7 @@ import {
 import { solutionReportingService } from '../../services/solutionReportingService';
 import { BackupQueryResolvers, BackupMutationResolvers } from './backup';
 import { AuthQueryResolvers, AuthMutationResolvers } from './auth';
+import { AIQueryResolvers } from './ai';
 import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../lib/pagination';
 import { logAudit } from '../../lib/audit';
 import { ensureRole, requireUser } from '../../lib/auth';
@@ -784,6 +785,9 @@ export const resolvers = {
     , userRoles: AuthQueryResolvers.userRoles
     , availableResources: AuthQueryResolvers.availableResources
     // Note: auditLogs is already defined above, so using the existing one
+
+    // AI Agent queries
+    , askAI: AIQueryResolvers.askAI
 
     // Excel Export
     , exportProductToExcel: async (_: any, { productName }: any) => {

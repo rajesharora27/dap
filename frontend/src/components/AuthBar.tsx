@@ -10,16 +10,20 @@ import {
   Avatar, 
   Divider,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Tooltip,
+  Badge,
 } from '@mui/material';
 import { 
   Dashboard, 
   Menu as MenuIcon, 
   AccountCircle, 
   Logout, 
-  Person 
+  Person,
+  Psychology,
 } from '@mui/icons-material';
 import { useAuth } from './AuthContext';
+import { AIChat } from './AIChat';
 
 interface AuthBarProps {
   onMenuClick?: () => void;
@@ -30,6 +34,7 @@ interface AuthBarProps {
 export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onProfileClick }) => {
   const { user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [aiChatOpen, setAiChatOpen] = React.useState(false);
   
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -37,6 +42,14 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
   
   const handleMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleAIChatOpen = () => {
+    setAiChatOpen(true);
+  };
+
+  const handleAIChatClose = () => {
+    setAiChatOpen(false);
   };
   
   const handleProfileClick = () => {
@@ -141,8 +154,37 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
           </Box>
         </Box>
         
-        {/* User Menu */}
+        {/* AI Assistant & User Menu */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* AI Assistant Button */}
+          <Tooltip title="AI Assistant" arrow>
+            <IconButton
+              onClick={handleAIChatOpen}
+              sx={{
+                color: 'white',
+                bgcolor: 'rgba(255, 255, 255, 0.1)',
+                '&:hover': {
+                  bgcolor: 'rgba(255, 255, 255, 0.2)',
+                },
+                mr: 1,
+              }}
+            >
+              <Badge
+                variant="dot"
+                color="success"
+                invisible={false}
+                sx={{
+                  '& .MuiBadge-badge': {
+                    bgcolor: '#4caf50',
+                    boxShadow: '0 0 6px rgba(76, 175, 80, 0.6)',
+                  },
+                }}
+              >
+                <Psychology />
+              </Badge>
+            </IconButton>
+          </Tooltip>
+
           {user && (
             <Typography 
               variant="body2" 
@@ -223,6 +265,9 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
           </Menu>
         </Box>
       </Toolbar>
+
+      {/* AI Chat Dialog */}
+      <AIChat open={aiChatOpen} onClose={handleAIChatClose} />
     </AppBar>
   );
 };
