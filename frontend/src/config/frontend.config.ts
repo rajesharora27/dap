@@ -15,7 +15,13 @@ const isViteEnv = typeof import.meta !== 'undefined' && import.meta.env;
 // Helper to get BASE_URL for constructing API paths (exported for use elsewhere)
 export const getBasePath = (): string => {
   if (typeof import.meta === 'undefined' || !import.meta.env) return '/';
-  const basePath = import.meta.env.BASE_URL || '/';
+  let basePath = import.meta.env.BASE_URL || '/';
+
+  // If basePath is default '/' but we are running in browser under a subpath like '/dap/', use that.
+  if (basePath === '/' && typeof window !== 'undefined' && window.location.pathname.startsWith('/dap/')) {
+    basePath = '/dap/';
+  }
+
   return basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
 };
 
@@ -27,7 +33,9 @@ const getConfig = (): FrontendConfig => {
   const configs = {
     development: {
       // Development: Use relative paths with BASE_URL support
-      apiUrl: isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || `${basePath}/graphql`) : `${basePath}/graphql`,
+      apiUrl: (typeof window !== 'undefined' && window.location.pathname.startsWith('/dap/'))
+        ? '/dap/graphql'
+        : (isViteEnv ? (import.meta.env.VITE_GRAPHQL_ENDPOINT || `${basePath}/graphql`) : `${basePath}/graphql`),
       frontendUrl: isViteEnv ? (import.meta.env.VITE_FRONTEND_URL || 'http://localhost:5173') : 'http://localhost:5173',
       environment: 'development'
     },
