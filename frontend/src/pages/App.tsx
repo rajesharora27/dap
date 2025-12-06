@@ -2486,7 +2486,6 @@ export function App() {
                       setEditingProduct({ ...product });
                       setEditProductDialog(true);
                     }}
-                    onAddProduct={() => setAddProductDialog(true)}
                   />
                 </Suspense>
               )
@@ -2499,7 +2498,7 @@ export function App() {
                   <CircularProgress size={60} />
                 </Box>
               }>
-                <SolutionsPage onAddSolution={() => setAddSolutionDialog(true)} />
+                <SolutionsPage />
               </Suspense>
             )}
 
@@ -2510,18 +2509,7 @@ export function App() {
                   <CircularProgress size={60} />
                 </Box>
               }>
-                <CustomersPage
-                  onAddCustomer={() => {
-                    localStorage.removeItem('lastSelectedCustomerId');
-                    setSelectedCustomerId(null);
-                    setSelectedSection('customers');
-                    setTimeout(() => {
-                      if ((window as any).__openAddCustomerDialog) {
-                        (window as any).__openAddCustomerDialog();
-                      }
-                    }, 100);
-                  }}
-                />
+                <CustomersPage />
               </Suspense>
             )}
 
