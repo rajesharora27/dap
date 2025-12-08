@@ -27,6 +27,7 @@ import {
   useTheme,
   alpha,
   Tooltip,
+  Badge,
 } from '@mui/material';
 import {
   Close,
@@ -39,10 +40,44 @@ import {
   Lightbulb,
   Cached,
   DeleteOutline,
+  Refresh,
+  Storage,
 } from '@mui/icons-material';
+import { gql, useMutation, useQuery } from '@apollo/client';
 import { useAuth } from './AuthContext';
 import { useAIAssistant, AIMessage } from '../hooks/useAIAssistant';
 import QueryResultDisplay from './ai/QueryResultDisplay';
+
+// GraphQL query for data context status
+const AI_DATA_CONTEXT_STATUS = gql`
+  query AIDataContextStatus {
+    aiDataContextStatus {
+      initialized
+      lastRefreshed
+      hasDataContext
+    }
+  }
+`;
+
+// GraphQL mutation for refreshing data context
+const REFRESH_AI_DATA_CONTEXT = gql`
+  mutation RefreshAIDataContext {
+    refreshAIDataContext {
+      success
+      lastRefreshed
+      statistics {
+        totalProducts
+        totalSolutions
+        totalCustomers
+        totalTasks
+        totalTasksWithTelemetry
+        totalTasksWithoutTelemetry
+        totalAdoptionPlans
+      }
+      error
+    }
+  }
+`;
 
 
 interface AIChatProps {
@@ -61,6 +96,63 @@ export const AIChat: React.FC<AIChatProps> = ({ open, onClose, onNavigate }) => 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   // Common/Recent Queries State
   const [commonQueries, setCommonQueries] = useState<{ query: string; count: number }[]>([]);
+  
+  // Data context status and refresh
+  const { data: contextStatusData, refetch: refetchContextStatus } = useQuery(AI_DATA_CONTEXT_STATUS, {
+    skip: !open,
+    fetchPolicy: 'network-only',
+  });
+  
+  const [refreshDataContext, { loading: refreshingContext }] = useMutation(REFRESH_AI_DATA_CONTEXT, {
+    onCompleted: (data) => {
+      if (data.refreshAIDataContext.success) {
+        refetchContextStatus();
+        // Add a system message about the refresh
+        addMessage({
+          id: `system-refresh-${Date.now()}`,
+          role: 'assistant',
+          content: `✅ **Data context refreshed successfully!**\n\nThe AI now has updated knowledge about:\n- ${data.refreshAIDataContext.statistics.totalProducts} products\n- ${data.refreshAIDataContext.statistics.totalSolutions} solutions\n- ${data.refreshAIDataContext.statistics.totalCustomers} customers\n- ${data.refreshAIDataContext.statistics.totalTasks} tasks (${data.refreshAIDataContext.statistics.totalTasksWithTelemetry} with telemetry, ${data.refreshAIDataContext.statistics.totalTasksWithoutTelemetry} without)`,
+          timestamp: new Date(),
+        });
+      } else {
+        addMessage({
+          id: `system-refresh-error-${Date.now()}`,
+          role: 'assistant',
+          content: `❌ **Failed to refresh data context**\n\nError: ${data.refreshAIDataContext.error || 'Unknown error'}`,
+          timestamp: new Date(),
+        });
+      }
+    },
+    onError: (error) => {
+      addMessage({
+        id: `system-refresh-error-${Date.now()}`,
+        role: 'assistant',
+        content: `❌ **Failed to refresh data context**\n\nError: ${error.message}`,
+        timestamp: new Date(),
+      });
+    }
+  });
+  
+  const handleRefreshContext = () => {
+    if (!refreshingContext && user?.isAdmin) {
+      refreshDataContext();
+    }
+  };
+  
+  // Format last refreshed time
+  const formatLastRefreshed = (dateStr: string | null) => {
+    if (!dateStr) return 'Never';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return date.toLocaleDateString();
+  };
 
   // Native click handler for navigation links (dangerouslySetInnerHTML content)
   useEffect(() => {
@@ -73,15 +165,17 @@ export const AIChat: React.FC<AIChatProps> = ({ open, onClose, onNavigate }) => 
       const handleNativeClick = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
 
-        // Handle span elements with data-navigate attribute
-        if (target.hasAttribute('data-navigate')) {
+        // Handle span elements with data-navigate attribute (using closest for robustness)
+        const navigateSpan = target.closest('[data-navigate]');
+        if (navigateSpan) {
           e.preventDefault();
           e.stopPropagation();
-          const navData = target.getAttribute('data-navigate');
+          const navData = navigateSpan.getAttribute('data-navigate');
           if (navData && onNavigate) {
             const parts = navData.split(':');
             if (parts.length === 2) {
               onNavigate(parts[0], parts[1]);
+              // Close chat for non-task navigation to allow view transition
               if (parts[0] !== 'tasks') {
                 onClose();
               }
@@ -91,8 +185,9 @@ export const AIChat: React.FC<AIChatProps> = ({ open, onClose, onNavigate }) => 
         }
 
         // Legacy: Handle anchor elements with #navigate: href
-        if (target.tagName === 'A') {
-          const href = target.getAttribute('href');
+        const navigateAnchor = target.closest('a');
+        if (navigateAnchor) {
+          const href = navigateAnchor.getAttribute('href');
           if (href && href.startsWith('#navigate:')) {
             e.preventDefault();
             e.stopPropagation();
@@ -327,9 +422,51 @@ What would you like to know?`,
             </Typography>
           </Box>
         </Box>
-        <IconButton onClick={onClose} sx={{ color: 'white' }}>
-          <Close />
-        </IconButton>
+        
+        {/* Context status and refresh button */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {contextStatusData?.aiDataContextStatus?.hasDataContext && (
+            <Tooltip title={`Data context last refreshed: ${formatLastRefreshed(contextStatusData.aiDataContextStatus.lastRefreshed)}`}>
+              <Chip
+                size="small"
+                icon={<Storage sx={{ fontSize: 14 }} />}
+                label={formatLastRefreshed(contextStatusData.aiDataContextStatus.lastRefreshed)}
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.15)',
+                  color: 'white',
+                  fontSize: '0.7rem',
+                  height: 24,
+                  '& .MuiChip-icon': { color: 'white' }
+                }}
+              />
+            </Tooltip>
+          )}
+          
+          {user?.isAdmin && (
+            <Tooltip title="Refresh AI data context (updates entity names, statistics, etc.)">
+              <IconButton
+                onClick={handleRefreshContext}
+                disabled={refreshingContext}
+                sx={{
+                  color: 'white',
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' },
+                }}
+                size="small"
+              >
+                {refreshingContext ? (
+                  <CircularProgress size={18} sx={{ color: 'white' }} />
+                ) : (
+                  <Refresh sx={{ fontSize: 18 }} />
+                )}
+              </IconButton>
+            </Tooltip>
+          )}
+          
+          <IconButton onClick={onClose} sx={{ color: 'white' }}>
+            <Close />
+          </IconButton>
+        </Box>
       </DialogTitle>
 
       {/* Messages */}
@@ -396,13 +533,27 @@ What would you like to know?`,
                           }
 
                           // Fallback: Detect type based on row properties
+                          // Tasks: have weight, estMinutes, or product reference
                           if (row.weight !== undefined || row.estMinutes !== undefined || row.product) {
                             onNavigate('tasks', row.id);
-                          } else if (row.statusPercent !== undefined) {
+                          } 
+                          // Adoption Plans: have progressPercentage, totalTasks, completedWeight
+                          else if (row.progressPercentage !== undefined || row.totalTasks !== undefined || row.completedWeight !== undefined) {
+                            onNavigate('adoptionPlans', row.id);
+                          }
+                          // Products: have statusPercent or licenses
+                          else if (row.statusPercent !== undefined || row.licenses !== undefined) {
                             onNavigate('products', row.id);
-                          } else if (row.adoptionPlan !== undefined) {
+                          } 
+                          // Solutions: have products (as edges) but not statusPercent (distinguishes from products)
+                          else if (row.products !== undefined && row.statusPercent === undefined) {
+                            onNavigate('solutions', row.id);
+                          }
+                          // Customers: have adoptionPlan or customerProducts/customerSolutions
+                          else if (row.adoptionPlan !== undefined || row.customerProducts !== undefined || row.customerSolutions !== undefined) {
                             onNavigate('customers', row.id);
-                          } else if (row.name) {
+                          } 
+                          else if (row.name) {
                             // If we have just name/description, try to infer from data context or default logging
                             console.warn('Could not detect row type for navigation:', row);
                             // Default to tasks if ambiguous but has ID

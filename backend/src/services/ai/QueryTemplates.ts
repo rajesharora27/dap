@@ -48,6 +48,9 @@ export class QueryTemplates {
     let bestMatch: TemplateMatch | null = null;
     let bestConfidence = 0;
 
+    // Debug: log question being matched
+    console.log(`[QueryTemplates] Matching question: "${normalizedQuestion}"`);
+
     for (const template of this.templates) {
       for (const pattern of template.patterns) {
         const match = normalizedQuestion.match(pattern);
@@ -55,11 +58,16 @@ export class QueryTemplates {
           // Calculate confidence based on pattern specificity
           const confidence = this.calculateConfidence(pattern, normalizedQuestion);
 
+          // Debug: log matches found
+          console.log(`[QueryTemplates] Match found: template=${template.id}, confidence=${confidence.toFixed(2)}, pattern=${pattern.toString().substring(0, 50)}...`);
+
           if (confidence > bestConfidence) {
             bestConfidence = confidence;
+            const params = this.extractParameters(template, normalizedQuestion, match);
+            console.log(`[QueryTemplates] New best match: ${template.id} with params:`, params);
             bestMatch = {
               template,
-              params: this.extractParameters(template, normalizedQuestion, match),
+              params,
               confidence,
             };
           }
@@ -69,9 +77,11 @@ export class QueryTemplates {
 
     // Only return matches with confidence above threshold
     if (bestMatch && bestMatch.confidence >= 0.5) {
+      console.log(`[QueryTemplates] Final match: ${bestMatch.template.id} (confidence: ${bestMatch.confidence.toFixed(2)})`);
       return bestMatch;
     }
 
+    console.log(`[QueryTemplates] No template match found (best confidence: ${bestConfidence.toFixed(2)})`);
     return null;
   }
 
@@ -112,8 +122,18 @@ export class QueryTemplates {
     for (const paramDef of template.parameters) {
       if (paramDef.extractPattern) {
         const paramMatch = question.match(paramDef.extractPattern);
-        if (paramMatch && paramMatch[1]) {
-          params[paramDef.name] = this.parseParameterValue(paramMatch[1], paramDef.type);
+        console.log(`[QueryTemplates] Extracting param '${paramDef.name}' from "${question}" with pattern ${paramDef.extractPattern.toString().substring(0, 60)}...`);
+        console.log(`[QueryTemplates] Param match result:`, paramMatch ? paramMatch.slice(0, 5) : 'null');
+        
+        if (paramMatch) {
+          // Find the first non-null capture group
+          const capturedValue = paramMatch.slice(1).find(g => g !== undefined);
+          console.log(`[QueryTemplates] Captured value: "${capturedValue}"`);
+          if (capturedValue) {
+            params[paramDef.name] = this.parseParameterValue(capturedValue.trim(), paramDef.type);
+          } else if (paramDef.defaultValue !== undefined) {
+            params[paramDef.name] = paramDef.defaultValue;
+          }
         } else if (paramDef.defaultValue !== undefined) {
           params[paramDef.name] = paramDef.defaultValue;
         }
@@ -208,7 +228,10 @@ export class QueryTemplates {
               tasks: {
                 some: {
                   deletedAt: null,
-                  telemetryAttributes: { none: {} },
+                  // Tasks with NO telemetry attributes
+                  NOT: {
+                    telemetryAttributes: { some: {} }
+                  },
                 },
               },
             },
@@ -219,7 +242,10 @@ export class QueryTemplates {
               tasks: {
                 where: {
                   deletedAt: null,
-                  telemetryAttributes: { none: {} },
+                  // Tasks with NO telemetry attributes
+                  NOT: {
+                    telemetryAttributes: { some: {} }
+                  },
                 },
                 select: {
                   id: true,
@@ -254,7 +280,10 @@ export class QueryTemplates {
           args: {
             where: {
               deletedAt: null,
-              customers: { none: {} },
+              // Products with NO customer assignments
+              NOT: {
+                customers: { some: {} }
+              },
             },
             select: {
               id: true,
@@ -269,6 +298,7 @@ export class QueryTemplates {
           'Show products without customers',
           'Find unassigned products',
           'Products with no customers',
+          'Products without adoption plans',
         ],
       },
 
@@ -356,8 +386,17 @@ export class QueryTemplates {
         id: 'tasks_for_product_no_telemetry',
         description: 'Find tasks for a specific product that have no telemetry',
         patterns: [
-          /(?:find|show|list)\s+(?:all\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:without|missing|with\s+no)\s+telemetry/i,
-          /tasks?\s+(?:of|for)\s+(.+?)\s+with\s+no\s+telemetry/i,
+          // Standard patterns - note: (?:all\s+)?(?:the\s+)? handles "all", "the", "all the"
+          /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:without|missing|with\s+no)\s+telemetry/i,
+          /tasks?\s+(?:of|for)\s+(.+?)\s+(?:with\s+no|without)\s+telemetry/i,
+          // "that does not have" variants
+          /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:that\s+)?(?:do(?:es)?n?'?t?\s+have|has\s+no|lacking)\s+telemetry/i,
+          // "without telemetry for product" (reversed order)
+          /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:without|missing|with\s+no)\s+telemetry\s+(?:of|for|in)\s+(.+)/i,
+          // Product first patterns
+          /(.+?)\s+tasks?\s+(?:without|missing|with\s+no|(?:that\s+)?(?:do(?:es)?n?'?t?\s+have|has\s+no))\s+telemetry/i,
+          // Simple "product tasks without telemetry" 
+          /(.+?)\s+tasks?\s+(?:with\s+)?no\s+telemetry/i,
         ],
         category: 'tasks',
         buildQuery: (params: Record<string, any>) => ({
@@ -369,7 +408,13 @@ export class QueryTemplates {
               product: {
                 name: { contains: params.productName, mode: 'insensitive' }
               },
-              telemetryAttributes: { none: {} } // No telemetry attributes
+              // Check for tasks with NO telemetry attributes
+              // Using NOT + some: this finds tasks where there are NO telemetry attributes
+              NOT: {
+                telemetryAttributes: {
+                  some: {}
+                }
+              }
             },
             select: {
               id: true,
@@ -388,13 +433,17 @@ export class QueryTemplates {
           {
             name: 'productName',
             type: 'string',
-            extractPattern: /(?:of|for)\s+(.+?)\s+(?:without|missing|with\s+no)\s+telemetry/i,
+            // Extract product name - handles "tasks for X without telemetry" and "X tasks without telemetry"
+            extractPattern: /(?:tasks?\s+(?:of|for)\s+)(.+?)(?:\s+(?:that\s+)?(?:without|missing|with\s+no|do(?:es)?n?'?t?\s+have|has\s+no|lacking)\s+telemetry)|(?:(?:without|missing|with\s+no)\s+telemetry\s+(?:of|for|in)\s+)(.+)|^(.+?)\s+tasks?\s+(?:with\s+)?(?:no|without)/i,
             required: true,
           }
         ],
         examples: [
-          'List all tasks for Cisco Secure Access without telemetry',
+          'List all the tasks for Cisco Secure Access without telemetry',
           'Tasks of Product X with no telemetry',
+          'Find tasks for Secure Access that do not have telemetry',
+          'Show tasks without telemetry for Cisco Duo',
+          'Cisco Secure Access tasks without telemetry',
         ],
       },
 
@@ -479,9 +528,12 @@ export class QueryTemplates {
         id: 'tasks_for_product',
         description: 'List all tasks for a specific product',
         patterns: [
-          /(?:find|show|list|get)\s+(?:all\s+)?tasks?\s+(?:of|for|in)\s+(?:product\s+)?(.+)/i,
+          // Handles "list all the tasks for X", "show tasks of X", etc.
+          /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for|in)\s+(?:product\s+)?(.+)/i,
           /tasks?\s+(?:of|for|in)\s+(?:product\s+)?(.+)/i,
-          /what\s+(?:are\s+)?the\s+tasks?\s+(?:of|for|in)\s+(.+)/i,
+          /what\s+(?:are\s+)?(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for|in)\s+(.+)/i,
+          // "X tasks" pattern
+          /(.+?)\s+tasks?\s*$/i,
         ],
         category: 'tasks',
         buildQuery: (params: Record<string, any>) => ({
@@ -712,6 +764,115 @@ export class QueryTemplates {
           'Show customers not started',
           'Find inactive customers',
           'Customers with zero progress',
+        ],
+      },
+
+      // ============================================================
+      // ADOPTION PLANS CATEGORY
+      // ============================================================
+
+      // Template: List all adoption plans
+      {
+        id: 'list_adoption_plans',
+        description: 'List all product and solution adoption plans (assignments)',
+        patterns: [
+          /(?:list|show|find)\s+(?:all\s+)?(?:adoption\s+plans?|assignments?)/i,
+          /(?:list|show|find)\s+(?:all\s+)?(?:product|solution)\s+(?:adoption\s+plans?|assignments?)/i,
+          /(?:adoption\s+plans?|assignments?)\s+(?:for\s+)?(?:all\s+)?customers?/i,
+          /what\s+(?:adoption\s+plans?|assignments?)\s+(?:do\s+we\s+have|exist)/i,
+        ],
+        category: 'adoption',
+        buildQuery: () => ({
+          model: 'adoptionPlan',
+          operation: 'findMany',
+          args: {
+            select: {
+              id: true,
+              productName: true,
+              licenseLevel: true,
+              progressPercentage: true,
+              completedTasks: true,
+              totalTasks: true,
+              customerProduct: {
+                select: {
+                  name: true,
+                  customer: { select: { name: true } },
+                },
+              },
+            },
+            orderBy: { createdAt: 'desc' },
+          },
+        }),
+        parameters: [],
+        examples: [
+          'List all adoption plans',
+          'Show all product assignments',
+          'What adoption plans do we have?',
+          'List all assignments',
+        ],
+      },
+
+      // Template: Adoption plans for a specific customer
+      {
+        id: 'adoption_plans_for_customer',
+        description: 'Find adoption plans (assignments) for a specific customer',
+        patterns: [
+          /(?:adoption\s+plans?|assignments?)\s+(?:for|of)\s+(?:customer\s+)?(.+)/i,
+          /(?:list|show|find)\s+(?:adoption\s+plans?|assignments?)\s+(?:for|of)\s+(.+)/i,
+          /(.+?)(?:'s)?\s+(?:adoption\s+plans?|assignments?)/i,
+          /what\s+(?:products?|solutions?)\s+(?:is|are)\s+(.+?)\s+(?:using|adopting|assigned)/i,
+        ],
+        category: 'adoption',
+        buildQuery: (params: Record<string, any>) => ({
+          model: 'customer',
+          operation: 'findMany',
+          args: {
+            where: {
+              deletedAt: null,
+              name: { contains: params.customerName, mode: 'insensitive' },
+            },
+            select: {
+              id: true,
+              name: true,
+              products: {
+                select: {
+                  id: true,
+                  name: true,
+                  product: { select: { name: true } },
+                  licenseLevel: true,
+                  adoptionPlan: {
+                    select: {
+                      progressPercentage: true,
+                      completedTasks: true,
+                      totalTasks: true,
+                    },
+                  },
+                },
+              },
+              solutions: {
+                select: {
+                  id: true,
+                  name: true,
+                  solution: { select: { name: true } },
+                  licenseLevel: true,
+                },
+              },
+            },
+          },
+        }),
+        parameters: [
+          {
+            name: 'customerName',
+            type: 'string',
+            extractPattern: /(?:(?:for|of)\s+(?:customer\s+)?|^)(.+?)(?:\s+(?:adoption|assignment)|'s\s+(?:adoption|assignment)|$)/i,
+            required: true,
+          },
+        ],
+        examples: [
+          'Adoption plans for Acme Corp',
+          'Show assignments for customer ABC',
+          'What products is Cisco using?',
+          "Acme's adoption plans",
         ],
       },
 

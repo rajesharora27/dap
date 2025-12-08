@@ -4,8 +4,9 @@
  * Exports for the AI Agent module.
  * 
  * @module services/ai
- * @version 1.0.0
+ * @version 1.1.0
  * @created 2025-12-05
+ * @updated 2025-12-08 - Added Phase 4 components (Cache, Audit, Error Handling)
  */
 
 // Main service
@@ -21,6 +22,17 @@ export {
   getSchemaContextManager,
   resetSchemaContextManager,
 } from './SchemaContextManager';
+
+// Data Context Manager (Phase 5 - RAG)
+export {
+  DataContextManager,
+  getDataContextManager,
+  resetDataContextManager,
+} from './DataContextManager';
+
+export type {
+  DataContext,
+} from './DataContextManager';
 
 // Query Templates
 export {
@@ -64,6 +76,46 @@ export {
 export type {
   FormatOptions,
 } from './ResponseFormatter';
+
+// Cache Manager (Phase 4.1)
+export {
+  CacheManager,
+  getCacheManager,
+  resetCacheManager,
+} from './CacheManager';
+
+export type {
+  CacheStats,
+  CacheConfig,
+} from './CacheManager';
+
+// Audit Logger (Phase 4.2)
+export {
+  AuditLogger,
+  getAuditLogger,
+  resetAuditLogger,
+  generateRequestId,
+} from './AuditLogger';
+
+export type {
+  AuditLogEntry,
+  AuditLoggerConfig,
+} from './AuditLogger';
+
+// Error Handler (Phase 4.3)
+export {
+  ErrorHandler,
+  getErrorHandler,
+  resetErrorHandler,
+  AIErrorType,
+  ErrorSeverity,
+} from './ErrorHandler';
+
+export type {
+  AIError,
+  FallbackResult,
+  ErrorHandlerConfig,
+} from './ErrorHandler';
 
 // Types
 export type {

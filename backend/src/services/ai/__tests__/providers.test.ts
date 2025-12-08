@@ -141,10 +141,11 @@ describe('LLM Providers', () => {
 
     it('should return predictable responses for known patterns', async () => {
       const productResponse = await provider.complete('List all products');
-      expect(productResponse.text).toContain('product');
+      // MockProvider may return JSON with capitalized model names
+      expect(productResponse.text.toLowerCase()).toContain('product');
 
       const customerResponse = await provider.complete('Show customers');
-      expect(customerResponse.text).toContain('customer');
+      expect(customerResponse.text.toLowerCase()).toContain('customer');
     });
 
     it('should support custom responses', async () => {

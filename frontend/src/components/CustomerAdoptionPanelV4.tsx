@@ -1408,7 +1408,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                     </Paper>
                   )}
 
-                  {/* Product Assignments Section */}
+                  {/* Product Adoption Plans Section */}
                   <Paper
                     elevation={0}
                     sx={{
@@ -1434,7 +1434,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                           {productAssignmentsExpanded ? <ExpandLess /> : <ExpandMore />}
                         </IconButton>
                         <Typography variant="subtitle1" fontWeight="600" color="text.primary">
-                          Products
+                          Product Assignments
                         </Typography>
                         <Chip
                           label={sortedProducts?.length || 0}
@@ -1466,7 +1466,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                             return (
                               <Tooltip
                                 key={cp.id}
-                                title={isFromSolution ? "Part of solution assignment • Edit via solution • Double-click to view plan" : "Direct product assignment • Double-click to view plan"}
+                                title={isFromSolution ? "Part of solution assignment • Edit via solution • Double-click to view adoption plan" : "Product assignment • Double-click to view adoption plan"}
                                 arrow
                                 placement="top"
                               >
@@ -1590,14 +1590,14 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                       ) : (
                         <Box sx={{ textAlign: 'center', py: 4, backgroundColor: 'background.default', borderRadius: 1 }}>
                           <Typography variant="body2" color="text.secondary">
-                            No products assigned yet
+                            No product assignments yet
                           </Typography>
                         </Box>
                       )}
                     </Collapse>
                   </Paper>
 
-                  {/* Solution Assignments Section */}
+                  {/* Solution Adoption Plans Section */}
                   <Paper
                     elevation={0}
                     sx={{
@@ -1622,7 +1622,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                           {solutionAssignmentsExpanded ? <ExpandLess /> : <ExpandMore />}
                         </IconButton>
                         <Typography variant="subtitle1" fontWeight="600" color="text.primary">
-                          Solutions
+                          Solution Assignments
                         </Typography>
                         <Chip
                           label={selectedCustomer.solutions?.length || 0}
@@ -1652,7 +1652,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                           {selectedCustomer.solutions.map((cs: any) => (
                             <Tooltip
                               key={cs.id}
-                              title="Solution assignment with multiple products • Double-click to view plan"
+                              title="Solution assignment with multiple products • Double-click to view adoption plan"
                               arrow
                               placement="top"
                             >
@@ -1751,7 +1751,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                       ) : (
                         <Box sx={{ textAlign: 'center', py: 4, backgroundColor: 'background.default', borderRadius: 1 }}>
                           <Typography variant="body2" color="text.secondary">
-                            No solutions assigned yet
+                            No solution assignments yet
                           </Typography>
                         </Box>
                       )}

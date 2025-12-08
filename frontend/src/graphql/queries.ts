@@ -223,3 +223,64 @@ export const OUTCOMES = gql`
     }
   }
 `;
+
+export const PRODUCT = gql`
+  query ProductDetail($id: ID!) {
+    product(id: $id) {
+      id
+      name
+      description
+      statusPercent
+      customAttrs
+      licenses {
+        id
+        name
+        description
+        level
+        isActive
+      }
+      releases {
+        id
+        name
+        description
+        level
+        isActive
+      }
+      outcomes {
+        id
+        name
+        description
+      }
+    }
+  }
+`;
+
+export const SOLUTION = gql`
+  query SolutionDetail($id: ID!) {
+    solution(id: $id) {
+      id
+      name
+      description
+      customAttrs
+      outcomes {
+        id
+        name
+        description
+      }
+      releases {
+        id
+        name
+        description
+        level
+      }
+      products {
+        edges {
+          node {
+            id
+            name
+          }
+        }
+      }
+    }
+  }
+`;

@@ -4,9 +4,9 @@
  * Main service for processing natural language queries about DAP data.
  * 
  * @module services/ai/AIAgentService
- * @version 1.4.0
+ * @version 1.5.0
  * @created 2025-12-05
- * @updated 2025-12-06 - Phase 2.5: Integrated ResponseFormatter for human-readable outputs
+ * @updated 2025-12-08 - Phase 4: Added caching, audit logging, error handling
  */
 
 import {
@@ -23,6 +23,11 @@ import { QueryExecutor, getQueryExecutor, QueryExecutionResult, QueryConfig } fr
 import { RBACFilter, getRBACFilter, RBACUserContext, RBACFilterResult } from './RBACFilter';
 import { ResponseFormatter, getResponseFormatter } from './ResponseFormatter';
 import { ILLMProvider, getDefaultProvider } from './providers';
+import { CacheManager, getCacheManager } from './CacheManager';
+import { AuditLogger, getAuditLogger, generateRequestId, AuditLogEntry } from './AuditLogger';
+import { ErrorHandler, getErrorHandler, AIErrorType } from './ErrorHandler';
+import { DataContextManager, getDataContextManager } from './DataContextManager';
+import { PrismaClient } from '@prisma/client';
 
 /**
  * Default configuration for the AI Agent
@@ -62,21 +67,52 @@ export class AIAgentService {
   private rbacFilter: RBACFilter;
   private responseFormatter: ResponseFormatter;
   private llmProvider: ILLMProvider | null = null;
+  
+  // Phase 4 components
+  private cacheManager: CacheManager;
+  private auditLogger: AuditLogger;
+  private errorHandler: ErrorHandler;
+  
+  // Phase 5: Data context for RAG
+  private dataContextManager: DataContextManager | null = null;
+  private prisma: PrismaClient | null = null;
 
   /**
    * Create a new AI Agent Service
    * @param config - Optional configuration overrides
+   * @param prisma - Optional Prisma client for data context
    */
-  constructor(config: Partial<AIAgentConfig> = {}) {
+  constructor(config: Partial<AIAgentConfig> = {}, prisma?: PrismaClient) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.queryTemplates = getQueryTemplates();
     this.schemaContextManager = getSchemaContextManager();
-    this.queryExecutor = getQueryExecutor(undefined, {
+    this.queryExecutor = getQueryExecutor(prisma, {
       maxRows: this.config.maxRows,
       timeoutMs: this.config.timeout,
     });
     this.rbacFilter = getRBACFilter();
     this.responseFormatter = getResponseFormatter();
+    
+    // Phase 4: Initialize caching, audit logging, and error handling
+    this.cacheManager = getCacheManager({
+      ttlMs: 5 * 60 * 1000, // 5 minutes
+      maxEntries: 1000,
+    });
+    this.auditLogger = getAuditLogger({
+      enabled: true,
+      logToConsole: process.env.NODE_ENV === 'development',
+    });
+    this.errorHandler = getErrorHandler({
+      enableFallbacks: true,
+      maxRetries: 2,
+    });
+
+    // Phase 5: Initialize data context manager for RAG
+    if (prisma) {
+      this.prisma = prisma;
+      this.dataContextManager = getDataContextManager(prisma);
+      console.log('[AI Agent] Data context manager initialized');
+    }
 
     // Initialize LLM provider
     try {
@@ -112,50 +148,134 @@ export class AIAgentService {
    * Process a natural language question
    * 
    * This is the main entry point for the AI Agent. It:
-   * 1. Tries to match the question to a pre-defined template (fast path)
-   * 2. If no match, prepares for LLM query generation (Phase 2)
-   * 3. Applies RBAC filters based on user role
-   * 4. Executes the query
-   * 5. Formats the response
+   * 1. Checks cache for existing response
+   * 2. Tries to match the question to a pre-defined template (fast path)
+   * 3. If no match, uses LLM query generation
+   * 4. Applies RBAC filters based on user role
+   * 5. Executes the query
+   * 6. Formats and caches the response
+   * 7. Logs the query for auditing
    * 
    * @param request - The query request
    * @returns The query response with answer and data
    */
   async processQuestion(request: AIQueryRequest): Promise<AIQueryResponse> {
     const startTime = Date.now();
+    const requestId = generateRequestId();
+    let templateUsed: string | null = null;
+    let llmUsed = false;
 
     try {
       // Validate request
       this.validateRequest(request);
 
+      // Phase 4.1: Check cache first
+      const cachedResponse = this.cacheManager.get(
+        request.question,
+        request.userId,
+        request.userRole
+      );
+      if (cachedResponse) {
+        // Log cache hit
+        this.logQuery(requestId, request, cachedResponse, startTime, null, true);
+        return cachedResponse;
+      }
+
       // Try to match to a template (Tier 1: Fast, safe queries)
       const templateMatch = this.findMatchingTemplate(request.question);
 
+      let response: AIQueryResponse;
+
       if (templateMatch) {
         // Template matched - use pre-defined query
-        return this.handleTemplateMatch(templateMatch, request, startTime);
+        templateUsed = templateMatch.template.id;
+        response = await this.handleTemplateMatch(templateMatch, request, startTime);
+      } else if (this.llmProvider) {
+        // No template match - use LLM query generation
+        llmUsed = true;
+        response = await this.handleLLMQuery(request, startTime);
+      } else {
+        // Fallback to suggestions if no LLM
+        response = this.handleNoMatch(request, startTime);
       }
 
-      // No template match - use LLM query generation (Phase 2)
-      if (this.llmProvider) {
-        return this.handleLLMQuery(request, startTime);
+      // Phase 4.1: Cache the response (if no error)
+      if (!response.error) {
+        this.cacheManager.set(request.question, request.userId, request.userRole, response);
       }
 
-      // Fallback to suggestions if no LLM
-      return this.handleNoMatch(request, startTime);
+      // Phase 4.2: Log the query
+      this.logQuery(requestId, request, response, startTime, templateUsed, false, llmUsed);
+
+      return response;
 
     } catch (error: any) {
-      return {
-        answer: 'I encountered an error processing your question.',
-        error: error.message || 'Unknown error',
-        metadata: {
-          executionTime: Date.now() - startTime,
-          rowCount: 0,
-          truncated: false,
-          cached: false,
-        },
-      };
+      // Phase 4.3: Enhanced error handling with fallbacks
+      const aiError = this.errorHandler.classifyError(error, {
+        question: request.question,
+        userId: request.userId,
+        userRole: request.userRole,
+      });
+
+      // Try fallback strategies
+      const fallback = await this.errorHandler.tryFallback(aiError, request);
+      if (fallback.success && fallback.response) {
+        // Log the fallback
+        this.auditLogger.logError(requestId, request.userId, request.userRole, request.question, error, {
+          executionTimeMs: Date.now() - startTime,
+          templateUsed,
+          llmUsed,
+        });
+        return fallback.response;
+      }
+
+      // Format error response
+      const errorResponse = this.errorHandler.formatErrorResponse(aiError);
+      
+      // Log the error
+      this.auditLogger.logError(requestId, request.userId, request.userRole, request.question, error, {
+        executionTimeMs: Date.now() - startTime,
+        templateUsed,
+        llmUsed,
+      });
+
+      return errorResponse;
     }
+  }
+
+  /**
+   * Log a query for auditing
+   */
+  private logQuery(
+    requestId: string,
+    request: AIQueryRequest,
+    response: AIQueryResponse,
+    startTime: number,
+    templateUsed: string | null,
+    cached: boolean,
+    llmUsed: boolean = false
+  ): void {
+    const entry: AuditLogEntry = {
+      requestId,
+      timestamp: new Date().toISOString(),
+      userId: request.userId,
+      userRole: request.userRole,
+      question: request.question,
+      templateUsed,
+      llmUsed,
+      llmProvider: llmUsed && this.llmProvider ? this.llmProvider.name : null,
+      cached,
+      executionTimeMs: Date.now() - startTime,
+      rowCount: response.metadata?.rowCount || 0,
+      hasError: !!response.error,
+      errorMessage: response.error || null,
+      accessDenied: response.answer.includes('permission') || response.answer.includes('Access denied'),
+      ipAddress: null,
+      userAgent: null,
+      conversationId: request.conversationId || null,
+    };
+
+    this.auditLogger.logQuery(entry);
   }
 
   /**
@@ -520,6 +640,55 @@ export class AIAgentService {
   }
 
   /**
+   * Get cache statistics (Phase 4.1)
+   */
+  getCacheStats() {
+    return this.cacheManager.getStats();
+  }
+
+  /**
+   * Clear the cache (Phase 4.1)
+   */
+  clearCache(): void {
+    this.cacheManager.clear();
+  }
+
+  /**
+   * Get audit statistics (Phase 4.2)
+   */
+  getAuditStats() {
+    return this.auditLogger.getStats();
+  }
+
+  /**
+   * Get error statistics (Phase 4.3)
+   */
+  getErrorStats() {
+    return this.errorHandler.getStats();
+  }
+
+  /**
+   * Get the cache manager instance (for testing)
+   */
+  getCacheManager(): CacheManager {
+    return this.cacheManager;
+  }
+
+  /**
+   * Get the audit logger instance (for testing)
+   */
+  getAuditLogger(): AuditLogger {
+    return this.auditLogger;
+  }
+
+  /**
+   * Get the error handler instance (for testing)
+   */
+  getErrorHandler(): ErrorHandler {
+    return this.errorHandler;
+  }
+
+  /**
    * Handle a query using the LLM when no template matches
    */
   private async handleLLMQuery(
@@ -617,11 +786,22 @@ export class AIAgentService {
     }
 
     const schemaContext = this.schemaContextManager.getContextPrompt();
+    
+    // Get data context if available
+    let dataContext = '';
+    if (this.dataContextManager) {
+      try {
+        dataContext = await this.dataContextManager.getContextPrompt();
+      } catch (error) {
+        console.warn('[AI Agent] Failed to get data context:', error);
+      }
+    }
 
     const systemPrompt = `You are a data analyst helper for the DAP (Database Application Platform) system.
 Your goal is to convert natural language questions into a JSON query configuration for the Prisma ORM.
 
 ${schemaContext}
+${dataContext}
 
 ## Response Format
 You must return a valid JSON object matching this TypeScript interface:
@@ -637,10 +817,14 @@ interface QueryConfig {
 2. Use 'findMany' for lists, 'count' for simple counts.
 3. Always include 'where: { deletedAt: null }' for models that support soft delete (Product, Solution, Customer, Task).
 4. Do not limit 'take' unless the user asks for top N. The system applies a safe default limit.
-5. For complex text searches, use 'contains' with 'mode: "insensitive"'.
+5. For text searches, use 'contains' with 'mode: "insensitive"' for partial matching.
 6. If the user asks for everything (e.g., "all products"), return a findMany with empty where (except deletedAt check).
 7. For counting, ALWAYS use "operation": "count". Do NOT use "operation": "aggregate" with "count" inside args (Prisma uses _count).
 8. For other aggregations (sum, avg), use "operation": "aggregate" and args like { "_sum": { "amount": true } }.
+9. CRITICAL - To find records WITHOUT related items, use NOT with some: "NOT": { "telemetryAttributes": { "some": {} } }
+10. To find records WITH related items, use: "telemetryAttributes": { "some": {} }
+11. NEVER use { "none": {} } - it does NOT work correctly in Prisma!
+12. When filtering by product or solution name, use: "product": { "name": { "contains": "Name", "mode": "insensitive" } }
 
 ## Examples
 
@@ -665,7 +849,7 @@ Response:
       "name": { "contains": "Acme", "mode": "insensitive" },
       "deletedAt": null
     },
-    "include": { "adoptionPlan": true }
+    "include": { "products": { "include": { "adoptionPlan": true } } }
   }
 }
 
@@ -676,6 +860,120 @@ Response:
   "operation": "count",
   "args": {
     "where": { "deletedAt": null }
+  }
+}
+
+User: "List all tasks for Cisco Secure Access that do not have telemetry"
+Response:
+{
+  "model": "Task",
+  "operation": "findMany",
+  "args": {
+    "where": {
+      "deletedAt": null,
+      "product": {
+        "name": { "contains": "Cisco Secure Access", "mode": "insensitive" }
+      },
+      "NOT": {
+        "telemetryAttributes": { "some": {} }
+      }
+    },
+    "select": {
+      "id": true,
+      "name": true,
+      "description": true,
+      "weight": true,
+      "estMinutes": true,
+      "product": { "select": { "name": true } },
+      "_count": { "select": { "telemetryAttributes": true } }
+    }
+  }
+}
+
+User: "Find tasks with telemetry attributes"
+Response:
+{
+  "model": "Task",
+  "operation": "findMany",
+  "args": {
+    "where": {
+      "deletedAt": null,
+      "telemetryAttributes": { "some": {} }
+    },
+    "select": {
+      "id": true,
+      "name": true,
+      "product": { "select": { "name": true } },
+      "telemetryAttributes": { "select": { "name": true, "dataType": true } }
+    }
+  }
+}
+
+User: "Show me adoption plans for customer Acme"
+Response:
+{
+  "model": "Customer",
+  "operation": "findMany",
+  "args": {
+    "where": {
+      "deletedAt": null,
+      "name": { "contains": "Acme", "mode": "insensitive" }
+    },
+    "select": {
+      "id": true,
+      "name": true,
+      "products": {
+        "select": {
+          "name": true,
+          "product": { "select": { "name": true } },
+          "licenseLevel": true,
+          "adoptionPlan": {
+            "select": {
+              "progressPercentage": true,
+              "completedTasks": true,
+              "totalTasks": true
+            }
+          }
+        }
+      },
+      "solutions": {
+        "select": {
+          "name": true,
+          "solution": { "select": { "name": true } }
+        }
+      }
+    }
+  }
+}
+
+User: "Products with tasks that have no telemetry"
+Response:
+{
+  "model": "Product",
+  "operation": "findMany",
+  "args": {
+    "where": {
+      "deletedAt": null,
+      "tasks": {
+        "some": {
+          "deletedAt": null,
+          "NOT": {
+            "telemetryAttributes": { "some": {} }
+          }
+        }
+      }
+    },
+    "select": {
+      "id": true,
+      "name": true,
+      "tasks": {
+        "where": {
+          "deletedAt": null,
+          "NOT": { "telemetryAttributes": { "some": {} } }
+        },
+        "select": { "id": true, "name": true }
+      }
+    }
   }
 }
 `;
@@ -777,6 +1075,83 @@ Response:
       { rowCount: data.length, data } as any
     );
   }
+
+  // ============================================================
+  // Phase 5: Data Context Management (RAG)
+  // ============================================================
+
+  /**
+   * Refresh the data context from the database
+   * @returns Information about the refresh
+   */
+  async refreshDataContext(): Promise<{
+    success: boolean;
+    lastRefreshed: Date | null;
+    statistics: any;
+    error?: string;
+  }> {
+    if (!this.dataContextManager) {
+      return {
+        success: false,
+        lastRefreshed: null,
+        statistics: null,
+        error: 'Data context manager not initialized. Prisma client required.'
+      };
+    }
+
+    try {
+      const context = await this.dataContextManager.refresh();
+      
+      // Clear the query cache since data has changed
+      this.cacheManager.clear();
+      
+      return {
+        success: true,
+        lastRefreshed: context.lastRefreshed,
+        statistics: context.statistics
+      };
+    } catch (error: any) {
+      console.error('[AI Agent] Failed to refresh data context:', error);
+      return {
+        success: false,
+        lastRefreshed: this.dataContextManager.getLastRefreshed(),
+        statistics: null,
+        error: error.message || String(error)
+      };
+    }
+  }
+
+  /**
+   * Get data context status
+   */
+  getDataContextStatus(): {
+    initialized: boolean;
+    lastRefreshed: Date | null;
+    hasDataContext: boolean;
+  } {
+    return {
+      initialized: !!this.dataContextManager,
+      lastRefreshed: this.dataContextManager?.getLastRefreshed() || null,
+      hasDataContext: !!this.dataContextManager
+    };
+  }
+
+  /**
+   * Get the data context manager (for testing/advanced use)
+   */
+  getDataContextManager(): DataContextManager | null {
+    return this.dataContextManager;
+  }
+
+  /**
+   * Set the Prisma client and initialize data context manager
+   * Call this after construction if prisma wasn't provided initially
+   */
+  setPrismaClient(prisma: PrismaClient): void {
+    this.prisma = prisma;
+    this.dataContextManager = getDataContextManager(prisma);
+    console.log('[AI Agent] Data context manager initialized via setPrismaClient');
+  }
 }
 
 // Export singleton instance
@@ -785,11 +1160,15 @@ let instance: AIAgentService | null = null;
 /**
  * Get the singleton AI Agent Service instance
  * @param config - Optional configuration (only used on first call)
+ * @param prisma - Optional Prisma client for data context (only used on first call)
  * @returns The AI Agent Service instance
  */
-export function getAIAgentService(config?: Partial<AIAgentConfig>): AIAgentService {
+export function getAIAgentService(config?: Partial<AIAgentConfig>, prisma?: PrismaClient): AIAgentService {
   if (!instance) {
-    instance = new AIAgentService(config);
+    instance = new AIAgentService(config, prisma);
+  } else if (prisma && !instance.getDataContextManager()) {
+    // If instance exists but doesn't have data context, set it
+    instance.setPrismaClient(prisma);
   }
   return instance;
 }

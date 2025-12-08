@@ -4,8 +4,9 @@
  * Resolvers for AI-powered natural language queries.
  * 
  * @module schema/resolvers/ai
- * @version 1.0.0
+ * @version 1.1.0
  * @created 2025-12-05
+ * @updated 2025-12-08 - Added data context refresh
  */
 
 import { getAIAgentService } from '../../services/ai';
@@ -35,8 +36,8 @@ export const AIQueryResolvers = {
     // Log the request (for debugging)
     console.log(`[AI Agent] Query from ${userRole} user ${userId}: "${question.substring(0, 50)}..."`);
 
-    // Get the AI Agent service
-    const aiService = getAIAgentService();
+    // Get the AI Agent service with prisma client for data context
+    const aiService = getAIAgentService(undefined, ctx.prisma);
 
     // Process the question
     const response = await aiService.processQuestion({
@@ -55,13 +56,48 @@ export const AIQueryResolvers = {
 
     return response;
   },
+  
+  /**
+   * Get the AI agent's data context status
+   */
+  aiDataContextStatus: async (_: any, __: any, ctx: Context) => {
+    const aiService = getAIAgentService(undefined, ctx.prisma);
+    return aiService.getDataContextStatus();
+  },
 };
 
 /**
- * AI Mutation Resolvers (for future use)
+ * AI Mutation Resolvers
  */
 export const AIMutationResolvers = {
-  // Future: startAIConversation, clearAIConversations, etc.
+  /**
+   * Refresh the AI agent's data context from the database
+   * This updates the entity names, statistics, and other metadata
+   * used by the LLM for query generation.
+   */
+  refreshAIDataContext: async (_: any, __: any, ctx: Context) => {
+    // Only admins can refresh the data context
+    if (ctx.user?.role !== 'ADMIN') {
+      return {
+        success: false,
+        lastRefreshed: null,
+        statistics: null,
+        error: 'Only administrators can refresh the AI data context'
+      };
+    }
+    
+    console.log(`[AI Agent] Data context refresh requested by ${ctx.user?.userId || 'unknown'}`);
+    
+    // Get the AI Agent service with prisma client
+    const aiService = getAIAgentService(undefined, ctx.prisma);
+    
+    // Refresh the data context
+    const result = await aiService.refreshDataContext();
+    
+    console.log(`[AI Agent] Data context refresh result: ${result.success ? 'SUCCESS' : 'FAILED'}`);
+    
+    return result;
+  },
 };
 
 

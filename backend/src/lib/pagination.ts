@@ -260,6 +260,8 @@ export async function fetchSolutionsPaginated(args: ConnectionArgs & { accessibl
     skip,
     take,
     include: {
+      outcomes: true,
+      releases: true,
       products: {
         include: {
           product: true

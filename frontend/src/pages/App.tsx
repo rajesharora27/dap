@@ -43,6 +43,10 @@ import {
 } from '@mui/material';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
 import { TaskPreviewDialog } from '../components/dialogs/TaskPreviewDialog';
+import { ProductPreviewDialog } from '../components/dialogs/ProductPreviewDialog';
+import { SolutionPreviewDialog } from '../components/dialogs/SolutionPreviewDialog';
+import { CustomerPreviewDialog } from '../components/dialogs/CustomerPreviewDialog';
+import { AdoptionPlanDialog } from '../components/dialogs/AdoptionPlanDialog';
 
 // Code splitting: Lazy load heavy page components
 const ProductsPage = lazy(() => import('./ProductsPage').then(m => ({ default: m.ProductsPage })));
@@ -989,6 +993,16 @@ export function App() {
   const [profileDialog, setProfileDialog] = useState(false);
   const [openTaskPreview, setOpenTaskPreview] = useState(false);
   const [previewTaskId, setPreviewTaskId] = useState('');
+  
+  // Preview dialog states for AI Chat navigation
+  const [openProductPreview, setOpenProductPreview] = useState(false);
+  const [previewProductId, setPreviewProductId] = useState('');
+  const [openSolutionPreview, setOpenSolutionPreview] = useState(false);
+  const [previewSolutionId, setPreviewSolutionId] = useState('');
+  const [openCustomerPreview, setOpenCustomerPreview] = useState(false);
+  const [previewCustomerId, setPreviewCustomerId] = useState('');
+  const [openAdoptionPlanPreview, setOpenAdoptionPlanPreview] = useState(false);
+  const [previewAdoptionPlanId, setPreviewAdoptionPlanId] = useState<string | null>(null);
 
   const [editingProduct, setEditingProduct] = useState<any>(null);
 
@@ -1012,12 +1026,14 @@ export function App() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
-  const { data: tasksData, refetch: refetchTasks } = useQuery(TASKS_FOR_PRODUCT, {
-    variables: { productId: selectedProduct },
-    skip: !selectedProduct || !isAuthenticated
-  });
-
-  const tasks = tasksData?.tasks?.edges?.map((edge: any) => edge.node) || [];
+  // Redundant TASKS query removed. Handled by ProductsPage.
+  const tasks: any[] = [];
+  const refetchTasks = async () => { };
+  // const { data: tasksData, refetch: refetchTasks } = useQuery(TASKS_FOR_PRODUCT, {
+  //   variables: { productId: selectedProduct },
+  //   skip: !selectedProduct || !isAuthenticated
+  // });
+  // const tasks = tasksData?.tasks?.edges?.map((edge: any) => edge.node) || [];
 
   // GraphQL queries - MUST be called before any conditional returns
   const { data: productsData, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PRODUCTS, {
@@ -1672,31 +1688,7 @@ export function App() {
   };
 
   const handleDragEnd = async (event: any) => {
-    const { active, over } = event;
-
-    if (active.id !== over?.id) {
-      const oldIndex = tasks.findIndex((task: any) => task.id === active.id);
-      const newIndex = tasks.findIndex((task: any) => task.id === over.id);
-
-      const newTasks = arrayMove(tasks, oldIndex, newIndex);
-      const newOrder = newTasks.map((task: any) => task.id);
-
-      try {
-        await client.mutate({
-          mutation: REORDER_TASKS,
-          variables: {
-            productId: selectedProduct,
-            order: newOrder
-          }
-        });
-
-        // Refetch tasks to get updated sequence numbers
-        await refetchTasks();
-      } catch (error: any) {
-        console.error('Error reordering tasks:', error);
-        alert('Failed to reorder tasks: ' + (error?.message || 'Unknown error'));
-      }
-    }
+    // Redundant handler removed. Handled by ProductsPage.
   };
 
 
@@ -2082,22 +2074,27 @@ export function App() {
   const handleNavigate = (type: string, id: string) => {
     switch (type) {
       case 'products':
-        setSelectedSection('products');
-        setSelectedProduct(id);
-        setViewMode('detail');
-        localStorage.setItem('lastSelectedProductId', id);
+        // Open product preview dialog instead of navigating
+        setPreviewProductId(id);
+        setOpenProductPreview(true);
         break;
       case 'solutions':
-        setSelectedSection('solutions');
-        setSelectedSolution(id);
+        // Open solution preview dialog instead of navigating
+        setPreviewSolutionId(id);
+        setOpenSolutionPreview(true);
         break;
       case 'customers':
-        setSelectedSection('customers');
-        setSelectedCustomerId(id);
+        // Open customer preview dialog instead of navigating
+        setPreviewCustomerId(id);
+        setOpenCustomerPreview(true);
         break;
       case 'tasks':
         setPreviewTaskId(id);
         setOpenTaskPreview(true);
+        break;
+      case 'adoptionPlans':
+        setPreviewAdoptionPlanId(id);
+        setOpenAdoptionPlanPreview(true);
         break;
     }
   };
@@ -2533,6 +2530,7 @@ export function App() {
                     </Box>
                   }>
                     <ProductsPage
+                      key={selectedProduct}
                       onEditProduct={(product) => {
                         setEditingProduct({ ...product });
                         setEditProductDialog(true);
@@ -2549,7 +2547,7 @@ export function App() {
                     <CircularProgress size={60} />
                   </Box>
                 }>
-                  <SolutionsPage />
+                  <SolutionsPage key={selectedSolution} />
                 </Suspense>
               )}
 
@@ -2560,7 +2558,7 @@ export function App() {
                     <CircularProgress size={60} />
                   </Box>
                 }>
-                  <CustomersPage />
+                  <CustomersPage key={selectedCustomer || selectedCustomerId} />
                 </Suspense>
               )}
 
@@ -2803,6 +2801,34 @@ export function App() {
         open={openTaskPreview}
         onClose={() => setOpenTaskPreview(false)}
         taskId={previewTaskId}
+      />
+      
+      {/* Product Preview Dialog */}
+      <ProductPreviewDialog
+        open={openProductPreview}
+        onClose={() => setOpenProductPreview(false)}
+        productId={previewProductId}
+      />
+      
+      {/* Solution Preview Dialog */}
+      <SolutionPreviewDialog
+        open={openSolutionPreview}
+        onClose={() => setOpenSolutionPreview(false)}
+        solutionId={previewSolutionId}
+      />
+      
+      {/* Customer Preview Dialog */}
+      <CustomerPreviewDialog
+        open={openCustomerPreview}
+        onClose={() => setOpenCustomerPreview(false)}
+        customerId={previewCustomerId}
+      />
+      
+      {/* Adoption Plan Preview Dialog */}
+      <AdoptionPlanDialog
+        open={openAdoptionPlanPreview}
+        onClose={() => setOpenAdoptionPlanPreview(false)}
+        adoptionPlanId={previewAdoptionPlanId}
       />
     </Box>
   );
