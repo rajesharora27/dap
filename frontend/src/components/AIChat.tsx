@@ -405,10 +405,13 @@ What would you like to know?`,
                           } else if (row.name) {
                             // If we have just name/description, try to infer from data context or default logging
                             console.warn('Could not detect row type for navigation:', row);
+                            // Default to tasks if ambiguous but has ID
+                            onNavigate('tasks', row.id);
+                          } else {
+                            // Absolute fallback
+                            onNavigate('tasks', row.id);
                           }
-                          onNavigate('tasks', row.id);
                         }
-                      }
                       }}
                     />
                   </Box>
