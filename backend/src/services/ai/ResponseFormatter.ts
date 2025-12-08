@@ -120,7 +120,7 @@ export class ResponseFormatter {
         answer += this.formatFooter(result);
 
         // Strictly sanitize raw data to remove ALL IDs
-        const cleanData = this.options.includeRawData ? this.sanitizeData(result.data) : undefined;
+        const cleanData = this.options.includeRawData ? this.sanitizeData(result.data, template.category) : undefined;
 
         return {
             answer,
@@ -140,15 +140,27 @@ export class ResponseFormatter {
     /**
      * Recursively remove IDs from data object
      */
-    private sanitizeData(data: any): any {
+    private sanitizeData(data: any, category: string = 'general'): any {
         if (!data) return data;
 
         if (Array.isArray(data)) {
-            return data.map(item => this.sanitizeData(item));
+            return data.map(item => this.sanitizeData(item, category));
         }
 
         if (typeof data === 'object') {
             const clean: any = {};
+
+            // Inject _type for frontend navigation if we have an ID and a valid category
+            if (data.id && category && category !== 'general') {
+                clean._type = category;
+            } else if (data.id) {
+                // Try to infer type if category is general
+                const inferred = this.inferLinkCategory(category, data);
+                if (inferred && inferred !== 'general') {
+                    clean._type = inferred;
+                }
+            }
+
             for (const [key, value] of Object.entries(data)) {
                 // Remove foreign key ID fields and other unwanted system fields
                 // BUT keep the primary 'id' field for navigation purposes
@@ -164,7 +176,8 @@ export class ResponseFormatter {
                 ) {
                     continue;
                 }
-                clean[key] = this.sanitizeData(value);
+                // Recursively sanitize, but reset category for nested objects to prevent mislabeling
+                clean[key] = this.sanitizeData(value, 'general');
             }
             return clean;
         }
@@ -678,6 +691,12 @@ export class ResponseFormatter {
         // FIRST: Check context category - this is the most reliable indicator
         if (contextCategory === 'tasks') {
             return { type: 'tasks', id };
+        }
+        if (contextCategory === 'products') {
+            return { type: 'products', id };
+        }
+        if (contextCategory === 'customers') {
+            return { type: 'customers', id };
         }
 
         // Tasks -> Link directly to task (by item properties)
