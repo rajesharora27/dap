@@ -15,7 +15,7 @@
  */
 
 import { fallbackActive } from '../../../context';
-import { requireUser } from '../../../lib/auth';
+import { ensureRole } from '../../../lib/auth';
 import { TelemetryService } from '../../../services/telemetry';
 
 /**
@@ -34,7 +34,7 @@ export const TelemetryAttributeResolvers = {
       return null;
     }
   },
-  
+
   values: async (parent: any, { limit = 50 }: any) => {
     if (fallbackActive) {
       return [];
@@ -46,7 +46,7 @@ export const TelemetryAttributeResolvers = {
       return [];
     }
   },
-  
+
   currentValue: async (parent: any) => {
     if (fallbackActive) {
       return null;
@@ -59,7 +59,7 @@ export const TelemetryAttributeResolvers = {
       return null;
     }
   },
-  
+
   isSuccessful: async (parent: any) => {
     if (fallbackActive) {
       return false;
@@ -107,7 +107,7 @@ export const TelemetryQueryResolvers = {
       return null;
     }
   },
-  
+
   telemetryAttributes: async (_: any, { taskId }: any) => {
     if (fallbackActive) {
       return [];
@@ -119,23 +119,23 @@ export const TelemetryQueryResolvers = {
       return [];
     }
   },
-  
+
   telemetryValue: async (_: any, { id }: any) => {
     if (fallbackActive) {
       return null;
     }
     try {
       const { prisma } = await import('../../../context');
-      return await prisma.telemetryValue.findUnique({ 
-        where: { id }, 
-        include: { attribute: true } 
+      return await prisma.telemetryValue.findUnique({
+        where: { id },
+        include: { attribute: true }
       });
     } catch (error) {
       console.error('Error fetching telemetry value:', error);
       return null;
     }
   },
-  
+
   telemetryValues: async (_: any, { attributeId, limit = 50 }: any) => {
     if (fallbackActive) {
       return [];
@@ -147,17 +147,17 @@ export const TelemetryQueryResolvers = {
       return [];
     }
   },
-  
+
   telemetryValuesByBatch: async (_: any, { batchId }: any) => {
     if (fallbackActive) {
       return [];
     }
     try {
       const { prisma } = await import('../../../context');
-      return await prisma.telemetryValue.findMany({ 
-        where: { batchId }, 
-        orderBy: { createdAt: 'desc' }, 
-        include: { attribute: true } 
+      return await prisma.telemetryValue.findMany({
+        where: { batchId },
+        orderBy: { createdAt: 'desc' },
+        include: { attribute: true }
       });
     } catch (error) {
       console.error('Error fetching telemetry values by batch:', error);
@@ -171,12 +171,12 @@ export const TelemetryQueryResolvers = {
  */
 export const TelemetryMutationResolvers = {
   createTelemetryAttribute: async (_: any, { input }: any, ctx: any) => {
-    requireUser(ctx);
+    ensureRole(ctx, ['ADMIN', 'SME']);
     try {
       console.log(`[Backend] Creating telemetry attribute "${input.name}"`);
       console.log(`[Backend] Raw successCriteria input:`, input.successCriteria);
       console.log(`[Backend] successCriteria type:`, typeof input.successCriteria);
-      
+
       let parsedCriteria = undefined;
       if (input.successCriteria) {
         try {
@@ -187,7 +187,7 @@ export const TelemetryMutationResolvers = {
           console.error(`[Backend] Failed to parse successCriteria:`, e);
         }
       }
-      
+
       return await TelemetryService.createAttribute(
         input.taskId,
         {
@@ -205,14 +205,14 @@ export const TelemetryMutationResolvers = {
       throw new Error(`Failed to create telemetry attribute: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
-  
+
   updateTelemetryAttribute: async (_: any, { id, input }: any, ctx: any) => {
-    requireUser(ctx);
+    ensureRole(ctx, ['ADMIN', 'SME']);
     try {
       console.log(`[Backend] Updating telemetry attribute ID ${id}, name "${input.name}"`);
       console.log(`[Backend] Raw successCriteria input:`, input.successCriteria);
       console.log(`[Backend] successCriteria type:`, typeof input.successCriteria);
-      
+
       let parsedCriteria = undefined;
       if (input.successCriteria) {
         try {
@@ -223,7 +223,7 @@ export const TelemetryMutationResolvers = {
           console.error(`[Backend] Failed to parse successCriteria:`, e);
         }
       }
-      
+
       return await TelemetryService.updateAttribute(
         id,
         {
@@ -241,9 +241,9 @@ export const TelemetryMutationResolvers = {
       throw new Error(`Failed to update telemetry attribute: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
-  
+
   deleteTelemetryAttribute: async (_: any, { id }: any, ctx: any) => {
-    requireUser(ctx);
+    ensureRole(ctx, ['ADMIN', 'SME']);
     try {
       const success = await TelemetryService.deleteAttribute(id, ctx.user?.id);
       return success;
@@ -252,9 +252,9 @@ export const TelemetryMutationResolvers = {
       throw new Error(`Failed to delete telemetry attribute: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
-  
+
   addTelemetryValue: async (_: any, { input }: any, ctx: any) => {
-    requireUser(ctx);
+    ensureRole(ctx, ['ADMIN', 'SME']);
     try {
       return await TelemetryService.addValue(
         input.attributeId,
@@ -270,9 +270,9 @@ export const TelemetryMutationResolvers = {
       throw new Error(`Failed to add telemetry value: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
-  
+
   addBatchTelemetryValues: async (_: any, { input }: any, ctx: any) => {
-    requireUser(ctx);
+    ensureRole(ctx, ['ADMIN', 'SME']);
     try {
       return await TelemetryService.addBatchValues(input, ctx.user?.id);
     } catch (error) {
@@ -280,9 +280,9 @@ export const TelemetryMutationResolvers = {
       throw new Error(`Failed to add batch telemetry values: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
-  
+
   updateTelemetryValue: async (_: any, { id, value, notes }: any, ctx: any) => {
-    requireUser(ctx);
+    ensureRole(ctx, ['ADMIN', 'SME']);
     try {
       return await TelemetryService.updateValue(
         id,
@@ -294,9 +294,9 @@ export const TelemetryMutationResolvers = {
       throw new Error(`Failed to update telemetry value: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   },
-  
+
   deleteTelemetryValue: async (_: any, { id }: any, ctx: any) => {
-    requireUser(ctx);
+    ensureRole(ctx, ['ADMIN', 'SME']);
     try {
       const success = await TelemetryService.deleteValue(id, ctx.user?.id);
       return success;
@@ -322,7 +322,7 @@ export const TaskTelemetryResolvers = {
       return [];
     }
   },
-  
+
   isCompleteBasedOnTelemetry: async (parent: any) => {
     if (fallbackActive) {
       return false;
@@ -335,7 +335,7 @@ export const TaskTelemetryResolvers = {
       return false;
     }
   },
-  
+
   telemetryCompletionPercentage: async (parent: any) => {
     if (fallbackActive) {
       return 0;

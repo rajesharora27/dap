@@ -4,8 +4,9 @@
  * A chat interface for the DAP AI Assistant.
  * Allows users to ask natural language questions about products, customers, and tasks.
  * 
- * @version 1.0.0
+ * @version 1.1.0
  * @created 2025-12-05
+ * @updated 2025-12-06 - Refactored to use useAIAssistant hook
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -25,6 +26,7 @@ import {
   Collapse,
   useTheme,
   alpha,
+  Tooltip,
 } from '@mui/material';
 import {
   Close,
@@ -35,61 +37,135 @@ import {
   ExpandMore,
   ExpandLess,
   Lightbulb,
+  Cached,
+  DeleteOutline,
 } from '@mui/icons-material';
-import { gql } from '@apollo/client';
 import { useAuth } from './AuthContext';
+import { useAIAssistant, AIMessage } from '../hooks/useAIAssistant';
+import QueryResultDisplay from './ai/QueryResultDisplay';
 
-// GraphQL mutation for AI queries
-const ASK_AI = gql`
-  query AskAI($question: String!, $conversationId: String) {
-    askAI(question: $question, conversationId: $conversationId) {
-      answer
-      data
-      query
-      suggestions
-      error
-      metadata {
-        executionTime
-        rowCount
-        truncated
-        cached
-        templateUsed
-      }
-    }
-  }
-`;
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-  metadata?: {
-    executionTime?: number;
-    templateUsed?: string;
-    query?: string;
-    suggestions?: string[];
-    error?: string;
-  };
-}
 
 interface AIChatProps {
   open: boolean;
   onClose: () => void;
+  onNavigate?: (type: string, id: string) => void;
 }
 
-export const AIChat: React.FC<AIChatProps> = ({ open, onClose }) => {
+export const AIChat: React.FC<AIChatProps> = ({ open, onClose, onNavigate }) => {
   const theme = useTheme();
   const { user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
   const [expandedQuery, setExpandedQuery] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  // Common/Recent Queries State
+  const [commonQueries, setCommonQueries] = useState<{ query: string; count: number }[]>([]);
 
-  // Note: Using fetch directly for the GraphQL query instead of Apollo hooks
-  // because the AI query can be long-running and we want more control over the request
+  // Native click handler for navigation links (dangerouslySetInnerHTML content)
+  useEffect(() => {
+    if (!open) return;
+
+    const timeoutId = setTimeout(() => {
+      const container = messagesContainerRef.current;
+      if (!container) return;
+
+      const handleNativeClick = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+
+        // Handle span elements with data-navigate attribute
+        if (target.hasAttribute('data-navigate')) {
+          e.preventDefault();
+          e.stopPropagation();
+          const navData = target.getAttribute('data-navigate');
+          if (navData && onNavigate) {
+            const parts = navData.split(':');
+            if (parts.length === 2) {
+              onNavigate(parts[0], parts[1]);
+              if (parts[0] !== 'tasks') {
+                onClose();
+              }
+            }
+          }
+          return;
+        }
+
+        // Legacy: Handle anchor elements with #navigate: href
+        if (target.tagName === 'A') {
+          const href = target.getAttribute('href');
+          if (href && href.startsWith('#navigate:')) {
+            e.preventDefault();
+            e.stopPropagation();
+            const parts = href.split(':');
+            if (parts.length === 3 && onNavigate) {
+              onNavigate(parts[1], parts[2]);
+              if (parts[1] !== 'tasks') {
+                onClose();
+              }
+            }
+          }
+        }
+      };
+
+      container.addEventListener('click', handleNativeClick, true);
+      (container as any).__aiChatClickHandler = handleNativeClick;
+    }, 50); // Reduced timeout
+
+    return () => {
+      clearTimeout(timeoutId);
+      const container = messagesContainerRef.current;
+      if (container && (container as any).__aiChatClickHandler) {
+        container.removeEventListener('click', (container as any).__aiChatClickHandler, true);
+        delete (container as any).__aiChatClickHandler;
+      }
+    };
+  }, [open, onNavigate, onClose]);
+
+  useEffect(() => {
+    // Load common queries on mount
+    try {
+      const saved = localStorage.getItem('dap_common_queries');
+      if (saved) {
+        setCommonQueries(JSON.parse(saved));
+      }
+    } catch (e) {
+      console.error('Failed to load common queries', e);
+    }
+  }, []);
+
+  const updateCommonQueries = (queryText: string) => {
+    try {
+      const normalized = queryText.trim();
+      if (!normalized) return;
+
+      let current = [...commonQueries];
+      const existingIndex = current.findIndex(q => q.query.toLowerCase() === normalized.toLowerCase());
+
+      if (existingIndex >= 0) {
+        current[existingIndex].count += 1;
+      } else {
+        current.push({ query: normalized, count: 1 });
+      }
+
+      // Sort by count desc and limit
+      current.sort((a, b) => b.count - a.count);
+      current = current.slice(0, 10); // Keep top 10
+
+      setCommonQueries(current);
+      localStorage.setItem('dap_common_queries', JSON.stringify(current));
+    } catch (e) {
+      console.error('Failed to update common queries', e);
+    }
+  };
+
+  // Use the AI Assistant hook for state management and API calls
+  const {
+    askQuestion,
+    loading,
+    messages,
+    addMessage,
+    clearHistory,
+  } = useAIAssistant();
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -106,8 +182,7 @@ export const AIChat: React.FC<AIChatProps> = ({ open, onClose }) => {
   // Add welcome message on first open
   useEffect(() => {
     if (open && messages.length === 0) {
-      setMessages([{
-        id: 'welcome',
+      addMessage({
         role: 'assistant',
         content: `👋 Hello${user?.fullName ? `, ${user.fullName.split(' ')[0]}` : ''}! I'm the DAP AI Assistant.
 
@@ -117,105 +192,24 @@ I can help you explore your data with natural language questions. Try asking thi
 • "List tasks without telemetry"
 
 What would you like to know?`,
-        timestamp: new Date(),
         metadata: {
           suggestions: [
             'Show me all products',
             'List customers with low adoption',
             'Find tasks without descriptions',
-            'How many customers do we have?'
-          ]
+          ],
         }
-      }]);
+      });
     }
-  }, [open, user]);
+  }, [open, user, messages.length, addMessage]);
 
   const handleSend = async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim()) return;
 
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: input.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
+    const userQuestion = input;
     setInput('');
-    setLoading(true);
-
-    try {
-      // Use fetch directly for the GraphQL query
-      const response = await fetch('/dap/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          query: `
-            query AskAI($question: String!, $conversationId: String) {
-              askAI(question: $question, conversationId: $conversationId) {
-                answer
-                data
-                query
-                suggestions
-                error
-                metadata {
-                  executionTime
-                  rowCount
-                  truncated
-                  cached
-                  templateUsed
-                }
-              }
-            }
-          `,
-          variables: {
-            question: userMessage.content,
-            conversationId: null,
-          },
-        }),
-      });
-
-      const result = await response.json();
-
-      if (result.errors) {
-        throw new Error(result.errors[0]?.message || 'GraphQL error');
-      }
-
-      const aiResponse = result.data.askAI;
-
-      const assistantMessage: Message = {
-        id: `assistant-${Date.now()}`,
-        role: 'assistant',
-        content: aiResponse.answer || 'I could not process your question.',
-        timestamp: new Date(),
-        metadata: {
-          executionTime: aiResponse.metadata?.executionTime,
-          templateUsed: aiResponse.metadata?.templateUsed,
-          query: aiResponse.query,
-          suggestions: aiResponse.suggestions,
-          error: aiResponse.error,
-        },
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-
-    } catch (error: any) {
-      const errorMessage: Message = {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: '❌ Sorry, I encountered an error processing your question.',
-        timestamp: new Date(),
-        metadata: {
-          error: error.message || 'Unknown error',
-        },
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setLoading(false);
-    }
+    updateCommonQueries(userQuestion);
+    await askQuestion(userQuestion);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -237,9 +231,51 @@ What would you like to know?`,
   const formatMarkdown = (text: string) => {
     // Simple markdown formatting
     return text
+      // Links
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, href) => {
+        const isInternal = href.startsWith('#navigate:');
+        const targetAttr = isInternal ? '' : ' target="_blank" rel="noopener noreferrer"';
+        return `<a href="${href}"${targetAttr} style="color: #1976d2; text-decoration: none; font-weight: 500;">${text}</a>`;
+      })
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/`([^`]+)`/g, '<code style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>')
       .replace(/\n/g, '<br/>');
+  };
+
+  const handleMessageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    console.log('Click detected on:', target.tagName, target);
+
+    if (target.tagName === 'A') {
+      const href = target.getAttribute('href');
+      const targetAttr = target.getAttribute('target');
+      console.log('Link clicked - href:', href, 'target:', targetAttr);
+
+      // If it's an external link (target="_blank"), allow default browser behavior
+      if (targetAttr === '_blank') {
+        console.log('External link - allowing default behavior');
+        return;
+      }
+
+      // Handle internal navigation links
+      if (href && href.startsWith('#navigate:')) {
+        console.log('Navigation link detected');
+        e.preventDefault();
+        e.stopPropagation();
+        const parts = href.split(':');
+        console.log('Parts:', parts, 'onNavigate exists:', !!onNavigate);
+        if (parts.length === 3 && onNavigate) {
+          console.log('Navigating via AI link:', parts[1], parts[2]);
+          onNavigate(parts[1], parts[2]);
+          // Close chat ONLY if not a task preview (which opens a dialog on top)
+          if (parts[1] !== 'tasks') {
+            onClose();
+          }
+        }
+      } else {
+        console.log('Link href does not start with #navigate:', href);
+      }
+    }
   };
 
   return (
@@ -306,6 +342,7 @@ What would you like to know?`,
         }}
       >
         <Box
+          ref={messagesContainerRef}
           sx={{
             flex: 1,
             overflowY: 'auto',
@@ -334,12 +371,40 @@ What would you like to know?`,
                 }}
               >
                 {/* Message Content */}
-                <Typography
-                  variant="body2"
-                  component="div"
-                  sx={{ lineHeight: 1.6 }}
-                  dangerouslySetInnerHTML={{ __html: formatMarkdown(message.content) }}
-                />
+                <Box>
+                  <Typography
+                    variant="body2"
+                    component="div"
+                    sx={{ lineHeight: 1.6 }}
+                    dangerouslySetInnerHTML={{ __html: formatMarkdown(message.content) }}
+                  />
+                </Box>
+
+                {/* Data Display */}
+                {message.data && message.role === 'assistant' && (
+                  <Box sx={{ mt: 2, mb: 1, width: '100%' }}>
+                    <QueryResultDisplay
+                      data={message.data}
+                      maxHeight={300}
+                      compact
+                      onRowClick={(row) => {
+                        if (row.id && onNavigate) {
+                          // Detect type based on row properties
+                          if (row.weight !== undefined || row.estMinutes !== undefined || row.product) {
+                            onNavigate('tasks', row.id);
+                          } else if (row.statusPercent !== undefined) {
+                            onNavigate('products', row.id);
+                          } else if (row.adoptionPlan !== undefined) {
+                            onNavigate('customers', row.id);
+                          } else {
+                            // Default: try task if has id
+                            onNavigate('tasks', row.id);
+                          }
+                        }
+                      }}
+                    />
+                  </Box>
+                )}
 
                 {/* Metadata */}
                 {message.metadata && message.role === 'assistant' && (
@@ -465,6 +530,31 @@ What would you like to know?`,
               </Paper>
             </Box>
           ))}
+
+          {/* Common Queries Section (only show when just welcome message is present) */}
+          {messages.length <= 1 && commonQueries.length > 0 && (
+            <Box sx={{ mt: 2, px: 2, mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Cached sx={{ fontSize: 18, color: 'text.secondary' }} />
+                <Typography variant="subtitle2" color="text.secondary">
+                  Commonly asked:
+                </Typography>
+              </Box>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                {commonQueries.map((q, idx) => (
+                  <Chip
+                    key={`common-${idx}`}
+                    label={q.query}
+                    onClick={() => handleSuggestionClick(q.query)}
+                    size="small"
+                    variant="outlined"
+                    clickable
+                    sx={{ borderColor: alpha(theme.palette.primary.main, 0.3) }}
+                  />
+                ))}
+              </Box>
+            </Box>
+          )}
 
           {/* Loading indicator */}
           {loading && (

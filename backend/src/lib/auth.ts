@@ -33,10 +33,11 @@ export function ensureRole(ctx: any, role: string | string[]) {
   const hasRole = allowedRoles.some(r => userRoles.includes(r));
 
   if (!hasRole) {
+    // Always log the violation for debugging
     if (envConfig.rbac.warnOnViolation) {
-      console.warn(`⚠️  RBAC WARNING: User ${ctx.user.username} lacks role ${allowedRoles.join('|')}`);
-      return;
+      console.warn(`⚠️  RBAC VIOLATION: User ${ctx.user.username} (roles: ${userRoles.join(', ')}) attempted action requiring: ${allowedRoles.join(' or ')}`);
     }
+    // Always throw error - RBAC must be enforced even in dev mode
     throw new Error(`Access denied. Required role: ${allowedRoles.join(' or ')}`);
   }
 }

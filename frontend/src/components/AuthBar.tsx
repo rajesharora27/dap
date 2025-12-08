@@ -1,24 +1,24 @@
 import * as React from 'react';
-import { 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Box, 
-  IconButton, 
-  Menu, 
-  MenuItem, 
-  Avatar, 
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Box,
+  IconButton,
+  Menu,
+  MenuItem,
+  Avatar,
   Divider,
   ListItemIcon,
   ListItemText,
   Tooltip,
   Badge,
 } from '@mui/material';
-import { 
-  Dashboard, 
-  Menu as MenuIcon, 
-  AccountCircle, 
-  Logout, 
+import {
+  Dashboard,
+  Menu as MenuIcon,
+  AccountCircle,
+  Logout,
   Person,
   Psychology,
 } from '@mui/icons-material';
@@ -29,17 +29,18 @@ interface AuthBarProps {
   onMenuClick?: () => void;
   drawerOpen?: boolean;
   onProfileClick?: () => void;
+  onNavigate?: (type: string, id: string) => void;
 }
 
-export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onProfileClick }) => {
+export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onProfileClick, onNavigate }) => {
   const { user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [aiChatOpen, setAiChatOpen] = React.useState(false);
-  
+
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
-  
+
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
@@ -51,19 +52,19 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
   const handleAIChatClose = () => {
     setAiChatOpen(false);
   };
-  
+
   const handleProfileClick = () => {
     handleMenuClose();
     if (onProfileClick) {
       onProfileClick();
     }
   };
-  
+
   const handleLogout = () => {
     handleMenuClose();
     logout();
   };
-  
+
   const getUserInitials = () => {
     if (!user) return '?';
     if (user.fullName) {
@@ -72,12 +73,12 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
     }
     return user.username?.[0]?.toUpperCase() || '?';
   };
-  
+
   return (
-    <AppBar 
-      position="fixed" 
+    <AppBar
+      position="fixed"
       elevation={2}
-      sx={{ 
+      sx={{
         zIndex: 1400,
         background: '#0D274D',
         backdropFilter: 'blur(10px)',
@@ -93,7 +94,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
             aria-label="toggle drawer"
             onClick={onMenuClick}
             edge="start"
-            sx={{ 
+            sx={{
               mr: 2,
               color: 'white',
               '&:hover': {
@@ -104,11 +105,11 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
             <MenuIcon />
           </IconButton>
         )}
-        
+
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
           {/* Modern Icon */}
-          <Box 
-            sx={{ 
+          <Box
+            sx={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -123,12 +124,12 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
           >
             <Dashboard sx={{ fontSize: { xs: 22, sm: 26 }, color: '#FFFFFF' }} />
           </Box>
-          
+
           {/* Modern Title */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.25 }}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
+            <Typography
+              variant="h6"
+              sx={{
                 fontWeight: 600,
                 fontSize: { xs: '1.05rem', sm: '1.25rem', md: '1.4rem' },
                 letterSpacing: '-0.3px',
@@ -139,9 +140,9 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
             >
               Dynamic Adoption Plans
             </Typography>
-            <Typography 
-              variant="caption" 
-              sx={{ 
+            <Typography
+              variant="caption"
+              sx={{
                 fontSize: { xs: '0.7rem', sm: '0.75rem' },
                 letterSpacing: '0.3px',
                 fontWeight: 500,
@@ -153,7 +154,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
             </Typography>
           </Box>
         </Box>
-        
+
         {/* AI Assistant & User Menu */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {/* AI Assistant Button */}
@@ -186,10 +187,10 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
           </Tooltip>
 
           {user && (
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                color: 'white', 
+            <Typography
+              variant="body2"
+              sx={{
+                color: 'white',
                 display: { xs: 'none', sm: 'block' },
                 mr: 1
               }}
@@ -206,9 +207,9 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
               }
             }}
           >
-            <Avatar 
-              sx={{ 
-                width: 36, 
+            <Avatar
+              sx={{
+                width: 36,
                 height: 36,
                 bgcolor: 'rgba(255, 255, 255, 0.2)',
                 color: 'white',
@@ -219,7 +220,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
               {getUserInitials()}
             </Avatar>
           </IconButton>
-          
+
           <Menu
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
@@ -246,16 +247,16 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
                 </Typography>
               )}
             </Box>
-            
+
             <MenuItem onClick={handleProfileClick}>
               <ListItemIcon>
                 <Person fontSize="small" />
               </ListItemIcon>
               <ListItemText>Profile & Settings</ListItemText>
             </MenuItem>
-            
+
             <Divider />
-            
+
             <MenuItem onClick={handleLogout}>
               <ListItemIcon>
                 <Logout fontSize="small" />
@@ -267,7 +268,11 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
       </Toolbar>
 
       {/* AI Chat Dialog */}
-      <AIChat open={aiChatOpen} onClose={handleAIChatClose} />
+      <AIChat
+        open={aiChatOpen}
+        onClose={handleAIChatClose}
+        onNavigate={onNavigate}
+      />
     </AppBar>
   );
 };

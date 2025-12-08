@@ -461,7 +461,8 @@ enum SystemRole {
   ADMIN
   USER
   SME
-  CS
+  CSS
+  VIEWER
 }
 
 enum LicenseLevel {

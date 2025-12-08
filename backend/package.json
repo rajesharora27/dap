@@ -1,19 +1,25 @@
 {
   "name": "dap-backend",
-  "version": "2.2.2",
+  "version": "2.3.0",
   "private": true,
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "cp .env.development .env 2>/dev/null || true && ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev:devtools": "ts-node-dev --respawn --transpile-only src/devtools-service.ts",
     "build": "tsc -p tsconfig.json",
+    "build:dev": "cp .env.development .env && npm run build",
+    "build:prod": "cp .env.production .env && npm run build",
     "start": "node dist/server.js",
+    "start:dev": "cp .env.development .env && node dist/server.js",
+    "start:prod": "cp .env.production .env && node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "seed": "ts-node src/seed.ts",
     "seed:sample": "ts-node scripts/add-laptop-sample.ts",
     "seed:dev": "ts-node src/seed-dev.ts",
+    "fix-auth": "ts-node scripts/fix_user_auth.ts",
     "reset": "ts-node scripts/reset-dev-db.ts",
     "test": "jest --runInBand --passWithNoTests",
     "test:watch": "jest --watch",

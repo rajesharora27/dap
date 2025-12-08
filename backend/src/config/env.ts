@@ -68,7 +68,24 @@ export const envConfig = {
   features: {
     graphqlPlayground: bool(process.env.GRAPHQL_PLAYGROUND, isDev || isTest),
     introspection: bool(process.env.APOLLO_INTROSPECTION, isDev || isTest),
-    caching: bool(process.env.ENABLE_CACHE, isProd)
+    caching: bool(process.env.ENABLE_CACHE, isProd),
+    showDevMenu: bool(process.env.SHOW_DEV_MENU, isDev)
+  },
+  llm: {
+    // Default provider: openai, gemini, anthropic, or mock
+    provider: (process.env.LLM_PROVIDER || 'mock') as 'openai' | 'gemini' | 'anthropic' | 'mock',
+    // API Keys
+    openaiApiKey: process.env.OPENAI_API_KEY,
+    geminiApiKey: process.env.GEMINI_API_KEY,
+    anthropicApiKey: process.env.ANTHROPIC_API_KEY,
+    // Model overrides (optional - defaults from llm.config.json)
+    model: process.env.LLM_MODEL,
+    // Limits
+    maxTokens: int(process.env.LLM_MAX_TOKENS, 2000),
+    timeout: int(process.env.LLM_TIMEOUT, 30000),
+    // Feature flags
+    enabled: bool(process.env.AI_AGENT_ENABLED, true),
+    debugMode: bool(process.env.AI_DEBUG_MODE, isDev)
   }
 };
 

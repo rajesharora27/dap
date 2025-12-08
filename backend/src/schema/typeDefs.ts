@@ -291,6 +291,7 @@ export const typeDefs = gql`
     product(id: ID!): Product
     products(first: Int, after: String, last: Int, before: String): ProductConnection!
     solutions(first: Int, after: String, last: Int, before: String): SolutionConnection!
+    task(id: ID!): Task
     tasks(first: Int, after: String, last: Int, before: String, productId: ID, solutionId: ID): TaskConnection!
     customers: [Customer!]!
     licenses: [License!]!
@@ -1337,7 +1338,7 @@ export const typeDefs = gql`
     """Natural language answer"""
     answer: String!
     """Raw data results (JSON string)"""
-    data: String
+    data: JSON
     """The generated query (for transparency)"""
     query: String
     """Suggested follow-up questions"""

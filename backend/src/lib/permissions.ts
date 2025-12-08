@@ -58,16 +58,25 @@ export async function checkUserPermission(
   const effectiveRoles = [user.role, ...roleNames];
 
   const isSME = effectiveRoles.includes('SME');
-  const isCS = effectiveRoles.includes('CS') || effectiveRoles.includes('CSS');
+  const isCSS = effectiveRoles.includes('CSS');
+  const isViewer = effectiveRoles.includes('VIEWER');
 
   // Check System Roles
+  // VIEWER role: Read-only access to everything
+  if (isViewer) {
+    if (requiredLevel === PermissionLevel.READ) {
+      return true; // VIEWER can read all resources
+    }
+    // VIEWER cannot write or admin anything
+  }
+
   if (isSME) {
     if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
       return true;
     }
   }
 
-  if (isCS) {
+  if (isCSS) {
     if (resourceType === ResourceType.CUSTOMER) {
       return true;
     }
@@ -409,21 +418,27 @@ export async function getUserAccessibleResources(
   const effectiveRoles = [user.role, ...roleNames];
 
   const isSME = effectiveRoles.includes('SME');
-  const isCS = effectiveRoles.includes('CS') || effectiveRoles.includes('CSS');
+  const isCSS = effectiveRoles.includes('CSS');
+  const isViewer = effectiveRoles.includes('VIEWER');
 
   // Check System Roles
+  // VIEWER role: Read-only access to everything
+  if (isViewer && minPermissionLevel === PermissionLevel.READ) {
+    return null; // VIEWER has read access to ALL resources
+  }
+
   if (isSME) {
     if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
       return null; // SME has access to all Products and Solutions
     }
   }
 
-  if (isCS) {
+  if (isCSS) {
     if (resourceType === ResourceType.CUSTOMER) {
       return null; // CS has access to all Customers
     }
-    if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
-      return null; // CS has access to all Products and Solutions (Read-only checked elsewhere)
+    if ((resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) && minPermissionLevel === PermissionLevel.READ) {
+      return null; // CSS has Read-only access to all Products and Solutions
     }
   }
 
@@ -806,7 +821,7 @@ export async function getUserPermissionLevel(
   const effectiveRoles = [user.role, ...roleNames];
 
   const isSME = effectiveRoles.includes('SME');
-  const isCS = effectiveRoles.includes('CS') || effectiveRoles.includes('CSS');
+  const isCSS = effectiveRoles.includes('CSS');
 
   // Check System Roles
   if (isSME) {
@@ -815,7 +830,7 @@ export async function getUserPermissionLevel(
     }
   }
 
-  if (isCS) {
+  if (isCSS) {
     if (resourceType === ResourceType.CUSTOMER) {
       return PermissionLevel.ADMIN;
     }
