@@ -477,6 +477,20 @@ backend/src/services/ai/
 - [x] Summary statistics
 - [x] Natural language wrapper
 - [x] Suggestion generation
+- [x] **Improve Responsiveness**:
+  - [x] Streamline frontend components (remove heavy logs).
+  - [x] Optimize backend response formatting.
+- [x] **Ensure Relevant Attributes**:
+  - [x] Update `ResponseFormatter.ts` to prioritize `weight`, `estMinutes`.
+  - [x] Verify column selection logic.
+- [x] **Make Rows Clickable**:
+  - [x] Implement `onRowClick` in `DataTable`.
+  - [x] Navigate to Task/Product/Customer preview dialogs.
+- [x] **Hide 'id' Column**:
+  - [x] Ensure `id` is available for data but hidden from table view.
+- [x] **Fix Table Alignment**:
+  - [x] Ensure columns align with headers.
+  - [x] Fix column spacing (padding).
 
 **Test Criteria:**
 - [x] Arrays format as tables
