@@ -115,7 +115,7 @@ export interface QueryTemplate {
   /** Regex patterns that match this template */
   patterns: RegExp[];
   /** Category for organization */
-  category: 'products' | 'solutions' | 'customers' | 'tasks' | 'telemetry' | 'analytics';
+  category: 'products' | 'solutions' | 'customers' | 'tasks' | 'telemetry' | 'analytics' | 'adoption';
   /** Function to build the Prisma query */
   buildQuery: (params: Record<string, any>) => any;
   /** Parameter definitions */
