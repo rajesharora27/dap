@@ -1,6 +1,6 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.4.0
+**Version:** 2.5.0
 **Last Updated:** December 8, 2025  
 **Purpose:** Comprehensive context for AI assistants and developers
 
@@ -257,7 +257,37 @@ Product ──────────────────┐
 - Bulk data management
 - Template generation
 
-### 7. Advanced Features
+### 7. AI Agent (Natural Language Queries)
+
+**Feature**: Ask questions about your data in natural language.
+
+- **Query Templates**: 20+ pre-built patterns for common queries (fast path)
+- **LLM Fallback**: Complex queries processed by AI (Gemini/OpenAI/Anthropic)
+- **Data Context**: Real-time database context injected into LLM prompts
+- **Safe Execution**: Read-only queries with row limits and timeouts
+- **Admin Refresh**: Manual data context refresh via UI button
+
+**Example Queries:**
+- "List all tasks for Cisco Secure Access without telemetry"
+- "Show customers with low adoption"
+- "Products without telemetry configured"
+- "Adoption plans for customer Acme"
+- "Tasks with high weight"
+
+**Architecture:**
+```
+User Query → QueryTemplates (regex match) → Direct Prisma Query (fast)
+         ↘ No Match → LLM + SchemaContext + DataContext → Generated Query
+```
+
+**Files:**
+- `backend/src/services/ai/AIAgentService.ts` - Main orchestration
+- `backend/src/services/ai/QueryTemplates.ts` - Fast-path templates
+- `backend/src/services/ai/SchemaContextManager.ts` - Schema context
+- `backend/src/services/ai/DataContextManager.ts` - Dynamic data context
+- `frontend/src/components/AIChat.tsx` - Chat UI
+
+### 8. Advanced Features
 - Drag-and-drop task reordering
 - Real-time progress calculation
 - Audit logging
@@ -265,7 +295,7 @@ Product ──────────────────┐
 - Search and filtering
 - Theme customization (light/dark mode)
 
-### 8. Development Toolkit
+### 9. Development Toolkit
 
 **Admin-only development tools** for monitoring, testing, and managing the application during development.
 
@@ -843,6 +873,82 @@ sudo tail -f /var/log/httpd/error_log
 
 ## Recent Changes & Fixes
 
+### Version 2.5.0 (December 8, 2025)
+
+#### Terminology Standardization: Assignments & Adoption Plans
+
+**Feature**: Unified terminology for product/solution assignments and adoption plans.
+
+The terms "Assignment" and "Adoption Plan" are now **interchangeable** throughout the application:
+- **"Product Assignment"** = **"Product Adoption Plan"** (same concept)
+- **"Solution Assignment"** = **"Solution Adoption Plan"** (same concept)
+
+When a product or solution is assigned to a customer, the result is an adoption plan that tracks their implementation progress.
+
+**Changes Made:**
+
+1. **Backend - AI Agent Context**:
+   - `SchemaContextManager.ts`: Added business rules explaining both terms are equivalent
+   - `DataContextManager.ts`: Added terminology note in LLM prompt
+   - `QueryTemplates.ts`: Added new templates for "adoption plans" and "assignments"
+   - `AIAgentService.ts`: Updated LLM examples to use both terms
+
+2. **Frontend - UI Labels**:
+   - `CustomerAdoptionPanelV4.tsx`: Section headers use "Product Assignments" / "Solution Assignments"
+   - `CustomerPreviewDialog.tsx`: Labels use "Product Assignments" / "Solution Assignments"
+   - Tooltips reference both terms: "Product assignment • Double-click to view adoption plan"
+
+3. **AI Agent Query Support**:
+   - Users can ask: "Show me all product assignments" or "List adoption plans for customer X"
+   - Both queries return the same data
+
+#### AI Agent Query Template Fixes
+
+**Bug Fix**: Queries like "List all tasks for Cisco Secure Access without telemetry" were failing.
+
+**Root Causes & Fixes:**
+
+1. **Prisma Syntax Issue**: `{ relation: { none: {} } }` doesn't work for checking empty relations
+   - **Fix**: Changed to `{ NOT: { relation: { some: {} } } }`
+   - Updated in: `QueryTemplates.ts`, `AIAgentService.ts`, `DataContextManager.ts`
+
+2. **Regex Pattern Issue**: Patterns didn't handle "all **the** tasks" (with article "the")
+   - **Fix**: Added `(?:the\s+)?` to patterns: `/(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+/`
+
+3. **Name Matching**: Using `equals` instead of `contains` for product names
+   - **Fix**: Changed to `contains` with `mode: 'insensitive'` for partial matching
+
+**Files Changed:**
+- `backend/src/services/ai/QueryTemplates.ts` - Fixed patterns, Prisma syntax, added debug logging
+- `backend/src/services/ai/AIAgentService.ts` - Updated LLM constraints and examples
+- `backend/src/services/ai/DataContextManager.ts` - Updated query pattern instructions
+
+**Debug Logging Added:**
+- Template matching now logs to console for debugging
+- Shows which templates match and with what confidence
+- Helps diagnose when queries fall through to LLM
+
+#### Entity Preview Dialogs
+
+**Feature**: Clicking on entities in AI chat results now opens preview dialogs.
+
+Previously only Tasks opened a preview dialog. Now all entities have preview dialogs:
+- `ProductPreviewDialog` - Shows product details, outcomes, licenses, releases
+- `SolutionPreviewDialog` - Shows solution details, products, outcomes
+- `CustomerPreviewDialog` - Shows customer details, product/solution assignments
+- `AdoptionPlanDialog` - Shows adoption plan progress and tasks
+
+**Files Created:**
+- `frontend/src/components/dialogs/ProductPreviewDialog.tsx`
+- `frontend/src/components/dialogs/SolutionPreviewDialog.tsx`
+- `frontend/src/components/dialogs/CustomerPreviewDialog.tsx`
+
+**Files Modified:**
+- `frontend/src/pages/App.tsx` - Added state and handlers for all preview dialogs
+- `frontend/src/components/AIChat.tsx` - Enhanced type detection for navigation
+
+---
+
 ### Version 2.2.0 (December 6, 2025)
 
 #### AI Agent Implementation (Phases 1 & 2 Complete)
@@ -1229,6 +1335,36 @@ sudo tail -f /var/log/httpd/error_log
 **Menu Visibility:**
 `frontend/src/components/MenuBar.tsx` → User role check → Conditional rendering
 
+**AI Agent Query Processing:**
+`frontend/src/components/AIChat.tsx` → GraphQL `askAI` → `backend/src/services/ai/AIAgentService.ts` → `QueryTemplates.findBestMatch()` (fast path) OR `LLMProvider` (slow path) → `QueryExecutor` → Prisma → Database
+
+### AI Agent Prisma Query Patterns
+
+**IMPORTANT: When writing Prisma queries for the AI Agent:**
+
+```javascript
+// To find records WITH related items:
+{ relation: { some: {} } }
+
+// To find records WITHOUT related items (empty relation):
+{ NOT: { relation: { some: {} } } }
+
+// NEVER use this (doesn't work correctly):
+{ relation: { none: {} } }  // ❌ WRONG
+
+// For partial name matching:
+{ name: { contains: "search term", mode: "insensitive" } }
+```
+
+### Terminology Reference
+
+| Term | Equivalent Term | Description |
+|------|----------------|-------------|
+| Product Assignment | Product Adoption Plan | A product assigned to a customer with tracked progress |
+| Solution Assignment | Solution Adoption Plan | A solution assigned to a customer with tracked progress |
+| CustomerProduct | Product Assignment/Adoption Plan | Database table for product-customer relationship |
+| CustomerSolution | Solution Assignment/Adoption Plan | Database table for solution-customer relationship |
+
 ---
 
 ## Support & Resources
@@ -1251,8 +1387,8 @@ sudo tail -f /var/log/httpd/error_log
 
 ---
 
-**Last Updated:** December 6, 2025  
-**Version:** 2.2.0  
+**Last Updated:** December 8, 2025  
+**Version:** 2.5.0  
 **Status:** Production Ready
 
 *This document should be updated whenever significant changes are made to the application.*
