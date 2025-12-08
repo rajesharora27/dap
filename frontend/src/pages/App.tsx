@@ -38,9 +38,11 @@ import {
   TableRow,
   Tabs,
   Tab,
-  CircularProgress
+  CircularProgress,
+  useTheme
 } from '@mui/material';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
+import { TaskPreviewDialog } from '../components/dialogs/TaskPreviewDialog';
 
 // Code splitting: Lazy load heavy page components
 const ProductsPage = lazy(() => import('./ProductsPage').then(m => ({ default: m.ProductsPage })));
@@ -836,6 +838,7 @@ const drawerWidth = 240;
 export function App() {
   // Apollo client for mutations
   const client = useApolloClient();
+  const theme = useTheme();
   const { token, isAuthenticated, isLoading, user } = useAuth();
 
   // State management
@@ -984,6 +987,8 @@ export function App() {
   const [editTaskDialog, setEditTaskDialog] = useState(false);
   const [newProduct, setNewProduct] = useState({ name: '', description: '' });
   const [profileDialog, setProfileDialog] = useState(false);
+  const [openTaskPreview, setOpenTaskPreview] = useState(false);
+  const [previewTaskId, setPreviewTaskId] = useState('');
 
   const [editingProduct, setEditingProduct] = useState<any>(null);
 
@@ -1079,15 +1084,18 @@ export function App() {
   // - ADMIN: Full access to all menus
   // - SME: Access to Products and Solutions menus
   // - CSS/CS: Access to Customers menu only
+  // - VIEWER: Read-only access to all menus (Products, Solutions, Customers)
   const isAdminUser = user?.isAdmin || user?.role === 'ADMIN';
   const userRoles = user?.roles || [];
   const isSME = userRoles.includes('SME');
-  const isCSS = userRoles.includes('CSS') || userRoles.includes('CS');
+  const isCSS = userRoles.includes('CSS');
+  const isViewer = userRoles.includes('VIEWER');
 
   // Menu visibility based on roles (not data availability)
-  const hasProducts = isAdminUser || isSME;
-  const hasSolutions = isAdminUser || isSME;
-  const hasCustomers = isAdminUser || isCSS;
+  // VIEWER can see all menus but cannot make changes (enforced by backend)
+  const hasProducts = isAdminUser || isSME || isViewer;
+  const hasSolutions = isAdminUser || isSME || isViewer;
+  const hasCustomers = isAdminUser || isCSS || isViewer;
 
   // Auto-select first product if none selected (MUST be before early returns)
   React.useEffect(() => {
@@ -2068,6 +2076,32 @@ export function App() {
       alert('Failed to update product');
     }
   };
+
+
+
+  const handleNavigate = (type: string, id: string) => {
+    switch (type) {
+      case 'products':
+        setSelectedSection('products');
+        setSelectedProduct(id);
+        setViewMode('detail');
+        localStorage.setItem('lastSelectedProductId', id);
+        break;
+      case 'solutions':
+        setSelectedSection('solutions');
+        setSelectedSolution(id);
+        break;
+      case 'customers':
+        setSelectedSection('customers');
+        setSelectedCustomerId(id);
+        break;
+      case 'tasks':
+        setPreviewTaskId(id);
+        setOpenTaskPreview(true);
+        break;
+    }
+  };
+
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
@@ -2075,8 +2109,8 @@ export function App() {
         onMenuClick={() => setDrawerOpen(!drawerOpen)}
         drawerOpen={drawerOpen}
         onProfileClick={() => setProfileDialog(true)}
+        onNavigate={handleNavigate}
       />
-      <Toolbar />
 
       {/* Left Sidebar */}
       <Drawer
@@ -2087,12 +2121,18 @@ export function App() {
           flexShrink: 0,
           whiteSpace: 'nowrap',
           boxSizing: 'border-box',
-          transition: 'width 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
+          transition: theme.transitions.create('width', {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
           overflowX: 'hidden',
           '& .MuiDrawer-paper': {
             width: drawerOpen ? drawerWidth : 0,
             boxSizing: 'border-box',
-            transition: 'width 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
+            transition: theme.transitions.create('width', {
+              easing: theme.transitions.easing.sharp,
+              duration: theme.transitions.duration.enteringScreen,
+            }),
             overflowX: 'hidden',
             borderRight: drawerOpen ? '1px solid rgba(0, 0, 0, 0.12)' : 'none',
           },
@@ -2131,336 +2171,345 @@ export function App() {
                   <ListItemText primary="Products" />
                 </ListItemButton>
               </>
-            )}
+            )
+            }
 
             {/* Solutions Section - Only show if user has access to at least one solution */}
-            {hasSolutions && (
-              <>
-                <ListItemButton
-                  selected={selectedSection === 'solutions'}
-                  onClick={() => {
-                    setSelectedSection('solutions');
-                  }}
-                  sx={{
-                    '&.Mui-selected': {
-                      backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                      '& .MuiListItemIcon-root': {
-                        color: '#049FD9'
+            {
+              hasSolutions && (
+                <>
+                  <ListItemButton
+                    selected={selectedSection === 'solutions'}
+                    onClick={() => {
+                      setSelectedSection('solutions');
+                    }}
+                    sx={{
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(4, 159, 217, 0.08)',
+                        '& .MuiListItemIcon-root': {
+                          color: '#049FD9'
+                        },
+                        '& .MuiListItemText-primary': {
+                          color: '#049FD9',
+                          fontWeight: 600
+                        }
                       },
-                      '& .MuiListItemText-primary': {
-                        color: '#049FD9',
-                        fontWeight: 600
+                      '&.Mui-selected:hover': {
+                        backgroundColor: 'rgba(4, 159, 217, 0.12)'
                       }
-                    },
-                    '&.Mui-selected:hover': {
-                      backgroundColor: 'rgba(4, 159, 217, 0.12)'
-                    }
-                  }}
-                >
-                  <ListItemIcon>
-                    <SolutionIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Solutions" />
-                </ListItemButton>
-              </>
-            )}
+                    }}
+                  >
+                    <ListItemIcon>
+                      <SolutionIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Solutions" />
+                  </ListItemButton>
+                </>
+              )
+            }
 
             {/* Customers Section - Only show if user has access to at least one customer */}
-            {hasCustomers && (
-              <>
-                <ListItemButton
-                  selected={selectedSection === 'customers'}
-                  onClick={() => {
-                    setSelectedSection('customers');
-                  }}
-                  sx={{
-                    '&.Mui-selected': {
-                      backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                      '& .MuiListItemIcon-root': {
-                        color: '#049FD9'
+            {
+              hasCustomers && (
+                <>
+                  <ListItemButton
+                    selected={selectedSection === 'customers'}
+                    onClick={() => {
+                      setSelectedSection('customers');
+                    }}
+                    sx={{
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(4, 159, 217, 0.08)',
+                        '& .MuiListItemIcon-root': {
+                          color: '#049FD9'
+                        },
+                        '& .MuiListItemText-primary': {
+                          color: '#049FD9',
+                          fontWeight: 600
+                        }
                       },
-                      '& .MuiListItemText-primary': {
-                        color: '#049FD9',
-                        fontWeight: 600
+                      '&.Mui-selected:hover': {
+                        backgroundColor: 'rgba(4, 159, 217, 0.12)'
                       }
-                    },
-                    '&.Mui-selected:hover': {
-                      backgroundColor: 'rgba(4, 159, 217, 0.12)'
-                    }
-                  }}
-                >
-                  <ListItemIcon>
-                    <CustomerIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Customers" />
-                </ListItemButton>
-              </>
-            )}
+                    }}
+                  >
+                    <ListItemIcon>
+                      <CustomerIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Customers" />
+                  </ListItemButton>
+                </>
+              )
+            }
 
             {/* Admin Section (Admin Only) - Expandable with Submenus */}
-            {user?.isAdmin && (
-              <>
-                <ListItemButton
-                  selected={selectedSection === 'admin'}
-                  onClick={() => {
-                    setSelectedSection('admin');
-                    setAdminExpanded(!adminExpanded);
-                  }}
-                  sx={{
-                    '&.Mui-selected': {
-                      backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                      '& .MuiListItemIcon-root': {
-                        color: '#049FD9'
+            {
+              user?.isAdmin && (
+                <>
+                  <ListItemButton
+                    selected={selectedSection === 'admin'}
+                    onClick={() => {
+                      setSelectedSection('admin');
+                      setAdminExpanded(!adminExpanded);
+                    }}
+                    sx={{
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(4, 159, 217, 0.08)',
+                        '& .MuiListItemIcon-root': {
+                          color: '#049FD9'
+                        },
+                        '& .MuiListItemText-primary': {
+                          color: '#049FD9',
+                          fontWeight: 600
+                        }
                       },
-                      '& .MuiListItemText-primary': {
-                        color: '#049FD9',
-                        fontWeight: 600
+                      '&.Mui-selected:hover': {
+                        backgroundColor: 'rgba(4, 159, 217, 0.12)'
                       }
-                    },
-                    '&.Mui-selected:hover': {
-                      backgroundColor: 'rgba(4, 159, 217, 0.12)'
-                    }
-                  }}
-                >
-                  <ListItemIcon>
-                    <AdminIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Admin" />
-                  {adminExpanded ? <ExpandLess /> : <ExpandMore />}
-                </ListItemButton>
-                <Collapse in={adminExpanded} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
+                    }}
+                  >
+                    <ListItemIcon>
+                      <AdminIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Admin" />
+                    {adminExpanded ? <ExpandLess /> : <ExpandMore />}
+                  </ListItemButton>
+                  <Collapse in={adminExpanded} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
 
-                    <ListItemButton
-                      sx={{
-                        pl: 4,
-                        '&.Mui-selected': {
-                          backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                          '& .MuiListItemIcon-root': {
-                            color: '#049FD9'
+                      <ListItemButton
+                        sx={{
+                          pl: 4,
+                          '&.Mui-selected': {
+                            backgroundColor: 'rgba(4, 159, 217, 0.08)',
+                            '& .MuiListItemIcon-root': {
+                              color: '#049FD9'
+                            },
+                            '& .MuiListItemText-primary': {
+                              color: '#049FD9',
+                              fontWeight: 600
+                            }
                           },
-                          '& .MuiListItemText-primary': {
-                            color: '#049FD9',
-                            fontWeight: 600
+                          '&.Mui-selected:hover': {
+                            backgroundColor: 'rgba(4, 159, 217, 0.12)'
                           }
-                        },
-                        '&.Mui-selected:hover': {
-                          backgroundColor: 'rgba(4, 159, 217, 0.12)'
-                        }
-                      }}
-                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'users'}
-                      onClick={() => {
-                        setSelectedSection('admin');
-                        setSelectedAdminSubSection('users');
-                      }}
-                    >
-                      <ListItemIcon>
-                        <UsersIcon />
-                      </ListItemIcon>
-                      <ListItemText primary="Users" />
-                    </ListItemButton>
-                    <ListItemButton
-                      sx={{
-                        pl: 4,
-                        '&.Mui-selected': {
-                          backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                          '& .MuiListItemIcon-root': {
-                            color: '#049FD9'
+                        }}
+                        selected={selectedSection === 'admin' && selectedAdminSubSection === 'users'}
+                        onClick={() => {
+                          setSelectedSection('admin');
+                          setSelectedAdminSubSection('users');
+                        }}
+                      >
+                        <ListItemIcon>
+                          <UsersIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Users" />
+                      </ListItemButton>
+                      <ListItemButton
+                        sx={{
+                          pl: 4,
+                          '&.Mui-selected': {
+                            backgroundColor: 'rgba(4, 159, 217, 0.08)',
+                            '& .MuiListItemIcon-root': {
+                              color: '#049FD9'
+                            },
+                            '& .MuiListItemText-primary': {
+                              color: '#049FD9',
+                              fontWeight: 600
+                            }
                           },
-                          '& .MuiListItemText-primary': {
-                            color: '#049FD9',
-                            fontWeight: 600
+                          '&.Mui-selected:hover': {
+                            backgroundColor: 'rgba(4, 159, 217, 0.12)'
                           }
-                        },
-                        '&.Mui-selected:hover': {
-                          backgroundColor: 'rgba(4, 159, 217, 0.12)'
-                        }
-                      }}
-                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'roles'}
-                      onClick={() => {
-                        setSelectedSection('admin');
-                        setSelectedAdminSubSection('roles');
-                      }}
-                    >
-                      <ListItemIcon>
-                        <RolesIcon />
-                      </ListItemIcon>
-                      <ListItemText primary="Roles" />
-                    </ListItemButton>
-                    <ListItemButton
-                      sx={{
-                        pl: 4,
-                        '&.Mui-selected': {
-                          backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                          '& .MuiListItemIcon-root': {
-                            color: '#049FD9'
+                        }}
+                        selected={selectedSection === 'admin' && selectedAdminSubSection === 'roles'}
+                        onClick={() => {
+                          setSelectedSection('admin');
+                          setSelectedAdminSubSection('roles');
+                        }}
+                      >
+                        <ListItemIcon>
+                          <RolesIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Roles" />
+                      </ListItemButton>
+                      <ListItemButton
+                        sx={{
+                          pl: 4,
+                          '&.Mui-selected': {
+                            backgroundColor: 'rgba(4, 159, 217, 0.08)',
+                            '& .MuiListItemIcon-root': {
+                              color: '#049FD9'
+                            },
+                            '& .MuiListItemText-primary': {
+                              color: '#049FD9',
+                              fontWeight: 600
+                            }
                           },
-                          '& .MuiListItemText-primary': {
-                            color: '#049FD9',
-                            fontWeight: 600
+                          '&.Mui-selected:hover': {
+                            backgroundColor: 'rgba(4, 159, 217, 0.12)'
                           }
-                        },
-                        '&.Mui-selected:hover': {
-                          backgroundColor: 'rgba(4, 159, 217, 0.12)'
-                        }
-                      }}
-                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'backup'}
-                      onClick={() => {
-                        setSelectedSection('admin');
-                        setSelectedAdminSubSection('backup');
-                      }}
-                    >
-                      <ListItemIcon>
-                        <BackupIcon />
-                      </ListItemIcon>
-                      <ListItemText primary="Backup & Restore" />
-                    </ListItemButton>
-                    <ListItemButton
-                      sx={{
-                        pl: 4,
-                        '&.Mui-selected': {
-                          backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                          '& .MuiListItemIcon-root': {
-                            color: '#049FD9'
+                        }}
+                        selected={selectedSection === 'admin' && selectedAdminSubSection === 'backup'}
+                        onClick={() => {
+                          setSelectedSection('admin');
+                          setSelectedAdminSubSection('backup');
+                        }}
+                      >
+                        <ListItemIcon>
+                          <BackupIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Backup & Restore" />
+                      </ListItemButton>
+                      <ListItemButton
+                        sx={{
+                          pl: 4,
+                          '&.Mui-selected': {
+                            backgroundColor: 'rgba(4, 159, 217, 0.08)',
+                            '& .MuiListItemIcon-root': {
+                              color: '#049FD9'
+                            },
+                            '& .MuiListItemText-primary': {
+                              color: '#049FD9',
+                              fontWeight: 600
+                            }
                           },
-                          '& .MuiListItemText-primary': {
-                            color: '#049FD9',
-                            fontWeight: 600
+                          '&.Mui-selected:hover': {
+                            backgroundColor: 'rgba(4, 159, 217, 0.12)'
                           }
-                        },
-                        '&.Mui-selected:hover': {
-                          backgroundColor: 'rgba(4, 159, 217, 0.12)'
-                        }
-                      }}
-                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'theme'}
-                      onClick={() => {
-                        setSelectedSection('admin');
-                        setSelectedAdminSubSection('theme');
-                      }}
-                    >
-                      <ListItemIcon>
-                        <PaletteIcon />
-                      </ListItemIcon>
-                      <ListItemText primary="Theme" />
-                    </ListItemButton>
-                    <ListItemButton
-                      sx={{
-                        pl: 4,
-                        '&.Mui-selected': {
-                          backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                          '& .MuiListItemIcon-root': {
-                            color: '#049FD9'
+                        }}
+                        selected={selectedSection === 'admin' && selectedAdminSubSection === 'theme'}
+                        onClick={() => {
+                          setSelectedSection('admin');
+                          setSelectedAdminSubSection('theme');
+                        }}
+                      >
+                        <ListItemIcon>
+                          <PaletteIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Theme" />
+                      </ListItemButton>
+                      <ListItemButton
+                        sx={{
+                          pl: 4,
+                          '&.Mui-selected': {
+                            backgroundColor: 'rgba(4, 159, 217, 0.08)',
+                            '& .MuiListItemIcon-root': {
+                              color: '#049FD9'
+                            },
+                            '& .MuiListItemText-primary': {
+                              color: '#049FD9',
+                              fontWeight: 600
+                            }
                           },
-                          '& .MuiListItemText-primary': {
-                            color: '#049FD9',
-                            fontWeight: 600
+                          '&.Mui-selected:hover': {
+                            backgroundColor: 'rgba(4, 159, 217, 0.12)'
                           }
-                        },
-                        '&.Mui-selected:hover': {
-                          backgroundColor: 'rgba(4, 159, 217, 0.12)'
-                        }
-                      }}
-                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'about'}
-                      onClick={() => {
-                        setSelectedSection('admin');
-                        setSelectedAdminSubSection('about');
-                      }}
-                    >
-                      <ListItemIcon>
-                        <AboutIcon />
-                      </ListItemIcon>
-                      <ListItemText primary="About" />
-                    </ListItemButton>
+                        }}
+                        selected={selectedSection === 'admin' && selectedAdminSubSection === 'about'}
+                        onClick={() => {
+                          setSelectedSection('admin');
+                          setSelectedAdminSubSection('about');
+                        }}
+                      >
+                        <ListItemIcon>
+                          <AboutIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="About" />
+                      </ListItemButton>
 
-                  </List>
-                </Collapse>
-              </>
-            )}
+                    </List>
+                  </Collapse>
+                </>
+              )
+            }
 
             {/* Development Section (Dev Mode + Admin Only) */}
-            {isDevelopmentMode && isAdminUser && (
-              <>
-                <Divider sx={{ my: 1 }} />
-                <ListItemButton
-                  selected={selectedSection === 'development'}
-                  onClick={() => {
-                    setSelectedSection('development');
-                    setDevExpanded(!devExpanded);
-                  }}
-                  sx={{
-                    '&.Mui-selected': {
-                      backgroundColor: 'rgba(156, 39, 176, 0.08)',
-                      '& .MuiListItemIcon-root': { color: '#9C27B0' },
-                      '& .MuiListItemText-primary': { color: '#9C27B0', fontWeight: 600 }
-                    }
-                  }}
-                >
-                  <ListItemIcon><DeveloperModeIcon /></ListItemIcon>
-                  <ListItemText
-                    primary="Development"
-                    secondary="Toolkit"
-                    secondaryTypographyProps={{ variant: 'caption', color: 'warning.main' }}
-                  />
-                  {devExpanded ? <ExpandLess /> : <ExpandMore />}
-                </ListItemButton>
-
-                <Collapse in={devExpanded} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    <DndContext
-                      sensors={devMenuSensors}
-                      collisionDetection={closestCenter}
-                      onDragEnd={handleDevMenuDragEnd}
-                    >
-                      <SortableContext
-                        items={devMenuItems.map(i => i.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        <List component="div" disablePadding>
-                          {devMenuItems.map((item: any) => (
-                            <SortableDevMenuItem
-                              key={item.id}
-                              item={item}
-                              selected={selectedSection === 'development' && selectedDevSubSection === item.id}
-                              onClick={() => {
-                                setSelectedSection('development');
-                                setSelectedDevSubSection(item.id as any);
-                              }}
-                              onContextMenu={handleDevContextMenu}
-                              icon={getDevIcon(item.id)}
-                            />
-                          ))}
-                        </List>
-                      </SortableContext>
-                    </DndContext>
-
-                    {/* Context Menu for Reordering */}
-                    <Menu
-                      open={contextMenu !== null}
-                      onClose={() => setContextMenu(null)}
-                      anchorReference="anchorPosition"
-                      anchorPosition={
-                        contextMenu !== null
-                          ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
-                          : undefined
+            {
+              isDevelopmentMode && isAdminUser && (
+                <>
+                  <Divider sx={{ my: 1 }} />
+                  <ListItemButton
+                    selected={selectedSection === 'development'}
+                    onClick={() => {
+                      setSelectedSection('development');
+                      setDevExpanded(!devExpanded);
+                    }}
+                    sx={{
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(156, 39, 176, 0.08)',
+                        '& .MuiListItemIcon-root': { color: '#9C27B0' },
+                        '& .MuiListItemText-primary': { color: '#9C27B0', fontWeight: 600 }
                       }
-                    >
-                      <MenuItem onClick={() => handleContextAction('up')} disabled={devMenuItems.findIndex(i => i.id === contextMenu?.itemId) === 0}>Move Up</MenuItem>
-                      <MenuItem onClick={() => handleContextAction('down')} disabled={devMenuItems.findIndex(i => i.id === contextMenu?.itemId) === devMenuItems.length - 1}>Move Down</MenuItem>
-                      <Divider />
-                      <MenuItem onClick={() => handleContextAction('top')} disabled={devMenuItems.findIndex(i => i.id === contextMenu?.itemId) === 0}>Move to Top</MenuItem>
-                      <MenuItem onClick={() => handleContextAction('bottom')} disabled={devMenuItems.findIndex(i => i.id === contextMenu?.itemId) === devMenuItems.length - 1}>Move to Bottom</MenuItem>
-                    </Menu>
-                  </List>
-                </Collapse>
-              </>
-            )}
-          </List>
+                    }}
+                  >
+                    <ListItemIcon><DeveloperModeIcon /></ListItemIcon>
+                    <ListItemText
+                      primary="Development"
+                      secondary="Toolkit"
+                      secondaryTypographyProps={{ variant: 'caption', color: 'warning.main' }}
+                    />
+                    {devExpanded ? <ExpandLess /> : <ExpandMore />}
+                  </ListItemButton>
+
+                  <Collapse in={devExpanded} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                      <DndContext
+                        sensors={devMenuSensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDevMenuDragEnd}
+                      >
+                        <SortableContext
+                          items={devMenuItems.map(i => i.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <List component="div" disablePadding>
+                            {devMenuItems.map((item: any) => (
+                              <SortableDevMenuItem
+                                key={item.id}
+                                item={item}
+                                selected={selectedSection === 'development' && selectedDevSubSection === item.id}
+                                onClick={() => {
+                                  setSelectedSection('development');
+                                  setSelectedDevSubSection(item.id as any);
+                                }}
+                                onContextMenu={handleDevContextMenu}
+                                icon={getDevIcon(item.id)}
+                              />
+                            ))}
+                          </List>
+                        </SortableContext>
+                      </DndContext>
+
+                      {/* Context Menu for Reordering */}
+                      <Menu
+                        open={contextMenu !== null}
+                        onClose={() => setContextMenu(null)}
+                        anchorReference="anchorPosition"
+                        anchorPosition={
+                          contextMenu !== null
+                            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                            : undefined
+                        }
+                      >
+                        <MenuItem onClick={() => handleContextAction('up')} disabled={devMenuItems.findIndex(i => i.id === contextMenu?.itemId) === 0}>Move Up</MenuItem>
+                        <MenuItem onClick={() => handleContextAction('down')} disabled={devMenuItems.findIndex(i => i.id === contextMenu?.itemId) === devMenuItems.length - 1}>Move Down</MenuItem>
+                        <Divider />
+                        <MenuItem onClick={() => handleContextAction('top')} disabled={devMenuItems.findIndex(i => i.id === contextMenu?.itemId) === 0}>Move to Top</MenuItem>
+                        <MenuItem onClick={() => handleContextAction('bottom')} disabled={devMenuItems.findIndex(i => i.id === contextMenu?.itemId) === devMenuItems.length - 1}>Move to Bottom</MenuItem>
+                      </Menu>
+                    </List>
+                  </Collapse>
+                </>
+              )
+            }
+          </List >
           <Divider />
-        </Box>
-      </Drawer>
+        </Box >
+      </Drawer >
 
       {/* Main Content */}
-      <Box
+      < Box
         component="main"
         sx={{
           flexGrow: 1,
@@ -2468,284 +2517,293 @@ export function App() {
           mt: 8,
           transition: 'margin 225ms cubic-bezier(0.4, 0, 0.6, 1) 0ms',
           width: drawerOpen ? `calc(100% - ${drawerWidth}px)` : '100%'
-        }}
+        }
+        }
       >
         {/* Main List View */}
-        {viewMode === 'list' && (
-          <>
-            {/* Products Section */}
-            {
-              selectedSection === 'products' && (
+        {
+          viewMode === 'list' && (
+            <>
+              {/* Products Section */}
+              {
+                selectedSection === 'products' && (
+                  <Suspense fallback={
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                      <CircularProgress size={60} />
+                    </Box>
+                  }>
+                    <ProductsPage
+                      onEditProduct={(product) => {
+                        setEditingProduct({ ...product });
+                        setEditProductDialog(true);
+                      }}
+                    />
+                  </Suspense>
+                )
+              }
+
+              {/* Solutions Section */}
+              {selectedSection === 'solutions' && (
                 <Suspense fallback={
                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
                     <CircularProgress size={60} />
                   </Box>
                 }>
-                  <ProductsPage
-                    onEditProduct={(product) => {
-                      setEditingProduct({ ...product });
-                      setEditProductDialog(true);
-                    }}
-                  />
+                  <SolutionsPage />
                 </Suspense>
-              )
-            }
+              )}
 
-            {/* Solutions Section */}
-            {selectedSection === 'solutions' && (
-              <Suspense fallback={
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                  <CircularProgress size={60} />
+              {/* Customers Section */}
+              {selectedSection === 'customers' && (
+                <Suspense fallback={
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                    <CircularProgress size={60} />
+                  </Box>
+                }>
+                  <CustomersPage />
+                </Suspense>
+              )}
+
+              {/* Admin Section (Admin Only) */}
+              {selectedSection === 'admin' && user?.isAdmin && (
+                <>
+                  {selectedAdminSubSection === 'users' && <UserManagement />}
+                  {selectedAdminSubSection === 'roles' && <RoleManagement />}
+                  {selectedAdminSubSection === 'backup' && <BackupManagementPanel />}
+                  {selectedAdminSubSection === 'theme' && <ThemeSelector />}
+                  {selectedAdminSubSection === 'about' && <AboutPage />}
+                </>
+              )}
+
+              {/* Development Section (Dev Mode + Admin Only) */}
+              {selectedSection === 'development' && isDevelopmentMode && isAdminUser && (
+                <Box sx={{ p: 3 }}>
+                  {selectedDevSubSection === 'tests' && <EnhancedTestsPanel />}
+                  {selectedDevSubSection === 'cicd' && <DevelopmentCICDPanel />}
+                  {selectedDevSubSection === 'docs' && <DevelopmentDocsPanel />}
+                  {selectedDevSubSection === 'database' && <DatabaseManagementPanel />}
+                  {selectedDevSubSection === 'logs' && <LogsViewerPanel />}
+                  {selectedDevSubSection === 'build' && <EnhancedBuildDeployPanel />}
+                  {selectedDevSubSection === 'env' && <EnvironmentPanel />}
+                  {selectedDevSubSection === 'api' && <EnhancedAPITestingPanel />}
+                  {selectedDevSubSection === 'quality' && <CodeQualityPanel />}
+                  {selectedDevSubSection === 'performance' && <PerformancePanel />}
+                  {selectedDevSubSection === 'git' && <EnhancedGitPanel />}
+                  {selectedDevSubSection === 'tasks' && <TaskRunnerPanel />}
                 </Box>
-              }>
-                <SolutionsPage />
-              </Suspense>
-            )}
+              )}
 
-            {/* Customers Section */}
-            {selectedSection === 'customers' && (
-              <Suspense fallback={
-                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                  <CircularProgress size={60} />
-                </Box>
-              }>
-                <CustomersPage />
-              </Suspense>
-            )}
-
-            {/* Admin Section (Admin Only) */}
-            {selectedSection === 'admin' && user?.isAdmin && (
-              <>
-                {selectedAdminSubSection === 'users' && <UserManagement />}
-                {selectedAdminSubSection === 'roles' && <RoleManagement />}
-                {selectedAdminSubSection === 'backup' && <BackupManagementPanel />}
-                {selectedAdminSubSection === 'theme' && <ThemeSelector />}
-                {selectedAdminSubSection === 'about' && <AboutPage />}
-              </>
-            )}
-
-            {/* Development Section (Dev Mode + Admin Only) */}
-            {selectedSection === 'development' && isDevelopmentMode && isAdminUser && (
-              <Box sx={{ p: 3 }}>
-                {selectedDevSubSection === 'tests' && <EnhancedTestsPanel />}
-                {selectedDevSubSection === 'cicd' && <DevelopmentCICDPanel />}
-                {selectedDevSubSection === 'docs' && <DevelopmentDocsPanel />}
-                {selectedDevSubSection === 'database' && <DatabaseManagementPanel />}
-                {selectedDevSubSection === 'logs' && <LogsViewerPanel />}
-                {selectedDevSubSection === 'build' && <EnhancedBuildDeployPanel />}
-                {selectedDevSubSection === 'env' && <EnvironmentPanel />}
-                {selectedDevSubSection === 'api' && <EnhancedAPITestingPanel />}
-                {selectedDevSubSection === 'quality' && <CodeQualityPanel />}
-                {selectedDevSubSection === 'performance' && <PerformancePanel />}
-                {selectedDevSubSection === 'git' && <EnhancedGitPanel />}
-                {selectedDevSubSection === 'tasks' && <TaskRunnerPanel />}
-              </Box>
-            )}
-
-            {/* No Access Message - Show when user has no access to any section */}
-            {!hasProducts && !hasSolutions && !hasCustomers && !user?.isAdmin && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: '60vh',
-                  textAlign: 'center',
-                  px: 3
-                }}
-              >
-                <Paper
-                  elevation={3}
+              {/* No Access Message - Show when user has no access to any section */}
+              {!hasProducts && !hasSolutions && !hasCustomers && !user?.isAdmin && (
+                <Box
                   sx={{
-                    p: 4,
-                    maxWidth: 600,
-                    borderRadius: 2
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '60vh',
+                    textAlign: 'center',
+                    px: 3
                   }}
                 >
-                  <Box
+                  <Paper
+                    elevation={3}
                     sx={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 80,
-                      height: 80,
-                      borderRadius: 2,
-                      bgcolor: 'error.light',
-                      color: 'white',
-                      mb: 3,
-                      mx: 'auto'
+                      p: 4,
+                      maxWidth: 600,
+                      borderRadius: 2
                     }}
                   >
-                    <Dashboard sx={{ fontSize: 40 }} />
-                  </Box>
-                  <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-                    No Access
-                  </Typography>
-                  <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                    You currently don't have access to any resources in this application.
-                    Please contact your administrator to request access to products, solutions, or customers.
-                  </Typography>
-                  <Divider sx={{ my: 2 }} />
-                  <Typography variant="body2" color="text.secondary">
-                    User: <strong>{user?.username || 'Unknown'}</strong>
-                  </Typography>
-                </Paper>
-              </Box>
-            )}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 80,
+                        height: 80,
+                        borderRadius: 2,
+                        bgcolor: 'error.light',
+                        color: 'white',
+                        mb: 3,
+                        mx: 'auto'
+                      }}
+                    >
+                      <Dashboard sx={{ fontSize: 40 }} />
+                    </Box>
+                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                      No Access
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                      You currently don't have access to any resources in this application.
+                      Please contact your administrator to request access to products, solutions, or customers.
+                    </Typography>
+                    <Divider sx={{ my: 2 }} />
+                    <Typography variant="body2" color="text.secondary">
+                      User: <strong>{user?.username || 'Unknown'}</strong>
+                    </Typography>
+                  </Paper>
+                </Box>
+              )}
 
-            {/* Add Product Dialog */}
-            <ProductDialog
-              open={addProductDialog}
-              onClose={() => setAddProductDialog(false)}
-              onSave={handleAddProductSave}
-              product={null}
-              title="Add New Product"
-              availableReleases={[]}
-            />
+              {/* Add Product Dialog */}
+              <ProductDialog
+                open={addProductDialog}
+                onClose={() => setAddProductDialog(false)}
+                onSave={handleAddProductSave}
+                product={null}
+                title="Add New Product"
+                availableReleases={[]}
+              />
 
-            {/* Add Solution Dialog */}
-            <SolutionDialog
-              open={addSolutionDialog}
-              onClose={() => setAddSolutionDialog(false)}
-              onSave={() => {
-                // refetchSolutions();
-                setAddSolutionDialog(false);
-              }}
-              solution={null}
-              allProducts={products}
-              initialTab="general"
-            />
-
-
-
-
-            {/* Edit Product Dialog */}
-            <ProductDialog
-              open={editProductDialog}
-              onClose={() => {
-                setEditProductDialog(false);
-                setProductDialogInitialTab('general');
-              }}
-              onSave={handleUpdateProduct}
-              product={editingProduct}
-              title="Edit Product"
-              availableReleases={editingProduct?.releases || []}
-              initialTab={productDialogInitialTab}
-            />
+              {/* Add Solution Dialog */}
+              <SolutionDialog
+                open={addSolutionDialog}
+                onClose={() => setAddSolutionDialog(false)}
+                onSave={() => {
+                  // refetchSolutions();
+                  setAddSolutionDialog(false);
+                }}
+                solution={null}
+                allProducts={products}
+                initialTab="general"
+              />
 
 
 
-            {/* Add Custom Attributes Dialog */}
-            <CustomAttributeDialog
-              open={addCustomAttributeDialog}
-              onClose={() => setAddCustomAttributeDialog(false)}
-              onSave={handleAddCustomAttributeSave}
-              attribute={null}
-              existingKeys={Object.keys(products.find((p: any) => p.id === selectedProduct)?.customAttrs || {})}
-            />
 
-            {/* Edit Custom Attribute Dialog */}
-            <CustomAttributeDialog
-              open={editCustomAttributeDialog}
-              onClose={() => {
-                setEditCustomAttributeDialog(false);
-                setEditingCustomAttribute(null);
-              }}
-              onSave={handleEditCustomAttributeSave}
-              attribute={editingCustomAttribute}
-              existingKeys={Object.keys(products.find((p: any) => p.id === selectedProduct)?.customAttrs || {})}
-            />
+              {/* Edit Product Dialog */}
+              <ProductDialog
+                open={editProductDialog}
+                onClose={() => {
+                  setEditProductDialog(false);
+                  setProductDialogInitialTab('general');
+                }}
+                onSave={handleUpdateProduct}
+                product={editingProduct}
+                title="Edit Product"
+                availableReleases={editingProduct?.releases || []}
+                initialTab={productDialogInitialTab}
+              />
 
 
-            {/* Documentation Links Menu */}
-            <Menu
-              anchorEl={docMenuAnchor?.el}
-              open={Boolean(docMenuAnchor)}
-              onClose={() => setDocMenuAnchor(null)}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'left',
-              }}
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'left',
-              }}
-            >
-              <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
-                Documentation Links:
-              </MenuItem>
-              {docMenuAnchor?.links.map((link, index) => (
+
+              {/* Add Custom Attributes Dialog */}
+              <CustomAttributeDialog
+                open={addCustomAttributeDialog}
+                onClose={() => setAddCustomAttributeDialog(false)}
+                onSave={handleAddCustomAttributeSave}
+                attribute={null}
+                existingKeys={Object.keys(products.find((p: any) => p.id === selectedProduct)?.customAttrs || {})}
+              />
+
+              {/* Edit Custom Attribute Dialog */}
+              <CustomAttributeDialog
+                open={editCustomAttributeDialog}
+                onClose={() => {
+                  setEditCustomAttributeDialog(false);
+                  setEditingCustomAttribute(null);
+                }}
+                onSave={handleEditCustomAttributeSave}
+                attribute={editingCustomAttribute}
+                existingKeys={Object.keys(products.find((p: any) => p.id === selectedProduct)?.customAttrs || {})}
+              />
+
+
+              {/* Documentation Links Menu */}
+              <Menu
+                anchorEl={docMenuAnchor?.el}
+                open={Boolean(docMenuAnchor)}
+                onClose={() => setDocMenuAnchor(null)}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'left',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'left',
+                }}
+              >
+                <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
+                  Documentation Links:
+                </MenuItem>
+                {docMenuAnchor?.links.map((link, index) => (
+                  <MenuItem
+                    key={index}
+                    onClick={() => {
+                      window.open(link, '_blank');
+                      setDocMenuAnchor(null);
+                    }}
+                    sx={{ fontSize: '0.875rem' }}
+                  >
+                    {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                  </MenuItem>
+                ))}
                 <MenuItem
-                  key={index}
                   onClick={() => {
-                    window.open(link, '_blank');
+                    docMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
                     setDocMenuAnchor(null);
                   }}
-                  sx={{ fontSize: '0.875rem' }}
+                  sx={{ fontSize: '0.875rem', fontWeight: 'bold', borderTop: '1px solid #ddd' }}
                 >
-                  {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                  Open All ({docMenuAnchor?.links.length})
                 </MenuItem>
-              ))}
-              <MenuItem
-                onClick={() => {
-                  docMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
-                  setDocMenuAnchor(null);
-                }}
-                sx={{ fontSize: '0.875rem', fontWeight: 'bold', borderTop: '1px solid #ddd' }}
-              >
-                Open All ({docMenuAnchor?.links.length})
-              </MenuItem>
-            </Menu>
+              </Menu>
 
-            {/* Video Links Menu */}
-            <Menu
-              anchorEl={videoMenuAnchor?.el}
-              open={Boolean(videoMenuAnchor)}
-              onClose={() => setVideoMenuAnchor(null)}
-              anchorOrigin={{
-                vertical: 'bottom',
-                horizontal: 'left',
-              }}
-              transformOrigin={{
-                vertical: 'top',
-                horizontal: 'left',
-              }}
-            >
-              <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
-                Video Links:
-              </MenuItem>
-              {videoMenuAnchor?.links.map((link, index) => (
+              {/* Video Links Menu */}
+              <Menu
+                anchorEl={videoMenuAnchor?.el}
+                open={Boolean(videoMenuAnchor)}
+                onClose={() => setVideoMenuAnchor(null)}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'left',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'left',
+                }}
+              >
+                <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
+                  Video Links:
+                </MenuItem>
+                {videoMenuAnchor?.links.map((link, index) => (
+                  <MenuItem
+                    key={index}
+                    onClick={() => {
+                      window.open(link, '_blank');
+                      setVideoMenuAnchor(null);
+                    }}
+                    sx={{ fontSize: '0.875rem' }}
+                  >
+                    {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                  </MenuItem>
+                ))}
                 <MenuItem
-                  key={index}
                   onClick={() => {
-                    window.open(link, '_blank');
+                    videoMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
                     setVideoMenuAnchor(null);
                   }}
-                  sx={{ fontSize: '0.875rem' }}
+                  sx={{ fontSize: '0.875rem', fontWeight: 'bold', borderTop: '1px solid #ddd' }}
                 >
-                  {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                  Open All ({videoMenuAnchor?.links.length})
                 </MenuItem>
-              ))}
-              <MenuItem
-                onClick={() => {
-                  videoMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
-                  setVideoMenuAnchor(null);
-                }}
-                sx={{ fontSize: '0.875rem', fontWeight: 'bold', borderTop: '1px solid #ddd' }}
-              >
-                Open All ({videoMenuAnchor?.links.length})
-              </MenuItem>
-            </Menu>
-          </>
-        )}
+              </Menu>
+            </>
+          )
+        }
 
         {/* User Profile Dialog */}
         <UserProfileDialog
           open={profileDialog}
           onClose={() => setProfileDialog(false)}
         />
-      </Box>
+      </Box >
+      {/* Standalone Task Preview Dialog */}
+      <TaskPreviewDialog
+        open={openTaskPreview}
+        onClose={() => setOpenTaskPreview(false)}
+        taskId={previewTaskId}
+      />
     </Box>
   );
 

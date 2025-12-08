@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.1.2  
-**Last Updated:** December 3, 2025  
+**Version:** 2.2.0
+**Last Updated:** December 6, 2025  
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -843,6 +843,39 @@ sudo tail -f /var/log/httpd/error_log
 
 ## Recent Changes & Fixes
 
+### Version 2.2.0 (December 6, 2025)
+
+#### AI Agent Implementation (Phases 1 & 2 Complete)
+
+**Feature**: Core backend infrastructure for the new AI Assistant.
+- **Service Skeleton**: Created `AIAgentService` with initial processing logic.
+- **Schema Context**: Implemented `SchemaContextManager` to generate LLM-friendly database schema descriptions (tables, relationships, business rules).
+- **Query Templates**: Created 20+ regex-based safe query templates for common questions (e.g., "products without telemetry", "customers with low adoption").
+- **LLM Providers**: Implemented multi-provider support including:
+  - **Cisco AI Gateway** (Enterprise standard, OAuth2 + Basic Auth)
+  - **OpenAI** (GPT-4o)
+  - **Gemini** (1.5 Pro)
+  - **Anthropic** (Claude 3.5)
+- **Safe Execution**: Implemented `QueryExecutor` with read-only enforcement, row limits, and timeouts to safely run AI-generated Prisma queries.
+- **Testing**: Added comprehensive unit and integration tests (130+ tests) covering all AI components.
+
+### Version 2.1.3 (December 4, 2025)
+
+#### Viewer Role Security & Dev Environment Fixes
+
+**Feature 1: Strict Viewer Read-Only Access**
+- **Issue**: Viewer role potentially had write access in some edge cases.
+- **Fix**: 
+  - Implemented strict backend-side RBAC enforcement in all resolvers.
+  - Added `ensureRole` checks to block specified mutations for VIEWER role.
+  - Verified UI disables all edit/save/delete buttons for Viewers.
+  - See `docs/VIEWER_ROLE_VERIFICATION.md` for details.
+
+**Feature 2: Development Environment Stability**
+- **WebSocket Fix**: Resolved WebSocket connection failures for HMR via reverse proxy (`dev.rajarora.csslab`).
+- **DevTools Isolation**: Refactored development tools to prevent interference with main application.
+- **API Routing**: Fixed 404 errors in dev environment API calls.
+
 ### Version 2.1.2 (December 3, 2025)
 
 #### Development Menu Enhancements
@@ -1218,8 +1251,8 @@ sudo tail -f /var/log/httpd/error_log
 
 ---
 
-**Last Updated:** December 1, 2025  
-**Version:** 2.1.1  
+**Last Updated:** December 6, 2025  
+**Version:** 2.2.0  
 **Status:** Production Ready
 
 *This document should be updated whenever significant changes are made to the application.*

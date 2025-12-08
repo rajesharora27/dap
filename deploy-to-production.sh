@@ -1,5 +1,5 @@
 #!/bin/bash
-# Deploy Latest Changes to Production (centos2) - Version 3
+# Deploy Latest Changes to Production (centos2) - Version 4
 # Matches production directory structure and permissions
 
 set -e
@@ -9,10 +9,16 @@ echo "🚀 Deploying to Production (centos2)"
 echo "========================================="
 echo ""
 
-# Step 1: Build frontend first
+# Step 0: Setup production environment
+echo "📋 Step 0: Setting up production environment..."
+cd /data/dap
+./scripts/sync-env.sh production
+echo ""
+
+# Step 1: Build frontend
 echo "📦 Step 1: Building frontend..."
 cd /data/dap/frontend
-npm run build
+npm run build -- --base=/dap/
 echo "✅ Frontend built"
 echo ""
 
@@ -34,7 +40,17 @@ cp backend/tsconfig.json /tmp/dap-deploy/
 cp backend/eslint.config.mjs /tmp/dap-deploy/ 2>/dev/null || true
 cp -r backend/dist /tmp/dap-deploy/backend-dist
 cp -r frontend/dist /tmp/dap-deploy/frontend-dist
+
+# Copy environment files
+# Copy environment files (from root)
 cp .env.production /tmp/dap-deploy/.env
+cp .env.development /tmp/dap-deploy/.env.development 2>/dev/null || true
+cp .env.production /tmp/dap-deploy/.env.production 2>/dev/null || true
+
+# Copy config files (including LLM config)
+mkdir -p /tmp/dap-deploy/config
+cp -r backend/config/* /tmp/dap-deploy/config/ 2>/dev/null || true
+
 cp -r scripts /tmp/dap-deploy/scripts-new 2>/dev/null || true
 echo "✅ Files prepared in /tmp/dap-deploy"
 echo ""
@@ -79,9 +95,35 @@ mkdir -p "$DAP_ROOT/frontend/dist"
 mkdir -p "$DAP_ROOT/frontend/dist"
 mkdir -p "/data/dap/scripts"
 
-# Copy .env
+# Copy environment files to root
 cp /tmp/dap-deploy-prod/.env "$DAP_ROOT/.env"
-echo "✅ Environment file updated"
+cp /tmp/dap-deploy-prod/.env.development "$DAP_ROOT/.env.development" 2>/dev/null || true
+cp /tmp/dap-deploy-prod/.env.production "$DAP_ROOT/.env.production" 2>/dev/null || true
+echo "✅ Environment files updated in root"
+
+# Copy scripts if provided (Early copy to ensure sync-env is available)
+if [ -d "/tmp/dap-deploy-prod/scripts-new" ]; then
+  mkdir -p "$DAP_ROOT/scripts"
+  cp /tmp/dap-deploy-prod/scripts-new/* "$DAP_ROOT/scripts/" 2>/dev/null || true
+  chmod +x "$DAP_ROOT/scripts/"*.sh 2>/dev/null || true
+  echo "✅ Scripts updated"
+fi
+
+# Sync Environment Variables using the script
+echo "🔄 Syncing environment variables..."
+if [ -f "$DAP_ROOT/scripts/sync-env.sh" ]; then
+  cd "$DAP_ROOT"
+  ./scripts/sync-env.sh production
+  echo "✅ Environment synchronized"
+else
+  echo "⚠️  sync-env.sh not found, falling back to manual copy"
+  cp "$DAP_ROOT/.env" "$DAP_ROOT/backend/.env"
+fi
+
+# Create directory structure for config
+mkdir -p "$DAP_ROOT/backend/config"
+cp -r /tmp/dap-deploy-prod/config/* "$DAP_ROOT/backend/config/" 2>/dev/null || true
+echo "✅ Config files updated"
 
 # Backup current backend source
 if [ -d "$DAP_ROOT/backend/src" ] && [ "$(ls -A $DAP_ROOT/backend/src)" ]; then
@@ -115,13 +157,8 @@ rm -rf "$DAP_ROOT/frontend/dist"/*
 cp -r /tmp/dap-deploy-prod/frontend-dist/* "$DAP_ROOT/frontend/dist/"
 echo "✅ Frontend files copied"
 
-echo "📝 Copying scripts..."
-# Copy scripts if provided
-if [ -d "/tmp/dap-deploy-prod/scripts-new" ]; then
-  cp /tmp/dap-deploy-prod/scripts-new/* /data/dap/scripts/ 2>/dev/null || true
-  chmod +x /data/dap/scripts/*.sh 2>/dev/null || true
-  echo "✅ Scripts copied"
-fi
+# Scripts already copied in earlier step
+echo "✅ Scripts already updated"
 
 # Build backend
 echo "🔨 Building backend..."

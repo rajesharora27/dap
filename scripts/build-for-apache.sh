@@ -1,58 +1,77 @@
 #!/bin/bash
-# Build DAP frontend for Apache deployment at /dap/ path
+# =============================================================================
+# Build DAP for Apache deployment
+# =============================================================================
+# Usage: ./scripts/build-for-apache.sh [development|production]
+# =============================================================================
 
 set -e
 
+ENV=${1:-production}
+DAP_ROOT="/data/dap"
+
 echo "======================================"
-echo "Building DAP Frontend for Apache"
+echo "Building DAP for Apache"
+echo "Environment: $ENV"
 echo "Base Path: /dap/"
 echo "======================================"
 echo ""
 
-cd /data/dap/frontend
+# Step 1: Setup environment
+echo "📋 Step 1: Setting up environment..."
+$DAP_ROOT/scripts/setup-env.sh $ENV
+echo ""
 
-# Check if dependencies are installed
+# Step 2: Build backend
+echo "📦 Step 2: Building backend..."
+cd $DAP_ROOT/backend
+
+# Install dependencies if needed
 if [ ! -d "node_modules" ]; then
-    echo "Installing dependencies..."
+    echo "Installing backend dependencies..."
+    npm install
+fi
+
+npm run build
+echo "✅ Backend built"
+echo ""
+
+# Step 3: Build frontend
+echo "📦 Step 3: Building frontend..."
+cd $DAP_ROOT/frontend
+
+# Install dependencies if needed
+if [ ! -d "node_modules" ]; then
+    echo "Installing frontend dependencies..."
     npm install
 fi
 
 # Create environment configuration for build
 echo "Creating build-time environment configuration..."
-cat > .env.production.local << EOF
+cat > .env.production.local << ENVFILE
 VITE_GRAPHQL_ENDPOINT=/dap/graphql
 VITE_API_ENDPOINT=/dap/api
 VITE_BASE_PATH=/dap/
-EOF
+ENVFILE
 
 # Build with base path
-echo ""
-echo "Building frontend with /dap/ base path..."
 npm run build -- --base=/dap/
+echo "✅ Frontend built"
+echo ""
 
-if [ $? -eq 0 ]; then
-    echo ""
-    echo "======================================"
-    echo "✓ Build Complete!"
-    echo "======================================"
-    echo ""
-    echo "Built files location: /data/dap/frontend/dist/"
-    echo "Base path: /dap/"
-    echo ""
-    echo "The frontend is now ready for Apache deployment."
-    echo ""
-    echo "To deploy, restart Apache:"
-    echo "  sudo systemctl restart httpd"
-    echo ""
-    echo "Access the application at:"
-    echo "  http://myapps.cxsaaslab.com/dap/"
-    echo "  http://myapps.rajarora.csslab/dap/"
-    echo "  http://centos1.rajarora.csslab/dap/"
-    echo "  https://myapps-8321890.ztna.sse.cisco.io/dap/"
-    echo "  http://172.22.156.33/dap/"
-    echo ""
-else
-    echo ""
-    echo "✗ Build failed!"
-    exit 1
-fi
+# Step 4: Summary
+echo "======================================"
+echo "✅ Build Complete!"
+echo "======================================"
+echo ""
+echo "Environment: $ENV"
+echo "Backend dist: $DAP_ROOT/backend/dist/"
+echo "Frontend dist: $DAP_ROOT/frontend/dist/"
+echo ""
+echo "To deploy locally:"
+echo "  sudo cp -r $DAP_ROOT/frontend/dist/* /var/www/html/dap/"
+echo "  sudo systemctl reload httpd"
+echo ""
+echo "To deploy to production:"
+echo "  $DAP_ROOT/deploy-to-production.sh"
+echo ""

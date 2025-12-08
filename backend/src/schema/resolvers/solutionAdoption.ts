@@ -220,7 +220,7 @@ export const SolutionAdoptionQueryResolvers = {
 // Mutation Resolvers
 export const SolutionAdoptionMutationResolvers = {
   assignSolutionToCustomer: async (_: any, { input }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
+    ensureRole(ctx, ['ADMIN', 'CSS']);
 
     const { customerId, solutionId, name, licenseLevel, selectedOutcomeIds, selectedReleaseIds } = input;
 
@@ -348,7 +348,7 @@ export const SolutionAdoptionMutationResolvers = {
   },
 
   updateCustomerSolution: async (_: any, { id, input }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
+    ensureRole(ctx, ['ADMIN', 'CSS']);
 
     const updateData: any = {};
     const oldName = input.name ? (await prisma.customerSolution.findUnique({ where: { id }, select: { name: true } }))?.name : null;
@@ -479,7 +479,7 @@ export const SolutionAdoptionMutationResolvers = {
   },
 
   removeSolutionFromCustomerEnhanced: async (_: any, { id }: any, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
+    ensureRole(ctx, ['ADMIN', 'CSS']);
 
     try {
       // Get the customer solution with its linked products
@@ -1907,7 +1907,7 @@ export const SolutionAdoptionMutationResolvers = {
   },
 
   updateCustomerSolutionTaskStatus: async (_: any, { input }: any, ctx: any) => {
-    requireUser(ctx);
+    ensureRole(ctx, ['ADMIN', 'CSS']);
 
     const { customerSolutionTaskId, status, notes, updateSource } = input;
 
@@ -1958,7 +1958,7 @@ export const SolutionAdoptionMutationResolvers = {
   },
 
   bulkUpdateCustomerSolutionTaskStatus: async (_: any, { solutionAdoptionPlanId, taskIds, status, notes }: any, ctx: any) => {
-    requireUser(ctx);
+    ensureRole(ctx, ['ADMIN', 'CSS']);
 
     const updates = await Promise.all(
       taskIds.map((taskId: string) =>
@@ -1995,7 +1995,7 @@ export const SolutionAdoptionMutationResolvers = {
   },
 
   evaluateSolutionTaskTelemetry: async (_: any, { customerSolutionTaskId }: any, ctx: any) => {
-    requireUser(ctx);
+    ensureRole(ctx, ['ADMIN', 'CSS']);
 
     const task = await prisma.customerSolutionTask.findUnique({
       where: { id: customerSolutionTaskId },
@@ -2092,7 +2092,7 @@ export const SolutionAdoptionMutationResolvers = {
 
   // Export telemetry template for solution adoption plan
   exportSolutionAdoptionPlanTelemetryTemplate: async (_: any, { solutionAdoptionPlanId }: { solutionAdoptionPlanId: string }, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
+    ensureRole(ctx, ['ADMIN', 'CSS']);
 
     // Use the customer telemetry export service with solution-specific queries
     const { CustomerTelemetryExportService } = require('../../services/telemetry/CustomerTelemetryExportService');
@@ -2158,7 +2158,7 @@ export const SolutionAdoptionMutationResolvers = {
 
   // Import telemetry data for solution adoption plan
   importSolutionAdoptionPlanTelemetry: async (_: any, { solutionAdoptionPlanId, file }: { solutionAdoptionPlanId: string; file: any }, ctx: any) => {
-    ensureRole(ctx, ['ADMIN', 'CS', 'CSS']);
+    ensureRole(ctx, ['ADMIN', 'CSS']);
 
     // Handle file upload - file is an Upload scalar
     const { createReadStream } = await file;

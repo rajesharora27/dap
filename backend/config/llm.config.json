@@ -1,0 +1,91 @@
+{
+  "$schema": "./llm.config.schema.json",
+  "version": "1.1.0",
+  "description": "LLM Provider Configuration for DAP AI Agent",
+  "defaultProvider": "cisco",
+  "providers": {
+    "cisco": {
+      "enabled": true,
+      "model": "gpt-4.1",
+      "maxTokens": 32768,
+      "temperature": 0.3,
+      "timeout": 30000,
+      "description": "Cisco AI Gateway - Enterprise LLM access via Cisco infrastructure"
+    },
+    "openai": {
+      "enabled": true,
+      "model": "gpt-4o",
+      "maxTokens": 2000,
+      "temperature": 0.3,
+      "timeout": 30000,
+      "description": "OpenAI GPT-4o - Best for complex reasoning and accuracy"
+    },
+    "gemini": {
+      "enabled": true,
+      "model": "gemini-1.5-pro",
+      "maxTokens": 2000,
+      "temperature": 0.3,
+      "timeout": 30000,
+      "description": "Google Gemini 1.5 Pro - Good balance of speed and quality"
+    },
+    "anthropic": {
+      "enabled": true,
+      "model": "claude-3-5-sonnet-20241022",
+      "maxTokens": 2000,
+      "temperature": 0.3,
+      "timeout": 30000,
+      "description": "Anthropic Claude 3.5 Sonnet - Excellent for nuanced understanding"
+    },
+    "mock": {
+      "enabled": true,
+      "model": "mock-model",
+      "maxTokens": 1000,
+      "temperature": 0.7,
+      "timeout": 5000,
+      "description": "Mock provider for testing (no API calls)"
+    }
+  },
+  "fallbackOrder": [
+    "cisco",
+    "openai",
+    "gemini",
+    "anthropic",
+    "mock"
+  ],
+  "apiKeys": {
+    "_comment": "API keys should be set via environment variables, not in this file",
+    "openai": "${OPENAI_API_KEY}",
+    "gemini": "${GEMINI_API_KEY}",
+    "anthropic": "${ANTHROPIC_API_KEY}"
+  },
+  "modelAliases": {
+    "cisco": "cisco",
+    "cisco-ai": "cisco",
+    "gpt4": "openai",
+    "gpt-4": "openai",
+    "gpt-4o": "openai",
+    "gemini": "gemini",
+    "gemini-pro": "gemini",
+    "claude": "anthropic",
+    "claude-3": "anthropic",
+    "sonnet": "anthropic"
+  },
+  "rateLimits": {
+    "cisco": {
+      "requestsPerMinute": 300,
+      "tokensPerMinute": 600000
+    },
+    "openai": {
+      "requestsPerMinute": 60,
+      "tokensPerMinute": 90000
+    },
+    "gemini": {
+      "requestsPerMinute": 60,
+      "tokensPerMinute": 120000
+    },
+    "anthropic": {
+      "requestsPerMinute": 60,
+      "tokensPerMinute": 100000
+    }
+  }
+}

@@ -675,6 +675,18 @@ export const resolvers = {
 
       return fetchSolutionsPaginated(filteredArgs);
     },
+    task: async (_: any, { id }: any, ctx: any) => {
+      requireUser(ctx);
+
+      if (fallbackActive) {
+        const { tasks } = require('../../lib/fallbackStore');
+        return tasks.find((t: any) => t.id === id);
+      }
+
+      return prisma.task.findUnique({
+        where: { id, deletedAt: null }
+      });
+    },
     tasks: async (_: any, args: any) => {
       if (args.productId) {
         return fetchTasksPaginated(args.productId, args);
@@ -837,9 +849,23 @@ export const resolvers = {
       let user = null;
       if (email) user = await prisma.user.findUnique({ where: { email } });
       if (!user && username) user = await prisma.user.findUnique({ where: { username } });
-      if (!user) throw new Error('INVALID_CREDENTIALS');
+
+      if (!user) {
+        console.warn(`[Auth] Login failed: User not found (email: ${email}, username: ${username})`);
+        throw new Error('INVALID_CREDENTIALS');
+      }
+
+      // Check if user is active
+      if (user.isActive === false) {
+        console.warn(`[Auth] Login failed: User '${user.username}' is inactive`);
+        throw new Error('INVALID_CREDENTIALS');
+      }
+
       const ok = await bcrypt.compare(password, user.password);
-      if (!ok) throw new Error('INVALID_CREDENTIALS');
+      if (!ok) {
+        console.warn(`[Auth] Login failed: Invalid password for user '${user.username}'`);
+        throw new Error('INVALID_CREDENTIALS');
+      }
 
       // Fetch user roles
       const userRoles = await prisma.userRole.findMany({
@@ -1222,7 +1248,7 @@ export const resolvers = {
     },
 
     createOutcome: async (_: any, { input }: any, ctx: any) => {
-      requireUser(ctx);
+      ensureRole(ctx, ['ADMIN', 'SME']);
 
       // Validate that either productId or solutionId is provided (but not both)
       if (!input.productId && !input.solutionId) {
@@ -1268,7 +1294,7 @@ export const resolvers = {
       }
     },
     updateOutcome: async (_: any, { id, input }: any, ctx: any) => {
-      requireUser(ctx);
+      ensureRole(ctx, ['ADMIN', 'SME']);
       if (fallbackActive) {
         // Check for duplicate names in the same product
         const currentOutcome = fbListOutcomes().find(o => o.id === id);
@@ -1331,10 +1357,10 @@ export const resolvers = {
       return true;
     },
     removeProductFromSolution: async (_: any, { solutionId, productId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'SME']); if (fallbackActive) { fbRemoveProductFromSolution(solutionId, productId); await logAudit('REMOVE_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); return true; } await prisma.solutionProduct.deleteMany({ where: { solutionId, productId } }); await logAudit('REMOVE_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, ctx.user?.id); return true; },
-    addProductToCustomer: async (_: any, { customerId, productId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'CS', 'CSS']); if (fallbackActive) { fbAddProductToCustomer(customerId, productId); await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; } await prisma.customerProduct.upsert({ where: { customerId_productId: { customerId, productId } }, update: {}, create: { customerId, productId } }); await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; },
-    removeProductFromCustomer: async (_: any, { customerId, productId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'CS', 'CSS']); if (fallbackActive) { fbRemoveProductFromCustomer(customerId, productId); await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; } await prisma.customerProduct.deleteMany({ where: { customerId, productId } }); await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; },
-    addSolutionToCustomer: async (_: any, { customerId, solutionId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'CS', 'CSS']); if (fallbackActive) { fbAddSolutionToCustomer(customerId, solutionId); await logAudit('ADD_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; } await prisma.customerSolution.upsert({ where: { customerId_solutionId: { customerId, solutionId } }, update: {}, create: { customerId, solutionId } }); await logAudit('ADD_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; },
-    removeSolutionFromCustomer: async (_: any, { customerId, solutionId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'CS', 'CSS']); if (fallbackActive) { fbRemoveSolutionFromCustomer(customerId, solutionId); await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; } await prisma.customerSolution.deleteMany({ where: { customerId, solutionId } }); await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; },
+    addProductToCustomer: async (_: any, { customerId, productId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'CSS']); if (fallbackActive) { fbAddProductToCustomer(customerId, productId); await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; } await prisma.customerProduct.upsert({ where: { customerId_productId: { customerId, productId } }, update: {}, create: { customerId, productId } }); await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; },
+    removeProductFromCustomer: async (_: any, { customerId, productId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'CSS']); if (fallbackActive) { fbRemoveProductFromCustomer(customerId, productId); await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; } await prisma.customerProduct.deleteMany({ where: { customerId, productId } }); await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, ctx.user?.id); return true; },
+    addSolutionToCustomer: async (_: any, { customerId, solutionId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'CSS']); if (fallbackActive) { fbAddSolutionToCustomer(customerId, solutionId); await logAudit('ADD_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; } await prisma.customerSolution.upsert({ where: { customerId_solutionId: { customerId, solutionId } }, update: {}, create: { customerId, solutionId } }); await logAudit('ADD_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; },
+    removeSolutionFromCustomer: async (_: any, { customerId, solutionId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'CSS']); if (fallbackActive) { fbRemoveSolutionFromCustomer(customerId, solutionId); await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; } await prisma.customerSolution.deleteMany({ where: { customerId, solutionId } }); await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, ctx.user?.id); return true; },
     reorderTasks: async (_: any, { productId, solutionId, order }: any, ctx: any) => {
       ensureRole(ctx, ['ADMIN', 'SME']);
 
@@ -1386,7 +1412,7 @@ export const resolvers = {
       console.log('🚀 CREATE_TASK - Has howToDoc field:', Object.hasOwnProperty.call(input, 'howToDoc'));
       console.log('🚀 CREATE_TASK - Has howToVideo field:', Object.hasOwnProperty.call(input, 'howToVideo'));
 
-      requireUser(ctx);
+      ensureRole(ctx, ['ADMIN', 'SME']);
 
       // Ensure either productId or solutionId is provided
       if (!input.productId && !input.solutionId) {
@@ -1648,7 +1674,7 @@ export const resolvers = {
       return task;
     },
     updateTask: async (_: any, { id, input }: any, ctx: any) => {
-      requireUser(ctx);
+      ensureRole(ctx, ['ADMIN', 'SME']);
 
       if (fallbackActive) {
         const before = fbUpdateTask(id, {});
@@ -1964,7 +1990,7 @@ export const resolvers = {
 
     // Task Export/Import (Tasks for specific product with append/overwrite modes)
     exportTasksCsv: async (_: any, { productId }: any, ctx: any) => {
-      requireUser(ctx);
+      ensureRole(ctx, ['ADMIN', 'SME']);
 
       const product = await prisma.product.findUnique({
         where: { id: productId },
@@ -2003,7 +2029,7 @@ export const resolvers = {
     },
 
     importTasksCsv: async (_: any, { productId, csv, mode }: any, ctx: any) => {
-      requireUser(ctx);
+      ensureRole(ctx, ['ADMIN', 'SME']);
 
       const result = {
         success: false,
@@ -2186,7 +2212,7 @@ export const resolvers = {
 
     // Product Export/Import (Simple product fields only)
     exportProductsCsv: async (_: any, __: any, ctx: any) => {
-      requireUser(ctx);
+      ensureRole(ctx, ['ADMIN', 'SME']);
 
       const products = await prisma.product.findMany({
         where: { deletedAt: null },
@@ -2212,7 +2238,7 @@ export const resolvers = {
     },
 
     importProductsCsv: async (_: any, { csv }: any, ctx: any) => {
-      requireUser(ctx);
+      ensureRole(ctx, 'ADMIN');
 
       const result = {
         success: false,
@@ -2312,9 +2338,9 @@ export const resolvers = {
       return generateProductSampleCsv();
     },
 
-    addTaskDependency: async (_: any, { taskId, dependsOnId }: any, ctx: any) => { requireUser(ctx); await prisma.taskDependency.create({ data: { taskId, dependsOnId } }); await logAudit('ADD_TASK_DEP', 'TaskDependency', taskId, { dependsOnId }); return true; },
-    removeTaskDependency: async (_: any, { taskId, dependsOnId }: any, ctx: any) => { requireUser(ctx); await prisma.taskDependency.deleteMany({ where: { taskId, dependsOnId } }); await logAudit('REMOVE_TASK_DEP', 'TaskDependency', taskId, { dependsOnId }); return true; },
-    addTelemetry: async (_: any, { taskId, data }: any, ctx: any) => { requireUser(ctx); await prisma.telemetry.create({ data: { taskId, data } }); await logAudit('ADD_TELEMETRY', 'Telemetry', taskId, {}); return true; },
+    addTaskDependency: async (_: any, { taskId, dependsOnId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'SME']); await prisma.taskDependency.create({ data: { taskId, dependsOnId } }); await logAudit('ADD_TASK_DEP', 'TaskDependency', taskId, { dependsOnId }); return true; },
+    removeTaskDependency: async (_: any, { taskId, dependsOnId }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'SME']); await prisma.taskDependency.deleteMany({ where: { taskId, dependsOnId } }); await logAudit('REMOVE_TASK_DEP', 'TaskDependency', taskId, { dependsOnId }); return true; },
+    addTelemetry: async (_: any, { taskId, data }: any, ctx: any) => { ensureRole(ctx, ['ADMIN', 'SME']); await prisma.telemetry.create({ data: { taskId, data } }); await logAudit('ADD_TELEMETRY', 'Telemetry', taskId, {}); return true; },
 
     // Telemetry Attribute mutations
     createTelemetryAttribute: TelemetryMutationResolvers.createTelemetryAttribute,

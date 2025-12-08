@@ -111,12 +111,30 @@ export class AuthService {
     });
 
     if (!user) {
+      // Check if user exists but is inactive
+      const inactiveUser = await this.prisma.user.findFirst({
+        where: {
+          OR: [
+            { username },
+            { email: username }
+          ],
+          isActive: false
+        }
+      });
+
+      if (inactiveUser) {
+        console.warn(`[Auth] Login failed for user '${username}': Account is inactive`);
+        throw new Error('Account is disabled');
+      }
+
+      console.warn(`[Auth] Login failed: User '${username}' not found`);
       throw new Error('Invalid username or password');
     }
 
     // Verify password
     const isValid = await this.verifyPassword(password, user.password);
     if (!isValid) {
+      console.warn(`[Auth] Login failed for user '${username}': Invalid password`);
       // Log failed attempt
       await this.logAudit(user.id, 'login_failed', null, null, 'Invalid password attempt');
       throw new Error('Invalid username or password');

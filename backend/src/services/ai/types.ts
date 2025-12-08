@@ -158,7 +158,7 @@ export interface TemplateMatch {
 export interface LLMProvider {
   /** Provider name */
   name: string;
-  
+
   /**
    * Complete a prompt with the LLM
    * @param prompt - The prompt to complete
@@ -166,7 +166,7 @@ export interface LLMProvider {
    * @returns The completion text
    */
   complete(prompt: string, systemPrompt?: string): Promise<string>;
-  
+
   /**
    * Check if the provider is configured and ready
    * @returns Whether the provider is ready
@@ -202,6 +202,8 @@ export interface ColumnSchema {
   isPrimaryKey: boolean;
   /** Description */
   description?: string;
+  /** Sample values for context */
+  sampleValues?: string[];
 }
 
 /**
@@ -216,6 +218,8 @@ export interface RelationshipSchema {
   type: 'oneToOne' | 'oneToMany' | 'manyToOne' | 'manyToMany';
   /** Foreign key field */
   foreignKey?: string;
+  /** Description of the relationship */
+  description?: string;
 }
 
 /**

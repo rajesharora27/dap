@@ -82,7 +82,7 @@ export class SchemaContextManager {
         description: 'Software products that customers can adopt. Each product has tasks, licenses, outcomes, and releases.',
         columns: [
           { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, description: 'Unique product name' },
+          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, description: 'Unique product name', sampleValues: ['Cisco Duo', 'Secure Firewall', 'SD-WAN', 'ISE'] },
           { name: 'description', type: 'String', nullable: true, isPrimaryKey: false },
           { name: 'customAttrs', type: 'Json', nullable: true, isPrimaryKey: false, description: 'Custom attributes as JSON' },
           { name: 'createdAt', type: 'DateTime', nullable: false, isPrimaryKey: false },
@@ -95,7 +95,7 @@ export class SchemaContextManager {
           { name: 'outcomes', relatedTable: 'Outcome', type: 'oneToMany' },
           { name: 'releases', relatedTable: 'Release', type: 'oneToMany' },
           { name: 'solutions', relatedTable: 'Solution', type: 'manyToMany' },
-          { name: 'customers', relatedTable: 'Customer', type: 'manyToMany' },
+          { name: 'customers', relatedTable: 'CustomerProduct', type: 'oneToMany', description: 'Assignments of this product to customers' },
         ],
       },
       {
@@ -103,7 +103,7 @@ export class SchemaContextManager {
         description: 'Bundles of products. Solutions can have their own tasks and aggregate product progress.',
         columns: [
           { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false },
+          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, sampleValues: ['Hybrid Private Access', 'SASE Bundle'] },
           { name: 'description', type: 'String', nullable: true, isPrimaryKey: false },
           { name: 'customAttrs', type: 'Json', nullable: true, isPrimaryKey: false },
           { name: 'createdAt', type: 'DateTime', nullable: false, isPrimaryKey: false },
@@ -116,7 +116,7 @@ export class SchemaContextManager {
           { name: 'licenses', relatedTable: 'License', type: 'oneToMany' },
           { name: 'outcomes', relatedTable: 'Outcome', type: 'oneToMany' },
           { name: 'releases', relatedTable: 'Release', type: 'oneToMany' },
-          { name: 'customers', relatedTable: 'Customer', type: 'manyToMany' },
+          { name: 'customers', relatedTable: 'CustomerSolution', type: 'oneToMany', description: 'Assignments of this solution to customers' },
         ],
       },
       {
@@ -142,10 +142,10 @@ export class SchemaContextManager {
           { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
           { name: 'productId', type: 'String', nullable: true, isPrimaryKey: false, description: 'Parent product (mutually exclusive with solutionId)' },
           { name: 'solutionId', type: 'String', nullable: true, isPrimaryKey: false, description: 'Parent solution (mutually exclusive with productId)' },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false },
+          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, sampleValues: ['Configure SSO', 'Enable Logging', 'Deploy Agents'] },
           { name: 'description', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'estMinutes', type: 'Int', nullable: false, isPrimaryKey: false, description: 'Estimated minutes to complete' },
-          { name: 'weight', type: 'Decimal', nullable: false, isPrimaryKey: false, description: 'Weightage percentage (0-100, supports decimals)' },
+          { name: 'estMinutes', type: 'Int', nullable: false, isPrimaryKey: false, description: 'Estimated minutes to complete', sampleValues: ['30', '60', '120'] },
+          { name: 'weight', type: 'Decimal', nullable: false, isPrimaryKey: false, description: 'Weightage percentage (0-100, supports decimals)', sampleValues: ['10', '25.5', '50'] },
           { name: 'sequenceNumber', type: 'Int', nullable: false, isPrimaryKey: false, description: 'Execution order' },
           { name: 'licenseLevel', type: 'LicenseLevel', nullable: false, isPrimaryKey: false, description: 'Required license level' },
           { name: 'howToDoc', type: 'String[]', nullable: false, isPrimaryKey: false, description: 'Links to documentation' },
@@ -286,7 +286,7 @@ export class SchemaContextManager {
           { name: 'weight', type: 'Decimal', nullable: false, isPrimaryKey: false },
           { name: 'sequenceNumber', type: 'Int', nullable: false, isPrimaryKey: false },
           { name: 'licenseLevel', type: 'LicenseLevel', nullable: false, isPrimaryKey: false },
-          { name: 'status', type: 'CustomerTaskStatus', nullable: false, isPrimaryKey: false, description: 'Current status' },
+          { name: 'status', type: 'CustomerTaskStatus', nullable: false, isPrimaryKey: false, description: 'Current status', sampleValues: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] },
           { name: 'statusUpdatedAt', type: 'DateTime', nullable: true, isPrimaryKey: false },
           { name: 'statusUpdatedBy', type: 'String', nullable: true, isPrimaryKey: false, description: 'User ID or "telemetry"' },
           { name: 'statusUpdateSource', type: 'StatusUpdateSource', nullable: true, isPrimaryKey: false, description: 'How status was updated' },
@@ -306,7 +306,7 @@ export class SchemaContextManager {
    */
   private buildEnums(): Record<string, string[]> {
     return {
-      SystemRole: ['ADMIN', 'USER', 'SME', 'CS', 'VIEWER'],
+      SystemRole: ['ADMIN', 'USER', 'SME', 'CSS', 'VIEWER'],
       LicenseLevel: ['ESSENTIAL', 'ADVANTAGE', 'SIGNATURE'],
       TelemetryDataType: ['BOOLEAN', 'NUMBER', 'STRING', 'TIMESTAMP', 'JSON'],
       CustomerTaskStatus: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'DONE', 'NOT_APPLICABLE', 'NO_LONGER_USING'],
@@ -323,39 +323,40 @@ export class SchemaContextManager {
       'Adoption progress is calculated by weighted sum of completed tasks, NOT simple task count.',
       'A task with weight=30 contributes more to progress than one with weight=10.',
       'Progress percentage = (sum of completed task weights) / (total weight) * 100.',
-      
+
       // Status Rules
       'CustomerTaskStatus DONE and COMPLETED are equivalent - both mean task is finished.',
       'NOT_APPLICABLE means the task does not apply to this specific customer.',
       'NO_LONGER_USING means the feature was implemented but telemetry shows discontinued use.',
-      
+
       // Update Sources
       'StatusUpdateSource MANUAL means a user updated the status via the GUI.',
       'StatusUpdateSource TELEMETRY means the status was auto-updated based on telemetry criteria.',
       'Manual updates take precedence over telemetry updates.',
-      
+
       // License Hierarchy
       'License levels are hierarchical: SIGNATURE includes ADVANTAGE includes ESSENTIAL.',
       'A customer with SIGNATURE license has access to all tasks across all levels.',
-      
+
       // Soft Delete
       'Soft-deleted records have deletedAt set to a timestamp instead of being removed.',
       'Always filter by deletedAt IS NULL when querying active records.',
-      
+
       // Customer Adoption
       'CustomerTask is a SNAPSHOT of the original Task - it can diverge from the source.',
       'AdoptionPlan contains customer-specific task copies that track their progress.',
       'Use lastSyncedAt to check when the adoption plan was last synced with product changes.',
-      
+
       // Telemetry
       'TelemetryAttribute defines WHAT to track; TelemetryValue stores ACTUAL values.',
       'successCriteria in TelemetryAttribute can use AND/OR logic for complex conditions.',
       'When all required telemetry criteria are met, task status can auto-update to COMPLETED.',
-      
+
       // Relationships
       'A Task belongs to EITHER a Product OR a Solution, never both.',
       'A Solution can contain multiple Products via SolutionProduct join table.',
       'CustomerProduct creates an AdoptionPlan with CustomerTask copies.',
+      'To query adoption plans for a product, query the "customers" relation (which are CustomerProduct records): product.customers.some.adoptionPlan...',
     ];
   }
 
@@ -364,30 +365,45 @@ export class SchemaContextManager {
    */
   private buildContextPrompt(): string {
     const context = this.getFullContext();
-    
+
     let prompt = `## Database Schema\n\n`;
-    
+
     // Add tables
     prompt += `### Tables\n\n`;
     for (const table of context.tables) {
       prompt += `**${table.name}**: ${table.description}\n`;
-      prompt += `- Key columns: ${table.columns.filter(c => c.isPrimaryKey || c.description).map(c => `${c.name}${c.description ? ` (${c.description})` : ''}`).join(', ')}\n`;
-      prompt += `- Relationships: ${table.relationships.map(r => `${r.name} → ${r.relatedTable}`).join(', ')}\n\n`;
+      prompt += `- Key columns: ${table.columns.filter(c => c.isPrimaryKey || c.description || c.sampleValues).map(c => {
+        let desc = c.name;
+        if (c.description) desc += ` (${c.description})`;
+        if (c.sampleValues) desc += ` [Examples: ${c.sampleValues.join(', ')}]`;
+        return desc;
+      }).join(', ')}\n`;
+      prompt += `- Relationships: ${table.relationships.map(r => {
+        let rel = `${r.name} → ${r.relatedTable}`;
+        if (r.description) rel += ` (${r.description})`;
+        return rel;
+      }).join(', ')}\n\n`;
     }
-    
+
     // Add enums
     prompt += `### Enums\n\n`;
     for (const [name, values] of Object.entries(context.enums)) {
       prompt += `- **${name}**: ${values.join(', ')}\n`;
     }
     prompt += `\n`;
-    
+
     // Add business rules
     prompt += `### Business Rules\n\n`;
     for (const rule of context.businessRules) {
       prompt += `- ${rule}\n`;
     }
-    
+
+    // Add System Config
+    prompt += `\n### System Configuration\n\n`;
+    prompt += `- Max query rows: 1000 (The system automatically truncates results beyond this)\n`;
+    prompt += `- Query timeout: 30s\n`;
+    prompt += `- Environment: ${process.env.NODE_ENV || 'development'}\n`;
+
     return prompt;
   }
 }

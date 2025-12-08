@@ -44,7 +44,7 @@ export class QueryTemplates {
    */
   findBestMatch(question: string): TemplateMatch | null {
     const normalizedQuestion = question.toLowerCase().trim();
-    
+
     let bestMatch: TemplateMatch | null = null;
     let bestConfidence = 0;
 
@@ -54,7 +54,7 @@ export class QueryTemplates {
         if (match) {
           // Calculate confidence based on pattern specificity
           const confidence = this.calculateConfidence(pattern, normalizedQuestion);
-          
+
           if (confidence > bestConfidence) {
             bestConfidence = confidence;
             bestMatch = {
@@ -149,7 +149,7 @@ export class QueryTemplates {
       // ============================================================
       // PRODUCTS CATEGORY
       // ============================================================
-      
+
       // Template 1: List all products
       {
         id: 'list_products',
@@ -348,6 +348,215 @@ export class QueryTemplates {
           'Find tasks missing descriptions',
           'Show tasks without descriptions',
           'Tasks with no description',
+        ],
+      },
+
+      // Template 5b: Tasks for specific product without telemetry
+      {
+        id: 'tasks_for_product_no_telemetry',
+        description: 'Find tasks for a specific product that have no telemetry',
+        patterns: [
+          /(?:find|show|list)\s+(?:all\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:without|missing|with\s+no)\s+telemetry/i,
+          /tasks?\s+(?:of|for)\s+(.+?)\s+with\s+no\s+telemetry/i,
+        ],
+        category: 'tasks',
+        buildQuery: (params: Record<string, any>) => ({
+          model: 'task',
+          operation: 'findMany',
+          args: {
+            where: {
+              deletedAt: null,
+              product: {
+                name: { contains: params.productName, mode: 'insensitive' }
+              },
+              telemetryAttributes: { none: {} } // No telemetry attributes
+            },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              weight: true,
+              estMinutes: true,
+              howToDoc: true,
+              howToVideo: true,
+              product: { select: { id: true, name: true } },
+              _count: { select: { telemetryAttributes: true } }
+            },
+          },
+        }),
+        parameters: [
+          {
+            name: 'productName',
+            type: 'string',
+            extractPattern: /(?:of|for)\s+(.+?)\s+(?:without|missing|with\s+no)\s+telemetry/i,
+            required: true,
+          }
+        ],
+        examples: [
+          'List all tasks for Cisco Secure Access without telemetry',
+          'Tasks of Product X with no telemetry',
+        ],
+      },
+
+      // Template 5c: Tasks with high estimated time
+      {
+        id: 'tasks_high_time',
+        description: 'Find tasks with high estimated time',
+        patterns: [
+          /tasks?\s+(?:with\s+)?(?:high|long|lengthy|over\s+\d+)\s+(?:est(?:imated)?\.?\s*)?(?:time|minutes?|hours?)/i,
+          /(?:time|minute)?\s*consuming\s+tasks?/i,
+          /(?:find|show|list)\s+tasks?\s+(?:that\s+)?take\s+(?:a\s+)?long\s+time/i,
+        ],
+        category: 'tasks',
+        buildQuery: () => ({
+          model: 'task',
+          operation: 'findMany',
+          args: {
+            where: {
+              deletedAt: null,
+              estMinutes: { gt: 60 }, // More than 1 hour
+            },
+            orderBy: { estMinutes: 'desc' },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              estMinutes: true,
+              weight: true,
+              product: { select: { id: true, name: true } },
+            },
+          },
+        }),
+        parameters: [],
+        examples: [
+          'Find tasks with high estimated time',
+          'Show time-consuming tasks',
+          'Tasks that take a long time',
+        ],
+      },
+
+      // Template 5d: Tasks with zero or missing estimated time
+      {
+        id: 'tasks_missing_time',
+        description: 'Find tasks with zero or no estimated time',
+        patterns: [
+          /tasks?\s+(?:with\s+)?(?:zero|0|no|missing)\s+(?:est(?:imated)?\.?\s*)?(?:time|minutes?)/i,
+          /tasks?\s+(?:without|missing)\s+(?:est(?:imated)?\.?\s*)?(?:time|minutes?)/i,
+          /(?:find|show|list)\s+tasks?\s+(?:with\s+)?(?:no|zero|missing)\s+(?:est(?:imated)?\.?\s*)?time/i,
+        ],
+        category: 'tasks',
+        buildQuery: () => ({
+          model: 'task',
+          operation: 'findMany',
+          args: {
+            where: {
+              deletedAt: null,
+              OR: [
+                { estMinutes: null },
+                { estMinutes: 0 },
+              ],
+            },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              estMinutes: true,
+              weight: true,
+              product: { select: { id: true, name: true } },
+            },
+          },
+        }),
+        parameters: [],
+        examples: [
+          'Find tasks with no estimated time',
+          'Show tasks missing estimated time',
+          'Tasks with zero estimated minutes',
+        ],
+      },
+
+      // Template 5e: Tasks for a specific product (general)
+      {
+        id: 'tasks_for_product',
+        description: 'List all tasks for a specific product',
+        patterns: [
+          /(?:find|show|list|get)\s+(?:all\s+)?tasks?\s+(?:of|for|in)\s+(?:product\s+)?(.+)/i,
+          /tasks?\s+(?:of|for|in)\s+(?:product\s+)?(.+)/i,
+          /what\s+(?:are\s+)?the\s+tasks?\s+(?:of|for|in)\s+(.+)/i,
+        ],
+        category: 'tasks',
+        buildQuery: (params: Record<string, any>) => ({
+          model: 'task',
+          operation: 'findMany',
+          args: {
+            where: {
+              deletedAt: null,
+              product: {
+                name: { contains: params.productName, mode: 'insensitive' }
+              }
+            },
+            orderBy: { sequenceNumber: 'asc' },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              weight: true,
+              estMinutes: true,
+              howToDoc: true,
+              howToVideo: true,
+              product: { select: { id: true, name: true } },
+              _count: { select: { telemetryAttributes: true } }
+            },
+          },
+        }),
+        parameters: [
+          {
+            name: 'productName',
+            type: 'string',
+            extractPattern: /(?:of|for|in)\s+(?:product\s+)?(.+)/i,
+            required: true,
+          }
+        ],
+        examples: [
+          'List all tasks for Cisco Secure Access',
+          'Tasks of Secure Firewall',
+          'Show tasks for XDR',
+        ],
+      },
+
+      // Template 5f: Tasks with high weight
+      {
+        id: 'tasks_high_weight',
+        description: 'Find tasks with high weight/importance',
+        patterns: [
+          /tasks?\s+(?:with\s+)?(?:high|heavy|large)\s+weight/i,
+          /(?:important|critical|weighted)\s+tasks?/i,
+          /(?:find|show|list)\s+(?:high|heavy)(?:\s+weight)?\s+tasks?/i,
+        ],
+        category: 'tasks',
+        buildQuery: () => ({
+          model: 'task',
+          operation: 'findMany',
+          args: {
+            where: {
+              deletedAt: null,
+              weight: { gt: 50 }, // Weight over 50
+            },
+            orderBy: { weight: 'desc' },
+            select: {
+              id: true,
+              name: true,
+              description: true,
+              weight: true,
+              estMinutes: true,
+              product: { select: { id: true, name: true } },
+            },
+          },
+        }),
+        parameters: [],
+        examples: [
+          'Find tasks with high weight',
+          'Show important tasks',
+          'Heavy weight tasks',
         ],
       },
 

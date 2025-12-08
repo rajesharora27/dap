@@ -65,7 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         // Token is invalid or expired
         console.warn('Session validation failed:', savedToken ? 'Token invalid/expired' : 'No token found');
-        // Do not aggressively clear localStorage here to prevent loops on some refreshes, just clear state
+        // Force clear any stale data to ensure login prompt
+        clearAuth();
         setTokenState(null);
         setUserState(null);
         setIsAuthenticated(false);

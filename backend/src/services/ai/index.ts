@@ -29,6 +29,42 @@ export {
   resetQueryTemplates,
 } from './QueryTemplates';
 
+// Query Executor
+export {
+  QueryExecutor,
+  getQueryExecutor,
+  resetQueryExecutor,
+} from './QueryExecutor';
+
+export type {
+  QueryConfig,
+  QueryExecutionResult,
+  QueryExecutorOptions,
+} from './QueryExecutor';
+
+// RBAC Filter (read-only access control)
+export {
+  RBACFilter,
+  getRBACFilter,
+  resetRBACFilter,
+} from './RBACFilter';
+
+export type {
+  RBACUserContext,
+  RBACFilterResult,
+} from './RBACFilter';
+
+// Response Formatter
+export {
+  ResponseFormatter,
+  getResponseFormatter,
+  resetResponseFormatter,
+} from './ResponseFormatter';
+
+export type {
+  FormatOptions,
+} from './ResponseFormatter';
+
 // Types
 export type {
   AIAgentConfig,
@@ -46,4 +82,26 @@ export type {
   RelationshipSchema,
   SchemaContext,
 } from './types';
+
+// LLM Providers
+export {
+  createLLMProvider,
+  getDefaultProvider,
+  getAvailableProviders,
+  getProviderInfo,
+  loadLLMConfig,
+  clearConfigCache,
+  resolveModelAlias,
+  getProviderApiKey,
+} from './providers';
+
+export type {
+  ILLMProvider,
+  LLMProviderConfig,
+  LLMCompletionResponse,
+  LLMCompletionOptions,
+  ProviderType,
+  LLMConfig,
+  CreateProviderConfig,
+} from './providers';
 
