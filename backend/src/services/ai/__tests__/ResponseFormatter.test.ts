@@ -73,7 +73,10 @@ describe('ResponseFormatter', () => {
             expect(response.answer).toContain('Found 2 products');
             expect(response.answer).toContain('Product A');
             expect(response.answer).toContain('Product B');
-            expect(response.data).toEqual(result.data);
+            expect(response.data).toEqual([
+                { id: '1', name: 'Product A', description: 'First product', _type: 'products' },
+                { id: '2', name: 'Product B', description: 'Second product', _type: 'products' },
+            ]);
             expect(response.metadata?.rowCount).toBe(2);
             expect(response.metadata?.templateUsed).toBe('list_products');
         });
@@ -474,6 +477,59 @@ describe('ResponseFormatter', () => {
 
             const response = formatter.formatSuccess(solutionMatch, result, 20);
             expect(response.answer).toContain('🧩');
+        });
+    });
+
+    describe('Link Generation and Type Injection', () => {
+        it('should inject _type into sanitized data for products', () => {
+            const result: QueryExecutionResult = {
+                success: true,
+                data: [{ id: 'p1', name: 'Product A' }],
+                rowCount: 1,
+                truncated: false,
+                executionTimeMs: 20,
+            };
+
+            const response = formatter.formatSuccess(sampleMatch, result, 20);
+            expect(response.data![0]._type).toBe('products');
+        });
+
+        it('should inject _type into sanitized data for customers', () => {
+            const customerTemplate: QueryTemplate = {
+                ...sampleTemplate,
+                id: 'list_customers',
+                category: 'customers',
+            };
+            const customerMatch: TemplateMatch = {
+                template: customerTemplate,
+                params: {},
+                confidence: 0.9,
+            };
+            const result: QueryExecutionResult = {
+                success: true,
+                data: [{ id: 'c1', name: 'Customer A' }],
+                rowCount: 1,
+                truncated: false,
+                executionTimeMs: 20,
+            };
+
+            const response = formatter.formatSuccess(customerMatch, result, 20);
+            expect(response.data![0]._type).toBe('customers');
+        });
+
+        it('should use separate spans for navigation in tables', () => {
+            const tableFormatter = new ResponseFormatter({ style: 'table' });
+            const result: QueryExecutionResult = {
+                success: true,
+                data: [{ id: 'p1', name: 'Product A' }],
+                rowCount: 1,
+                truncated: false,
+                executionTimeMs: 20,
+            };
+
+            const response = tableFormatter.formatSuccess(sampleMatch, result, 20);
+            // It should have data-navigate="products:p1"
+            expect(response.answer).toContain('data-navigate="products:p1"');
         });
     });
 });

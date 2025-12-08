@@ -490,12 +490,49 @@ export class ResponseFormatter {
 
         // Determine link 
         const { type, id } = this.getLinkTarget(category, item);
-        // Use span with data attribute instead of anchor to prevent browser navigation
         const nameLink = (id && type) ? `<span class="nav-link" data-navigate="${type}:${id}" style="color:#1976d2;cursor:pointer;font-weight:500;">${name}</span>` : `**${name}**`;
 
         let result = `• ${nameLink}${description}\n`;
 
-        // Add count information
+        // Add additional key fields based on category
+        const config = CATEGORY_CONFIG[category];
+        if (config && config.keyFields) {
+            for (const field of config.keyFields) {
+                if (field === 'name' || field === 'description') continue;
+
+                const value = item[field];
+                if (value === undefined || value === null) continue;
+
+                const formattedKey = this.formatEntityName(field);
+
+                // Handle special cases
+                if (field === 'adoptionPlan' && typeof value === 'object') {
+                    if (value.progressPercentage !== undefined) {
+                        const percent = value.progressPercentage;
+                        const blocks = Math.round(percent / 10);
+                        const bar = '█'.repeat(blocks) + '░'.repeat(10 - blocks);
+                        result += `  - Progress: ${percent}% ${bar}\n`;
+                    }
+                    continue;
+                }
+
+                if (field === 'tasks' && Array.isArray(value)) {
+                    if (value.length > 0) {
+                        result += `  - Tasks: ${value.map((t: any) => t.name).slice(0, 3).join(', ')}${value.length > 3 ? '...' : ''}\n`;
+                    }
+                    continue;
+                }
+
+                if (typeof value === 'object') {
+                    // Skip complex objects unless handled above
+                    continue;
+                }
+
+                result += `  - ${formattedKey}: ${value}\n`;
+            }
+        }
+
+        // Add count information (legacy support or if not covered by keyFields)
         if (item._count && typeof item._count === 'object') {
             const countInfo = Object.entries(item._count)
                 .filter(([_, v]) => typeof v === 'number' && v > 0)
