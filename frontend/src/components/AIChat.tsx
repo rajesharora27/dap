@@ -389,18 +389,26 @@ What would you like to know?`,
                       compact
                       onRowClick={(row) => {
                         if (row.id && onNavigate) {
-                          // Detect type based on row properties
+                          // Check injected type first (most reliable)
+                          if (row._type) {
+                            onNavigate(row._type, row.id);
+                            return;
+                          }
+
+                          // Fallback: Detect type based on row properties
                           if (row.weight !== undefined || row.estMinutes !== undefined || row.product) {
                             onNavigate('tasks', row.id);
                           } else if (row.statusPercent !== undefined) {
                             onNavigate('products', row.id);
                           } else if (row.adoptionPlan !== undefined) {
                             onNavigate('customers', row.id);
-                          } else {
-                            // Default: try task if has id
-                            onNavigate('tasks', row.id);
+                          } else if (row.name) {
+                            // If we have just name/description, try to infer from data context or default logging
+                            console.warn('Could not detect row type for navigation:', row);
                           }
+                          onNavigate('tasks', row.id);
                         }
+                      }
                       }}
                     />
                   </Box>
