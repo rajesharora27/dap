@@ -36,7 +36,7 @@ import {
 import { solutionReportingService } from '../../services/solutionReportingService';
 import { BackupQueryResolvers, BackupMutationResolvers } from './backup';
 import { AuthQueryResolvers, AuthMutationResolvers } from './auth';
-import { AIQueryResolvers } from './ai';
+import { AIQueryResolvers, AIMutationResolvers } from './ai';
 import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../lib/pagination';
 import { logAudit } from '../../lib/audit';
 import { ensureRole, requireUser } from '../../lib/auth';
@@ -604,6 +604,25 @@ export const resolvers = {
         }
       });
     },
+    solution: async (_: any, { id }: any, ctx: any) => {
+      requireUser(ctx);
+
+      if (fallbackActive) {
+        const { solutions } = require('../../lib/fallbackStore');
+        return solutions.find((s: any) => s.id === id);
+      }
+
+      await requirePermission(ctx, ResourceType.SOLUTION, id, PermissionLevel.READ);
+
+      return prisma.solution.findUnique({
+        where: { id },
+        include: {
+          licenses: true,
+          releases: true,
+          outcomes: true
+        }
+      });
+    },
     products: async (_: any, args: any, ctx: any) => {
       requireUser(ctx);
 
@@ -800,6 +819,7 @@ export const resolvers = {
 
     // AI Agent queries
     , askAI: AIQueryResolvers.askAI
+    , aiDataContextStatus: AIQueryResolvers.aiDataContextStatus
 
     // Excel Export
     , exportProductToExcel: async (_: any, { productName }: any) => {
@@ -2588,6 +2608,9 @@ export const resolvers = {
     , activateUser: AuthMutationResolvers.activateUser
     , deactivateUser: AuthMutationResolvers.deactivateUser
     , updateRolePermissions: AuthMutationResolvers.updateRolePermissions
+    
+    // AI Agent mutations
+    , refreshAIDataContext: AIMutationResolvers.refreshAIDataContext
   },
   Subscription: {
     productUpdated: {

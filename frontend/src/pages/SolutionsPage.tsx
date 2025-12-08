@@ -8,7 +8,7 @@ import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
-import { SOLUTIONS, TASKS_FOR_SOLUTION, PRODUCTS } from '../graphql/queries';
+import { SOLUTIONS, TASKS_FOR_SOLUTION, PRODUCTS, SOLUTION } from '../graphql/queries';
 import { DELETE_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK } from '../graphql/mutations';
 import { SortableTaskItem } from '../components/SortableTaskItem';
 import { SolutionDialog } from '../components/dialogs/SolutionDialog';
@@ -40,6 +40,14 @@ export const SolutionsPage: React.FC = () => {
     });
     const tasks = tasksData?.tasks?.edges?.map((e: any) => e.node) || [];
 
+    // Fetch single solution details if selected
+    const { data: solutionData } = useQuery(SOLUTION, {
+        variables: { id: selectedSolution },
+        skip: !selectedSolution
+    });
+    const fetchedSolution = solutionData?.solution;
+    const displaySolution = solutions.find((s: any) => s.id === selectedSolution) || fetchedSolution;
+
     const client = useApolloClient();
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -55,7 +63,7 @@ export const SolutionsPage: React.FC = () => {
 
     const handleDeleteSolution = async () => {
         if (!selectedSolution) return;
-        const solution = solutions.find((s: any) => s.id === selectedSolution);
+        const solution = displaySolution;
         if (solution && window.confirm(`Are you sure you want to delete "${solution.name}"?`)) {
             try {
                 await client.mutate({
@@ -168,7 +176,7 @@ export const SolutionsPage: React.FC = () => {
 
     // Helper to get aggregated resources for TaskDialog
     const getAggregatedResources = (solutionId: string) => {
-        const solution = solutions.find((s: any) => s.id === solutionId);
+        const solution = displaySolution?.id === solutionId ? displaySolution : solutions.find((s: any) => s.id === solutionId);
         if (!solution) return { outcomes: [], releases: [], licenses: [] };
 
         const solutionProductIds = solution.products?.edges?.map((e: any) => e.node.id) || [];
@@ -191,7 +199,7 @@ export const SolutionsPage: React.FC = () => {
 
     const { outcomes: aggregatedOutcomes, releases: aggregatedReleases, licenses: aggregatedLicenses } = selectedSolution ? getAggregatedResources(selectedSolution) : { outcomes: [], releases: [], licenses: [] };
 
-    const currentSolution = solutions.find((s: any) => s.id === selectedSolution);
+    const currentSolution = displaySolution;
     const NAME_DISPLAY_LIMIT = 12;
 
     return (
@@ -212,6 +220,9 @@ export const SolutionsPage: React.FC = () => {
                             {solutions.map((s: any) => (
                                 <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
                             ))}
+                            {displaySolution && !solutions.find((s: any) => s.id === displaySolution.id) && (
+                                <MenuItem key={displaySolution.id} value={displaySolution.id}>{displaySolution.name}</MenuItem>
+                            )}
                         </Select>
                     </FormControl>
 

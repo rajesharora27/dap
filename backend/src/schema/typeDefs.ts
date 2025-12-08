@@ -289,6 +289,7 @@ export const typeDefs = gql`
   type Query {
     node(id: ID!): Node
     product(id: ID!): Product
+    solution(id: ID!): Solution
     products(first: Int, after: String, last: Int, before: String): ProductConnection!
     solutions(first: Int, after: String, last: Int, before: String): SolutionConnection!
     task(id: ID!): Task
@@ -1354,5 +1355,50 @@ export const typeDefs = gql`
     Ask the AI agent a natural language question about the data
     """
     askAI(question: String!, conversationId: String): AIQueryResponse!
+    
+    """
+    Get the AI agent's data context status
+    """
+    aiDataContextStatus: AIDataContextStatus!
+  }
+  
+  """Response from refreshing AI data context"""
+  type AIDataContextRefreshResult {
+    """Whether the refresh was successful"""
+    success: Boolean!
+    """When the data was last refreshed"""
+    lastRefreshed: DateTime
+    """Statistics about the data"""
+    statistics: AIDataContextStatistics
+    """Error message if refresh failed"""
+    error: String
+  }
+  
+  """Statistics about the AI data context"""
+  type AIDataContextStatistics {
+    totalProducts: Int!
+    totalSolutions: Int!
+    totalCustomers: Int!
+    totalTasks: Int!
+    totalTasksWithTelemetry: Int!
+    totalTasksWithoutTelemetry: Int!
+    totalAdoptionPlans: Int!
+  }
+  
+  """Status of the AI data context"""
+  type AIDataContextStatus {
+    """Whether the data context manager is initialized"""
+    initialized: Boolean!
+    """When the data was last refreshed"""
+    lastRefreshed: DateTime
+    """Whether data context is available"""
+    hasDataContext: Boolean!
+  }
+  
+  extend type Mutation {
+    """
+    Refresh the AI agent's data context from the database
+    """
+    refreshAIDataContext: AIDataContextRefreshResult!
   }
 `;

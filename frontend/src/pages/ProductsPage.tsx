@@ -9,7 +9,7 @@ import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
-import { PRODUCTS, TASKS_FOR_PRODUCT, OUTCOMES } from '../graphql/queries';
+import { PRODUCTS, TASKS_FOR_PRODUCT, OUTCOMES, PRODUCT } from '../graphql/queries';
 import { DELETE_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '../graphql/mutations';
 import { SortableTaskItem } from '../components/SortableTaskItem';
 import { ProductDialog } from '../components/dialogs/ProductDialog';
@@ -42,6 +42,26 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     // Queries
     const { data: productsData, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PRODUCTS);
     const products = productsData?.products?.edges?.map((e: any) => e.node) || [];
+
+    // Fetch single product details if selected
+    const { data: productData, error: productError } = useQuery(PRODUCT, {
+        variables: { id: selectedProduct },
+        skip: !selectedProduct,
+        fetchPolicy: 'cache-and-network' // FORCE NETWORK REQUEST to ensure data
+    });
+
+    if (selectedProduct) {
+        console.log('[DEBUG ProductsPage] State:', {
+            selectedProduct,
+            hasProductData: !!productData,
+            fetchedProduct: productData?.product,
+            error: productError,
+            productsInList: products.length
+        });
+    }
+
+    const fetchedProduct = productData?.product;
+    const displayProduct = products.find((p: any) => p.id === selectedProduct) || fetchedProduct;
 
     const { data: tasksData, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useQuery(TASKS_FOR_PRODUCT, {
         variables: { productId: selectedProduct },
@@ -312,6 +332,9 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                             {products.map((p: any) => (
                                 <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
                             ))}
+                            {displayProduct && !products.find((p: any) => p.id === displayProduct.id) && (
+                                <MenuItem key={displayProduct.id} value={displayProduct.id}>{displayProduct.name}</MenuItem>
+                            )}
                         </Select>
                     </FormControl>
 
@@ -321,8 +344,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                 variant="contained"
                                 startIcon={<Edit />}
                                 onClick={() => {
-                                    const product = products.find((p: any) => p.id === selectedProduct);
-                                    if (product) onEditProduct(product);
+                                    if (displayProduct) onEditProduct(displayProduct);
                                 }}
                             >
                                 Edit
@@ -381,7 +403,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                         <Button startIcon={<Add />} size="small" onClick={() => { setEditingOutcome(null); setOutcomeDialog(true); }}>Add</Button>
                                     </Box>
                                     <List dense>
-                                        {products.find((p: any) => p.id === selectedProduct)?.outcomes?.map((outcome: any) => (
+                                        {displayProduct?.outcomes?.map((outcome: any) => (
                                             <ListItem key={outcome.id}
                                                 secondaryAction={
                                                     <Box>
@@ -405,7 +427,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                         <Button startIcon={<Add />} size="small" onClick={() => { setEditingRelease(null); setReleaseDialog(true); }}>Add</Button>
                                     </Box>
                                     <List dense>
-                                        {products.find((p: any) => p.id === selectedProduct)?.releases?.map((release: any) => (
+                                        {displayProduct?.releases?.map((release: any) => (
                                             <ListItem key={release.id}
                                                 secondaryAction={
                                                     <Box>
@@ -429,7 +451,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                         <Button startIcon={<Add />} size="small" onClick={() => { setEditingLicense(null); setLicenseDialog(true); }}>Add</Button>
                                     </Box>
                                     <List dense>
-                                        {products.find((p: any) => p.id === selectedProduct)?.licenses?.map((license: any) => (
+                                        {displayProduct?.licenses?.map((license: any) => (
                                             <ListItem key={license.id}
                                                 secondaryAction={
                                                     <Box>
@@ -502,9 +524,9 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 productId={selectedProduct || undefined}
                 onSave={handleSaveTask}
                 existingTasks={tasks}
-                outcomes={products.find((p: any) => p.id === selectedProduct)?.outcomes || []}
-                availableLicenses={products.find((p: any) => p.id === selectedProduct)?.licenses || []}
-                availableReleases={products.find((p: any) => p.id === selectedProduct)?.releases || []}
+                outcomes={displayProduct?.outcomes || []}
+                availableLicenses={displayProduct?.licenses || []}
+                availableReleases={displayProduct?.releases || []}
             />
             <OutcomeDialog
                 open={outcomeDialog}

@@ -95,7 +95,7 @@ export class SchemaContextManager {
           { name: 'outcomes', relatedTable: 'Outcome', type: 'oneToMany' },
           { name: 'releases', relatedTable: 'Release', type: 'oneToMany' },
           { name: 'solutions', relatedTable: 'Solution', type: 'manyToMany' },
-          { name: 'customers', relatedTable: 'CustomerProduct', type: 'oneToMany', description: 'Assignments of this product to customers' },
+          { name: 'customers', relatedTable: 'CustomerProduct', type: 'oneToMany', description: 'Product assignments/adoption plans - customers using this product' },
         ],
       },
       {
@@ -116,7 +116,7 @@ export class SchemaContextManager {
           { name: 'licenses', relatedTable: 'License', type: 'oneToMany' },
           { name: 'outcomes', relatedTable: 'Outcome', type: 'oneToMany' },
           { name: 'releases', relatedTable: 'Release', type: 'oneToMany' },
-          { name: 'customers', relatedTable: 'CustomerSolution', type: 'oneToMany', description: 'Assignments of this solution to customers' },
+          { name: 'customers', relatedTable: 'CustomerSolution', type: 'oneToMany', description: 'Solution assignments/adoption plans - customers using this solution' },
         ],
       },
       {
@@ -235,12 +235,12 @@ export class SchemaContextManager {
       // Customer Adoption Tracking
       {
         name: 'CustomerProduct',
-        description: 'Assignment of a product to a customer. Creates an adoption plan.',
+        description: 'Represents a Product Assignment (also called Product Adoption Plan). When a product is assigned to a customer, this creates an adoption plan to track their progress. Terms "product assignment" and "product adoption plan" are interchangeable.',
         columns: [
           { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
           { name: 'customerId', type: 'String', nullable: false, isPrimaryKey: false },
           { name: 'productId', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, description: 'Assignment name (e.g., "Production")' },
+          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, description: 'Assignment/adoption plan name (e.g., "Production", "Phase 1")' },
           { name: 'licenseLevel', type: 'LicenseLevel', nullable: false, isPrimaryKey: false },
           { name: 'selectedOutcomes', type: 'Json', nullable: true, isPrimaryKey: false, description: 'Selected outcome IDs' },
           { name: 'selectedReleases', type: 'Json', nullable: true, isPrimaryKey: false, description: 'Selected release IDs' },
@@ -355,8 +355,12 @@ export class SchemaContextManager {
       // Relationships
       'A Task belongs to EITHER a Product OR a Solution, never both.',
       'A Solution can contain multiple Products via SolutionProduct join table.',
-      'CustomerProduct creates an AdoptionPlan with CustomerTask copies.',
-      'To query adoption plans for a product, query the "customers" relation (which are CustomerProduct records): product.customers.some.adoptionPlan...',
+      'When a product is assigned to a customer, a CustomerProduct record is created along with an AdoptionPlan containing CustomerTask copies.',
+      'CustomerProduct represents a "Product Assignment" or "Product Adoption Plan" - these terms are interchangeable.',
+      'CustomerSolution represents a "Solution Assignment" or "Solution Adoption Plan" - these terms are interchangeable.',
+      '"Assign a product" and "create a product adoption plan" mean the same thing.',
+      '"Assign a solution" and "create a solution adoption plan" mean the same thing.',
+      'To query assignments/adoption plans for a product, query the "customers" relation: product.customers.some.adoptionPlan...',
     ];
   }
 

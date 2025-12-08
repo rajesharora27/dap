@@ -5,6 +5,29 @@ All notable changes to the DAP (Digital Adoption Platform) project will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2025-12-08
+
+### Added
+- **AI Agent**: Enhanced AI Assistant with improved navigation and link generation for Products, Customers, and Solutions
+- **AI Agent**: New preview dialogs for quick inline data viewing from AI responses
+- **AI Agent**: Audit logging, caching, and error handling infrastructure for AI queries
+- **Backend**: Schema context manager for dynamic query generation
+- **Frontend**: Product, Customer, and Solution preview dialogs with full data display
+
+### Changed
+- **Documentation**: Consolidated all documentation into `/docs` folder
+  - Moved `CONTEXT.md`, `QUICK_START.md`, `QUICK_REFERENCE.md`, `CONTRIBUTING.md` to `/docs`
+- **Code Quality**: Cleaned up root directory by removing temporary files and logs
+- **Backend**: Improved AI Agent response formatting and link generation
+
+### Fixed
+- **AI Agent**: Fixed product and solution link generation in AI responses
+- **Frontend**: Fixed data display issues in ProductsPage and SolutionsPage when navigating from AI links
+
+### Removed
+- Removed temporary deployment logs and session files from repository root
+- Cleaned up obsolete scripts (convert-chips.sh, clear-sessions.html)
+
 ## [2.1.1] - 2025-12-01
 
 ### Fixed
