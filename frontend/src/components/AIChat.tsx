@@ -96,49 +96,43 @@ export const AIChat: React.FC<AIChatProps> = ({ open, onClose, onNavigate }) => 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   // Common/Recent Queries State
   const [commonQueries, setCommonQueries] = useState<{ query: string; count: number }[]>([]);
-  
+
   // Data context status and refresh
   const { data: contextStatusData, refetch: refetchContextStatus } = useQuery(AI_DATA_CONTEXT_STATUS, {
     skip: !open,
     fetchPolicy: 'network-only',
   });
-  
+
   const [refreshDataContext, { loading: refreshingContext }] = useMutation(REFRESH_AI_DATA_CONTEXT, {
     onCompleted: (data) => {
       if (data.refreshAIDataContext.success) {
         refetchContextStatus();
         // Add a system message about the refresh
         addMessage({
-          id: `system-refresh-${Date.now()}`,
           role: 'assistant',
           content: `✅ **Data context refreshed successfully!**\n\nThe AI now has updated knowledge about:\n- ${data.refreshAIDataContext.statistics.totalProducts} products\n- ${data.refreshAIDataContext.statistics.totalSolutions} solutions\n- ${data.refreshAIDataContext.statistics.totalCustomers} customers\n- ${data.refreshAIDataContext.statistics.totalTasks} tasks (${data.refreshAIDataContext.statistics.totalTasksWithTelemetry} with telemetry, ${data.refreshAIDataContext.statistics.totalTasksWithoutTelemetry} without)`,
-          timestamp: new Date(),
         });
       } else {
         addMessage({
-          id: `system-refresh-error-${Date.now()}`,
           role: 'assistant',
           content: `❌ **Failed to refresh data context**\n\nError: ${data.refreshAIDataContext.error || 'Unknown error'}`,
-          timestamp: new Date(),
         });
       }
     },
     onError: (error) => {
       addMessage({
-        id: `system-refresh-error-${Date.now()}`,
         role: 'assistant',
         content: `❌ **Failed to refresh data context**\n\nError: ${error.message}`,
-        timestamp: new Date(),
       });
     }
   });
-  
+
   const handleRefreshContext = () => {
     if (!refreshingContext && user?.isAdmin) {
       refreshDataContext();
     }
   };
-  
+
   // Format last refreshed time
   const formatLastRefreshed = (dateStr: string | null) => {
     if (!dateStr) return 'Never';
@@ -147,7 +141,7 @@ export const AIChat: React.FC<AIChatProps> = ({ open, onClose, onNavigate }) => 
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
-    
+
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
@@ -422,7 +416,7 @@ What would you like to know?`,
             </Typography>
           </Box>
         </Box>
-        
+
         {/* Context status and refresh button */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           {contextStatusData?.aiDataContextStatus?.hasDataContext && (
@@ -441,7 +435,7 @@ What would you like to know?`,
               />
             </Tooltip>
           )}
-          
+
           {user?.isAdmin && (
             <Tooltip title="Refresh AI data context (updates entity names, statistics, etc.)">
               <IconButton
@@ -462,7 +456,7 @@ What would you like to know?`,
               </IconButton>
             </Tooltip>
           )}
-          
+
           <IconButton onClick={onClose} sx={{ color: 'white' }}>
             <Close />
           </IconButton>
@@ -536,7 +530,7 @@ What would you like to know?`,
                           // Tasks: have weight, estMinutes, or product reference
                           if (row.weight !== undefined || row.estMinutes !== undefined || row.product) {
                             onNavigate('tasks', row.id);
-                          } 
+                          }
                           // Adoption Plans: have progressPercentage, totalTasks, completedWeight
                           else if (row.progressPercentage !== undefined || row.totalTasks !== undefined || row.completedWeight !== undefined) {
                             onNavigate('adoptionPlans', row.id);
@@ -544,7 +538,7 @@ What would you like to know?`,
                           // Products: have statusPercent or licenses
                           else if (row.statusPercent !== undefined || row.licenses !== undefined) {
                             onNavigate('products', row.id);
-                          } 
+                          }
                           // Solutions: have products (as edges) but not statusPercent (distinguishes from products)
                           else if (row.products !== undefined && row.statusPercent === undefined) {
                             onNavigate('solutions', row.id);
@@ -552,7 +546,7 @@ What would you like to know?`,
                           // Customers: have adoptionPlan or customerProducts/customerSolutions
                           else if (row.adoptionPlan !== undefined || row.customerProducts !== undefined || row.customerSolutions !== undefined) {
                             onNavigate('customers', row.id);
-                          } 
+                          }
                           else if (row.name) {
                             // If we have just name/description, try to infer from data context or default logging
                             console.warn('Could not detect row type for navigation:', row);
