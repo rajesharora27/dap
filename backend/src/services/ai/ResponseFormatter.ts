@@ -104,12 +104,18 @@ export class ResponseFormatter {
 
     /**
      * Format a successful query result
+     * @param match - The matched template
+     * @param result - Query execution result
+     * @param executionTimeMs - Execution time in milliseconds
+     * @param queryConfig - Optional query configuration
+     * @param providerUsed - Which AI provider was used (template, openai, gemini, anthropic, cisco, mock)
      */
     formatSuccess(
         match: TemplateMatch,
         result: QueryExecutionResult,
         executionTimeMs: number,
-        queryConfig?: any
+        queryConfig?: any,
+        providerUsed: string = 'template'
     ): AIQueryResponse {
         const template = match.template;
         const confidence = Math.round(match.confidence * 100);
@@ -133,6 +139,7 @@ export class ResponseFormatter {
                 truncated: result.truncated,
                 cached: false,
                 templateUsed: template.id,
+                providerUsed,
             },
         };
     }
@@ -187,11 +194,16 @@ export class ResponseFormatter {
 
     /**
      * Format a failed query result
+     * @param template - The matched template
+     * @param error - Error message
+     * @param executionTimeMs - Execution time in milliseconds
+     * @param providerUsed - Which AI provider was used
      */
     formatError(
         template: QueryTemplate,
         error: string,
-        executionTimeMs: number
+        executionTimeMs: number,
+        providerUsed: string = 'template'
     ): AIQueryResponse {
         const answer = `❌ **Query Failed**\n\n` +
             `**Template:** ${template.description}\n` +
@@ -208,18 +220,25 @@ export class ResponseFormatter {
                 truncated: false,
                 cached: false,
                 templateUsed: template.id,
+                providerUsed,
             },
         };
     }
 
     /**
      * Format access denied response
+     * @param template - The matched template
+     * @param userRole - User's role
+     * @param roleRestrictions - Role restriction message
+     * @param executionTimeMs - Execution time in milliseconds
+     * @param providerUsed - Which AI provider was used
      */
     formatAccessDenied(
         template: QueryTemplate,
         userRole: string,
         roleRestrictions: string,
-        executionTimeMs: number
+        executionTimeMs: number,
+        providerUsed: string = 'template'
     ): AIQueryResponse {
         const answer = `🔒 **Access Denied**\n\n` +
             `You do not have permission to access this data.\n\n` +
@@ -234,17 +253,23 @@ export class ResponseFormatter {
                 truncated: false,
                 cached: false,
                 templateUsed: template.id,
+                providerUsed,
             },
         };
     }
 
     /**
      * Format no template match response
+     * @param question - The original question
+     * @param suggestions - Suggested questions
+     * @param executionTimeMs - Execution time in milliseconds
+     * @param providerUsed - Which AI provider was used (none for no match)
      */
     formatNoMatch(
         question: string,
         suggestions: string[],
-        executionTimeMs: number
+        executionTimeMs: number,
+        providerUsed: string = 'none'
     ): AIQueryResponse {
         let answer = `🔍 I couldn't find an exact match for your question:\n`;
         answer += `> "${question}"\n\n`;
@@ -264,6 +289,7 @@ export class ResponseFormatter {
                 rowCount: 0,
                 truncated: false,
                 cached: false,
+                providerUsed,
             },
         };
     }

@@ -39,6 +39,7 @@ export interface AIMessage {
     metadata?: {
         executionTime?: number;
         templateUsed?: string;
+        providerUsed?: string;
         query?: string;
         suggestions?: string[];
         error?: string;
@@ -204,6 +205,7 @@ export function useAIAssistant(options: UseAIAssistantOptions = {}): UseAIAssist
                 truncated
                 cached
                 templateUsed
+                providerUsed
               }
             }
           }
@@ -274,6 +276,7 @@ export function useAIAssistant(options: UseAIAssistantOptions = {}): UseAIAssist
                 metadata: {
                     executionTime: cachedResponse.metadata?.executionTime,
                     templateUsed: cachedResponse.metadata?.templateUsed,
+                    providerUsed: cachedResponse.metadata?.providerUsed,
                     query: cachedResponse.query,
                     suggestions: cachedResponse.suggestions,
                     error: cachedResponse.error,
@@ -307,6 +310,7 @@ export function useAIAssistant(options: UseAIAssistantOptions = {}): UseAIAssist
                 metadata: {
                     executionTime: response.metadata?.executionTime,
                     templateUsed: response.metadata?.templateUsed,
+                    providerUsed: response.metadata?.providerUsed,
                     query: response.query,
                     suggestions: response.suggestions,
                     error: response.error,

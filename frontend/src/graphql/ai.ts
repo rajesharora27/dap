@@ -54,6 +54,7 @@ export const ASK_AI_QUERY = gql`
         truncated
         cached
         templateUsed
+        providerUsed
       }
     }
   }
@@ -63,36 +64,38 @@ export const ASK_AI_QUERY = gql`
  * Response type from the AI query
  */
 export interface AIQueryResponse {
-    answer: string;
-    data?: unknown;
-    query?: string;
-    suggestions?: string[];
-    error?: string;
-    metadata?: AIQueryMetadata;
+  answer: string;
+  data?: unknown;
+  query?: string;
+  suggestions?: string[];
+  error?: string;
+  metadata?: AIQueryMetadata;
 }
 
 /**
  * Metadata about the AI query execution
  */
 export interface AIQueryMetadata {
-    executionTime?: number;
-    rowCount?: number;
-    truncated?: boolean;
-    cached?: boolean;
-    templateUsed?: string;
+  executionTime?: number;
+  rowCount?: number;
+  truncated?: boolean;
+  cached?: boolean;
+  templateUsed?: string;
+  /** Which AI provider was used (template, openai, gemini, anthropic, cisco, mock, none) */
+  providerUsed?: string;
 }
 
 /**
  * GraphQL response wrapper
  */
 export interface AskAIResponse {
-    askAI: AIQueryResponse;
+  askAI: AIQueryResponse;
 }
 
 /**
  * Variables for the AI query
  */
 export interface AskAIVariables {
-    question: string;
-    conversationId?: string | null;
+  question: string;
+  conversationId?: string | null;
 }
