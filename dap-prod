@@ -211,17 +211,30 @@ show_status() {
     
     echo ""
     
-    # PostgreSQL status
+    # PostgreSQL status - try multiple methods
     echo -e "${CYAN}PostgreSQL Status:${NC}"
-    if pg_isready -q 2>/dev/null || sudo -u postgres pg_isready -q 2>/dev/null; then
+    
+    # Method 1: Try pg_isready with localhost
+    if pg_isready -h localhost -p 5432 -q 2>/dev/null; then
         log_success "PostgreSQL is accepting connections"
         
-        # Show connection count for the DAP database
-        local conn_count=$(sudo -u postgres psql -t -c "SELECT count(*) FROM pg_stat_activity WHERE datname='${DB_NAME}';" 2>/dev/null | tr -d ' ' || echo "?")
-        local max_conn=$(sudo -u postgres psql -t -c "SHOW max_connections;" 2>/dev/null | tr -d ' ' || echo "?")
-        log_info "Active connections to '${DB_NAME}': ${conn_count} / ${max_conn} max"
+        # Try to get connection info from backend's perspective
+        if [ -f "${APP_DIR}/backend/.env" ]; then
+            # Extract database URL and test connection
+            local db_url=$(grep "^DATABASE_URL=" "${APP_DIR}/backend/.env" | cut -d= -f2-)
+            if [ -n "$db_url" ]; then
+                # Use psql to count connections (this works if dap user can connect)
+                local conn_count=$(PGPASSWORD="$(echo $db_url | sed -n 's/.*:\/\/[^:]*:\([^@]*\)@.*/\1/p')" psql -h localhost -U "${DB_NAME}" -d "${DB_NAME}" -t -c "SELECT count(*) FROM pg_stat_activity WHERE datname='${DB_NAME}';" 2>/dev/null | tr -d ' ' || echo "?")
+                log_info "Active connections to '${DB_NAME}': ${conn_count}"
+            fi
+        fi
     else
-        log_error "PostgreSQL is not responding"
+        # Method 2: Check if port is listening
+        if netstat -tuln 2>/dev/null | grep -q ":5432 " || ss -tuln 2>/dev/null | grep -q ":5432 "; then
+            log_warning "PostgreSQL port 5432 is listening but not responding to pg_isready"
+        else
+            log_error "PostgreSQL is not running (port 5432 not listening)"
+        fi
     fi
     
     echo ""
