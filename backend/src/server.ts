@@ -330,11 +330,16 @@ if (isDirectRun) {
     const host = appConfig.backend.host;
 
     // Clear all sessions on startup to force re-authentication
-    console.log('🔐 Server starting - clearing all sessions for security...');
-    try {
-      await SessionManager.clearAllSessions();
-    } catch (e) {
-      console.error('⚠️  Failed to clear sessions on startup:', (e as any).message);
+    // Only in production - in development, we want to preserve sessions during hot-reload
+    if (envConfig.isProd) {
+      console.log('🔐 Server starting - clearing all sessions for security...');
+      try {
+        await SessionManager.clearAllSessions();
+      } catch (e) {
+        console.error('⚠️  Failed to clear sessions on startup:', (e as any).message);
+      }
+    } else {
+      console.log('🔓 Development mode - preserving existing sessions');
     }
 
     // Initialize auto-backup scheduler

@@ -28,6 +28,7 @@ import { AuditLogger, getAuditLogger, generateRequestId, AuditLogEntry } from '.
 import { ErrorHandler, getErrorHandler, AIErrorType } from './ErrorHandler';
 import { DataContextManager, getDataContextManager } from './DataContextManager';
 import { PrismaClient } from '@prisma/client';
+import { prisma as sharedPrisma } from '../../context';
 
 /**
  * Default configuration for the AI Agent
@@ -108,11 +109,10 @@ export class AIAgentService {
     });
 
     // Phase 5: Initialize data context manager for RAG
-    if (prisma) {
-      this.prisma = prisma;
-      this.dataContextManager = getDataContextManager(prisma);
-      console.log('[AI Agent] Data context manager initialized');
-    }
+    // Always use the shared Prisma client to prevent connection pool exhaustion
+    this.prisma = sharedPrisma as PrismaClient;
+    this.dataContextManager = getDataContextManager();
+    console.log('[AI Agent] Data context manager initialized with shared Prisma client');
 
     // Initialize LLM provider
     try {
@@ -1145,12 +1145,13 @@ Response:
 
   /**
    * Set the Prisma client and initialize data context manager
-   * Call this after construction if prisma wasn't provided initially
+   * @deprecated Always uses shared Prisma client now - this method is kept for backward compatibility
    */
-  setPrismaClient(prisma: PrismaClient): void {
-    this.prisma = prisma;
-    this.dataContextManager = getDataContextManager(prisma);
-    console.log('[AI Agent] Data context manager initialized via setPrismaClient');
+  setPrismaClient(_prisma?: PrismaClient): void {
+    // Always use shared Prisma client to prevent connection pool exhaustion
+    this.prisma = sharedPrisma as PrismaClient;
+    this.dataContextManager = getDataContextManager();
+    console.log('[AI Agent] Data context manager uses shared Prisma client');
   }
 }
 
@@ -1159,16 +1160,16 @@ let instance: AIAgentService | null = null;
 
 /**
  * Get the singleton AI Agent Service instance
+ * Always uses the shared Prisma client to prevent connection pool exhaustion.
+ * 
  * @param config - Optional configuration (only used on first call)
- * @param prisma - Optional Prisma client for data context (only used on first call)
+ * @param _prisma - DEPRECATED: Ignored, always uses shared Prisma instance
  * @returns The AI Agent Service instance
  */
-export function getAIAgentService(config?: Partial<AIAgentConfig>, prisma?: PrismaClient): AIAgentService {
+export function getAIAgentService(config?: Partial<AIAgentConfig>, _prisma?: PrismaClient): AIAgentService {
   if (!instance) {
-    instance = new AIAgentService(config, prisma);
-  } else if (prisma && !instance.getDataContextManager()) {
-    // If instance exists but doesn't have data context, set it
-    instance.setPrismaClient(prisma);
+    instance = new AIAgentService(config);
+    console.log('[AI Agent] Created singleton instance with shared Prisma client');
   }
   return instance;
 }

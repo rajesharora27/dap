@@ -10,7 +10,10 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { prisma as defaultPrisma } from '../../context';
+import { prisma as sharedPrisma } from '../../context';
+
+// Always use the shared Prisma instance to prevent connection pool exhaustion
+const defaultPrisma = sharedPrisma;
 
 /**
  * Query configuration from templates

@@ -37,6 +37,11 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       hmr: { overlay: true },
       allowedHosts,
+      watch: {
+        // Ignore .env file changes to prevent unnecessary restarts
+        // The env is loaded at startup, changes require manual restart
+        ignored: ['**/.env', '**/.env.*']
+      },
       proxy: {
         '/dap/graphql': {
           target: env.VITE_GRAPHQL_PROXY || 'http://localhost:4000',
