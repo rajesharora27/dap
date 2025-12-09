@@ -1,0 +1,374 @@
+#!/bin/bash
+
+#######################################################################################
+# DAP Production Manager
+# 
+# Manages the DAP application on production servers using PM2 process manager.
+# This script provides commands to restart, monitor, and manage all DAP services.
+#
+# Services managed:
+#   - Backend API (Node.js/Express/Apollo GraphQL) via PM2 cluster mode
+#   - Frontend (static files served by Nginx/Apache)
+#   - PostgreSQL Database (systemd service)
+#
+# Usage: ./dap [command]
+# 
+# Location: /data/dap/dap (production server)
+#######################################################################################
+
+set -e
+
+# =============================================================================
+# CONFIGURATION - Modify these variables for your environment
+# =============================================================================
+
+# Root directory for the DAP application
+DAP_ROOT="/data/dap"
+
+# Application directory (where backend/frontend/ecosystem.config.js are located)
+APP_DIR="${DAP_ROOT}/app"
+
+# Logs directory
+LOGS_DIR="${DAP_ROOT}/logs"
+
+# PM2 ecosystem configuration file
+PM2_CONFIG="${APP_DIR}/ecosystem.config.js"
+
+# Backend process name in PM2
+PM2_BACKEND_NAME="dap-backend"
+
+# Frontend process name in PM2 (if using PM2 for static serving)
+PM2_FRONTEND_NAME="dap-frontend"
+
+# PostgreSQL database name
+DB_NAME="dap"
+
+# =============================================================================
+# COLORS AND LOGGING - Output formatting helpers
+# =============================================================================
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m' # No Color
+
+# Log informational message
+log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+
+# Log success message
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+
+# Log warning message
+log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+
+# Log error message
+log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Log header (section separator)
+log_header() { echo -e "${PURPLE}=== $1 ===${NC}"; }
+
+# =============================================================================
+# ENVIRONMENT SYNC - Ensure correct .env is applied
+# =============================================================================
+
+# Sync environment from .env.production to backend/.env
+# This ensures the backend uses production database credentials
+sync_env() {
+    log_info "Syncing production environment..."
+    
+    if [ -f "${APP_DIR}/.env.production" ]; then
+        # Use .env.production as the source of truth
+        cp "${APP_DIR}/.env.production" "${APP_DIR}/.env"
+        cp "${APP_DIR}/.env.production" "${APP_DIR}/backend/.env"
+        log_success "Environment synced from .env.production"
+    elif [ -f "${APP_DIR}/.env" ]; then
+        # Fallback: sync .env to backend
+        cp "${APP_DIR}/.env" "${APP_DIR}/backend/.env"
+        log_success "Environment synced from .env"
+    else
+        log_warning "No .env file found in ${APP_DIR}"
+    fi
+}
+
+# =============================================================================
+# SERVICE MANAGEMENT - PM2 process control
+# =============================================================================
+
+# Restart all services (backend + frontend if applicable)
+# Uses PM2 ecosystem.config.js for configuration
+restart_all() {
+    log_header "RESTARTING ALL SERVICES"
+    
+    # Sync environment before restart
+    sync_env
+    
+    log_info "Restarting PM2 processes from ${PM2_CONFIG}..."
+    cd "${APP_DIR}"
+    
+    # Use --update-env to pick up any .env changes
+    if pm2 restart "${PM2_CONFIG}" --update-env; then
+        log_success "All services restarted successfully"
+    else
+        log_error "Failed to restart services"
+        return 1
+    fi
+    
+    echo ""
+    pm2 list
+}
+
+# Restart backend service only
+# Faster than full restart when only backend code changed
+restart_backend() {
+    log_header "RESTARTING BACKEND"
+    
+    # Sync environment before restart
+    sync_env
+    
+    log_info "Restarting ${PM2_BACKEND_NAME} processes..."
+    
+    # Use --update-env to pick up any .env changes
+    if pm2 restart "${PM2_BACKEND_NAME}" --update-env; then
+        log_success "Backend restarted successfully"
+    else
+        log_error "Failed to restart backend"
+        return 1
+    fi
+    
+    echo ""
+    pm2 list
+}
+
+# =============================================================================
+# DATABASE MANAGEMENT - PostgreSQL control
+# =============================================================================
+
+# Restart PostgreSQL database
+# This clears ALL active database connections - use when hitting connection limits
+restart_db() {
+    log_header "RESTARTING DATABASE"
+    
+    log_info "Restarting PostgreSQL to clear all connections..."
+    log_warning "This will temporarily disconnect all database clients!"
+    
+    # Try systemctl first (modern systemd systems)
+    if command -v systemctl &> /dev/null; then
+        sudo systemctl restart postgresql
+        log_success "PostgreSQL restarted via systemctl"
+    # Fallback to service command (older systems)
+    elif command -v service &> /dev/null; then
+        sudo service postgresql restart
+        log_success "PostgreSQL restarted via service"
+    else
+        log_error "Cannot restart PostgreSQL - no systemctl or service command found"
+        log_info "Try manually: sudo systemctl restart postgresql"
+        return 1
+    fi
+    
+    # Wait for PostgreSQL to be ready again
+    log_info "Waiting for PostgreSQL to accept connections..."
+    local max_attempts=30
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        # Try pg_isready as current user or postgres user
+        if pg_isready -q 2>/dev/null || sudo -u postgres pg_isready -q 2>/dev/null; then
+            log_success "PostgreSQL is ready and accepting connections"
+            break
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            log_error "PostgreSQL failed to become ready within ${max_attempts} seconds"
+            return 1
+        fi
+        
+        echo -n "."
+        sleep 1
+        ((attempt++))
+    done
+    echo ""
+    
+    # Restart backend to establish fresh database connections
+    log_info "Restarting backend to establish fresh connections..."
+    pm2 restart "${PM2_BACKEND_NAME}" --update-env
+    log_success "Backend restarted with fresh database connections"
+}
+
+# =============================================================================
+# STATUS AND MONITORING - View service state
+# =============================================================================
+
+# Show status of all services
+show_status() {
+    log_header "PRODUCTION STATUS"
+    
+    # PM2 process status
+    echo -e "${CYAN}PM2 Processes:${NC}"
+    pm2 list
+    
+    echo ""
+    
+    # PostgreSQL status
+    echo -e "${CYAN}PostgreSQL Status:${NC}"
+    if pg_isready -q 2>/dev/null || sudo -u postgres pg_isready -q 2>/dev/null; then
+        log_success "PostgreSQL is accepting connections"
+        
+        # Show connection count for the DAP database
+        local conn_count=$(sudo -u postgres psql -t -c "SELECT count(*) FROM pg_stat_activity WHERE datname='${DB_NAME}';" 2>/dev/null | tr -d ' ' || echo "?")
+        local max_conn=$(sudo -u postgres psql -t -c "SHOW max_connections;" 2>/dev/null | tr -d ' ' || echo "?")
+        log_info "Active connections to '${DB_NAME}': ${conn_count} / ${max_conn} max"
+    else
+        log_error "PostgreSQL is not responding"
+    fi
+    
+    echo ""
+    
+    # Disk usage
+    echo -e "${CYAN}Disk Usage (${DAP_ROOT}):${NC}"
+    df -h "${DAP_ROOT}" 2>/dev/null || df -h .
+    
+    echo ""
+    
+    # Memory usage
+    echo -e "${CYAN}Memory Usage:${NC}"
+    free -h
+}
+
+# Show logs from PM2
+# Usage: show_logs [service]
+#   service: 'backend', 'all' (default)
+show_logs() {
+    local service=${1:-all}
+    
+    log_header "VIEWING LOGS"
+    log_info "Press Ctrl+C to exit log viewer"
+    
+    case $service in
+        backend)
+            log_info "Showing ${PM2_BACKEND_NAME} logs..."
+            pm2 logs "${PM2_BACKEND_NAME}" --lines 50
+            ;;
+        all|*)
+            log_info "Showing all PM2 logs..."
+            pm2 logs --lines 50
+            ;;
+    esac
+}
+
+# =============================================================================
+# START/STOP SERVICES - Full lifecycle control
+# =============================================================================
+
+# Stop all PM2 services
+stop_all() {
+    log_header "STOPPING ALL SERVICES"
+    
+    log_info "Stopping all PM2 processes..."
+    pm2 stop all
+    
+    log_success "All PM2 processes stopped"
+    pm2 list
+}
+
+# Start all services from ecosystem.config.js
+start_all() {
+    log_header "STARTING ALL SERVICES"
+    
+    # Sync environment before start
+    sync_env
+    
+    log_info "Starting PM2 processes from ${PM2_CONFIG}..."
+    cd "${APP_DIR}"
+    
+    if pm2 start "${PM2_CONFIG}" --update-env; then
+        log_success "All services started successfully"
+    else
+        log_error "Failed to start services"
+        return 1
+    fi
+    
+    echo ""
+    pm2 list
+}
+
+# =============================================================================
+# HELP - Usage documentation
+# =============================================================================
+
+show_help() {
+    echo -e "${PURPLE}DAP Production Manager${NC}"
+    echo ""
+    echo "Manages the DAP application on production servers using PM2."
+    echo ""
+    echo "Usage: $0 [command]"
+    echo ""
+    echo "Commands:"
+    echo -e "  ${GREEN}restart${NC}          - Restart all services (syncs env, restarts PM2)"
+    echo -e "  ${GREEN}restart-backend${NC}  - Restart backend only (quick restart)"
+    echo -e "  ${YELLOW}restart-db${NC}       - Restart PostgreSQL (clears ALL connections)"
+    echo -e "  ${GREEN}start${NC}            - Start all services"
+    echo -e "  ${RED}stop${NC}             - Stop all services"
+    echo -e "  ${BLUE}status${NC}           - Show status of all services"
+    echo -e "  ${CYAN}logs${NC}             - Show live logs (all services)"
+    echo -e "  ${CYAN}logs backend${NC}     - Show backend logs only"
+    echo -e "  ${PURPLE}help${NC}             - Show this help message"
+    echo ""
+    echo "Examples:"
+    echo "  $0 restart          # Restart everything after deployment"
+    echo "  $0 restart-backend  # Quick restart after config change"
+    echo "  $0 restart-db       # Fix 'too many connections' errors"
+    echo "  $0 status           # Check what's running"
+    echo "  $0 logs backend     # Debug backend issues"
+    echo ""
+    echo "Configuration (edit variables at top of script):"
+    echo "  DAP_ROOT:    ${DAP_ROOT}"
+    echo "  APP_DIR:     ${APP_DIR}"
+    echo "  LOGS_DIR:    ${LOGS_DIR}"
+    echo "  PM2_CONFIG:  ${PM2_CONFIG}"
+    echo "  DB_NAME:     ${DB_NAME}"
+}
+
+# =============================================================================
+# MAIN - Command dispatcher
+# =============================================================================
+
+main() {
+    case "${1:-help}" in
+        restart)
+            restart_all
+            ;;
+        restart-backend|backend)
+            restart_backend
+            ;;
+        restart-db|db)
+            restart_db
+            ;;
+        start)
+            start_all
+            ;;
+        stop)
+            stop_all
+            ;;
+        status)
+            show_status
+            ;;
+        logs)
+            show_logs "${2:-all}"
+            ;;
+        help|--help|-h)
+            show_help
+            ;;
+        *)
+            log_error "Unknown command: $1"
+            echo ""
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+# Run main function with all command-line arguments
+main "$@"

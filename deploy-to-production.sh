@@ -55,6 +55,9 @@ cp -r backend/config/* /tmp/dap-deploy/config/ 2>/dev/null || true
 # Copy ecosystem config for PM2
 cp backend/ecosystem.config.js /tmp/dap-deploy/ecosystem.config.js 2>/dev/null || true
 
+# Copy production management script
+cp dap-prod /tmp/dap-deploy/dap-prod 2>/dev/null || true
+
 cp -r scripts /tmp/dap-deploy/scripts-new 2>/dev/null || true
 echo "✅ Files prepared in /tmp/dap-deploy"
 echo ""
@@ -163,6 +166,19 @@ echo "✅ Frontend files copied"
 
 # Scripts already copied in earlier step
 echo "✅ Scripts already updated"
+
+# Copy production management scripts to /data/dap root
+if [ -f /tmp/dap-deploy-prod/dap-prod ]; then
+  cp /tmp/dap-deploy-prod/dap-prod /data/dap/dap
+  chmod +x /data/dap/dap
+  echo "✅ Production management script (./dap) installed"
+fi
+
+# Copy ecosystem.config.js
+if [ -f /tmp/dap-deploy-prod/ecosystem.config.js ]; then
+  cp /tmp/dap-deploy-prod/ecosystem.config.js "$DAP_ROOT/ecosystem.config.js"
+  echo "✅ PM2 ecosystem config updated"
+fi
 
 # Build backend
 echo "🔨 Building backend..."
