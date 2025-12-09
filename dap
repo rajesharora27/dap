@@ -240,6 +240,35 @@ manage_docker() {
                 log_error "Database container not found"
             fi
             ;;
+            
+        restart)
+            log_info "Restarting PostgreSQL database (clearing all connections)..."
+            if docker ps --format "table {{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
+                docker restart $DB_CONTAINER
+                log_success "Database container restarted"
+                
+                # Wait for database to be ready again
+                log_info "Waiting for database to be ready..."
+                local max_attempts=30
+                local attempt=1
+                while [ $attempt -le $max_attempts ]; do
+                    if docker exec $DB_CONTAINER pg_isready -U postgres >/dev/null 2>&1; then
+                        log_success "Database is ready and accepting new connections"
+                        break
+                    fi
+                    if [ $attempt -eq $max_attempts ]; then
+                        log_error "Database failed to become ready within 30 seconds"
+                        return 1
+                    fi
+                    echo -n "."
+                    sleep 1
+                    ((attempt++))
+                done
+            else
+                log_warning "Database container not running, starting it..."
+                manage_docker start
+            fi
+            ;;
     esac
 }
 
@@ -1276,6 +1305,7 @@ show_help() {
     echo -e "  ${BLUE}add-sample${NC}     - ✅ Add sample data (preserves existing user data)"
     echo -e "  ${PURPLE}reset-sample${NC}   - ✅ Remove sample data only (preserves user data)"
     echo -e "  ${PURPLE}test${NC}           - Run comprehensive end-user test suite"
+    echo -e "  ${YELLOW}restart-db${NC}     - Restart database container (clears ALL connections)"
     echo -e "  ${BLUE}status${NC}         - Show status of all services and data"
     echo -e "  ${PURPLE}help${NC}           - Show this help message"
     echo ""
@@ -1449,6 +1479,12 @@ main() {
             ;;
         test)
             run_comprehensive_test
+            ;;
+        restart-db)
+            log_header "RESTARTING DATABASE"
+            log_info "This will clear ALL active database connections"
+            manage_docker restart
+            log_success "Database restarted - all connections cleared"
             ;;
         status)
             show_status
