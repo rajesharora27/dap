@@ -1,6 +1,7 @@
 #!/bin/bash
-# Deploy Latest Changes to Production (centos2) - Version 4
+# Deploy Latest Changes to Production (centos2) - Version 5
 # Matches production directory structure and permissions
+# NOTE: Does NOT modify local .env files - only production server gets .env.production
 
 set -e
 
@@ -9,10 +10,10 @@ echo "🚀 Deploying to Production (centos2)"
 echo "========================================="
 echo ""
 
-# Step 0: Setup production environment
-echo "📋 Step 0: Setting up production environment..."
+# Step 0: Verify we're ready to deploy (no local env changes needed)
+echo "📋 Step 0: Preparing deployment..."
 cd /data/dap
-./scripts/sync-env.sh production
+echo "✅ Using existing local environment for build"
 echo ""
 
 # Step 1: Build frontend
@@ -50,6 +51,9 @@ cp .env.production /tmp/dap-deploy/.env.production 2>/dev/null || true
 # Copy config files (including LLM config)
 mkdir -p /tmp/dap-deploy/config
 cp -r backend/config/* /tmp/dap-deploy/config/ 2>/dev/null || true
+
+# Copy ecosystem config for PM2
+cp backend/ecosystem.config.js /tmp/dap-deploy/ecosystem.config.js 2>/dev/null || true
 
 cp -r scripts /tmp/dap-deploy/scripts-new 2>/dev/null || true
 echo "✅ Files prepared in /tmp/dap-deploy"

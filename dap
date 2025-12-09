@@ -578,6 +578,15 @@ dev_mode() {
 start_all() {
     log_header "STARTING $APP_NAME"
     
+    # Sync development environment files
+    if [ -f "$PROJECT_DIR/.env.development" ]; then
+        log_info "Syncing development environment..."
+        cp "$PROJECT_DIR/.env.development" "$PROJECT_DIR/.env"
+        cp "$PROJECT_DIR/.env.development" "$BACKEND_DIR/.env"
+        cp "$PROJECT_DIR/.env.development" "$FRONTEND_DIR/.env"
+        log_success "Environment synced from .env.development"
+    fi
+    
     manage_docker start || exit 1
     
     # Run Migrations (only if requested)
