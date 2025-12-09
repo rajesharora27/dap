@@ -18,7 +18,16 @@ const prismaStub: any = {
 };
 
 // Use real Prisma only if not in fallback mode
-export const prisma: any = fallbackActive ? prismaStub : new PrismaClient();
+// Configure connection pool size explicitly to prevent connection exhaustion
+// With 4 PM2 instances and pool_size=5, max connections = 20 (well under PostgreSQL's 200 limit)
+export const prisma: any = fallbackActive ? prismaStub : new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL
+    }
+  },
+  log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error']
+});
 export const logger = pino({
   level: envConfig.logging.level,
   transport: envConfig.logging.pretty ? { target: 'pino-pretty' } : undefined,

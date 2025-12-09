@@ -22,8 +22,10 @@ import {
   Person,
   Psychology,
 } from '@mui/icons-material';
+import { useQuery } from '@apollo/client';
 import { useAuth } from './AuthContext';
 import { AIChat } from './AIChat';
+import { IS_AI_AGENT_AVAILABLE, IsAIAgentAvailableResponse } from '../graphql/ai';
 
 interface AuthBarProps {
   onMenuClick?: () => void;
@@ -37,6 +39,19 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [aiChatOpen, setAiChatOpen] = React.useState(false);
 
+  // Check if AI Agent is available (aiuser exists)
+  const { data: aiAvailabilityData, loading: aiLoading } = useQuery<IsAIAgentAvailableResponse>(
+    IS_AI_AGENT_AVAILABLE,
+    {
+      // Check availability once on mount, and refresh every 5 minutes
+      pollInterval: 300000,
+      fetchPolicy: 'cache-first',
+    }
+  );
+  
+  const isAIAgentAvailable = aiAvailabilityData?.isAIAgentAvailable?.available ?? false;
+  const aiUnavailableMessage = aiAvailabilityData?.isAIAgentAvailable?.message || 'AI Agent is not available';
+
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -46,7 +61,9 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
   };
 
   const handleAIChatOpen = () => {
-    setAiChatOpen(true);
+    if (isAIAgentAvailable) {
+      setAiChatOpen(true);
+    }
   };
 
   const handleAIChatClose = () => {
@@ -157,34 +174,36 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
 
         {/* AI Assistant & User Menu */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {/* AI Assistant Button */}
-          <Tooltip title="AI Assistant" arrow>
-            <IconButton
-              onClick={handleAIChatOpen}
-              sx={{
-                color: 'white',
-                bgcolor: 'rgba(255, 255, 255, 0.1)',
-                '&:hover': {
-                  bgcolor: 'rgba(255, 255, 255, 0.2)',
-                },
-                mr: 1,
-              }}
-            >
-              <Badge
-                variant="dot"
-                color="success"
-                invisible={false}
+          {/* AI Assistant Button - only shown if aiuser exists */}
+          {!aiLoading && isAIAgentAvailable && (
+            <Tooltip title="AI Assistant" arrow>
+              <IconButton
+                onClick={handleAIChatOpen}
                 sx={{
-                  '& .MuiBadge-badge': {
-                    bgcolor: '#4caf50',
-                    boxShadow: '0 0 6px rgba(76, 175, 80, 0.6)',
+                  color: 'white',
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                  '&:hover': {
+                    bgcolor: 'rgba(255, 255, 255, 0.2)',
                   },
+                  mr: 1,
                 }}
               >
-                <Psychology />
-              </Badge>
-            </IconButton>
-          </Tooltip>
+                <Badge
+                  variant="dot"
+                  color="success"
+                  invisible={false}
+                  sx={{
+                    '& .MuiBadge-badge': {
+                      bgcolor: '#4caf50',
+                      boxShadow: '0 0 6px rgba(76, 175, 80, 0.6)',
+                    },
+                  }}
+                >
+                  <Psychology />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+          )}
 
           {user && (
             <Typography
@@ -267,12 +286,14 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
         </Box>
       </Toolbar>
 
-      {/* AI Chat Dialog */}
-      <AIChat
-        open={aiChatOpen}
-        onClose={handleAIChatClose}
-        onNavigate={onNavigate}
-      />
+      {/* AI Chat Dialog - only render if aiuser exists */}
+      {isAIAgentAvailable && (
+        <AIChat
+          open={aiChatOpen}
+          onClose={handleAIChatClose}
+          onNavigate={onNavigate}
+        />
+      )}
     </AppBar>
   );
 };

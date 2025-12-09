@@ -261,11 +261,13 @@ Product ──────────────────┐
 
 **Feature**: Ask questions about your data in natural language.
 
+- **Requires aiuser**: A dedicated `aiuser` account must exist for AI Agent to function
 - **Query Templates**: 20+ pre-built patterns for common queries (fast path)
 - **LLM Fallback**: Complex queries processed by AI (Gemini/OpenAI/Anthropic)
 - **Data Context**: Real-time database context injected into LLM prompts
 - **Safe Execution**: Read-only queries with row limits and timeouts
 - **Admin Refresh**: Manual data context refresh via UI button
+- **RBAC Integration**: All queries execute with aiuser's permissions
 
 **Example Queries:**
 - "List all tasks for Cisco Secure Access without telemetry"
@@ -927,6 +929,38 @@ When a product or solution is assigned to a customer, the result is an adoption 
 - Template matching now logs to console for debugging
 - Shows which templates match and with what confidence
 - Helps diagnose when queries fall through to LLM
+
+#### AI Agent User Account
+
+**Feature**: AI Agent uses a dedicated user account for query execution with admin fallback.
+
+**Implementation:**
+- AI Agent looks for `aiuser` account first
+- If `aiuser` doesn't exist, falls back to `admin` account
+- If neither exists:
+  - AI Assistant button is hidden from the GUI
+  - Queries return an error message
+- All AI queries execute with the AI user's RBAC permissions
+- Cache is used to minimize database lookups (1 minute TTL)
+
+**Priority Order:**
+1. `aiuser` (preferred - dedicated AI account)
+2. `admin` (fallback - uses admin permissions)
+
+**Files Changed:**
+- `backend/src/schema/resolvers/ai.ts` - Added AI user check with fallback, caching, availability query
+- `backend/src/schema/typeDefs.ts` - Added `isAIAgentAvailable` query and `AIAgentAvailability` type
+- `frontend/src/graphql/ai.ts` - Added availability query
+- `frontend/src/components/AuthBar.tsx` - Conditional rendering of AI button
+
+**Optional: Create Dedicated aiuser:**
+1. Create `aiuser` account via Admin > Users & Roles
+2. Assign appropriate role (recommend: `ADMIN` for full data access)
+3. Restart backend or wait for cache to expire (1 minute)
+
+**Note:** If only `admin` exists, AI Agent works but logs will indicate fallback mode.
+
+---
 
 #### Entity Preview Dialogs
 

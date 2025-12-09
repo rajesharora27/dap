@@ -1350,7 +1350,20 @@ export const typeDefs = gql`
     metadata: AIQueryMetadata
   }
 
+  """Response for AI Agent availability check"""
+  type AIAgentAvailability {
+    """Whether the AI Agent is available (aiuser exists)"""
+    available: Boolean!
+    """Message explaining the availability status"""
+    message: String!
+  }
+
   extend type Query {
+    """
+    Check if the AI Agent is available (requires aiuser account to exist)
+    """
+    isAIAgentAvailable: AIAgentAvailability!
+    
     """
     Ask the AI agent a natural language question about the data
     """
