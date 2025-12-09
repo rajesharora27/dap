@@ -1110,8 +1110,7 @@ export const resolvers = {
       // Check if user has ADMIN permission for this specific customer
       await requirePermission(ctx, ResourceType.CUSTOMER, id, PermissionLevel.ADMIN);
 
-      await logAudit('DELETE_CUSTOMER', 'Customer', id, {}, ctx.user?.id);
-      return true;
+      return CustomerService.deleteCustomer(ctx.user.id, id);
     },
     createLicense: async (_: any, { input }: any, ctx: any) => {
       ensureRole(ctx, ['ADMIN', 'SME']);
@@ -2609,7 +2608,7 @@ export const resolvers = {
     , activateUser: AuthMutationResolvers.activateUser
     , deactivateUser: AuthMutationResolvers.deactivateUser
     , updateRolePermissions: AuthMutationResolvers.updateRolePermissions
-    
+
     // AI Agent mutations
     , refreshAIDataContext: AIMutationResolvers.refreshAIDataContext
   },
