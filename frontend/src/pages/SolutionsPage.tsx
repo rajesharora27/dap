@@ -249,6 +249,16 @@ export const SolutionsPage: React.FC = () => {
                             </Button>
                         </>
                     )}
+
+                    {/* Always visible Add button - positioned last */}
+                    <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<Add />}
+                        onClick={() => { setEditingSolution(null); setSolutionDialog(true); }}
+                    >
+                        Add Solution
+                    </Button>
                 </Box>
             </Paper>
 
