@@ -1015,6 +1015,77 @@ Response:
   }
 }
 
+User: "Show me all completed tasks for ACME"
+Response:
+{
+  "model": "Customer",
+  "operation": "findMany",
+  "args": {
+    "where": {
+      "deletedAt": null,
+      "name": { "contains": "ACME", "mode": "insensitive" }
+    },
+    "select": {
+      "id": true,
+      "name": true,
+      "products": {
+        "where": { "deletedAt": null },
+        "select": {
+          "name": true,
+          "product": { "select": { "name": true } },
+          "adoptionPlan": {
+            "select": {
+              "id": true,
+              "progressPercentage": true,
+              "tasks": {
+                "where": { "status": { "in": ["COMPLETED", "DONE"] } },
+                "select": {
+                  "id": true,
+                  "name": true,
+                  "status": true,
+                  "completedAt": true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+User: "List tasks that are done for customer Acme"
+Response:
+{
+  "model": "Customer",
+  "operation": "findMany",
+  "args": {
+    "where": {
+      "deletedAt": null,
+      "name": { "contains": "Acme", "mode": "insensitive" }
+    },
+    "select": {
+      "id": true,
+      "name": true,
+      "products": {
+        "where": { "deletedAt": null },
+        "select": {
+          "name": true,
+          "product": { "select": { "name": true } },
+          "adoptionPlan": {
+            "select": {
+              "tasks": {
+                "where": { "status": "DONE" },
+                "select": { "id": true, "name": true, "status": true }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 User: "Products with tasks that have no telemetry"
 Response:
 {
