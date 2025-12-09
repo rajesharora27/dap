@@ -4,7 +4,7 @@ module.exports = {
             name: 'dap-backend',
             cwd: '/data/dap/app/backend',
             script: 'dist/server.js',
-            instances: 4,  // Reduced from 'max' (16) to prevent DB connection exhaustion
+            instances: 2,  // Reduced to 2 to minimize DB connection usage (each instance creates ~5-10 connections)
             exec_mode: 'cluster',
             env_file: '/data/dap/app/.env',
             env: {

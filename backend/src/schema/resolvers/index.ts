@@ -818,6 +818,7 @@ export const resolvers = {
     // Note: auditLogs is already defined above, so using the existing one
 
     // AI Agent queries
+    , isAIAgentAvailable: AIQueryResolvers.isAIAgentAvailable
     , askAI: AIQueryResolvers.askAI
     , aiDataContextStatus: AIQueryResolvers.aiDataContextStatus
 
