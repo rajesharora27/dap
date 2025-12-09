@@ -363,10 +363,12 @@ export class SchemaContextManager {
       'To query assignments/adoption plans for a product, query the "customers" relation: product.customers.some.adoptionPlan...',
 
       // Querying Customer Tasks
-      'IMPORTANT: To find tasks for a specific customer (e.g., "completed tasks for ACME"), always start with the Customer model and navigate through products → adoptionPlan → tasks.',
-      'DO NOT query CustomerTask directly with a where filter on customer name - CustomerTask does not have a direct customer relation.',
-      'Correct path: Customer → products (CustomerProduct) → adoptionPlan → tasks (CustomerTask).',
-      'Example: To find completed tasks for "ACME", use Customer.findMany with where: { name: { contains: "ACME" } } and select the nested tasks with status filter.',
+      'IMPORTANT: To find individual task records for a customer, query CustomerTask directly with nested filters.',
+      'CustomerTask connects to Customer via: CustomerTask → adoptionPlan → customerProduct → customer',
+      'Example filter for CustomerTask by customer name: { adoptionPlan: { customerProduct: { customer: { name: { contains: "ACME" } } } } }',
+      'To also filter by product name, add: { adoptionPlan: { customerProduct: { product: { name: { contains: "ProductName" } } } } }',
+      'Query CustomerTask when you want individual task rows as results (e.g., "show me tasks that are done for ACME").',
+      'Query Customer when you want customer records with nested task data.',
     ];
   }
 
