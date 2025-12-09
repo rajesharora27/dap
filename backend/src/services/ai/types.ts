@@ -72,6 +72,8 @@ export interface AIQueryMetadata {
   cached: boolean;
   /** Which template was used (if any) */
   templateUsed?: string;
+  /** Which AI provider was used to execute the query (template, openai, gemini, anthropic, cisco, mock) */
+  providerUsed?: string;
 }
 
 /**

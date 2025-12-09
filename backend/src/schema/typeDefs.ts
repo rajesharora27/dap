@@ -1330,6 +1330,8 @@ export const typeDefs = gql`
     cached: Boolean!
     """Template ID if a template was matched"""
     templateUsed: String
+    """Which AI provider was used (template, openai, gemini, anthropic, cisco, mock)"""
+    providerUsed: String
   }
 
   """

@@ -68,12 +68,12 @@ export class AIAgentService {
   private rbacFilter: RBACFilter;
   private responseFormatter: ResponseFormatter;
   private llmProvider: ILLMProvider | null = null;
-  
+
   // Phase 4 components
   private cacheManager: CacheManager;
   private auditLogger: AuditLogger;
   private errorHandler: ErrorHandler;
-  
+
   // Phase 5: Data context for RAG
   private dataContextManager: DataContextManager | null = null;
   private prisma: PrismaClient | null = null;
@@ -93,7 +93,7 @@ export class AIAgentService {
     });
     this.rbacFilter = getRBACFilter();
     this.responseFormatter = getResponseFormatter();
-    
+
     // Phase 4: Initialize caching, audit logging, and error handling
     this.cacheManager = getCacheManager({
       ttlMs: 5 * 60 * 1000, // 5 minutes
@@ -231,7 +231,7 @@ export class AIAgentService {
 
       // Format error response
       const errorResponse = this.errorHandler.formatErrorResponse(aiError);
-      
+
       // Log the error
       this.auditLogger.logError(requestId, request.userId, request.userRole, request.question, error, {
         executionTimeMs: Date.now() - startTime,
@@ -310,7 +310,8 @@ export class AIAgentService {
         template,
         request.userRole,
         this.rbacFilter.getRoleRestrictions(request.userRole),
-        executionTimeMs()
+        executionTimeMs(),
+        'template'  // providerUsed
       );
     }
 
@@ -325,7 +326,8 @@ export class AIAgentService {
       return this.responseFormatter.formatError(
         template,
         executionResult.error || 'Unknown error',
-        executionTimeMs()
+        executionTimeMs(),
+        'template'  // providerUsed
       );
     }
 
@@ -333,7 +335,8 @@ export class AIAgentService {
       match,
       executionResult,
       executionTimeMs(),
-      queryConfig
+      queryConfig,
+      'template'  // providerUsed
     );
   }
 
@@ -479,7 +482,8 @@ export class AIAgentService {
     return this.responseFormatter.formatNoMatch(
       request.question,
       suggestions,
-      Date.now() - startTime
+      Date.now() - startTime,
+      'none'  // providerUsed - no provider was used for no-match
     );
   }
 
@@ -696,8 +700,9 @@ export class AIAgentService {
     startTime: number
   ): Promise<AIQueryResponse> {
     const executionTimeMs = () => Date.now() - startTime;
+    const providerName = this.llmProvider?.name || 'unknown';
 
-    console.log(`[AI Agent] Starting LLM query processing for: "${request.question}"`);
+    console.log(`[AI Agent] Starting LLM query processing for: "${request.question}" using provider: ${providerName}`);
 
     try {
       // 1. Interpret user intent and generate query config
@@ -719,7 +724,8 @@ export class AIAgentService {
           { id: 'llm-query', description: 'Custom Query', category: 'general' } as any, // Mock template
           request.userRole,
           this.rbacFilter.getRoleRestrictions(request.userRole),
-          executionTimeMs()
+          executionTimeMs(),
+          providerName  // providerUsed
         );
       }
 
@@ -736,7 +742,8 @@ export class AIAgentService {
             rowCount: 0,
             truncated: false,
             cached: false,
-            templateUsed: 'llm-dynamic'
+            templateUsed: 'llm-dynamic',
+            providerUsed: providerName
           }
         };
       }
@@ -755,7 +762,8 @@ export class AIAgentService {
         },
         executionResult,
         executionTimeMs(),
-        queryConfig
+        queryConfig,
+        providerName  // providerUsed
       );
 
       return formattedResponse;
@@ -765,13 +773,14 @@ export class AIAgentService {
 
       // Return the specific error to the user for debugging
       return {
-        answer: `I tried to generate a custom query for you, but encountered an error.\n\n**Error Details:**\n\`${error.message || error}\`\n\n**Provider:** ${this.llmProvider?.name || 'None'}`,
+        answer: `I tried to generate a custom query for you, but encountered an error.\n\n**Error Details:**\n\`${error.message || error}\`\n\n**Provider:** ${providerName}`,
         error: error.message || String(error),
         metadata: {
           executionTime: executionTimeMs(),
           rowCount: 0,
           truncated: false,
-          cached: false
+          cached: false,
+          providerUsed: providerName
         }
       };
     }
@@ -786,7 +795,7 @@ export class AIAgentService {
     }
 
     const schemaContext = this.schemaContextManager.getContextPrompt();
-    
+
     // Get data context if available
     let dataContext = '';
     if (this.dataContextManager) {
@@ -1101,10 +1110,10 @@ Response:
 
     try {
       const context = await this.dataContextManager.refresh();
-      
+
       // Clear the query cache since data has changed
       this.cacheManager.clear();
-      
+
       return {
         success: true,
         lastRefreshed: context.lastRefreshed,

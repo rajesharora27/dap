@@ -580,6 +580,21 @@ What would you like to know?`,
                       />
                     )}
 
+                    {/* Provider Badge */}
+                    {message.metadata.providerUsed && (
+                      <Chip
+                        size="small"
+                        icon={<Psychology sx={{ fontSize: 16 }} />}
+                        label={`Provider: ${message.metadata.providerUsed}`}
+                        sx={{
+                          mr: 1,
+                          mb: 1,
+                          bgcolor: alpha(theme.palette.info.main, 0.1),
+                          color: theme.palette.info.dark,
+                        }}
+                      />
+                    )}
+
                     {/* Execution Time */}
                     {message.metadata.executionTime !== undefined && (
                       <Chip
