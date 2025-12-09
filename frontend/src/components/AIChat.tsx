@@ -110,7 +110,7 @@ export const AIChat: React.FC<AIChatProps> = ({ open, onClose, onNavigate }) => 
         // Add a system message about the refresh
         addMessage({
           role: 'assistant',
-          content: `✅ **Data context refreshed successfully!**\n\nThe AI now has updated knowledge about:\n- ${data.refreshAIDataContext.statistics.totalProducts} products\n- ${data.refreshAIDataContext.statistics.totalSolutions} solutions\n- ${data.refreshAIDataContext.statistics.totalCustomers} customers\n- ${data.refreshAIDataContext.statistics.totalTasks} tasks (${data.refreshAIDataContext.statistics.totalTasksWithTelemetry} with telemetry, ${data.refreshAIDataContext.statistics.totalTasksWithoutTelemetry} without)`,
+          content: `✅ **AI Context refreshed successfully!**\n\n**Cleared:**\n- Query cache\n- Schema context\n\n**Updated data context:**\n- ${data.refreshAIDataContext.statistics.totalProducts} products\n- ${data.refreshAIDataContext.statistics.totalSolutions} solutions\n- ${data.refreshAIDataContext.statistics.totalCustomers} customers\n- ${data.refreshAIDataContext.statistics.totalTasks} tasks (${data.refreshAIDataContext.statistics.totalTasksWithTelemetry} with telemetry)`,
         });
       } else {
         addMessage({
@@ -437,7 +437,7 @@ What would you like to know?`,
           )}
 
           {user?.isAdmin && (
-            <Tooltip title="Refresh AI data context (updates entity names, statistics, etc.)">
+            <Tooltip title="Refresh AI Context (clears cache, reloads schema and data context)">
               <IconButton
                 onClick={handleRefreshContext}
                 disabled={refreshingContext}

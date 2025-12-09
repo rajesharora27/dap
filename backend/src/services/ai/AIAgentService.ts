@@ -884,16 +884,20 @@ interface QueryConfig {
 ## Constraints
 1. READ-ONLY operations only. No create, update, delete.
 2. Use 'findMany' for lists, 'count' for simple counts.
-3. Always include 'where: { deletedAt: null }' for models that support soft delete (Product, Solution, Customer, Task).
+3. IMPORTANT - deletedAt field ONLY exists on these models: Product, Solution, Customer, Task, License, Release. 
+   DO NOT use deletedAt on: CustomerProduct, CustomerTask, AdoptionPlan, TelemetryAttribute, etc.
 4. Do not limit 'take' unless the user asks for top N. The system applies a safe default limit.
 5. For text searches, use 'contains' with 'mode: "insensitive"' for partial matching.
-6. If the user asks for everything (e.g., "all products"), return a findMany with empty where (except deletedAt check).
+6. If the user asks for everything (e.g., "all products"), return a findMany with empty where (except deletedAt check if applicable).
 7. For counting, ALWAYS use "operation": "count". Do NOT use "operation": "aggregate" with "count" inside args (Prisma uses _count).
 8. For other aggregations (sum, avg), use "operation": "aggregate" and args like { "_sum": { "amount": true } }.
 9. CRITICAL - To find records WITHOUT related items, use NOT with some: "NOT": { "telemetryAttributes": { "some": {} } }
 10. To find records WITH related items, use: "telemetryAttributes": { "some": {} }
 11. NEVER use { "none": {} } - it does NOT work correctly in Prisma!
 12. When filtering by product or solution name, use: "product": { "name": { "contains": "Name", "mode": "insensitive" } }
+13. CRITICAL - In nested relations (like products inside Customer), you CANNOT use "where" with relation filters like "product: {...}".
+    Instead, filter the PARENT relation using "product: { is: { name: {...} } }" syntax.
+14. For CustomerProduct nested inside Customer, to filter by product name use: "products": { "some": { "product": { "name": {...} } } } at the top-level where.
 
 ## Examples
 
@@ -1029,7 +1033,6 @@ Response:
       "id": true,
       "name": true,
       "products": {
-        "where": { "deletedAt": null },
         "select": {
           "name": true,
           "product": { "select": { "name": true } },
@@ -1054,6 +1057,37 @@ Response:
   }
 }
 
+User: "Show me tasks for ACME for Cisco Secure Access that are done"
+Response:
+{
+  "model": "Customer",
+  "operation": "findMany",
+  "args": {
+    "where": {
+      "deletedAt": null,
+      "name": { "contains": "ACME", "mode": "insensitive" }
+    },
+    "select": {
+      "id": true,
+      "name": true,
+      "products": {
+        "select": {
+          "name": true,
+          "product": { "select": { "id": true, "name": true } },
+          "adoptionPlan": {
+            "select": {
+              "tasks": {
+                "where": { "status": "DONE" },
+                "select": { "id": true, "name": true, "status": true }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 User: "List tasks that are done for customer Acme"
 Response:
 {
@@ -1068,7 +1102,6 @@ Response:
       "id": true,
       "name": true,
       "products": {
-        "where": { "deletedAt": null },
         "select": {
           "name": true,
           "product": { "select": { "name": true } },
@@ -1244,6 +1277,11 @@ Response:
 
       // Clear the query cache since data has changed
       this.cacheManager.clear();
+
+      // Also clear schema context cache to ensure fresh schema info on next query
+      this.schemaContextManager.clearCache();
+
+      console.log('[AI Agent] All LLM context refreshed: data, cache, and schema');
 
       return {
         success: true,
