@@ -31,12 +31,12 @@ const AI_USER_CACHE_TTL = 60000; // 1 minute cache
  */
 async function getAIUser(prisma: any): Promise<{ user: any; source: 'aiuser' | 'admin' } | null> {
   const now = Date.now();
-  
+
   // Return cached user if valid
   if (aiUserCache && (now - aiUserCache.timestamp) < AI_USER_CACHE_TTL) {
     return aiUserCache.user ? { user: aiUserCache.user, source: aiUserCache.source } : null;
   }
-  
+
   // First try to find aiuser
   let user = await prisma.user.findUnique({
     where: { username: AI_USER_USERNAME },
@@ -47,9 +47,9 @@ async function getAIUser(prisma: any): Promise<{ user: any; source: 'aiuser' | '
       isAdmin: true,
     },
   });
-  
+
   let source: 'aiuser' | 'admin' = 'aiuser';
-  
+
   // If aiuser doesn't exist, fall back to admin
   if (!user) {
     user = await prisma.user.findUnique({
@@ -63,10 +63,10 @@ async function getAIUser(prisma: any): Promise<{ user: any; source: 'aiuser' | '
     });
     source = 'admin';
   }
-  
+
   // Update cache
   aiUserCache = { user, source, timestamp: now };
-  
+
   return user ? { user, source } : null;
 }
 
@@ -89,18 +89,18 @@ export const AIQueryResolvers = {
   isAIAgentAvailable: async (_: any, __: any, ctx: Context) => {
     try {
       const result = await getAIUser(ctx.prisma);
-      
+
       if (!result) {
         return {
           available: false,
           message: 'AI Agent is not available. Neither "aiuser" nor "admin" account exists. Please contact your administrator.',
         };
       }
-      
+
       const usingFallback = result.source === 'admin';
       return {
         available: true,
-        message: usingFallback 
+        message: usingFallback
           ? 'AI Agent is available (using admin account as fallback). Consider creating a dedicated "aiuser" account.'
           : 'AI Agent is available and ready to use.',
       };
@@ -128,7 +128,7 @@ export const AIQueryResolvers = {
   ) => {
     // Get the AI user (aiuser or fallback to admin)
     const result = await getAIUser(ctx.prisma);
-    
+
     if (!result) {
       console.error('[AI Agent] Error: Neither aiuser nor admin exists in database');
       return {
@@ -157,11 +157,21 @@ export const AIQueryResolvers = {
     // Get the AI Agent service with prisma client for data context
     const aiService = getAIAgentService(undefined, ctx.prisma);
 
-    // Process the question using aiuser's (or admin's) credentials for RBAC
+    // Determine the effective role for RBAC:
+    // - If using the dedicated 'aiuser' account, grant ADMIN access (full read-only access)
+    // - If using admin fallback, use admin's actual role
+    // - Otherwise use the user's configured role
+    const effectiveRole = source === 'aiuser'
+      ? 'ADMIN'  // aiuser always gets full read access for AI queries
+      : (aiUser.isAdmin ? 'ADMIN' : (aiUser.role || 'USER'));
+
+    console.log(`[AI Agent] Using effective role: ${effectiveRole} (source: ${source})`);
+
+    // Process the question using the effective role for RBAC
     const response = await aiService.processQuestion({
       question,
       userId: aiUser.id,
-      userRole: aiUser.isAdmin ? 'ADMIN' : (aiUser.role || 'USER'),
+      userRole: effectiveRole,
       conversationId,
     });
 
@@ -174,14 +184,14 @@ export const AIQueryResolvers = {
 
     return response;
   },
-  
+
   /**
    * Get the AI agent's data context status
    */
   aiDataContextStatus: async (_: any, __: any, ctx: Context) => {
     // Check if AI user exists (aiuser or admin)
     const result = await getAIUser(ctx.prisma);
-    
+
     if (!result) {
       return {
         lastRefreshedAt: null,
@@ -195,7 +205,7 @@ export const AIQueryResolvers = {
         error: 'AI Agent is unavailable - neither aiuser nor admin exists',
       };
     }
-    
+
     const aiService = getAIAgentService(undefined, ctx.prisma);
     return aiService.getDataContextStatus();
   },
@@ -220,7 +230,7 @@ export const AIMutationResolvers = {
         error: 'Only administrators can refresh the AI data context'
       };
     }
-    
+
     // Check if AI user exists (aiuser or admin)
     const result = await getAIUser(ctx.prisma);
     if (!result) {
@@ -231,17 +241,17 @@ export const AIMutationResolvers = {
         error: 'AI Agent is unavailable - neither aiuser nor admin account exists'
       };
     }
-    
+
     console.log(`[AI Agent] Data context refresh requested by ${ctx.user?.userId || 'unknown'}`);
-    
+
     // Get the AI Agent service with prisma client
     const aiService = getAIAgentService(undefined, ctx.prisma);
-    
+
     // Refresh the data context
     const refreshResult = await aiService.refreshDataContext();
-    
+
     console.log(`[AI Agent] Data context refresh result: ${refreshResult.success ? 'SUCCESS' : 'FAILED'}`);
-    
+
     return refreshResult;
   },
 };
