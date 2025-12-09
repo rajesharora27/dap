@@ -2,96 +2,40 @@
  * AI Agent GraphQL Resolvers
  * 
  * Resolvers for AI-powered natural language queries.
+ * All AI queries use ADMIN role for RBAC to provide full read access.
+ * Read-only is enforced by the QueryExecutor (only allows findMany, findFirst, etc.)
  * 
  * @module schema/resolvers/ai
- * @version 1.2.0
+ * @version 1.3.0
  * @created 2025-12-05
- * @updated 2025-12-09 - Added aiuser requirement for query execution
+ * @updated 2025-12-09 - Simplified to always use ADMIN role for full read access
  */
 
 import { getAIAgentService } from '../../services/ai';
 import { Context } from '../../context';
 
 /**
- * AI User username - dedicated user for AI Agent queries
- * Falls back to logged-in user if aiuser doesn't exist.
- */
-const AI_USER_USERNAME = 'aiuser';
-
-/**
- * Cache for AI user lookup to avoid repeated database queries
- */
-let aiUserCache: { user: any; timestamp: number } | null = null;
-const AI_USER_CACHE_TTL = 60000; // 1 minute cache
-
-/**
- * Get the dedicated AI user (aiuser) with caching
- * Returns null if aiuser doesn't exist (caller should fall back to logged-in user)
- */
-async function getAIUser(prisma: any): Promise<{ user: any } | null> {
-  const now = Date.now();
-
-  // Return cached user if valid
-  if (aiUserCache && (now - aiUserCache.timestamp) < AI_USER_CACHE_TTL) {
-    return aiUserCache.user ? { user: aiUserCache.user } : null;
-  }
-
-  // Try to find aiuser
-  const user = await prisma.user.findUnique({
-    where: { username: AI_USER_USERNAME },
-    select: {
-      id: true,
-      username: true,
-      role: true,
-      isAdmin: true,
-    },
-  });
-
-  // Update cache
-  aiUserCache = { user, timestamp: now };
-
-  return user ? { user } : null;
-}
-
-/**
- * Clear the AI user cache (useful after user creation/deletion)
- */
-export function clearAIUserCache(): void {
-  aiUserCache = null;
-}
-
-/**
  * AI Query Resolvers
  */
 export const AIQueryResolvers = {
   /**
-   * Check if the AI Agent is available (aiuser or admin exists)
+   * Check if the AI Agent is available
+   * AI Agent is available for any authenticated user
    * 
    * @returns Object with available status and message
    */
   isAIAgentAvailable: async (_: any, __: any, ctx: Context) => {
     try {
-      // AI Agent is available if either aiuser exists OR user is logged in
-      const aiUserResult = await getAIUser(ctx.prisma);
-      const loggedInUser = ctx.user;
-
-      if (aiUserResult) {
+      if (!ctx.user) {
         return {
-          available: true,
-          message: 'AI Agent is available with full database access (using dedicated aiuser account).',
-        };
-      }
-
-      if (loggedInUser) {
-        return {
-          available: true,
-          message: 'AI Agent is available. Note: Results may be limited based on your permissions. For full access, ask an admin to create an "aiuser" account.',
+          available: false,
+          message: 'AI Agent requires authentication. Please log in to use the AI Assistant.',
         };
       }
 
       return {
-        available: false,
-        message: 'AI Agent requires authentication. Please log in to use the AI Assistant.',
+        available: true,
+        message: 'AI Agent is available with full database read access.',
       };
     } catch (error: any) {
       console.error('[AI Agent] Error checking availability:', error.message);
@@ -105,7 +49,8 @@ export const AIQueryResolvers = {
   /**
    * Ask the AI agent a natural language question
    * 
-   * Priority: aiuser (full access) > logged-in user (with their permissions)
+   * All users get full read access via ADMIN role.
+   * Read-only is enforced by the QueryExecutor (only allows read operations).
    * 
    * @param _ - Parent (unused)
    * @param args - Query arguments
@@ -117,30 +62,8 @@ export const AIQueryResolvers = {
     { question, conversationId }: { question: string; conversationId?: string },
     ctx: Context
   ) => {
-    // Try to get the dedicated aiuser first
-    const aiUserResult = await getAIUser(ctx.prisma);
-    const loggedInUser = ctx.user;
-
-    // Determine which user context to use for the query
-    let queryUserId: string;
-    let queryUserRole: string;
-    let usingAIUser: boolean;
-
-    if (aiUserResult) {
-      // aiuser exists - use it with ADMIN role for full read access
-      queryUserId = aiUserResult.user.id;
-      queryUserRole = 'ADMIN';  // aiuser always gets full read access
-      usingAIUser = true;
-      console.log(`[AI Agent] Using aiuser (id: ${queryUserId}) with full read access`);
-    } else if (loggedInUser) {
-      // Fall back to logged-in user with their actual permissions
-      queryUserId = loggedInUser.userId;
-      queryUserRole = loggedInUser.role || 'USER';
-      usingAIUser = false;
-      console.log(`[AI Agent] No aiuser found, using logged-in user (id: ${queryUserId}, role: ${queryUserRole})`);
-    } else {
-      // No user available
-      console.error('[AI Agent] Error: No aiuser and no logged-in user');
+    // Require authentication
+    if (!ctx.user) {
       return {
         answer: 'AI Agent requires authentication. Please log in to use the AI Assistant.',
         data: null,
@@ -153,20 +76,21 @@ export const AIQueryResolvers = {
       };
     }
 
+    const userId = ctx.user.userId;
+    const userRole = ctx.user.role || 'USER';
+
     // Log the request
-    const requestingUserId = loggedInUser?.userId || 'anonymous';
-    const requestingUserRole = loggedInUser?.role || 'GUEST';
-    console.log(`[AI Agent] Query from ${requestingUserRole} user ${requestingUserId}: "${question.substring(0, 50)}..."`);
-    console.log(`[AI Agent] Executing with: userId=${queryUserId}, role=${queryUserRole}, usingAIUser=${usingAIUser}`);
+    console.log(`[AI Agent] Query from ${userRole} user ${userId}: "${question.substring(0, 50)}..."`);
 
     // Get the AI Agent service with prisma client for data context
     const aiService = getAIAgentService(undefined, ctx.prisma);
 
-    // Process the question
+    // Process the question with ADMIN role for full read access
+    // Read-only is enforced by QueryExecutor (only allows findMany, count, etc.)
     const response = await aiService.processQuestion({
       question,
-      userId: queryUserId,
-      userRole: queryUserRole,
+      userId: userId,
+      userRole: 'ADMIN',  // Always ADMIN for full read access - read-only enforced by QueryExecutor
       conversationId,
     });
 
@@ -184,21 +108,11 @@ export const AIQueryResolvers = {
    * Get the AI agent's data context status
    */
   aiDataContextStatus: async (_: any, __: any, ctx: Context) => {
-    // AI Agent works if either aiuser exists OR user is logged in
-    const aiUserResult = await getAIUser(ctx.prisma);
-    const loggedInUser = ctx.user;
-
-    if (!aiUserResult && !loggedInUser) {
+    if (!ctx.user) {
       return {
-        lastRefreshedAt: null,
-        isRefreshing: false,
-        productCount: 0,
-        solutionCount: 0,
-        customerCount: 0,
-        tasksWithoutTelemetryCount: 0,
-        cacheHits: 0,
-        cacheMisses: 0,
-        error: 'AI Agent requires authentication',
+        initialized: false,
+        lastRefreshed: null,
+        hasDataContext: false,
       };
     }
 
@@ -240,5 +154,3 @@ export const AIMutationResolvers = {
     return refreshResult;
   },
 };
-
-
