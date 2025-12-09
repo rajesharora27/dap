@@ -190,6 +190,22 @@ export class AIAgentService {
         // Template matched - use pre-defined query
         templateUsed = templateMatch.template.id;
         response = await this.handleTemplateMatch(templateMatch, request, startTime);
+
+        // Check if template returned no data - fallback to LLM if available
+        if (this.shouldFallbackToLLM(response) && this.llmProvider) {
+          console.log(`[AI Agent] Template "${templateUsed}" returned no data, falling back to LLM provider`);
+          llmUsed = true;
+          const llmResponse = await this.handleLLMQuery(request, startTime);
+
+          // Only use LLM response if it has data or is more helpful
+          if (!this.shouldFallbackToLLM(llmResponse)) {
+            response = llmResponse;
+            // Update metadata to indicate fallback was used
+            if (response.metadata) {
+              response.metadata.templateUsed = `${templateUsed} → llm-fallback`;
+            }
+          }
+        }
       } else if (this.llmProvider) {
         // No template match - use LLM query generation
         llmUsed = true;
@@ -618,6 +634,50 @@ export class AIAgentService {
     if (!validRoles.includes(request.userRole)) {
       throw new Error(`Invalid user role: ${request.userRole}`);
     }
+  }
+
+  /**
+   * Check if a response has no meaningful data and should fallback to LLM
+   * @param response - The AI query response to check
+   * @returns true if the response has no data and LLM fallback should be attempted
+   */
+  private shouldFallbackToLLM(response: AIQueryResponse): boolean {
+    // Don't fallback if there's an error (might be access denied, etc.)
+    if (response.error) {
+      return false;
+    }
+
+    // Check metadata for row count
+    if (response.metadata?.rowCount !== undefined) {
+      if (response.metadata.rowCount === 0) {
+        return true;
+      }
+    }
+
+    // Check if the answer indicates no results
+    const noResultIndicators = [
+      'no results found',
+      'no data found',
+      'no records found',
+      'no matching',
+      '📭', // Empty mailbox emoji used for no results
+    ];
+
+    const lowerAnswer = response.answer.toLowerCase();
+    for (const indicator of noResultIndicators) {
+      if (lowerAnswer.includes(indicator.toLowerCase())) {
+        return true;
+      }
+    }
+
+    // Check if data array is empty
+    if (response.data) {
+      if (Array.isArray(response.data) && response.data.length === 0) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /**
