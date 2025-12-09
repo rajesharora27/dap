@@ -38,6 +38,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const [editingRelease, setEditingRelease] = useState<any>(null);
     const [licenseDialog, setLicenseDialog] = useState(false);
     const [editingLicense, setEditingLicense] = useState<any>(null);
+    const [productDialog, setProductDialog] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<any>(null);
 
     // Queries
     const { data: productsData, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PRODUCTS);
@@ -380,6 +382,16 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                             </Button>
                         </>
                     )}
+
+                    {/* Always visible Add button - positioned last */}
+                    <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<Add />}
+                        onClick={() => { setEditingProduct(null); setProductDialog(true); }}
+                    >
+                        Add Product
+                    </Button>
                 </Box>
             </Paper>
 
@@ -558,6 +570,34 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                     </Box>
                 </DialogContent>
             </Dialog>
+
+            {/* Add/Edit Product Dialog */}
+            <ProductDialog
+                open={productDialog}
+                onClose={() => setProductDialog(false)}
+                onSave={async (data: any) => {
+                    try {
+                        // Create new product
+                        const result = await client.mutate({
+                            mutation: require('../graphql/mutations').CREATE_PRODUCT,
+                            variables: { input: { name: data.name, description: data.description } },
+                            refetchQueries: ['Products'],
+                            awaitRefetchQueries: true
+                        });
+                        const newProductId = result.data.createProduct.id;
+                        setSelectedProduct(newProductId);
+                        localStorage.setItem('lastSelectedProductId', newProductId);
+                        setProductDialog(false);
+                        await refetchProducts();
+                    } catch (error: any) {
+                        console.error('Error creating product:', error);
+                        alert('Failed to create product: ' + error.message);
+                    }
+                }}
+                product={editingProduct}
+                title={editingProduct ? 'Edit Product' : 'Add Product'}
+                availableReleases={[]}
+            />
         </Box>
     );
 };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button
 } from '@mui/material';
-import { Edit, Delete } from '@mui/icons-material';
+import { Edit, Delete, Add } from '@mui/icons-material';
 import { useQuery } from '@apollo/client';
 import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
 import { gql } from '@apollo/client';
@@ -130,6 +130,25 @@ export const CustomersPage: React.FC = () => {
                                 </Button>
                             </Box>
                         )}
+
+                        {/* Always visible Add button - positioned last */}
+                        <Button
+                            variant="contained"
+                            color="success"
+                            size="medium"
+                            startIcon={<Add />}
+                            onClick={() => {
+                                localStorage.removeItem('lastSelectedCustomerId');
+                                setSelectedCustomerId(null);
+                                setTimeout(() => {
+                                    if ((window as any).__openAddCustomerDialog) {
+                                        (window as any).__openAddCustomerDialog();
+                                    }
+                                }, 100);
+                            }}
+                        >
+                            Add Customer
+                        </Button>
                     </Box>
                 </Paper>
             )}
