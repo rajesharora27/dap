@@ -43,6 +43,33 @@ PM2_FRONTEND_NAME="dap-frontend"
 # PostgreSQL database name
 DB_NAME="dap"
 
+# User that runs the DAP application (PM2 processes run under this user)
+DAP_USER="dap"
+
+# =============================================================================
+# USER CONTEXT HELPERS - Run commands as correct user
+# =============================================================================
+
+# Detect if we need to use sudo -u dap for PM2 commands
+# Returns: command prefix to use (empty if already dap, "sudo -u dap" otherwise)
+get_dap_prefix() {
+    if [ "$(whoami)" = "${DAP_USER}" ]; then
+        echo ""
+    else
+        echo "sudo -u ${DAP_USER}"
+    fi
+}
+
+# Run a command as the dap user (handles both direct and sudo access)
+run_as_dap() {
+    local prefix=$(get_dap_prefix)
+    if [ -n "$prefix" ]; then
+        $prefix "$@"
+    else
+        "$@"
+    fi
+}
+
 # =============================================================================
 # COLORS AND LOGGING - Output formatting helpers
 # =============================================================================
@@ -81,12 +108,12 @@ sync_env() {
     
     if [ -f "${APP_DIR}/.env.production" ]; then
         # Use .env.production as the source of truth
-        cp "${APP_DIR}/.env.production" "${APP_DIR}/.env"
-        cp "${APP_DIR}/.env.production" "${APP_DIR}/backend/.env"
+        run_as_dap cp "${APP_DIR}/.env.production" "${APP_DIR}/.env"
+        run_as_dap cp "${APP_DIR}/.env.production" "${APP_DIR}/backend/.env"
         log_success "Environment synced from .env.production"
     elif [ -f "${APP_DIR}/.env" ]; then
         # Fallback: sync .env to backend
-        cp "${APP_DIR}/.env" "${APP_DIR}/backend/.env"
+        run_as_dap cp "${APP_DIR}/.env" "${APP_DIR}/backend/.env"
         log_success "Environment synced from .env"
     else
         log_warning "No .env file found in ${APP_DIR}"
@@ -122,7 +149,7 @@ restart_all() {
     cd "${APP_DIR}"
     
     # Use --update-env to pick up any .env changes
-    if pm2 restart "${PM2_CONFIG}" --update-env; then
+    if run_as_dap pm2 restart "${PM2_CONFIG}" --update-env; then
         log_success "PM2 processes restarted"
     else
         log_error "Failed to restart PM2 services"
@@ -135,7 +162,7 @@ restart_all() {
     
     echo ""
     log_success "All services restarted successfully!"
-    pm2 list
+    run_as_dap pm2 list
 }
 
 # Restart backend service only
@@ -149,7 +176,7 @@ restart_backend() {
     log_info "Restarting ${PM2_BACKEND_NAME} processes..."
     
     # Use --update-env to pick up any .env changes
-    if pm2 restart "${PM2_BACKEND_NAME}" --update-env; then
+    if run_as_dap pm2 restart "${PM2_BACKEND_NAME}" --update-env; then
         log_success "Backend restarted successfully"
     else
         log_error "Failed to restart backend"
@@ -157,7 +184,7 @@ restart_backend() {
     fi
     
     echo ""
-    pm2 list
+    run_as_dap pm2 list
 }
 
 # Restart frontend service only
@@ -169,8 +196,8 @@ restart_frontend() {
     log_info "Restarting ${PM2_FRONTEND_NAME} process..."
     
     # Check if frontend process exists in PM2
-    if pm2 describe "${PM2_FRONTEND_NAME}" &>/dev/null; then
-        if pm2 restart "${PM2_FRONTEND_NAME}" --update-env; then
+    if run_as_dap pm2 describe "${PM2_FRONTEND_NAME}" &>/dev/null; then
+        if run_as_dap pm2 restart "${PM2_FRONTEND_NAME}" --update-env; then
             log_success "Frontend restarted successfully"
         else
             log_error "Failed to restart frontend"
@@ -183,7 +210,7 @@ restart_frontend() {
     fi
     
     echo ""
-    pm2 list
+    run_as_dap pm2 list
 }
 
 # =============================================================================
@@ -237,7 +264,7 @@ restart_db() {
     
     # Restart backend to establish fresh database connections
     log_info "Restarting backend to establish fresh connections..."
-    pm2 restart "${PM2_BACKEND_NAME}" --update-env
+    run_as_dap pm2 restart "${PM2_BACKEND_NAME}" --update-env
     log_success "Backend restarted with fresh database connections"
 }
 
@@ -251,7 +278,7 @@ show_status() {
     
     # PM2 process status
     echo -e "${CYAN}PM2 Processes:${NC}"
-    pm2 list
+    run_as_dap pm2 list
     
     echo ""
     
@@ -306,15 +333,15 @@ show_logs() {
     case $service in
         backend)
             log_info "Showing ${PM2_BACKEND_NAME} logs..."
-            pm2 logs "${PM2_BACKEND_NAME}" --lines 50
+            run_as_dap pm2 logs "${PM2_BACKEND_NAME}" --lines 50
             ;;
         frontend)
             log_info "Showing ${PM2_FRONTEND_NAME} logs..."
-            pm2 logs "${PM2_FRONTEND_NAME}" --lines 50
+            run_as_dap pm2 logs "${PM2_FRONTEND_NAME}" --lines 50
             ;;
         all|*)
             log_info "Showing all PM2 logs..."
-            pm2 logs --lines 50
+            run_as_dap pm2 logs --lines 50
             ;;
     esac
 }
@@ -328,10 +355,10 @@ stop_all() {
     log_header "STOPPING ALL SERVICES"
     
     log_info "Stopping all PM2 processes..."
-    pm2 stop all
+    run_as_dap pm2 stop all
     
     log_success "All PM2 processes stopped"
-    pm2 list
+    run_as_dap pm2 list
 }
 
 # Start all services from ecosystem.config.js
@@ -344,7 +371,7 @@ start_all() {
     log_info "Starting PM2 processes from ${PM2_CONFIG}..."
     cd "${APP_DIR}"
     
-    if pm2 start "${PM2_CONFIG}" --update-env; then
+    if run_as_dap pm2 start "${PM2_CONFIG}" --update-env; then
         log_success "All services started successfully"
     else
         log_error "Failed to start services"
@@ -352,7 +379,7 @@ start_all() {
     fi
     
     echo ""
-    pm2 list
+    run_as_dap pm2 list
 }
 
 # =============================================================================
