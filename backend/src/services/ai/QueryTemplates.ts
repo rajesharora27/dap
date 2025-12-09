@@ -389,12 +389,13 @@ export class QueryTemplates {
           // Standard patterns - note: (?:all\s+)?(?:the\s+)? handles "all", "the", "all the"
           /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:without|missing|with\s+no)\s+telemetry/i,
           /tasks?\s+(?:of|for)\s+(.+?)\s+(?:with\s+no|without)\s+telemetry/i,
-          // "that does not have" variants
-          /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:that\s+)?(?:do(?:es)?n?'?t?\s+have|has\s+no|lacking)\s+telemetry/i,
+          // "that does not have" / "that doesn't have" variants - FIXED to match both expanded and contracted forms
+          /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+that\s+(?:does\s+not\s+have|doesn'?t\s+have|do\s+not\s+have|don'?t\s+have|has\s+no|lacks?)\s+telemetry/i,
+          /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:lacking|missing)\s+telemetry/i,
           // "without telemetry for product" (reversed order)
           /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:without|missing|with\s+no)\s+telemetry\s+(?:of|for|in)\s+(.+)/i,
           // Product first patterns
-          /(.+?)\s+tasks?\s+(?:without|missing|with\s+no|(?:that\s+)?(?:do(?:es)?n?'?t?\s+have|has\s+no))\s+telemetry/i,
+          /(.+?)\s+tasks?\s+(?:without|missing|with\s+no|that\s+(?:does\s+not\s+have|doesn'?t\s+have|lacks?))\s+telemetry/i,
           // Simple "product tasks without telemetry" 
           /(.+?)\s+tasks?\s+(?:with\s+)?no\s+telemetry/i,
         ],
@@ -440,6 +441,7 @@ export class QueryTemplates {
         ],
         examples: [
           'List all the tasks for Cisco Secure Access without telemetry',
+          'List all tasks for Cisco Secure Access that does not have telemetry',
           'Tasks of Product X with no telemetry',
           'Find tasks for Secure Access that do not have telemetry',
           'Show tasks without telemetry for Cisco Duo',

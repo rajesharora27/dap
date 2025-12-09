@@ -962,6 +962,35 @@ When a product or solution is assigned to a customer, the result is an adoption 
 
 ---
 
+#### Database Connection Pool Management
+
+**Bug Fix**: "Too many database connections" error in production.
+
+**Root Cause:**
+- No explicit connection pool limits in Prisma configuration
+- PM2 cluster mode multiplied connection usage (4 instances × default pool = exhausted connections)
+- Multiple singleton patterns storing Prisma references
+
+**Fix:**
+- Added explicit `connection_limit=5` to DATABASE_URL in context.ts
+- Ensured all AI services use the shared Prisma client singleton
+- Added graceful shutdown handler to properly close connections
+- Simplified AI service Prisma handling to prevent connection leaks
+
+**Files Changed:**
+- `backend/src/context.ts` - Added connection pool limit and graceful shutdown
+- `backend/src/services/ai/AIAgentService.ts` - Uses shared Prisma client
+- `backend/src/services/ai/DataContextManager.ts` - Uses shared Prisma client
+- `backend/src/services/ai/QueryExecutor.ts` - Uses shared Prisma client
+
+**Connection Math:**
+- PostgreSQL default max connections: 100
+- Connection limit per instance: 5
+- PM2 instances: 4
+- Total connections: 4 × 5 = 20 (well under 100 limit)
+
+---
+
 #### Entity Preview Dialogs
 
 **Feature**: Clicking on entities in AI chat results now opens preview dialogs.

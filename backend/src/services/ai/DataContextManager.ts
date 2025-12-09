@@ -6,11 +6,13 @@
  * understand the current state of the database.
  * 
  * @module services/ai/DataContextManager
- * @version 1.0.0
+ * @version 1.1.0
  * @created 2025-12-08
+ * @updated 2025-12-09 - Use shared Prisma client to prevent connection leaks
  */
 
 import { PrismaClient } from '@prisma/client';
+import { prisma as sharedPrisma } from '../../context';
 
 /**
  * Structure for caching product data
@@ -429,13 +431,16 @@ let instance: DataContextManager | null = null;
 
 /**
  * Get the singleton Data Context Manager instance
+ * Always uses the shared Prisma client to prevent connection pool exhaustion
+ * 
+ * @param prisma - Optional Prisma client (ignored, always uses shared instance)
  */
 export function getDataContextManager(prisma?: PrismaClient): DataContextManager {
   if (!instance) {
-    if (!prisma) {
-      throw new Error('Prisma client required for first initialization');
-    }
-    instance = new DataContextManager(prisma);
+    // Always use the shared Prisma client to prevent connection leaks
+    // The prisma parameter is kept for backward compatibility but ignored
+    instance = new DataContextManager(sharedPrisma as PrismaClient);
+    console.log('[DataContextManager] Initialized with shared Prisma client');
   }
   return instance;
 }
