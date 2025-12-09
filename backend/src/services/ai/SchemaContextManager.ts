@@ -361,6 +361,12 @@ export class SchemaContextManager {
       '"Assign a product" and "create a product adoption plan" mean the same thing.',
       '"Assign a solution" and "create a solution adoption plan" mean the same thing.',
       'To query assignments/adoption plans for a product, query the "customers" relation: product.customers.some.adoptionPlan...',
+
+      // Querying Customer Tasks
+      'IMPORTANT: To find tasks for a specific customer (e.g., "completed tasks for ACME"), always start with the Customer model and navigate through products → adoptionPlan → tasks.',
+      'DO NOT query CustomerTask directly with a where filter on customer name - CustomerTask does not have a direct customer relation.',
+      'Correct path: Customer → products (CustomerProduct) → adoptionPlan → tasks (CustomerTask).',
+      'Example: To find completed tasks for "ACME", use Customer.findMany with where: { name: { contains: "ACME" } } and select the nested tasks with status filter.',
     ];
   }
 
