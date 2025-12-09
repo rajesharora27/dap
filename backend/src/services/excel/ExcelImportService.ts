@@ -1,7 +1,6 @@
 import ExcelJS from 'exceljs';
-import { PrismaClient, LicenseLevel } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { LicenseLevel } from '@prisma/client';
+import { prisma } from '../../context';  // Use shared instance to prevent connection leaks
 
 const LICENSE_LEVEL_NAME_TO_NUMBER: Record<string, number> = {
   ESSENTIAL: 1,
@@ -174,17 +173,17 @@ export class ExcelImportService {
       changes: {
         product: existingProduct
           ? {
-              action: 'update',
-              current: {
-                name: existingProduct.name,
-                description: existingProduct.description
-              },
-              new: productData
-            }
-          : {
-              action: 'create',
-              new: productData
+            action: 'update',
+            current: {
+              name: existingProduct.name,
+              description: existingProduct.description
             },
+            new: productData
+          }
+          : {
+            action: 'create',
+            new: productData
+          },
         tasks: this.compareArrays(
           existingProduct?.tasks || [],
           tasksData,
@@ -253,7 +252,7 @@ export class ExcelImportService {
 
     // Perform import in a transaction
     try {
-      const result = await prisma.$transaction(async (tx) => {
+      const result = await prisma.$transaction(async (tx: any) => {
         let productId: string;
 
         // Create or update product
@@ -315,7 +314,7 @@ export class ExcelImportService {
         const existingOutcomes = await tx.outcome.findMany({
           where: { productId }
         });
-        existingOutcomes.forEach(o => outcomeMap.set(o.name, o.id));
+        existingOutcomes.forEach((o: any) => outcomeMap.set(o.name, o.id));
 
         // Import releases
         const releaseMap = new Map<string, string>();
@@ -359,7 +358,7 @@ export class ExcelImportService {
         const existingReleases = await tx.release.findMany({
           where: { productId }
         });
-        existingReleases.forEach(r => {
+        existingReleases.forEach((r: any) => {
           releaseMap.set(r.name, r.id);
           if (r.level !== undefined && r.level !== null) {
             releaseMap.set(r.level.toString(), r.id);
@@ -402,7 +401,7 @@ export class ExcelImportService {
         const existingLicenses = await tx.license.findMany({
           where: { productId }
         });
-        existingLicenses.forEach(l => licenseMap.set(l.name, l.id));
+        existingLicenses.forEach((l: any) => licenseMap.set(l.name, l.id));
 
         // Import custom attributes
         for (const attr of preview.changes.customAttributes.toCreate) {
@@ -601,14 +600,14 @@ export class ExcelImportService {
     }
 
     const data: any = {};
-    
+
     // Parse vertical layout (Field | Value)
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) return; // Skip header
-      
+
       const field = row.getCell(1).value?.toString().trim();
       const value = row.getCell(2).value?.toString().trim();
-      
+
       if (field === 'Product Name') data.name = value;
       else if (field === 'Description') data.description = value;
     });
@@ -644,7 +643,7 @@ export class ExcelImportService {
 
     const tasks: any[] = [];
     const headers: string[] = [];
-    
+
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) {
         // Parse headers
@@ -656,7 +655,7 @@ export class ExcelImportService {
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           const value = cell.value?.toString().trim();
-          
+
           if (header === 'Task Name') task.name = value;
           else if (header === 'Description') task.description = value;
           else if (header === 'License Level') task.licenseLevel = value;
@@ -670,7 +669,7 @@ export class ExcelImportService {
           else if (header === 'Outcomes') task.outcomes = value ? value.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
           else if (header === 'Releases') task.releases = value ? value.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
         });
-        
+
         if (task.name) {
           if (task.licenseLevel) {
             task.licenseLevel = this.normalizeTaskLicenseLevel(task.licenseLevel);
@@ -702,7 +701,7 @@ export class ExcelImportService {
 
     const licenses: any[] = [];
     const headers: string[] = [];
-    
+
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) {
         row.eachCell((cell, colNumber) => {
@@ -713,7 +712,7 @@ export class ExcelImportService {
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           const value = cell.value?.toString().trim();
-          
+
           if (header === 'License Name') license.name = value;
           else if (header === 'Description') license.description = value;
           else if (header === 'Level') {
@@ -732,7 +731,7 @@ export class ExcelImportService {
           }
           else if (header === 'Is Active') license.isActive = value?.toLowerCase() === 'true' || value === '1';
         });
-        
+
         if (license.name) {
           licenses.push(license);
         }
@@ -761,22 +760,22 @@ export class ExcelImportService {
 
     const outcomes: any[] = [];
     const headers: string[] = [];
-    
+
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) {
         row.eachCell((cell, colNumber) => {
           headers[colNumber] = cell.value?.toString().trim() || '';
         });
       } else {
-  const outcome: any = { __rowNumber: rowNumber };
+        const outcome: any = { __rowNumber: rowNumber };
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           const value = cell.value?.toString().trim();
-          
+
           if (header === 'Outcome Name') outcome.name = value;
           else if (header === 'Description') outcome.description = value;
         });
-        
+
         if (outcome.name) {
           outcomes.push(outcome);
         }
@@ -805,24 +804,24 @@ export class ExcelImportService {
 
     const releases: any[] = [];
     const headers: string[] = [];
-    
+
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) {
         row.eachCell((cell, colNumber) => {
           headers[colNumber] = cell.value?.toString().trim() || '';
         });
       } else {
-  const release: any = { __rowNumber: rowNumber };
+        const release: any = { __rowNumber: rowNumber };
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           const value = cell.value?.toString().trim();
-          
+
           if (header === 'Release Name') release.name = value;
           else if (header === 'Description') release.description = value;
           else if (header === 'Level') release.level = parseFloat(value || '1.0');
           else if (header === 'Is Active') release.isActive = value?.toLowerCase() === 'true' || value === '1';
         });
-        
+
         if (release.name) {
           releases.push(release);
         }
@@ -846,7 +845,7 @@ export class ExcelImportService {
 
     const attributes: any[] = [];
     const headers: string[] = [];
-    
+
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) {
         row.eachCell((cell, colNumber) => {
@@ -857,7 +856,7 @@ export class ExcelImportService {
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           const value = cell.value?.toString().trim();
-          
+
           if (header === 'Attribute Name') attr.attributeName = value;
           else if (header === 'Value') attr.attributeValue = value;
           else if (header === 'Data Type') attr.dataType = value;
@@ -865,7 +864,7 @@ export class ExcelImportService {
           else if (header === 'Is Required') attr.isRequired = value?.toLowerCase() === 'true' || value === '1';
           else if (header === 'Display Order') attr.displayOrder = parseInt(value || '0');
         });
-        
+
         if (attr.attributeName) {
           attributes.push(attr);
         }
@@ -889,7 +888,7 @@ export class ExcelImportService {
 
     const attributes: any[] = [];
     const headers: string[] = [];
-    
+
     sheet.eachRow((row, rowNumber) => {
       if (rowNumber === 1) {
         row.eachCell((cell, colNumber) => {
@@ -900,14 +899,14 @@ export class ExcelImportService {
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           const value = cell.value?.toString().trim();
-          
+
           if (header === 'Task Name') attr.taskName = value;
           else if (header === 'Attribute Name') attr.attributeName = value;
           else if (header === 'Operator') attr.operator = value;
           else if (header === 'Expected Value') attr.expectedValue = value;
           else if (header === 'Data Type') attr.dataType = value;
         });
-        
+
         if (attr.taskName && attr.attributeName) {
           attributes.push(attr);
         }
@@ -1040,8 +1039,8 @@ export class ExcelImportService {
     existingProduct: any,
     errors: ValidationError[]
   ) {
-  const licenseNames = new Set<string>();
-  const licenseLevels = new Set<LicenseLevel>();
+    const licenseNames = new Set<string>();
+    const licenseLevels = new Set<LicenseLevel>();
 
     const registerLicense = (license: any) => {
       if (!license) return;
