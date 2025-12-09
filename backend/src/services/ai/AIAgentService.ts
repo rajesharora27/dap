@@ -1060,26 +1060,36 @@ Response:
 User: "Show me tasks for ACME for Cisco Secure Access that are done"
 Response:
 {
-  "model": "Customer",
+  "model": "CustomerTask",
   "operation": "findMany",
   "args": {
     "where": {
-      "deletedAt": null,
-      "name": { "contains": "ACME", "mode": "insensitive" }
+      "status": "DONE",
+      "adoptionPlan": {
+        "customerProduct": {
+          "customer": {
+            "name": { "contains": "ACME", "mode": "insensitive" },
+            "deletedAt": null
+          },
+          "product": {
+            "name": { "contains": "Cisco Secure Access", "mode": "insensitive" },
+            "deletedAt": null
+          }
+        }
+      }
     },
     "select": {
       "id": true,
       "name": true,
-      "products": {
+      "status": true,
+      "weight": true,
+      "completedAt": true,
+      "adoptionPlan": {
         "select": {
-          "name": true,
-          "product": { "select": { "id": true, "name": true } },
-          "adoptionPlan": {
+          "productName": true,
+          "customerProduct": {
             "select": {
-              "tasks": {
-                "where": { "status": "DONE" },
-                "select": { "id": true, "name": true, "status": true }
-              }
+              "customer": { "select": { "name": true } }
             }
           }
         }
@@ -1091,28 +1101,62 @@ Response:
 User: "List tasks that are done for customer Acme"
 Response:
 {
-  "model": "Customer",
+  "model": "CustomerTask",
   "operation": "findMany",
   "args": {
     "where": {
-      "deletedAt": null,
-      "name": { "contains": "Acme", "mode": "insensitive" }
+      "status": { "in": ["DONE", "COMPLETED"] },
+      "adoptionPlan": {
+        "customerProduct": {
+          "customer": {
+            "name": { "contains": "Acme", "mode": "insensitive" },
+            "deletedAt": null
+          }
+        }
+      }
     },
     "select": {
       "id": true,
       "name": true,
-      "products": {
+      "status": true,
+      "weight": true,
+      "completedAt": true,
+      "adoptionPlan": {
         "select": {
-          "name": true,
-          "product": { "select": { "name": true } },
-          "adoptionPlan": {
-            "select": {
-              "tasks": {
-                "where": { "status": "DONE" },
-                "select": { "id": true, "name": true, "status": true }
-              }
-            }
+          "productName": true
+        }
+      }
+    }
+  }
+}
+
+User: "Show me all completed tasks for ACME"
+Response:
+{
+  "model": "CustomerTask",
+  "operation": "findMany",
+  "args": {
+    "where": {
+      "status": { "in": ["COMPLETED", "DONE"] },
+      "adoptionPlan": {
+        "customerProduct": {
+          "customer": {
+            "name": { "contains": "ACME", "mode": "insensitive" },
+            "deletedAt": null
           }
+        }
+      }
+    },
+    "select": {
+      "id": true,
+      "name": true,
+      "status": true,
+      "weight": true,
+      "completedAt": true,
+      "adoptionPlan": {
+        "select": {
+          "productName": true,
+          "progressPercentage": true
         }
       }
     }
