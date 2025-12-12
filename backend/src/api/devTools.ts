@@ -85,7 +85,8 @@ router.post('/run-test', async (req: Request, res: Response) => {
             'npm run test:integration': 'npm test', // Use 'npm test' as integration script doesn't exist
             'npm run test:coverage': 'npm run test:coverage',
             'npm run lint': 'npm run lint',
-            'npm run type-check': 'npm run type-check'
+            'npm run type-check': 'npm run type-check',
+            'npm run test:crud': 'npm run test:crud'
         };
 
         if (!allowedCommands[command]) {

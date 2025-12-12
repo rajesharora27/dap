@@ -119,14 +119,10 @@ export const ProductDialog: React.FC<Props> = ({
       })));
       setCustomAttrs(product.customAttrs || {});
     } else {
-      // New product - set defaults
+      // New product - set defaults (no empty outcomes)
       setName('');
       setDescription('');
-      setOutcomes([{
-        name: '',
-        description: '',
-        isNew: true
-      }]);
+      setOutcomes([]);
       setLicenses([{
         name: 'Essential',
         description: 'Basic features',
@@ -314,18 +310,14 @@ export const ProductDialog: React.FC<Props> = ({
         return;
       }
 
-      const activeOutcomes = outcomes.filter(outcome => !outcome.delete);
-      if (activeOutcomes.length === 0) {
-        setError('At least one outcome is required');
-        return;
-      }
-
       const activeReleases = releases.filter(release => !release.delete);
       if (activeReleases.length === 0) {
         setError('At least one release is required');
         return;
       }
 
+      // Validate any outcomes that were added have names
+      const activeOutcomes = outcomes.filter(outcome => !outcome.delete);
       for (const outcome of activeOutcomes) {
         if (!outcome.name.trim()) {
           setError('All outcome names must be specified');

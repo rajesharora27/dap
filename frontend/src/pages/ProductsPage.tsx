@@ -10,13 +10,14 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
 import { PRODUCTS, TASKS_FOR_PRODUCT, OUTCOMES, PRODUCT } from '../graphql/queries';
-import { DELETE_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '../graphql/mutations';
+import { DELETE_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE, CREATE_PRODUCT, UPDATE_PRODUCT } from '../graphql/mutations';
 import { SortableTaskItem } from '../components/SortableTaskItem';
 import { ProductDialog } from '../components/dialogs/ProductDialog';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
 import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
 import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { LicenseDialog } from '../components/dialogs/LicenseDialog';
+import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
 import { useProductImportExport } from '../hooks/useProductImportExport';
 
 interface ProductsPageProps {
@@ -40,13 +41,17 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const [editingLicense, setEditingLicense] = useState<any>(null);
     const [productDialog, setProductDialog] = useState(false);
     const [editingProduct, setEditingProduct] = useState<any>(null);
+    const [customAttrDialog, setCustomAttrDialog] = useState(false);
+    const [editingCustomAttr, setEditingCustomAttr] = useState<any>(null);
 
     // Queries
-    const { data: productsData, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PRODUCTS);
+    const { data: productsData, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PRODUCTS, {
+        fetchPolicy: 'cache-and-network'
+    });
     const products = productsData?.products?.edges?.map((e: any) => e.node) || [];
 
     // Fetch single product details if selected
-    const { data: productData, error: productError } = useQuery(PRODUCT, {
+    const { data: productData, error: productError, refetch: refetchProductDetail } = useQuery(PRODUCT, {
         variables: { id: selectedProduct },
         skip: !selectedProduct,
         fetchPolicy: 'cache-and-network' // FORCE NETWORK REQUEST to ensure data
@@ -132,6 +137,77 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
             } catch (error) {
                 console.error('Error reordering tasks:', error);
             }
+        }
+    };
+
+    // Custom Attribute handlers
+    const handleSaveCustomAttr = async (attrData: { key: string; value: any }) => {
+        if (!displayProduct) return;
+
+        const currentAttrs = displayProduct.customAttrs || {};
+        const updatedAttrs = { ...currentAttrs };
+
+        // If editing and key changed, remove old key
+        if (editingCustomAttr && editingCustomAttr.key !== attrData.key) {
+            delete updatedAttrs[editingCustomAttr.key];
+        }
+
+        updatedAttrs[attrData.key] = attrData.value;
+
+        try {
+            await client.mutate({
+                mutation: UPDATE_PRODUCT,
+                variables: {
+                    id: selectedProduct,
+                    input: {
+                        name: displayProduct.name,
+                        description: displayProduct.description,
+                        customAttrs: updatedAttrs
+                    }
+                },
+                refetchQueries: ['Products', 'ProductDetail'],
+                awaitRefetchQueries: true
+            });
+            await Promise.all([
+                refetchProducts(),
+                refetchProductDetail()
+            ]);
+            setCustomAttrDialog(false);
+            setEditingCustomAttr(null);
+        } catch (error) {
+            console.error('Error saving custom attribute:', error);
+            alert('Failed to save custom attribute');
+        }
+    };
+
+    const handleDeleteCustomAttr = async (key: string) => {
+        if (!displayProduct || !window.confirm(`Delete attribute "${key}"?`)) return;
+
+        const currentAttrs = displayProduct.customAttrs || {};
+        const updatedAttrs = { ...currentAttrs };
+        delete updatedAttrs[key];
+
+        try {
+            await client.mutate({
+                mutation: UPDATE_PRODUCT,
+                variables: {
+                    id: selectedProduct,
+                    input: {
+                        name: displayProduct.name,
+                        description: displayProduct.description,
+                        customAttrs: updatedAttrs
+                    }
+                },
+                refetchQueries: ['Products', 'ProductDetail'],
+                awaitRefetchQueries: true
+            });
+            await Promise.all([
+                refetchProducts(),
+                refetchProductDetail()
+            ]);
+        } catch (error) {
+            console.error('Error deleting custom attribute:', error);
+            alert('Failed to delete custom attribute');
         }
     };
 
@@ -416,16 +492,20 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                     </Box>
                                     <List dense>
                                         {displayProduct?.outcomes?.map((outcome: any) => (
-                                            <ListItem key={outcome.id}
-                                                secondaryAction={
-                                                    <Box>
-                                                        <IconButton size="small" onClick={() => { setEditingOutcome(outcome); setOutcomeDialog(true); }}><Edit fontSize="small" /></IconButton>
-                                                        <IconButton size="small" onClick={() => handleDeleteOutcome(outcome.id)} color="error"><Delete fontSize="small" /></IconButton>
-                                                    </Box>
-                                                }
-                                            >
-                                                <ListItemText primary={outcome.name} secondary={outcome.description} />
-                                            </ListItem>
+                                            <Tooltip key={outcome.id} title={outcome.description || ''} placement="top" arrow>
+                                                <ListItem
+                                                    sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                                                    onDoubleClick={() => { setEditingOutcome(outcome); setOutcomeDialog(true); }}
+                                                    secondaryAction={
+                                                        <Box>
+                                                            <IconButton size="small" onClick={() => { setEditingOutcome(outcome); setOutcomeDialog(true); }}><Edit fontSize="small" /></IconButton>
+                                                            <IconButton size="small" onClick={() => handleDeleteOutcome(outcome.id)} color="error"><Delete fontSize="small" /></IconButton>
+                                                        </Box>
+                                                    }
+                                                >
+                                                    <ListItemText primary={outcome.name} />
+                                                </ListItem>
+                                            </Tooltip>
                                         ))}
                                     </List>
                                 </Paper>
@@ -440,16 +520,20 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                     </Box>
                                     <List dense>
                                         {displayProduct?.releases?.map((release: any) => (
-                                            <ListItem key={release.id}
-                                                secondaryAction={
-                                                    <Box>
-                                                        <IconButton size="small" onClick={() => { setEditingRelease(release); setReleaseDialog(true); }}><Edit fontSize="small" /></IconButton>
-                                                        <IconButton size="small" onClick={() => handleDeleteRelease(release.id)} color="error"><Delete fontSize="small" /></IconButton>
-                                                    </Box>
-                                                }
-                                            >
-                                                <ListItemText primary={release.name} secondary={`Level: ${release.level}`} />
-                                            </ListItem>
+                                            <Tooltip key={release.id} title={release.description || ''} placement="top" arrow>
+                                                <ListItem
+                                                    sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                                                    onDoubleClick={() => { setEditingRelease(release); setReleaseDialog(true); }}
+                                                    secondaryAction={
+                                                        <Box>
+                                                            <IconButton size="small" onClick={() => { setEditingRelease(release); setReleaseDialog(true); }}><Edit fontSize="small" /></IconButton>
+                                                            <IconButton size="small" onClick={() => handleDeleteRelease(release.id)} color="error"><Delete fontSize="small" /></IconButton>
+                                                        </Box>
+                                                    }
+                                                >
+                                                    <ListItemText primary={`${release.name} (v${release.level})`} />
+                                                </ListItem>
+                                            </Tooltip>
                                         ))}
                                     </List>
                                 </Paper>
@@ -464,18 +548,73 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                     </Box>
                                     <List dense>
                                         {displayProduct?.licenses?.map((license: any) => (
-                                            <ListItem key={license.id}
-                                                secondaryAction={
-                                                    <Box>
-                                                        <IconButton size="small" onClick={() => { setEditingLicense(license); setLicenseDialog(true); }}><Edit fontSize="small" /></IconButton>
-                                                        <IconButton size="small" onClick={() => handleDeleteLicense(license.id)} color="error"><Delete fontSize="small" /></IconButton>
-                                                    </Box>
-                                                }
-                                            >
-                                                <ListItemText primary={license.name} secondary={`Level: ${license.level}`} />
-                                            </ListItem>
+                                            <Tooltip key={license.id} title={license.description || ''} placement="top" arrow>
+                                                <ListItem
+                                                    sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                                                    onDoubleClick={() => { setEditingLicense(license); setLicenseDialog(true); }}
+                                                    secondaryAction={
+                                                        <Box>
+                                                            <IconButton size="small" onClick={() => { setEditingLicense(license); setLicenseDialog(true); }}><Edit fontSize="small" /></IconButton>
+                                                            <IconButton size="small" onClick={() => handleDeleteLicense(license.id)} color="error"><Delete fontSize="small" /></IconButton>
+                                                        </Box>
+                                                    }
+                                                >
+                                                    <ListItemText primary={`${license.name} (Level ${license.level})`} />
+                                                </ListItem>
+                                            </Tooltip>
                                         ))}
                                     </List>
+                                </Paper>
+                            </Grid>
+
+                            {/* Custom Attributes */}
+                            <Grid size={{ xs: 12, md: 4 }}>
+                                <Paper sx={{ p: 2 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                                        <Typography variant="h6">Custom Attributes</Typography>
+                                        <Button startIcon={<Add />} size="small" onClick={() => { setEditingCustomAttr(null); setCustomAttrDialog(true); }}>Add</Button>
+                                    </Box>
+                                    {displayProduct?.customAttrs && Object.keys(displayProduct.customAttrs).length > 0 ? (
+                                        <TableContainer>
+                                            <Table size="small">
+                                                <TableHead>
+                                                    <TableRow>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>Attribute</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
+                                                        <TableCell width={80}></TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {Object.entries(displayProduct.customAttrs).map(([key, value]: [string, any]) => (
+                                                        <TableRow
+                                                            key={key}
+                                                            sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                                                            onDoubleClick={() => { setEditingCustomAttr({ key, value }); setCustomAttrDialog(true); }}
+                                                        >
+                                                            <TableCell>{key}</TableCell>
+                                                            <TableCell sx={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                <Tooltip title={typeof value === 'string' ? value : JSON.stringify(value)} placement="top" arrow>
+                                                                    <span>{typeof value === 'string' ? value : JSON.stringify(value)}</span>
+                                                                </Tooltip>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <IconButton size="small" onClick={() => { setEditingCustomAttr({ key, value }); setCustomAttrDialog(true); }}>
+                                                                    <Edit fontSize="small" />
+                                                                </IconButton>
+                                                                <IconButton size="small" color="error" onClick={() => handleDeleteCustomAttr(key)}>
+                                                                    <Delete fontSize="small" />
+                                                                </IconButton>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
+                                    ) : (
+                                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                                            No custom attributes defined
+                                        </Typography>
+                                    )}
                                 </Paper>
                             </Grid>
                         </Grid>
@@ -515,6 +654,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         task={task}
                                                         onEdit={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
                                                         onDelete={handleDeleteTask}
+                                                        onDoubleClick={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
                                                     />
                                                 ))}
                                             </SortableContext>
@@ -579,7 +719,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                     try {
                         // Create new product
                         const result = await client.mutate({
-                            mutation: require('../graphql/mutations').CREATE_PRODUCT,
+                            mutation: CREATE_PRODUCT,
                             variables: { input: { name: data.name, description: data.description } },
                             refetchQueries: ['Products'],
                             awaitRefetchQueries: true
@@ -597,6 +737,15 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 product={editingProduct}
                 title={editingProduct ? 'Edit Product' : 'Add Product'}
                 availableReleases={[]}
+            />
+
+            {/* Custom Attribute Dialog */}
+            <CustomAttributeDialog
+                open={customAttrDialog}
+                onClose={() => { setCustomAttrDialog(false); setEditingCustomAttr(null); }}
+                onSave={handleSaveCustomAttr}
+                attribute={editingCustomAttr}
+                existingKeys={Object.keys(displayProduct?.customAttrs || {})}
             />
         </Box>
     );

@@ -14,6 +14,8 @@ const LICENSE_LEVEL_NUMBER_TO_NAME: Record<number, LicenseLevel> = {
   3: 'SIGNATURE'
 };
 
+
+
 /**
  * Import modes for handling Excel imports
  */
@@ -128,6 +130,19 @@ export class ExcelImportService {
     const customAttributesData = this.parseCustomAttributesSheet(workbook, validationErrors);
     const telemetryData = this.parseTelemetrySheet(workbook, validationErrors);
 
+    // Debug logging
+    console.log('[ExcelImport] Parsed data:', {
+      product: productData.name,
+      tasks: tasksData.length,
+      licenses: licensesData.length,
+      outcomes: outcomesData.length,
+      releases: releasesData.length,
+      customAttributes: customAttributesData.length,
+      telemetry: telemetryData.length,
+      customAttributesSample: customAttributesData.slice(0, 2),
+      licensesSample: licensesData.slice(0, 2)
+    });
+
     // Check if product exists
     const existingProduct = await prisma.product.findUnique({
       where: { name: productData.name },
@@ -204,10 +219,9 @@ export class ExcelImportService {
           licensesData,
           'name'
         ),
-        customAttributes: this.compareArrays(
-          existingProduct?.customAttributes || [],
-          customAttributesData,
-          'attributeName'
+        customAttributes: this.compareCustomAttrsJson(
+          existingProduct?.customAttrs as Record<string, any> || {},
+          customAttributesData
         ),
         telemetryAttributes: this.compareTelemetryAttributes(
           existingProduct?.tasks || [],
@@ -232,8 +246,11 @@ export class ExcelImportService {
     // First, generate preview to validate
     const preview = await this.previewImport(buffer, mode);
 
-    // Check for validation errors
-    if (preview.validationErrors.length > 0) {
+    // Check for validation errors (not warnings - warnings are informational)
+    const actualErrors = preview.validationErrors.filter((e: ValidationError) => e.severity === 'error');
+    const warningsFromValidation = preview.validationErrors.filter((e: ValidationError) => e.severity === 'warning');
+
+    if (actualErrors.length > 0) {
       return {
         success: false,
         productName: preview.productName,
@@ -245,8 +262,8 @@ export class ExcelImportService {
           customAttributesImported: 0,
           telemetryAttributesImported: 0
         },
-        errors: preview.validationErrors,
-        warnings: preview.warnings
+        errors: actualErrors,
+        warnings: [...preview.warnings, ...warningsFromValidation]
       };
     }
 
@@ -403,44 +420,62 @@ export class ExcelImportService {
         });
         existingLicenses.forEach((l: any) => licenseMap.set(l.name, l.id));
 
-        // Import custom attributes
+        // Import custom attributes to the JSON field (customAttrs)
+        // This is the legacy JSON field that the frontend uses
+        const customAttrsJson: Record<string, any> = {};
+
+        // Get existing customAttrs from product
+        const productForAttrs = await tx.product.findUnique({
+          where: { id: productId },
+          select: { customAttrs: true }
+        });
+        const existingAttrs = (productForAttrs?.customAttrs as Record<string, any>) || {};
+
+        // Merge existing with new/updated
+        Object.assign(customAttrsJson, existingAttrs);
+
         for (const attr of preview.changes.customAttributes.toCreate) {
-          await tx.customAttribute.create({
-            data: {
-              attributeName: attr.attributeName,
-              attributeValue: attr.attributeValue || '',
-              dataType: attr.dataType || 'TEXT',
-              description: attr.description || '',
-              isRequired: attr.isRequired ?? false,
-              displayOrder: attr.displayOrder || 0,
-              productId
-            }
-          });
+          customAttrsJson[attr.attributeName] = attr.attributeValue || '';
+        }
+        for (const attr of preview.changes.customAttributes.toUpdate) {
+          customAttrsJson[attr.attributeName] = attr.attributeValue || '';
         }
 
-        for (const attr of preview.changes.customAttributes.toUpdate) {
-          const existing = await tx.customAttribute.findFirst({
-            where: { attributeName: attr.attributeName, productId }
+        // Update product with new customAttrs
+        if (Object.keys(customAttrsJson).length > 0 || preview.changes.customAttributes.toCreate.length > 0 || preview.changes.customAttributes.toUpdate.length > 0) {
+          await tx.product.update({
+            where: { id: productId },
+            data: { customAttrs: customAttrsJson }
           });
-          if (existing) {
-            await tx.customAttribute.update({
-              where: { id: existing.id },
-              data: {
-                attributeValue: attr.attributeValue || '',
-                dataType: attr.dataType || 'TEXT',
-                description: attr.description || '',
-                isRequired: attr.isRequired ?? false,
-                displayOrder: attr.displayOrder || 0
-              }
-            });
-          }
         }
 
         // Import tasks last to ensure dependencies exist
+        // First, get max sequence number to avoid conflicts when creating new tasks
+        const existingTasks = await tx.task.findMany({
+          where: { productId },
+          select: { id: true, sequenceNumber: true }
+        });
+        const maxSeq = existingTasks.length > 0
+          ? Math.max(...existingTasks.map((t: { sequenceNumber: number }) => t.sequenceNumber))
+          : 0;
+
+        // Move existing tasks to temporary negative sequence numbers to avoid conflicts
+        for (let i = 0; i < existingTasks.length; i++) {
+          await tx.task.update({
+            where: { id: existingTasks[i].id },
+            data: { sequenceNumber: -(i + 1000) }
+          });
+        }
+
+        let nextSeq = 1;
         for (const task of preview.changes.tasks.toCreate) {
           const outcomeIds = this.resolveTaskEntityIds(task.outcomes, outcomeMap);
           const releaseIds = this.resolveTaskEntityIds(task.releases, releaseMap);
           const licenseLevel = this.normalizeTaskLicenseLevel(task.licenseLevel);
+
+          // Use the imported sequence number or assign the next available
+          const seqNum = task.sequenceNumber || nextSeq;
+          nextSeq = Math.max(nextSeq, seqNum) + 1;
 
           const created = await tx.task.create({
             data: {
@@ -448,7 +483,7 @@ export class ExcelImportService {
               description: task.description || '',
               estMinutes: task.estMinutes || 60,
               weight: task.weight || 1,
-              sequenceNumber: task.sequenceNumber || 1,
+              sequenceNumber: seqNum,
               licenseLevel,
               howToDoc: task.howToDoc ? task.howToDoc.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
               howToVideo: task.howToVideo ? task.howToVideo.split(',').map((s: string) => s.trim()).filter(Boolean) : [],
@@ -556,7 +591,7 @@ export class ExcelImportService {
         productName: preview.productName,
         stats: result,
         errors: [],
-        warnings: preview.warnings
+        warnings: [...preview.warnings, ...warningsFromValidation]
       };
     } catch (error: any) {
       return {
@@ -583,17 +618,49 @@ export class ExcelImportService {
   }
 
   /**
+   * Find worksheet by name (case-insensitive)
+   */
+  private findWorksheetCaseInsensitive(workbook: ExcelJS.Workbook, name: string): ExcelJS.Worksheet | undefined {
+    // First try exact match
+    let sheet = workbook.getWorksheet(name);
+    if (sheet) return sheet;
+
+    // Then try case-insensitive match
+    const lowerName = name.toLowerCase();
+    workbook.eachSheet((ws) => {
+      if (ws.name.toLowerCase() === lowerName) {
+        sheet = ws;
+      }
+    });
+
+    return sheet;
+  }
+
+  /**
+   * Get list of all sheet names in workbook
+   */
+  private getWorksheetNames(workbook: ExcelJS.Workbook): string[] {
+    const names: string[] = [];
+    workbook.eachSheet((ws) => {
+      names.push(ws.name);
+    });
+    return names;
+  }
+
+  /**
    * Parse Product Info sheet (Tab 1)
    */
   private parseProductInfoSheet(
     workbook: ExcelJS.Workbook,
     errors: ValidationError[]
   ): any {
-    const sheet = workbook.getWorksheet('Product Info');
+    const sheet = this.findWorksheetCaseInsensitive(workbook, 'Product Info');
+
     if (!sheet) {
+      const availableSheets = this.getWorksheetNames(workbook);
       errors.push({
         sheet: 'Product Info',
-        message: 'Product Info sheet not found',
+        message: `Invalid File Format: "Product Info" sheet is missing. Available sheets: [${availableSheets.join(', ')}]. Please ensure you are using a valid Excel export file.`,
         severity: 'error'
       });
       return { name: '', description: '' };
@@ -601,22 +668,51 @@ export class ExcelImportService {
 
     const data: any = {};
 
-    // Parse vertical layout (Field | Value)
-    sheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return; // Skip header
-
-      const field = row.getCell(1).value?.toString().trim();
-      const value = row.getCell(2).value?.toString().trim();
-
-      if (field === 'Product Name') data.name = value;
-      else if (field === 'Description') data.description = value;
+    // First, try to detect the layout type
+    const firstRow = sheet.getRow(1);
+    const headers: string[] = [];
+    firstRow.eachCell((cell, colNumber) => {
+      headers[colNumber] = cell.value?.toString().trim() || '';
     });
+
+    // Check if this is a horizontal layout (headers like "Name", "Product Name", "Description")
+    const nameColIndex = headers.findIndex(h =>
+      h && (h.toLowerCase() === 'name' ||
+        h.toLowerCase() === 'product name' ||
+        h.toLowerCase() === 'product')
+    );
+    const descColIndex = headers.findIndex(h =>
+      h && h.toLowerCase() === 'description'
+    );
+
+    if (nameColIndex > 0) {
+      // Horizontal layout - read data from row 2
+      const dataRow = sheet.getRow(2);
+      if (dataRow) {
+        data.name = dataRow.getCell(nameColIndex + 1).value?.toString().trim();
+        if (descColIndex > 0) {
+          data.description = dataRow.getCell(descColIndex + 1).value?.toString().trim();
+        }
+      }
+    } else {
+      // Vertical layout (Field | Value) - original format
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // Skip header
+
+        const field = row.getCell(1).value?.toString().trim();
+        const value = row.getCell(2).value?.toString().trim();
+
+        // Accept both "Product Name" and "Name" as the product name field
+        if (field === 'Product Name' || field === 'Name') data.name = value;
+        else if (field === 'Description') data.description = value;
+      });
+    }
 
     if (!data.name) {
       errors.push({
         sheet: 'Product Info',
         field: 'Product Name',
-        message: 'Product Name is required',
+        message: 'Product Name is required. Expected a "Product Name" or "Name" column/row.',
         severity: 'error'
       });
     }
@@ -631,7 +727,7 @@ export class ExcelImportService {
     workbook: ExcelJS.Workbook,
     errors: ValidationError[]
   ): any[] {
-    const sheet = workbook.getWorksheet('Tasks');
+    const sheet = this.findWorksheetCaseInsensitive(workbook, 'Tasks');
     if (!sheet) {
       errors.push({
         sheet: 'Tasks',
@@ -653,21 +749,22 @@ export class ExcelImportService {
       } else {
         const task: any = { __rowNumber: rowNumber };
         row.eachCell((cell, colNumber) => {
-          const header = headers[colNumber];
+          const header = headers[colNumber]?.toLowerCase() || '';
           const value = cell.value?.toString().trim();
 
-          if (header === 'Task Name') task.name = value;
-          else if (header === 'Description') task.description = value;
-          else if (header === 'License Level') task.licenseLevel = value;
-          else if (header === 'License Name') task.licenseName = value;
-          else if (header === 'Est. Minutes') task.estMinutes = parseInt(value || '60');
-          else if (header === 'Weight') task.weight = parseFloat(value || '1');
-          else if (header === 'Sequence Number') task.sequenceNumber = parseInt(value || '1');
-          else if (header === 'Priority') task.priority = value;
-          else if (header === 'How-To Doc') task.howToDoc = value;
-          else if (header === 'How-To Video') task.howToVideo = value;
-          else if (header === 'Outcomes') task.outcomes = value ? value.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
-          else if (header === 'Releases') task.releases = value ? value.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+          // Use case-insensitive matching and accept common variations
+          if (header === 'task name' || header === 'name') task.name = value;
+          else if (header === 'description') task.description = value;
+          else if (header === 'license level' || header === 'license') task.licenseLevel = value;
+          else if (header === 'license name') task.licenseName = value;
+          else if (header === 'est. minutes' || header === 'estimated minutes' || header === 'estminutes' || header === 'minutes') task.estMinutes = parseInt(value || '60');
+          else if (header === 'weight') task.weight = parseFloat(value || '1');
+          else if (header === 'sequence number' || header === 'sequence' || header === 'seq' || header === 'order') task.sequenceNumber = parseInt(value || '1');
+          else if (header === 'priority') task.priority = value;
+          else if (header === 'how-to doc' || header === 'howtodoc' || header === 'how to doc' || header === 'doc') task.howToDoc = value;
+          else if (header === 'how-to video' || header === 'howtovideo' || header === 'how to video' || header === 'video') task.howToVideo = value;
+          else if (header === 'outcomes' || header === 'outcome' || header === 'outcome names') task.outcomes = value ? value.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+          else if (header === 'releases' || header === 'release' || header === 'release names') task.releases = value ? value.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
         });
 
         if (task.name) {
@@ -689,7 +786,7 @@ export class ExcelImportService {
     workbook: ExcelJS.Workbook,
     errors: ValidationError[]
   ): any[] {
-    const sheet = workbook.getWorksheet('Licenses');
+    const sheet = this.findWorksheetCaseInsensitive(workbook, 'Licenses');
     if (!sheet) {
       errors.push({
         sheet: 'Licenses',
@@ -710,12 +807,13 @@ export class ExcelImportService {
       } else {
         const license: any = { __rowNumber: rowNumber };
         row.eachCell((cell, colNumber) => {
-          const header = headers[colNumber];
+          const header = headers[colNumber]?.toLowerCase() || '';
           const value = cell.value?.toString().trim();
 
-          if (header === 'License Name') license.name = value;
-          else if (header === 'Description') license.description = value;
-          else if (header === 'Level') {
+          // Use case-insensitive matching and accept common variations
+          if (header === 'license name' || header === 'name') license.name = value;
+          else if (header === 'description') license.description = value;
+          else if (header === 'level' || header === 'license level') {
             const normalized = this.normalizeLicenseLevelInput(value);
             license.level = normalized.level;
             license.levelName = normalized.label;
@@ -729,7 +827,7 @@ export class ExcelImportService {
               });
             }
           }
-          else if (header === 'Is Active') license.isActive = value?.toLowerCase() === 'true' || value === '1';
+          else if (header === 'is active' || header === 'active' || header === 'isactive') license.isActive = value?.toLowerCase() === 'true' || value === '1';
         });
 
         if (license.name) {
@@ -748,7 +846,7 @@ export class ExcelImportService {
     workbook: ExcelJS.Workbook,
     errors: ValidationError[]
   ): any[] {
-    const sheet = workbook.getWorksheet('Outcomes');
+    const sheet = this.findWorksheetCaseInsensitive(workbook, 'Outcomes');
     if (!sheet) {
       errors.push({
         sheet: 'Outcomes',
@@ -769,11 +867,12 @@ export class ExcelImportService {
       } else {
         const outcome: any = { __rowNumber: rowNumber };
         row.eachCell((cell, colNumber) => {
-          const header = headers[colNumber];
+          const header = headers[colNumber]?.toLowerCase() || '';
           const value = cell.value?.toString().trim();
 
-          if (header === 'Outcome Name') outcome.name = value;
-          else if (header === 'Description') outcome.description = value;
+          // Use case-insensitive matching
+          if (header === 'outcome name' || header === 'name') outcome.name = value;
+          else if (header === 'description') outcome.description = value;
         });
 
         if (outcome.name) {
@@ -792,7 +891,7 @@ export class ExcelImportService {
     workbook: ExcelJS.Workbook,
     errors: ValidationError[]
   ): any[] {
-    const sheet = workbook.getWorksheet('Releases');
+    const sheet = this.findWorksheetCaseInsensitive(workbook, 'Releases');
     if (!sheet) {
       errors.push({
         sheet: 'Releases',
@@ -813,13 +912,14 @@ export class ExcelImportService {
       } else {
         const release: any = { __rowNumber: rowNumber };
         row.eachCell((cell, colNumber) => {
-          const header = headers[colNumber];
+          const header = headers[colNumber]?.toLowerCase() || '';
           const value = cell.value?.toString().trim();
 
-          if (header === 'Release Name') release.name = value;
-          else if (header === 'Description') release.description = value;
-          else if (header === 'Level') release.level = parseFloat(value || '1.0');
-          else if (header === 'Is Active') release.isActive = value?.toLowerCase() === 'true' || value === '1';
+          // Use case-insensitive matching
+          if (header === 'release name' || header === 'name') release.name = value;
+          else if (header === 'description') release.description = value;
+          else if (header === 'level' || header === 'release level') release.level = parseFloat(value || '1.0');
+          else if (header === 'is active' || header === 'active' || header === 'isactive') release.isActive = value?.toLowerCase() === 'true' || value === '1';
         });
 
         if (release.name) {
@@ -838,7 +938,7 @@ export class ExcelImportService {
     workbook: ExcelJS.Workbook,
     errors: ValidationError[]
   ): any[] {
-    const sheet = workbook.getWorksheet('Custom Attributes');
+    const sheet = this.findWorksheetCaseInsensitive(workbook, 'Custom Attributes');
     if (!sheet) {
       return []; // Optional sheet
     }
@@ -854,15 +954,16 @@ export class ExcelImportService {
       } else {
         const attr: any = {};
         row.eachCell((cell, colNumber) => {
-          const header = headers[colNumber];
+          const header = headers[colNumber]?.toLowerCase() || '';
           const value = cell.value?.toString().trim();
 
-          if (header === 'Attribute Name') attr.attributeName = value;
-          else if (header === 'Value') attr.attributeValue = value;
-          else if (header === 'Data Type') attr.dataType = value;
-          else if (header === 'Description') attr.description = value;
-          else if (header === 'Is Required') attr.isRequired = value?.toLowerCase() === 'true' || value === '1';
-          else if (header === 'Display Order') attr.displayOrder = parseInt(value || '0');
+          // Use case-insensitive matching - accept 'key' as alias for 'attribute name'
+          if (header === 'attribute name' || header === 'name' || header === 'key') attr.attributeName = value;
+          else if (header === 'value' || header === 'attribute value') attr.attributeValue = value;
+          else if (header === 'data type' || header === 'datatype' || header === 'type') attr.dataType = value;
+          else if (header === 'description') attr.description = value;
+          else if (header === 'is required' || header === 'required' || header === 'isrequired') attr.isRequired = value?.toLowerCase() === 'true' || value === '1';
+          else if (header === 'display order' || header === 'order' || header === 'displayorder') attr.displayOrder = parseInt(value || '0');
         });
 
         if (attr.attributeName) {
@@ -881,7 +982,8 @@ export class ExcelImportService {
     workbook: ExcelJS.Workbook,
     errors: ValidationError[]
   ): any[] {
-    const sheet = workbook.getWorksheet('Telemetry');
+    const sheet = this.findWorksheetCaseInsensitive(workbook, 'Telemetry');
+
     if (!sheet) {
       return []; // Optional sheet
     }
@@ -897,14 +999,28 @@ export class ExcelImportService {
       } else {
         const attr: any = {};
         row.eachCell((cell, colNumber) => {
-          const header = headers[colNumber];
+          const header = headers[colNumber]?.toLowerCase() || '';
           const value = cell.value?.toString().trim();
 
-          if (header === 'Task Name') attr.taskName = value;
-          else if (header === 'Attribute Name') attr.attributeName = value;
-          else if (header === 'Operator') attr.operator = value;
-          else if (header === 'Expected Value') attr.expectedValue = value;
-          else if (header === 'Data Type') attr.dataType = value;
+          // Use case-insensitive matching - match export format headers
+          if (header === 'task name' || header === 'task') attr.taskName = value;
+          else if (header === 'attribute name' || header === 'name') attr.attributeName = value;
+          else if (header === 'description') attr.description = value;
+          else if (header === 'data type' || header === 'datatype' || header === 'type') attr.dataType = value;
+          else if (header === 'is required' || header === 'required' || header === 'isrequired') attr.isRequired = value?.toLowerCase() === 'true' || value === '1';
+          else if (header === 'success criteria' || header === 'successcriteria' || header === 'criteria') {
+            // Try to parse as JSON, otherwise use as string
+            try {
+              attr.successCriteria = value ? JSON.parse(value) : null;
+            } catch {
+              attr.successCriteria = value || null;
+            }
+          }
+          else if (header === 'order' || header === 'display order') attr.order = parseInt(value || '0');
+          else if (header === 'is active' || header === 'active' || header === 'isactive') attr.isActive = value?.toLowerCase() !== 'false' && value !== '0';
+          // Legacy format support
+          else if (header === 'operator') attr.operator = value;
+          else if (header === 'expected value' || header === 'expectedvalue' || header === 'expected') attr.expectedValue = value;
         });
 
         if (attr.taskName && attr.attributeName) {
@@ -914,6 +1030,25 @@ export class ExcelImportService {
     });
 
     return attributes;
+  }
+
+  /**
+   * Compare custom attributes from JSON field with incoming data
+   */
+  private compareCustomAttrsJson(
+    existingJson: Record<string, any>,
+    incoming: any[]
+  ): { toCreate: any[]; toUpdate: any[]; toDelete: any[] } {
+    const existingKeys = new Set(Object.keys(existingJson || {}));
+    const incomingKeys = new Set(incoming.map(item => item.attributeName));
+
+    const toCreate = incoming.filter(item => !existingKeys.has(item.attributeName));
+    const toUpdate = incoming.filter(item => existingKeys.has(item.attributeName));
+    const toDelete = Array.from(existingKeys)
+      .filter(key => !incomingKeys.has(key))
+      .map(key => ({ attributeName: key, attributeValue: existingJson[key] }));
+
+    return { toCreate, toUpdate, toDelete };
   }
 
   /**
@@ -1039,8 +1174,27 @@ export class ExcelImportService {
     existingProduct: any,
     errors: ValidationError[]
   ) {
+    // Validate Total Weight
+    let totalWeight = 0;
+    tasks.forEach(task => {
+      totalWeight += (Number(task.weight) || 0);
+    });
+
+    if (totalWeight > 100) {
+      errors.push({
+        sheet: 'Tasks',
+        field: 'Weight',
+        message: `Total task weight is ${totalWeight}, but it must not exceed 100.`,
+        severity: 'error'
+      });
+    }
+
     const licenseNames = new Set<string>();
-    const licenseLevels = new Set<LicenseLevel>();
+    const licenseLevels = new Set<LicenseLevel>([
+      'ESSENTIAL',
+      'ADVANTAGE',
+      'SIGNATURE'
+    ]);
 
     const registerLicense = (license: any) => {
       if (!license) return;
@@ -1132,18 +1286,8 @@ export class ExcelImportService {
         }
       }
 
-      if (task.licenseName) {
-        const name = task.licenseName.trim();
-        if (licenseNames.size > 0 && !licenseNames.has(name)) {
-          errors.push({
-            sheet: 'Tasks',
-            row,
-            field: 'License Name',
-            message: `Task "${taskName}" references license "${task.licenseName}" that is not defined for this product.`,
-            severity: 'error'
-          });
-        }
-      }
+      // License name is informational only - we use license level for actual assignment
+      // No warning needed if license name doesn't match
 
       if (task.outcomes && task.outcomes.length > 0) {
         for (const outcomeName of task.outcomes) {

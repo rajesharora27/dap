@@ -292,7 +292,7 @@ start_backend() {
     nohup npm run dev > ../backend.log 2>&1 &
     local backend_pid=$!
     
-    local max_attempts=20
+    local max_attempts=60
     local attempt=1
     
     while [ $attempt -le $max_attempts ]; do
@@ -332,7 +332,7 @@ start_frontend() {
     nohup npm run dev > ../frontend.log 2>&1 &
     local frontend_pid=$!
     
-    local max_attempts=30
+    local max_attempts=60
     local attempt=1
     
     while [ $attempt -le $max_attempts ]; do

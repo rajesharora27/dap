@@ -49,7 +49,9 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
             sessionStorage.clear();
             // Reload to trigger login page (use BASE_URL for subpath deployment)
             const basePath = getBasePath();
-            setTimeout(() => window.location.href = basePath || '/', 100);
+            // Ensure trailing slash for proper routing (e.g., /dap/ not /dap)
+            const redirectPath = basePath ? (basePath.endsWith('/') ? basePath : basePath + '/') : '/';
+            setTimeout(() => window.location.href = redirectPath, 100);
           }
         });
       }
@@ -62,7 +64,9 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
           localStorage.removeItem('user');
           sessionStorage.clear();
           const basePath = getBasePath();
-          setTimeout(() => window.location.href = basePath || '/', 100);
+          // Ensure trailing slash for proper routing (e.g., /dap/ not /dap)
+          const redirectPath = basePath ? (basePath.endsWith('/') ? basePath : basePath + '/') : '/';
+          setTimeout(() => window.location.href = redirectPath, 100);
         }
       }
     });

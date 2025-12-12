@@ -285,8 +285,43 @@ export const REMOVE_PRODUCT_FROM_SOLUTION_ENHANCED = gql`
   }
 `;
 
+
 export const REORDER_PRODUCTS_IN_SOLUTION = gql`
   mutation ReorderProductsInSolution($solutionId: ID!, $productOrders: [SolutionProductOrderInput!]!) {
     reorderProductsInSolution(solutionId: $solutionId, productOrders: $productOrders)
+  }
+`;
+
+export const IMPORT_PRODUCT_FROM_EXCEL = gql`
+  mutation ImportProductFromExcel($content: String!, $mode: ImportMode!) {
+    importProductFromExcel(content: $content, mode: $mode) {
+      success
+      productId
+      productName
+      stats {
+        tasksImported
+        outcomesImported
+        releasesImported
+        licensesImported
+        customAttributesImported
+        telemetryAttributesImported
+      }
+      errors {
+        sheet
+        row
+        column
+        field
+        message
+        severity
+      }
+      warnings {
+        sheet
+        row
+        column
+        field
+        message
+        severity
+      }
+    }
   }
 `;
