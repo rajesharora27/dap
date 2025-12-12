@@ -538,6 +538,7 @@ export const SolutionsPage: React.FC = () => {
                                                         key={task.id}
                                                         task={task}
                                                         onEdit={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
+                                                        onDoubleClick={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
                                                         onDelete={handleDeleteTask}
                                                     />
                                                 ))}

@@ -108,7 +108,12 @@ export const CustomAttributeDialog: React.FC<CustomAttributeDialogProps> = ({
                 break;
             case 'array':
             case 'object':
-                processedValue = JSON.parse(formData.value);
+                try {
+                    processedValue = JSON.parse(formData.value);
+                } catch (e) {
+                    setValueError('Invalid JSON format');
+                    return;
+                }
                 break;
             default:
                 processedValue = formData.value;

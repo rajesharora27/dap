@@ -15,7 +15,8 @@ export default defineConfig(({ mode }) => {
     'centos1.rajarora.csslab',
     '.ztna.sse.cisco.io',
     '.cxsaaslab.com',
-    '.rajarora.csslab'
+    '.rajarora.csslab',
+    'dev.rajarora.csslab'
   ];
 
   return {

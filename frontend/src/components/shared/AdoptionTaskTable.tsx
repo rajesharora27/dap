@@ -188,7 +188,7 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
                 key={task.id}
                 hover
                 onDoubleClick={() => handleRowDoubleClick(task)}
-                title="Double-click for details"
+                title={task.description || 'Double-click for details'}
                 sx={{
                   cursor: 'pointer',
                   backgroundColor: getStatusBackgroundColor(task.status),

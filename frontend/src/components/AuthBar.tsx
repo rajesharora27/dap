@@ -21,10 +21,12 @@ import {
   Logout,
   Person,
   Psychology,
+  HelpOutline,
 } from '@mui/icons-material';
 import { useQuery } from '@apollo/client';
 import { useAuth } from './AuthContext';
 import { AIChat } from './AIChat';
+import { HelpDialog } from './HelpDialog';
 import { IS_AI_AGENT_AVAILABLE, IsAIAgentAvailableResponse } from '../graphql/ai';
 
 interface AuthBarProps {
@@ -38,6 +40,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
   const { user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const [aiChatOpen, setAiChatOpen] = React.useState(false);
+  const [helpOpen, setHelpOpen] = React.useState(false);
 
   // Check if AI Agent is available (aiuser exists)
   const { data: aiAvailabilityData, loading: aiLoading } = useQuery<IsAIAgentAvailableResponse>(
@@ -48,7 +51,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
       fetchPolicy: 'cache-first',
     }
   );
-  
+
   const isAIAgentAvailable = aiAvailabilityData?.isAIAgentAvailable?.available ?? false;
   const aiUnavailableMessage = aiAvailabilityData?.isAIAgentAvailable?.message || 'AI Agent is not available';
 
@@ -172,8 +175,23 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
           </Box>
         </Box>
 
-        {/* AI Assistant & User Menu */}
+        {/* Help, AI Assistant & User Menu */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          {/* Help Button */}
+          <Tooltip title="Help & Documentation" arrow>
+            <IconButton
+              onClick={() => setHelpOpen(true)}
+              sx={{
+                color: 'white',
+                '&:hover': {
+                  bgcolor: 'rgba(255, 255, 255, 0.1)',
+                },
+              }}
+            >
+              <HelpOutline />
+            </IconButton>
+          </Tooltip>
+
           {/* AI Assistant Button - only shown if aiuser exists */}
           {!aiLoading && isAIAgentAvailable && (
             <Tooltip title="AI Assistant" arrow>
@@ -294,6 +312,9 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
           onNavigate={onNavigate}
         />
       )}
+
+      {/* Help Dialog */}
+      <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
     </AppBar>
   );
 };

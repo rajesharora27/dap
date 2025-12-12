@@ -1,9 +1,14 @@
 import { useState } from 'react';
 import { useApolloClient } from '@apollo/client';
 import { exportProductData } from '../utils/productExport';
-import { importProductData } from '../utils/productImport';
+import { importProductData, ImportStats } from '../utils/productImport';
 
-export const useProductImportExport = (selectedProduct: string | null, products: any[], tasks: any[], refetchQueries: () => Promise<any>) => {
+export const useProductImportExport = (
+    selectedProduct: string | null,
+    products: any[],
+    tasks: any[],
+    refetchQueries: () => Promise<any>
+) => {
     const client = useApolloClient();
     const [isImporting, setIsImporting] = useState(false);
     const [importProgress, setImportProgress] = useState('');
@@ -22,25 +27,48 @@ export const useProductImportExport = (selectedProduct: string | null, products:
 
     const handleImport = async (event: any) => {
         const file = event.target.files?.[0];
-        if (!file || !selectedProduct) return;
-        const product = products.find(p => p.id === selectedProduct);
-        if (!product) return;
+        if (!file) return;
+        const product = selectedProduct ? products.find(p => p.id === selectedProduct) : null;
 
         setIsImporting(true);
         try {
-            const result = await importProductData(file, client, selectedProduct, product, setImportProgress);
-            alert(`Import completed.\nCreated: ${result.createdCount}\nUpdated: ${result.updatedCount}\nErrors: ${result.errorCount}`);
-            if (result.collectedErrors.length > 0) {
-                console.error('Import errors:', result.collectedErrors);
+            const stats: ImportStats = await importProductData(
+                file,
+                client,
+                selectedProduct,
+                product,
+                setImportProgress
+            );
+
+            // Build detailed success message
+            const action = stats.isNewProduct ? 'Created new product' : 'Updated product';
+            const lines = [
+                `✓ ${action}: "${stats.productName}"`,
+                '',
+                'Import Summary:',
+                `  • Tasks: ${stats.tasksImported}`,
+                `  • Outcomes: ${stats.outcomesImported}`,
+                `  • Releases: ${stats.releasesImported}`,
+                `  • Licenses: ${stats.licensesImported}`,
+                `  • Custom Attributes: ${stats.customAttributesImported}`,
+                `  • Telemetry Attributes: ${stats.telemetryAttributesImported}`
+            ];
+
+            if (stats.warnings.length > 0) {
+                lines.push('', 'Warnings:');
+                stats.warnings.forEach(w => lines.push(`  ⚠ ${w}`));
             }
+
+            alert(lines.join('\n'));
             await refetchQueries();
-        } catch (error) {
+
+        } catch (error: any) {
             console.error('Import failed:', error);
-            alert('Import failed');
+            alert(`Import failed: ${error.message}`);
         } finally {
             setIsImporting(false);
             setImportProgress('');
-            event.target.value = ''; // Reset file input
+            event.target.value = '';
         }
     };
 
