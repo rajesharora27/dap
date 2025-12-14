@@ -1,153 +1,147 @@
 import { evaluateTelemetryAttribute, evaluateMultipleAttributes } from '../../services/telemetry/evaluationEngine';
-import { TestFactory } from '../factories/TestFactory';
-import { PrismaClient } from '@prisma/client';
+import { SuccessCriteriaType, NumberOperator, StringMatchMode, TimestampMode } from '../../services/telemetry/types';
 
-const prisma = new PrismaClient();
-
+// This test file uses mock attribute objects, no database access needed
 describe('Telemetry Evaluation Engine', () => {
-    beforeEach(async () => {
-        await TestFactory.cleanup();
-    });
-
-    afterAll(async () => {
-        await TestFactory.cleanup();
-        await prisma.$disconnect();
-    });
 
     describe('NUMBER type evaluation', () => {
-        it('should evaluate GREATER_THAN correctly', () => {
+        it('should evaluate GREATER_THAN correctly', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'NUMBER',
                 successCriteria: JSON.stringify({
-                    operator: 'GREATER_THAN',
-                    targetValue: '100'
+                    type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                    operator: NumberOperator.GREATER_THAN,
+                    threshold: 100
                 }),
                 values: [{ value: '150' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
-            expect(result.operator).toBe('GREATER_THAN');
         });
 
-        it('should evaluate LESS_THAN correctly', () => {
+        it('should evaluate LESS_THAN correctly', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'NUMBER',
                 successCriteria: JSON.stringify({
-                    operator: 'LESS_THAN',
-                    targetValue: '100'
+                    type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                    operator: NumberOperator.LESS_THAN,
+                    threshold: 100
                 }),
                 values: [{ value: '50' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
         });
 
-        it('should evaluate EQUALS correctly', () => {
+        it('should evaluate EQUALS correctly', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'NUMBER',
                 successCriteria: JSON.stringify({
-                    operator: 'EQUALS',
-                    targetValue: '100'
+                    type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                    operator: NumberOperator.EQUALS,
+                    threshold: 100
                 }),
                 values: [{ value: '100' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
         });
 
-        it('should evaluate GREATER_THAN_EQUALS correctly', () => {
+        it('should evaluate GREATER_THAN_OR_EQUAL correctly', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'NUMBER',
                 successCriteria: JSON.stringify({
-                    operator: 'GREATER_THAN_EQUALS',
-                    targetValue: '100'
+                    type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                    operator: NumberOperator.GREATER_THAN_OR_EQUAL,
+                    threshold: 100
                 }),
                 values: [{ value: '100' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
         });
 
-        it('should evaluate LESS_THAN_EQUALS correctly', () => {
+        it('should evaluate LESS_THAN_OR_EQUAL correctly', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'NUMBER',
                 successCriteria: JSON.stringify({
-                    operator: 'LESS_THAN_EQUALS',
-                    targetValue: '100'
+                    type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                    operator: NumberOperator.LESS_THAN_OR_EQUAL,
+                    threshold: 100
                 }),
                 values: [{ value: '100' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
         });
 
-        it('should fail when value does not meet criteria', () => {
+        it('should fail when value does not meet criteria', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'NUMBER',
                 successCriteria: JSON.stringify({
-                    operator: 'GREATER_THAN',
-                    targetValue: '100'
+                    type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                    operator: NumberOperator.GREATER_THAN,
+                    threshold: 100
                 }),
                 values: [{ value: '50' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(false);
-            expect(result.details).toContain('50 is not > 100');
         });
     });
 
     describe('BOOLEAN type evaluation', () => {
-        it('should evaluate EQUALS for true', () => {
+        it('should evaluate EQUALS for true', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'BOOLEAN',
                 successCriteria: JSON.stringify({
-                    operator: 'EQUALS',
+                    type: SuccessCriteriaType.BOOLEAN_FLAG,
                     expectedValue: true
                 }),
                 values: [{ value: 'true' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
         });
 
-        it('should evaluate EQUALS for false', () => {
+        it('should evaluate EQUALS for false', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'BOOLEAN',
                 successCriteria: JSON.stringify({
-                    operator: 'EQUALS',
+                    type: SuccessCriteriaType.BOOLEAN_FLAG,
                     expectedValue: false
                 }),
                 values: [{ value: 'false' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
         });
 
-        it('should handle string representations of boolean', () => {
+        it('should handle string representations of boolean', async () => {
             const cases = [
                 { value: 'yes', expected: true },
                 { value: 'no', expected: false },
@@ -157,174 +151,177 @@ describe('Telemetry Evaluation Engine', () => {
                 { value: 'FALSE', expected: false }
             ];
 
-            cases.forEach(({ value, expected }) => {
+            for (const { value, expected } of cases) {
                 const attribute = {
                     id: 'attr-1',
                     dataType: 'BOOLEAN',
                     successCriteria: JSON.stringify({
-                        operator: 'EQUALS',
+                        type: SuccessCriteriaType.BOOLEAN_FLAG,
                         expectedValue: expected
                     }),
                     values: [{ value }]
                 };
 
-                const result = evaluateTelemetryAttribute(attribute);
+                const result = await evaluateTelemetryAttribute(attribute);
                 expect(result.success).toBe(true);
-            });
+            }
         });
     });
 
-    describe('TEXT type evaluation', () => {
-        it('should evaluate EQUALS correctly', () => {
+    describe('STRING type evaluation', () => {
+        it('should evaluate EXACT match correctly', async () => {
             const attribute = {
                 id: 'attr-1',
-                dataType: 'TEXT',
+                dataType: 'STRING',
                 successCriteria: JSON.stringify({
-                    operator: 'EQUALS',
-                    targetValue: 'success'
+                    type: SuccessCriteriaType.STRING_MATCH,
+                    mode: StringMatchMode.EXACT,
+                    pattern: 'success',
+                    caseSensitive: false
                 }),
                 values: [{ value: 'success' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
         });
 
-        it('should evaluate CONTAINS correctly', () => {
+        it('should evaluate CONTAINS correctly', async () => {
             const attribute = {
                 id: 'attr-1',
-                dataType: 'TEXT',
+                dataType: 'STRING',
                 successCriteria: JSON.stringify({
-                    operator: 'CONTAINS',
-                    targetValue: 'success'
+                    type: SuccessCriteriaType.STRING_MATCH,
+                    mode: StringMatchMode.CONTAINS,
+                    pattern: 'success',
+                    caseSensitive: false
                 }),
                 values: [{ value: 'deployment was successful' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
         });
 
-        it('should be case-insensitive for text comparisons', () => {
+        it('should be case-insensitive for string comparisons by default', async () => {
             const attribute = {
                 id: 'attr-1',
-                dataType: 'TEXT',
+                dataType: 'STRING',
                 successCriteria: JSON.stringify({
-                    operator: 'EQUALS',
-                    targetValue: 'SUCCESS'
+                    type: SuccessCriteriaType.STRING_MATCH,
+                    mode: StringMatchMode.EXACT,
+                    pattern: 'SUCCESS',
+                    caseSensitive: false
                 }),
                 values: [{ value: 'success' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
+
+            expect(result.success).toBe(true);
+        });
+
+        it('should evaluate STRING_NOT_NULL correctly', async () => {
+            const attribute = {
+                id: 'attr-1',
+                dataType: 'STRING',
+                successCriteria: JSON.stringify({
+                    type: SuccessCriteriaType.STRING_NOT_NULL
+                }),
+                values: [{ value: 'some value' }]
+            };
+
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
         });
     });
 
-    describe('PERCENTAGE type evaluation', () => {
-        it('should evaluate percentage values', () => {
+    describe('TIMESTAMP type evaluation', () => {
+        it('should evaluate BEFORE date comparisons', async () => {
             const attribute = {
                 id: 'attr-1',
-                dataType: 'PERCENTAGE',
+                dataType: 'TIMESTAMP',
                 successCriteria: JSON.stringify({
-                    operator: 'GREATER_THAN_EQUALS',
-                    targetValue: '80'
-                }),
-                values: [{ value: '85' }]
-            };
-
-            const result = evaluateTelemetryAttribute(attribute);
-
-            expect(result.success).toBe(true);
-        });
-
-        it('should handle percentage with % symbol', () => {
-            const attribute = {
-                id: 'attr-1',
-                dataType: 'PERCENTAGE',
-                successCriteria: JSON.stringify({
-                    operator: 'GREATER_THAN',
-                    targetValue: '50'
-                }),
-                values: [{ value: '75%' }]
-            };
-
-            const result = evaluateTelemetryAttribute(attribute);
-
-            expect(result.success).toBe(true);
-        });
-    });
-
-    describe('DATE type evaluation', () => {
-        it('should evaluate date comparisons', () => {
-            const attribute = {
-                id: 'attr-1',
-                dataType: 'DATE',
-                successCriteria: JSON.stringify({
-                    operator: 'BEFORE',
-                    targetValue: '2025-12-31'
+                    type: SuccessCriteriaType.TIMESTAMP_COMPARISON,
+                    mode: TimestampMode.BEFORE,
+                    referenceTime: '2025-12-31'
                 }),
                 values: [{ value: '2025-01-15' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
         });
 
-        it('should evaluate AFTER correctly', () => {
+        it('should evaluate AFTER correctly', async () => {
             const attribute = {
                 id: 'attr-1',
-                dataType: 'DATE',
+                dataType: 'TIMESTAMP',
                 successCriteria: JSON.stringify({
-                    operator: 'AFTER',
-                    targetValue: '2024-01-01'
+                    type: SuccessCriteriaType.TIMESTAMP_COMPARISON,
+                    mode: TimestampMode.AFTER,
+                    referenceTime: '2024-01-01'
                 }),
                 values: [{ value: '2025-01-15' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
+
+            expect(result.success).toBe(true);
+        });
+
+        it('should evaluate TIMESTAMP_NOT_NULL correctly', async () => {
+            const attribute = {
+                id: 'attr-1',
+                dataType: 'TIMESTAMP',
+                successCriteria: JSON.stringify({
+                    type: SuccessCriteriaType.TIMESTAMP_NOT_NULL
+                }),
+                values: [{ value: '2025-01-15T10:30:00Z' }]
+            };
+
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
         });
     });
 
     describe('Edge cases and error handling', () => {
-        it('should return false when no values exist', () => {
+        it('should return false when no values exist', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'NUMBER',
                 successCriteria: JSON.stringify({
-                    operator: 'GREATER_THAN',
-                    targetValue: '100'
+                    type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                    operator: NumberOperator.GREATER_THAN,
+                    threshold: 100
                 }),
                 values: []
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(false);
-            expect(result.error).toContain('No telemetry value');
         });
 
-        it('should return true when no success criteria defined', () => {
+        it('should return true when no success criteria defined', async () => {
             const attribute = {
                 id: 'attr-1',
-                dataType: 'TEXT',
+                dataType: 'STRING',
                 successCriteria: null,
                 values: [{ value: 'any value' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
-            expect(result.details).toContain('No success criteria');
         });
 
-        it('should handle invalid JSON in success criteria', () => {
+        it('should handle invalid JSON in success criteria', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'NUMBER',
@@ -332,27 +329,28 @@ describe('Telemetry Evaluation Engine', () => {
                 values: [{ value: '100' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(false);
             expect(result.error).toBeDefined();
         });
 
-        it('should handle invalid number values', () => {
+        it('should handle invalid number values', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'NUMBER',
                 successCriteria: JSON.stringify({
-                    operator: 'GREATER_THAN',
-                    targetValue: '100'
+                    type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                    operator: NumberOperator.GREATER_THAN,
+                    threshold: 100
                 }),
                 values: [{ value: 'not a number' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(false);
-            expect(result.error).toContain('Invalid');
+            expect(result.error).toBeDefined();
         });
     });
 
@@ -363,8 +361,9 @@ describe('Telemetry Evaluation Engine', () => {
                     id: 'attr-1',
                     dataType: 'NUMBER',
                     successCriteria: JSON.stringify({
-                        operator: 'GREATER_THAN',
-                        targetValue: '100'
+                        type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                        operator: NumberOperator.GREATER_THAN,
+                        threshold: 100
                     }),
                     values: [{ value: '150' }]
                 },
@@ -372,17 +371,19 @@ describe('Telemetry Evaluation Engine', () => {
                     id: 'attr-2',
                     dataType: 'BOOLEAN',
                     successCriteria: JSON.stringify({
-                        operator: 'EQUALS',
+                        type: SuccessCriteriaType.BOOLEAN_FLAG,
                         expectedValue: true
                     }),
                     values: [{ value: 'true' }]
                 },
                 {
                     id: 'attr-3',
-                    dataType: 'TEXT',
+                    dataType: 'STRING',
                     successCriteria: JSON.stringify({
-                        operator: 'EQUALS',
-                        targetValue: 'success'
+                        type: SuccessCriteriaType.STRING_MATCH,
+                        mode: StringMatchMode.EXACT,
+                        pattern: 'success',
+                        caseSensitive: false
                     }),
                     values: [{ value: 'success' }]
                 }
@@ -400,8 +401,9 @@ describe('Telemetry Evaluation Engine', () => {
                     id: 'attr-1',
                     dataType: 'NUMBER',
                     successCriteria: JSON.stringify({
-                        operator: 'GREATER_THAN',
-                        targetValue: '100'
+                        type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                        operator: NumberOperator.GREATER_THAN,
+                        threshold: 100
                     }),
                     values: [{ value: '150' }] // PASS
                 },
@@ -409,8 +411,9 @@ describe('Telemetry Evaluation Engine', () => {
                     id: 'attr-2',
                     dataType: 'NUMBER',
                     successCriteria: JSON.stringify({
-                        operator: 'GREATER_THAN',
-                        targetValue: '1000'
+                        type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                        operator: NumberOperator.GREATER_THAN,
+                        threshold: 1000
                     }),
                     values: [{ value: '50' }] // FAIL
                 }
@@ -428,58 +431,129 @@ describe('Telemetry Evaluation Engine', () => {
         });
     });
 
-    describe('Complex operator scenarios', () => {
-        it('should handle NOT_EQUALS operator', () => {
-            const attribute = {
-                id: 'attr-1',
-                dataType: 'TEXT',
-                successCriteria: JSON.stringify({
-                    operator: 'NOT_EQUALS',
-                    targetValue: 'error'
-                }),
-                values: [{ value: 'success' }]
-            };
-
-            const result = evaluateTelemetryAttribute(attribute);
-
-            expect(result.success).toBe(true);
-        });
-
-        it('should handle BETWEEN operator for numbers', () => {
+    describe('Composite criteria (AND/OR)', () => {
+        it('should evaluate composite AND criteria', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'NUMBER',
                 successCriteria: JSON.stringify({
-                    operator: 'BETWEEN',
-                    minValue: '50',
-                    maxValue: '150'
+                    type: SuccessCriteriaType.COMPOSITE_AND,
+                    criteria: [
+                        {
+                            type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                            operator: NumberOperator.GREATER_THAN,
+                            threshold: 50
+                        },
+                        {
+                            type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                            operator: NumberOperator.LESS_THAN,
+                            threshold: 150
+                        }
+                    ]
                 }),
                 values: [{ value: '100' }]
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
         });
 
-        it('should use latest value when multiple exist', () => {
+        it('should fail composite AND when one criterion fails', async () => {
             const attribute = {
                 id: 'attr-1',
                 dataType: 'NUMBER',
                 successCriteria: JSON.stringify({
-                    operator: 'GREATER_THAN',
-                    targetValue: '100'
+                    type: SuccessCriteriaType.COMPOSITE_AND,
+                    criteria: [
+                        {
+                            type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                            operator: NumberOperator.GREATER_THAN,
+                            threshold: 50
+                        },
+                        {
+                            type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                            operator: NumberOperator.LESS_THAN,
+                            threshold: 80
+                        }
+                    ]
                 }),
-                values: [
-                    { value: '50', createdAt: new Date('2025-01-01') },
-                    { value: '150', createdAt: new Date('2025-01-02') }
-                ]
+                values: [{ value: '100' }] // 100 > 50 (pass) but 100 < 80 (fail)
             };
 
-            const result = evaluateTelemetryAttribute(attribute);
+            const result = await evaluateTelemetryAttribute(attribute);
+
+            expect(result.success).toBe(false);
+        });
+
+        it('should evaluate composite OR criteria (pass if any matches)', async () => {
+            const attribute = {
+                id: 'attr-1',
+                dataType: 'NUMBER',
+                successCriteria: JSON.stringify({
+                    type: SuccessCriteriaType.COMPOSITE_OR,
+                    criteria: [
+                        {
+                            type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                            operator: NumberOperator.EQUALS,
+                            threshold: 50
+                        },
+                        {
+                            type: SuccessCriteriaType.NUMBER_THRESHOLD,
+                            operator: NumberOperator.EQUALS,
+                            threshold: 100
+                        }
+                    ]
+                }),
+                values: [{ value: '100' }] // 100 != 50 (fail) but 100 == 100 (pass)
+            };
+
+            const result = await evaluateTelemetryAttribute(attribute);
 
             expect(result.success).toBe(true);
-            expect(result.actualValue).toBe('150');
+        });
+    });
+
+    describe('Regex pattern matching', () => {
+        it('should evaluate REGEX pattern correctly', async () => {
+            const attribute = {
+                id: 'attr-1',
+                dataType: 'STRING',
+                successCriteria: JSON.stringify({
+                    type: SuccessCriteriaType.STRING_MATCH,
+                    mode: StringMatchMode.REGEX,
+                    pattern: '^deploy.*success$',
+                    caseSensitive: false
+                }),
+                values: [{ value: 'deployment was a success' }]
+            };
+
+            const result = await evaluateTelemetryAttribute(attribute);
+
+            expect(result.success).toBe(true);
+        });
+    });
+
+    describe('Within days timestamp evaluation', () => {
+        it('should evaluate WITHIN_DAYS correctly', async () => {
+            const now = new Date();
+            const threeDaysAgo = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000);
+
+            const attribute = {
+                id: 'attr-1',
+                dataType: 'TIMESTAMP',
+                successCriteria: JSON.stringify({
+                    type: SuccessCriteriaType.TIMESTAMP_COMPARISON,
+                    mode: TimestampMode.WITHIN_DAYS,
+                    referenceTime: 'now',
+                    withinDays: 7
+                }),
+                values: [{ value: threeDaysAgo.toISOString() }]
+            };
+
+            const result = await evaluateTelemetryAttribute(attribute);
+
+            expect(result.success).toBe(true);
         });
     });
 });

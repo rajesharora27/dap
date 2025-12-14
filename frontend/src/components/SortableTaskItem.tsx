@@ -48,6 +48,8 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 sx={{
                     cursor: 'pointer',
                     transition: 'all 0.2s ease-in-out',
+                    '& td': { py: 0.75, px: 1.5 }, // Compact padding
+                    bgcolor: task.telemetryAttributes?.length > 0 ? 'rgba(76, 175, 80, 0.02)' : 'inherit',
                     '&:hover': {
                         backgroundColor: 'rgba(25, 118, 210, 0.08)',
                     }
@@ -59,7 +61,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 </TableCell>
 
                 {/* Sequence number - editable */}
-                <TableCell sx={{ whiteSpace: 'nowrap', padding: '8px' }}>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
                     {task.sequenceNumber && (
                         <input
                             key={`seq-${task.id}-${task.sequenceNumber}`}
@@ -184,7 +186,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 </TableCell>
 
                 {/* Weight - editable */}
-                <TableCell sx={{ whiteSpace: 'nowrap', padding: '8px' }}>
+                <TableCell sx={{ whiteSpace: 'nowrap' }}>
                     <input
                         key={`weight-${task.id}-${task.weight}`}
                         type="number"

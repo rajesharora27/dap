@@ -61,6 +61,8 @@ export const DatabaseManagementPanel: React.FC = () => {
     const [success, setSuccess] = useState<string | null>(null);
     const [resetDialogOpen, setResetDialogOpen] = useState(false);
     const [resetConfirm, setResetConfirm] = useState('');
+    const [backupDialogOpen, setBackupDialogOpen] = useState(false);
+    const [customBackupName, setCustomBackupName] = useState('');
     const [tabValue, setTabValue] = useState(0);
     const [schema, setSchema] = useState<string>('');
 
@@ -95,6 +97,36 @@ export const DatabaseManagementPanel: React.FC = () => {
         fetchStatus();
         fetchSchema();
     }, []);
+
+    const handleCreateBackup = async () => {
+        setActionLoading(true);
+        setError(null);
+        setSuccess(null);
+        try {
+            const response = await fetch(`${getDevApiBaseUrl()}/api/dev/database/backup`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ customName: customBackupName })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                setSuccess(result.message || 'Backup created successfully');
+                fetchStatus(); // Refresh list potentially if we showed backups (we don't list them here yet but status has connection info)
+            } else {
+                setError(result.error || result.message || 'Backup failed');
+            }
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setActionLoading(false);
+            setBackupDialogOpen(false);
+            setCustomBackupName('');
+        }
+    };
 
     const handleAction = async (endpoint: string, successMessage: string) => {
         setActionLoading(true);
@@ -217,6 +249,20 @@ export const DatabaseManagementPanel: React.FC = () => {
                                         </Tooltip>
                                     </Grid>
                                     <Grid size={{ xs: 6 }}>
+                                        <Tooltip title="Create a new database backup">
+                                            <Button
+                                                variant="contained"
+                                                color="secondary"
+                                                fullWidth
+                                                startIcon={<DatabaseIcon />}
+                                                onClick={() => setBackupDialogOpen(true)}
+                                                disabled={actionLoading}
+                                            >
+                                                Backup
+                                            </Button>
+                                        </Tooltip>
+                                    </Grid>
+                                    <Grid size={{ xs: 6 }}>
                                         <Tooltip title="Seed database with development data">
                                             <Button
                                                 variant="outlined"
@@ -332,6 +378,36 @@ export const DatabaseManagementPanel: React.FC = () => {
                         disabled={resetConfirm !== 'reset' || actionLoading}
                     >
                         {actionLoading ? 'Resetting...' : 'Confirm Reset'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Create Backup Dialog */}
+            <Dialog open={backupDialogOpen} onClose={() => setBackupDialogOpen(false)}>
+                <DialogTitle>Create Backup</DialogTitle>
+                <DialogContent>
+                    <Typography paragraph>
+                        Create a snapshot of the current database.
+                    </Typography>
+                    <TextField
+                        autoFocus
+                        margin="dense"
+                        label="Custom Name (Optional)"
+                        fullWidth
+                        variant="outlined"
+                        value={customBackupName}
+                        onChange={(e) => setCustomBackupName(e.target.value)}
+                        helperText="Will be appended to the filename (e.g. dap_backup_NAME_timestamp.sql)"
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setBackupDialogOpen(false)}>Cancel</Button>
+                    <Button
+                        onClick={handleCreateBackup}
+                        variant="contained"
+                        disabled={actionLoading}
+                    >
+                        {actionLoading ? 'Creating...' : 'Create Backup'}
                     </Button>
                 </DialogActions>
             </Dialog>

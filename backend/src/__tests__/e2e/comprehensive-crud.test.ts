@@ -10,11 +10,27 @@
  * - Import/Export functionality
  * 
  * Run with: npx ts-node src/__tests__/e2e/comprehensive-crud.test.ts
+ * Or via Jest: npm test comprehensive-crud
  */
 
 import { PrismaClient, LicenseLevel, TelemetryDataType } from '@prisma/client';
 
-const prisma = new PrismaClient();
+// Force a safe, isolated test database for e2e runs
+const DEFAULT_TEST_DB = 'postgresql://postgres:postgres@localhost:5432/dap_test?schema=public';
+const dbUrl = process.env.DATABASE_URL || DEFAULT_TEST_DB;
+
+if (!dbUrl.includes('dap_test')) {
+    throw new Error(
+        `❌ Refusing to run e2e tests on non-test database. DATABASE_URL="${dbUrl}". ` +
+        `Set ALLOW_NON_TEST_DB=true to override (not recommended).`
+    );
+}
+
+const prisma = new PrismaClient({
+    datasources: {
+        db: { url: dbUrl }
+    }
+});
 
 interface TestResult {
     name: string;
@@ -637,7 +653,7 @@ async function testTelemetryEvaluation() {
 // RUN ALL TESTS
 // ============================================================================
 
-async function main() {
+async function runAllTests() {
     console.log('═══════════════════════════════════════════════════════════════');
     console.log('  DAP Comprehensive CRUD Test Suite');
     console.log('═══════════════════════════════════════════════════════════════');
@@ -705,8 +721,22 @@ async function main() {
     console.log(`  Completed: ${new Date().toISOString()}`);
     console.log('═══════════════════════════════════════════════════════════════\n');
 
-    // Exit with appropriate code
-    process.exit(failed > 0 ? 1 : 0);
+    // Throw error if any tests failed (Jest-compatible)
+    if (failed > 0) {
+        throw new Error(`${failed} test(s) failed`);
+    }
 }
 
-main();
+// Jest-compatible test wrapper
+if (typeof test !== 'undefined') {
+    // Running under Jest
+    test('Comprehensive CRUD Tests', runAllTests, 60000); // 60 second timeout
+} else {
+    // Running standalone with ts-node
+    runAllTests().then(() => {
+        process.exit(0);
+    }).catch((error) => {
+        console.error('Fatal error:', error);
+        process.exit(1);
+    });
+}

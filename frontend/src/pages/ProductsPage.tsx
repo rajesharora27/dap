@@ -27,7 +27,7 @@ interface ProductsPageProps {
 export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => {
     // State
     const [selectedProduct, setSelectedProduct] = useState<string | null>(localStorage.getItem('lastSelectedProductId'));
-    const [selectedSubSection, setSelectedSubSection] = useState<'main' | 'tasks'>('main');
+    const [selectedSubSection, setSelectedSubSection] = useState<'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes'>('tasks');
     const importFileRef = useRef<HTMLInputElement>(null);
 
     // Dialog States
@@ -97,8 +97,16 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const handleProductChange = (productId: string) => {
         setSelectedProduct(productId);
         localStorage.setItem('lastSelectedProductId', productId);
-        setSelectedSubSection('main');
+        setSelectedSubSection('tasks');
+        // Force refetch tasks when product changes or tab is selected
+        setTimeout(() => refetchTasks(), 0);
     };
+
+    useEffect(() => {
+        if (selectedSubSection === 'tasks' && selectedProduct) {
+            refetchTasks();
+        }
+    }, [selectedSubSection, selectedProduct, refetchTasks]);
 
     const handleDeleteProduct = async () => {
         if (!selectedProduct) return;
@@ -395,106 +403,138 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     return (
         <Box>
             {/* Product Selection Header */}
-            <Paper sx={{ p: 3, mb: 2 }}>
-                {productsLoading && <LinearProgress />}
-                {productsError && <Typography color="error">{productsError.message}</Typography>}
+            {productsLoading && <LinearProgress sx={{ mb: 2 }} />}
 
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                    <FormControl sx={{ minWidth: 300 }}>
-                        <InputLabel>Select Product</InputLabel>
-                        <Select
-                            value={selectedProduct || ''}
-                            label="Select Product"
-                            onChange={(e) => handleProductChange(e.target.value)}
-                        >
-                            {products.map((p: any) => (
-                                <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-                            ))}
-                            {displayProduct && !products.find((p: any) => p.id === displayProduct.id) && (
-                                <MenuItem key={displayProduct.id} value={displayProduct.id}>{displayProduct.name}</MenuItem>
+            {/* Product Selector and Actions */}
+            {!productsLoading && !productsError && (
+                <Paper sx={{ p: 1.5, mb: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        <FormControl sx={{ flex: '1 1 250px', minWidth: 200 }} size="small">
+                            <InputLabel>Select Product</InputLabel>
+                            <Select
+                                value={selectedProduct || ''}
+                                onChange={(e) => handleProductChange(e.target.value)}
+                                label="Select Product"
+                            >
+                                {[...products].sort((a: any, b: any) => a.name.localeCompare(b.name)).map((product: any) => (
+                                    <MenuItem key={product.id} value={product.id}>
+                                        {product.name}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+                            {selectedProduct && (
+                                <>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<Edit />}
+                                        size="small"
+                                        onClick={() => {
+                                            if (displayProduct) onEditProduct(displayProduct);
+                                        }}
+                                    >
+                                        Edit
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<FileDownload />}
+                                        size="small"
+                                        onClick={handleExport}
+                                    >
+                                        Export
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<FileUpload />}
+                                        size="small"
+                                        onClick={() => importFileRef.current?.click()}
+                                    >
+                                        Import
+                                    </Button>
+                                    <input
+                                        ref={importFileRef}
+                                        type="file"
+                                        accept=".xlsx"
+                                        style={{ display: 'none' }}
+                                        onChange={handleImport}
+                                    />
+                                    <Button
+                                        variant="outlined"
+                                        color="error"
+                                        startIcon={<Delete />}
+                                        size="small"
+                                        onClick={handleDeleteProduct}
+                                    >
+                                        Delete
+                                    </Button>
+                                </>
                             )}
-                        </Select>
-                    </FormControl>
 
-                    {selectedProduct && (
-                        <>
+                            {/* Always visible Add button */}
                             <Button
                                 variant="contained"
-                                startIcon={<Edit />}
-                                onClick={() => {
-                                    if (displayProduct) onEditProduct(displayProduct);
-                                }}
+                                color="success"
+                                startIcon={<Add />}
+                                size="small"
+                                onClick={() => { setEditingProduct(null); setProductDialog(true); }}
                             >
-                                Edit
+                                Add Product
                             </Button>
-                            <Button
-                                variant="outlined"
-                                startIcon={<FileDownload />}
-                                onClick={handleExport}
-                            >
-                                Export
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                startIcon={<FileUpload />}
-                                onClick={() => importFileRef.current?.click()}
-                            >
-                                Import
-                            </Button>
-                            <input
-                                ref={importFileRef}
-                                type="file"
-                                accept=".xlsx"
-                                style={{ display: 'none' }}
-                                onChange={handleImport}
-                            />
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                startIcon={<Delete />}
-                                onClick={handleDeleteProduct}
-                            >
-                                Delete
-                            </Button>
-                        </>
-                    )}
-
-                    {/* Always visible Add button - positioned last */}
-                    <Button
-                        variant="contained"
-                        color="success"
-                        startIcon={<Add />}
-                        onClick={() => { setEditingProduct(null); setProductDialog(true); }}
-                    >
-                        Add Product
-                    </Button>
-                </Box>
-            </Paper>
+                        </Box>
+                    </Box>
+                </Paper>
+            )}
 
             {/* Content Area */}
             {selectedProduct && (
                 <>
-                    <Box sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
-                        <Tabs value={selectedSubSection} onChange={(_, v) => setSelectedSubSection(v)}>
-                            <Tab label="Main" value="main" />
+                    <Box sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Tabs value={selectedSubSection} onChange={(_, v) => setSelectedSubSection(v)} variant="scrollable" scrollButtons="auto">
                             <Tab label="Tasks" value="tasks" />
+                            <Tab label="Outcomes" value="outcomes" />
+                            <Tab label="Releases" value="releases" />
+                            <Tab label="Licenses" value="licenses" />
+                            <Tab label="Custom Attributes" value="customAttributes" />
                         </Tabs>
+                        <Button
+                            variant="contained"
+                            startIcon={<Add />}
+                            size="small"
+                            sx={{ width: 240, flexShrink: 0 }}
+                            onClick={() => {
+                                switch (selectedSubSection) {
+                                    case 'tasks': setEditingTask(null); setTaskDialog(true); break;
+                                    case 'outcomes': setEditingOutcome(null); setOutcomeDialog(true); break;
+                                    case 'releases': setEditingRelease(null); setReleaseDialog(true); break;
+                                    case 'licenses': setEditingLicense(null); setLicenseDialog(true); break;
+                                    case 'customAttributes': setEditingCustomAttr(null); setCustomAttrDialog(true); break;
+                                }
+                            }}
+                        >
+                            {selectedSubSection === 'tasks' ? 'Add Task' :
+                                selectedSubSection === 'outcomes' ? 'Add Outcome' :
+                                    selectedSubSection === 'releases' ? 'Add Release' :
+                                        selectedSubSection === 'licenses' ? 'Add License' :
+                                            selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'}
+                        </Button>
                     </Box>
 
-                    {selectedSubSection === 'main' && (
+                    {selectedSubSection === 'outcomes' && (
                         <Grid container spacing={3}>
-                            {/* Outcomes */}
-                            <Grid size={{ xs: 12, md: 4 }}>
+                            <Grid size={{ xs: 12 }}>
                                 <Paper sx={{ p: 2 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                                        <Typography variant="h6">Outcomes</Typography>
-                                        <Button startIcon={<Add />} size="small" onClick={() => { setEditingOutcome(null); setOutcomeDialog(true); }}>Add</Button>
-                                    </Box>
-                                    <List dense>
+
+                                    <List>
                                         {displayProduct?.outcomes?.map((outcome: any) => (
                                             <Tooltip key={outcome.id} title={outcome.description || ''} placement="top" arrow>
                                                 <ListItem
-                                                    sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                                                    sx={{
+                                                        cursor: 'pointer',
+                                                        '&:hover': { bgcolor: 'action.hover' },
+                                                        borderBottom: '1px solid #eee'
+                                                    }}
                                                     onDoubleClick={() => { setEditingOutcome(outcome); setOutcomeDialog(true); }}
                                                     secondaryAction={
                                                         <Box>
@@ -503,26 +543,38 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         </Box>
                                                     }
                                                 >
-                                                    <ListItemText primary={outcome.name} />
+                                                    <ListItemText
+                                                        primary={outcome.name}
+                                                        secondary={outcome.description}
+                                                    />
                                                 </ListItem>
                                             </Tooltip>
                                         ))}
+                                        {(!displayProduct?.outcomes || displayProduct.outcomes.length === 0) && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                                                No outcomes defined
+                                            </Typography>
+                                        )}
                                     </List>
                                 </Paper>
                             </Grid>
+                        </Grid>
+                    )}
 
-                            {/* Releases */}
-                            <Grid size={{ xs: 12, md: 4 }}>
+                    {selectedSubSection === 'releases' && (
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12 }}>
                                 <Paper sx={{ p: 2 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                                        <Typography variant="h6">Releases</Typography>
-                                        <Button startIcon={<Add />} size="small" onClick={() => { setEditingRelease(null); setReleaseDialog(true); }}>Add</Button>
-                                    </Box>
-                                    <List dense>
+
+                                    <List>
                                         {displayProduct?.releases?.map((release: any) => (
                                             <Tooltip key={release.id} title={release.description || ''} placement="top" arrow>
                                                 <ListItem
-                                                    sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                                                    sx={{
+                                                        cursor: 'pointer',
+                                                        '&:hover': { bgcolor: 'action.hover' },
+                                                        borderBottom: '1px solid #eee'
+                                                    }}
                                                     onDoubleClick={() => { setEditingRelease(release); setReleaseDialog(true); }}
                                                     secondaryAction={
                                                         <Box>
@@ -531,26 +583,38 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         </Box>
                                                     }
                                                 >
-                                                    <ListItemText primary={`${release.name} (v${release.level})`} />
+                                                    <ListItemText
+                                                        primary={`${release.name} (v${release.level})`}
+                                                        secondary={release.description}
+                                                    />
                                                 </ListItem>
                                             </Tooltip>
                                         ))}
+                                        {(!displayProduct?.releases || displayProduct.releases.length === 0) && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                                                No releases defined
+                                            </Typography>
+                                        )}
                                     </List>
                                 </Paper>
                             </Grid>
+                        </Grid>
+                    )}
 
-                            {/* Licenses */}
-                            <Grid size={{ xs: 12, md: 4 }}>
+                    {selectedSubSection === 'licenses' && (
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12 }}>
                                 <Paper sx={{ p: 2 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                                        <Typography variant="h6">Licenses</Typography>
-                                        <Button startIcon={<Add />} size="small" onClick={() => { setEditingLicense(null); setLicenseDialog(true); }}>Add</Button>
-                                    </Box>
-                                    <List dense>
+
+                                    <List>
                                         {displayProduct?.licenses?.map((license: any) => (
                                             <Tooltip key={license.id} title={license.description || ''} placement="top" arrow>
                                                 <ListItem
-                                                    sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
+                                                    sx={{
+                                                        cursor: 'pointer',
+                                                        '&:hover': { bgcolor: 'action.hover' },
+                                                        borderBottom: '1px solid #eee'
+                                                    }}
                                                     onDoubleClick={() => { setEditingLicense(license); setLicenseDialog(true); }}
                                                     secondaryAction={
                                                         <Box>
@@ -559,29 +623,37 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         </Box>
                                                     }
                                                 >
-                                                    <ListItemText primary={`${license.name} (Level ${license.level})`} />
+                                                    <ListItemText
+                                                        primary={`${license.name} (Level ${license.level})`}
+                                                        secondary={license.description}
+                                                    />
                                                 </ListItem>
                                             </Tooltip>
                                         ))}
+                                        {(!displayProduct?.licenses || displayProduct.licenses.length === 0) && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                                                No licenses defined
+                                            </Typography>
+                                        )}
                                     </List>
                                 </Paper>
                             </Grid>
+                        </Grid>
+                    )}
 
-                            {/* Custom Attributes */}
-                            <Grid size={{ xs: 12, md: 4 }}>
+                    {selectedSubSection === 'customAttributes' && (
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12 }}>
                                 <Paper sx={{ p: 2 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                                        <Typography variant="h6">Custom Attributes</Typography>
-                                        <Button startIcon={<Add />} size="small" onClick={() => { setEditingCustomAttr(null); setCustomAttrDialog(true); }}>Add</Button>
-                                    </Box>
+
                                     {displayProduct?.customAttrs && Object.keys(displayProduct.customAttrs).length > 0 ? (
                                         <TableContainer>
-                                            <Table size="small">
+                                            <Table>
                                                 <TableHead>
                                                     <TableRow>
                                                         <TableCell sx={{ fontWeight: 'bold' }}>Attribute</TableCell>
                                                         <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
-                                                        <TableCell width={80}></TableCell>
+                                                        <TableCell width={100} align="right">Actions</TableCell>
                                                     </TableRow>
                                                 </TableHead>
                                                 <TableBody>
@@ -592,12 +664,12 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                             onDoubleClick={() => { setEditingCustomAttr({ key, value }); setCustomAttrDialog(true); }}
                                                         >
                                                             <TableCell>{key}</TableCell>
-                                                            <TableCell sx={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            <TableCell>
                                                                 <Tooltip title={typeof value === 'string' ? value : JSON.stringify(value)} placement="top" arrow>
                                                                     <span>{typeof value === 'string' ? value : JSON.stringify(value)}</span>
                                                                 </Tooltip>
                                                             </TableCell>
-                                                            <TableCell>
+                                                            <TableCell align="right">
                                                                 <IconButton size="small" onClick={() => { setEditingCustomAttr({ key, value }); setCustomAttrDialog(true); }}>
                                                                     <Edit fontSize="small" />
                                                                 </IconButton>
@@ -622,19 +694,16 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                     {selectedSubSection === 'tasks' && (
                         <Box>
                             {/* Tasks View */}
-                            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                                <Button
-                                    variant="contained"
-                                    startIcon={<Add />}
-                                    onClick={() => { setEditingTask(null); setTaskDialog(true); }}
-                                >
-                                    Add Task
-                                </Button>
-                            </Box>
+                            {(tasksLoading || tasksError) && (
+                                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
+                                    {tasksLoading && <CircularProgress size={24} />}
+                                    {tasksError && <Typography color="error" variant="body2">{tasksError.message}</Typography>}
+                                </Box>
+                            )}
 
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                                <TableContainer component={Paper}>
-                                    <Table>
+                                <TableContainer component={Paper} sx={{ maxHeight: '70vh' }}>
+                                    <Table size="small" stickyHeader>
                                         <TableHead>
                                             <TableRow>
                                                 <TableCell width={40}></TableCell>
@@ -646,6 +715,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                 <TableCell width={100}>Actions</TableCell>
                                             </TableRow>
                                         </TableHead>
+
                                         <TableBody>
                                             <SortableContext items={tasks.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
                                                 {tasks.map((task: any) => (
@@ -657,6 +727,13 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         onDoubleClick={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
                                                     />
                                                 ))}
+                                                {tasks.length === 0 && !tasksLoading && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                                                            <Typography color="text.secondary">No tasks found for this product</Typography>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
                                             </SortableContext>
                                         </TableBody>
                                     </Table>
@@ -750,3 +827,4 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         </Box>
     );
 };
+

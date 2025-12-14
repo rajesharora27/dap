@@ -1028,7 +1028,7 @@ export const typeDefs = gql`
     """
     Create a new database backup (snapshot)
     """
-    createBackup: BackupResult!
+    createBackup(customName: String): BackupResult!
 
     """
     Restore database from a backup file

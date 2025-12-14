@@ -50,11 +50,11 @@ extend type Query {
   listBackups: [BackupMetadata!]!
 }
 
-extend type Mutation {
+  extend type Mutation {
   """
   Create a new database backup (snapshot)
   """
-  createBackup: BackupResult!
+  createBackup(customName: String): BackupResult!
 
   """
   Restore database from a backup file
