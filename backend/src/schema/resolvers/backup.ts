@@ -25,10 +25,10 @@ export const BackupMutationResolvers = {
   /**
    * Create a new database backup
    */
-  createBackup: async (_: any, __: any, ctx: any) => {
+  createBackup: async (_: any, { customName }: { customName?: string }, ctx: any) => {
     ensureRole(ctx, 'ADMIN');
 
-    const result = await BackupRestoreService.createBackup();
+    const result = await BackupRestoreService.createBackup(customName);
 
     return result;
   },

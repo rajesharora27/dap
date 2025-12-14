@@ -113,7 +113,24 @@ async function seedUsers() {
 }
 
 async function resetAllUsers() {
-    console.log('⚠️  DELETING ALL USERS...');
+    // SAFETY CHECK: Require explicit confirmation
+    const confirmFlag = process.argv.includes('--confirm');
+    if (!confirmFlag) {
+        console.error('⚠️  WARNING: This command will DELETE ALL USERS!');
+        console.error('');
+        console.error('This will:');
+        console.error('  - Delete ALL user accounts');
+        console.error('  - Delete ALL user roles and permissions');
+        console.error('  - Delete ALL sessions and audit logs');
+        console.error('');
+        console.error('To confirm, run with --confirm flag:');
+        console.error('  ts-node scripts/user-manager.ts reset-all --confirm');
+        console.error('');
+        console.error('For a safer alternative, use reset-admin or reset-user commands.');
+        process.exit(1);
+    }
+
+    console.log('⚠️  DELETING ALL USERS (--confirm flag provided)...');
 
     // Delete all users except potentially special system users if any (none for now)
     // We need to delete dependent records first usually, but cascade might handle it or we deal with conflicts

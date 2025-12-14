@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button,
-    IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow
+    IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, List, ListItem, ListItemText, CircularProgress
 } from '@mui/material';
 import { Edit, Delete, Add } from '@mui/icons-material';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
@@ -17,7 +17,7 @@ import { TaskDialog } from '../components/dialogs/TaskDialog';
 export const SolutionsPage: React.FC = () => {
     // State
     const [selectedSolution, setSelectedSolution] = useState<string | null>(localStorage.getItem('lastSelectedSolutionId'));
-    const [selectedSubSection, setSelectedSubSection] = useState<'main' | 'tasks'>('main');
+    const [selectedSubSection, setSelectedSubSection] = useState<'tasks' | 'products' | 'outcomes' | 'releases' | 'customAttributes'>('tasks');
 
     // Dialog States
     const [solutionDialog, setSolutionDialog] = useState(false);
@@ -34,7 +34,7 @@ export const SolutionsPage: React.FC = () => {
     const { data: productsData } = useQuery(PRODUCTS);
     const allProducts = productsData?.products?.edges?.map((e: any) => e.node) || [];
 
-    const { data: tasksData, loading: tasksLoading, error: tasksError } = useQuery(TASKS_FOR_SOLUTION, {
+    const { data: tasksData, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useQuery(TASKS_FOR_SOLUTION, {
         variables: { solutionId: selectedSolution },
         skip: !selectedSolution
     });
@@ -58,8 +58,16 @@ export const SolutionsPage: React.FC = () => {
     const handleSolutionChange = (solutionId: string) => {
         setSelectedSolution(solutionId);
         localStorage.setItem('lastSelectedSolutionId', solutionId);
-        setSelectedSubSection('main');
+        setSelectedSubSection('tasks');
+        // Force refetch tasks when solution changes or tab is selected
+        setTimeout(() => refetchTasks && refetchTasks(), 0);
     };
+
+    useEffect(() => {
+        if (selectedSubSection === 'tasks' && selectedSolution && refetchTasks) {
+            refetchTasks();
+        }
+    }, [selectedSubSection, selectedSolution, refetchTasks]);
 
     const handleDeleteSolution = async () => {
         if (!selectedSolution) return;
@@ -205,321 +213,264 @@ export const SolutionsPage: React.FC = () => {
     return (
         <Box>
             {/* Solution Selection Header */}
-            <Paper sx={{ p: 3, mb: 2 }}>
-                {solutionsLoading && <LinearProgress />}
-                {solutionsError && <Typography color="error">{solutionsError.message}</Typography>}
+            {solutionsLoading && <LinearProgress sx={{ mb: 2 }} />}
+            {!solutionsLoading && !solutionsError && (
+                <Paper sx={{ p: 1.5, mb: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                        <FormControl sx={{ flex: '1 1 250px', minWidth: 200 }} size="small">
+                            <InputLabel>Select Solution</InputLabel>
+                            <Select
+                                value={selectedSolution || ''}
+                                label="Select Solution"
+                                onChange={(e) => handleSolutionChange(e.target.value)}
+                            >
+                                {solutions.map((s: any) => (
+                                    <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
+                                ))}
+                                {displaySolution && !solutions.find((s: any) => s.id === displaySolution.id) && (
+                                    <MenuItem key={displaySolution.id} value={displaySolution.id}>{displaySolution.name}</MenuItem>
+                                )}
+                            </Select>
+                        </FormControl>
 
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                    <FormControl sx={{ minWidth: 300 }}>
-                        <InputLabel>Select Solution</InputLabel>
-                        <Select
-                            value={selectedSolution || ''}
-                            label="Select Solution"
-                            onChange={(e) => handleSolutionChange(e.target.value)}
-                        >
-                            {solutions.map((s: any) => (
-                                <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
-                            ))}
-                            {displaySolution && !solutions.find((s: any) => s.id === displaySolution.id) && (
-                                <MenuItem key={displaySolution.id} value={displaySolution.id}>{displaySolution.name}</MenuItem>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flex: '1 1 auto', justifyContent: 'flex-end' }}>
+                            {selectedSolution && (
+                                <>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<Edit />}
+                                        size="small"
+                                        onClick={() => {
+                                            setSolutionDialogInitialTab('general');
+                                            setEditingSolution(currentSolution);
+                                            setSolutionDialog(true);
+                                        }}
+                                    >
+                                        Edit
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        color="error"
+                                        startIcon={<Delete />}
+                                        size="small"
+                                        onClick={handleDeleteSolution}
+                                    >
+                                        Delete
+                                    </Button>
+                                </>
                             )}
-                        </Select>
-                    </FormControl>
 
-                    {selectedSolution && (
-                        <>
+                            {/* Always visible Add button */}
                             <Button
                                 variant="contained"
-                                startIcon={<Edit />}
-                                onClick={() => {
-                                    setSolutionDialogInitialTab('general');
-                                    setEditingSolution(currentSolution);
-                                    setSolutionDialog(true);
-                                }}
+                                color="success"
+                                startIcon={<Add />}
+                                size="small"
+                                onClick={() => { setEditingSolution(null); setSolutionDialog(true); }}
                             >
-                                Edit
+                                Add Solution
                             </Button>
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                startIcon={<Delete />}
-                                onClick={handleDeleteSolution}
-                            >
-                                Delete
-                            </Button>
-                        </>
-                    )}
+                        </Box>
+                    </Box>
+                </Paper>
+            )}
 
-                    {/* Always visible Add button - positioned last */}
-                    <Button
-                        variant="contained"
-                        color="success"
-                        startIcon={<Add />}
-                        onClick={() => { setEditingSolution(null); setSolutionDialog(true); }}
-                    >
-                        Add Solution
-                    </Button>
-                </Box>
-            </Paper>
 
             {/* Content Area */}
             {selectedSolution && currentSolution && (
                 <>
-                    <Box sx={{ mb: 3, borderBottom: 1, borderColor: 'divider' }}>
-                        <Tabs value={selectedSubSection} onChange={(_, v) => setSelectedSubSection(v)}>
-                            <Tab label="Main" value="main" />
+                    <Box sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Tabs value={selectedSubSection} onChange={(_, v) => setSelectedSubSection(v)} variant="scrollable" scrollButtons="auto">
                             <Tab label="Tasks" value="tasks" />
+                            <Tab label="Products" value="products" />
+                            <Tab label="Outcomes" value="outcomes" />
+                            <Tab label="Releases" value="releases" />
+                            <Tab label="Custom Attributes" value="customAttributes" />
                         </Tabs>
+                        <Button
+                            variant="contained"
+                            startIcon={selectedSubSection === 'tasks' ? <Add /> : <Edit />}
+                            size="small"
+                            sx={{ width: 240, flexShrink: 0 }}
+                            onClick={() => {
+                                if (selectedSubSection === 'tasks') {
+                                    setEditingTask(null);
+                                    setTaskDialog(true);
+                                } else {
+                                    setEditingSolution(currentSolution);
+                                    setSolutionDialog(true);
+                                    if (selectedSubSection === 'products') setSolutionDialogInitialTab('products');
+                                    else if (selectedSubSection === 'outcomes') setSolutionDialogInitialTab('outcomes');
+                                    else if (selectedSubSection === 'releases') setSolutionDialogInitialTab('releases');
+                                    else if (selectedSubSection === 'customAttributes') setSolutionDialogInitialTab('customAttributes');
+                                }
+                            }}
+                        >
+                            {selectedSubSection === 'tasks' ? 'Add Task' :
+                                selectedSubSection === 'products' ? 'Manage Products' :
+                                    selectedSubSection === 'outcomes' ? 'Manage Outcomes' :
+                                        selectedSubSection === 'releases' ? 'Manage Releases' :
+                                            selectedSubSection === 'customAttributes' ? 'Manage Attributes' : 'Manage'}
+                        </Button>
                     </Box>
 
-                    {selectedSubSection === 'main' && (
-                        <Box>
-                            {/* Name and Description */}
-                            <Paper sx={{ p: 4, backgroundColor: '#f8f9fa', border: '1px solid #e0e0e0', mb: 3 }}>
-                                <Typography
-                                    variant="body1"
-                                    color="text.secondary"
-                                    sx={{
-                                        lineHeight: 1.9,
-                                        fontSize: '1.05rem',
-                                        whiteSpace: 'pre-line'
-                                    }}
-                                >
-                                    {currentSolution.description || 'No description provided'}
-                                </Typography>
-                            </Paper>
+                    {/* Common Description Section - Show above tabs or in each tab? 
+                        User asked to replace Main. Main had description + tiles. 
+                        Maybe put description in each tab or just above? 
+                        The user said "tiles ... as tabs". Description wasn't a tile.
+                        I'll keep description permanent above the tabs or just distinct?
+                        Actually, putting it above the tabs makes most sense for context.
+                        But the user said "tiles ... as tabs next to tasks". Tasks is a tab.
+                        If I put description above tabs, it will be visible for Tasks too.
+                        Currently "Main" has description. "Tasks" does not (it just has Add Task).
+                        So description was part of "Main".
+                        I'll include description in the "Products" tab (first tile tab) or maybe duplicates?
+                        
+                        Actually, "Main" had description AND tiles.
+                        If I remove "Main", where does description go?
+                        If I put it above tabs, it pushes tabs down. "better layout from scrolling perspective".
+                        If tabs are stuck to top, content scrolls.
+                        
+                        I will add the description to the top of the "Products" tab (or whichever is the default/first tile-replacement tab).
+                        Wait, "Tasks" is now a peer.
+                        
+                        Let's put the description in a collapsible or just at the top of the "Products" tab? 
+                        Or maybe just leave it out if it wasn't requested? No, "No change in functionality".
+                        I'll put the description in the "Products" tab for now, as it's the most "General" tab.
+                    */}
 
-                            {/* Tiles Grid */}
-                            <Box
-                                sx={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-                                    gap: 2
-                                }}
-                            >
-                                {/* Products Tile */}
-                                <Paper
-                                    elevation={1}
-                                    onClick={() => {
-                                        setSolutionDialogInitialTab('products');
-                                        setEditingSolution(currentSolution);
-                                        setSolutionDialog(true);
-                                    }}
-                                    sx={{
-                                        p: 3,
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        border: '1px solid #e0e0e0',
-                                        '&:hover': {
-                                            boxShadow: 4,
-                                            borderColor: '#d0d0d0'
-                                        }
-                                    }}
-                                >
-                                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                                        Products ({(currentSolution.products?.edges || []).length})
+                    {selectedSubSection === 'products' && (
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12 }}>
+                                <Paper sx={{ p: 4, mb: 3, backgroundColor: '#f8f9fa', border: '1px solid #e0e0e0' }}>
+                                    <Typography variant="body1" color="text.secondary" sx={{ lineHeight: 1.9, fontSize: '1.05rem', whiteSpace: 'pre-line' }}>
+                                        {currentSolution.description || 'No description provided'}
                                     </Typography>
-                                    {(currentSolution.products?.edges || []).length > 0 ? (
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                            {((currentSolution.products?.edges || []).length <= NAME_DISPLAY_LIMIT ? (currentSolution.products?.edges || []) : (currentSolution.products?.edges || []).slice(0, NAME_DISPLAY_LIMIT)).map((edge: any, idx: number) => (
-                                                <Typography
-                                                    key={edge.node.id}
-                                                    variant="body2"
-                                                    sx={{
-                                                        color: '#424242',
-                                                        whiteSpace: 'nowrap',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis'
-                                                    }}
-                                                >
-                                                    {idx + 1}. {edge.node.name}
-                                                </Typography>
-                                            ))}
-                                            {(currentSolution.products?.edges || []).length > NAME_DISPLAY_LIMIT && (
-                                                <Typography variant="caption" color="text.secondary">
-                                                    +{(currentSolution.products?.edges || []).length - NAME_DISPLAY_LIMIT} more
-                                                </Typography>
-                                            )}
-                                        </Box>
+                                </Paper>
+
+                                <Paper sx={{ p: 2 }}>
+
+                                    <List>
+                                        {(currentSolution.products?.edges || []).map((edge: any, idx: number) => (
+                                            <ListItem key={edge.node.id} sx={{ borderBottom: '1px solid #eee' }}>
+                                                <ListItemText
+                                                    primary={edge.node.name}
+                                                    secondary={edge.node.description}
+                                                />
+                                            </ListItem>
+                                        ))}
+                                        {(currentSolution.products?.edges || []).length === 0 && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                                                No products linked
+                                            </Typography>
+                                        )}
+                                    </List>
+                                </Paper>
+                            </Grid>
+                        </Grid>
+                    )}
+
+                    {selectedSubSection === 'outcomes' && (
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12 }}>
+                                <Paper sx={{ p: 2 }}>
+
+                                    <List>
+                                        {(currentSolution.outcomes || []).map((outcome: any) => (
+                                            <ListItem key={outcome.id} sx={{ borderBottom: '1px solid #eee' }}>
+                                                <ListItemText
+                                                    primary={outcome.name}
+                                                    secondary={outcome.description}
+                                                />
+                                            </ListItem>
+                                        ))}
+                                        {(currentSolution.outcomes || []).length === 0 && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                                                No outcomes defined
+                                            </Typography>
+                                        )}
+                                    </List>
+                                </Paper>
+                            </Grid>
+                        </Grid>
+                    )}
+
+                    {selectedSubSection === 'releases' && (
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12 }}>
+                                <Paper sx={{ p: 2 }}>
+
+                                    <List>
+                                        {(currentSolution.releases || []).map((release: any) => (
+                                            <ListItem key={release.id} sx={{ borderBottom: '1px solid #eee' }}>
+                                                <ListItemText
+                                                    primary={release.name}
+                                                    secondary={release.description}
+                                                />
+                                            </ListItem>
+                                        ))}
+                                        {(currentSolution.releases || []).length === 0 && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                                                No releases defined
+                                            </Typography>
+                                        )}
+                                    </List>
+                                </Paper>
+                            </Grid>
+                        </Grid>
+                    )}
+
+                    {selectedSubSection === 'customAttributes' && (
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12 }}>
+                                <Paper sx={{ p: 2 }}>
+
+                                    {Object.keys(currentSolution.customAttrs || {}).length > 0 ? (
+                                        <TableContainer>
+                                            <Table>
+                                                <TableHead>
+                                                    <TableRow>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>Attribute</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {Object.entries(currentSolution.customAttrs || {}).map(([key, value]: [string, any]) => (
+                                                        <TableRow key={key}>
+                                                            <TableCell>{key}</TableCell>
+                                                            <TableCell>
+                                                                <Tooltip title={typeof value === 'string' ? value : JSON.stringify(value)} placement="top" arrow>
+                                                                    <span>{typeof value === 'string' ? value : JSON.stringify(value)}</span>
+                                                                </Tooltip>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
                                     ) : (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                            No products yet
+                                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
+                                            No custom attributes defined
                                         </Typography>
                                     )}
                                 </Paper>
-
-                                {/* Outcomes Tile */}
-                                <Paper
-                                    elevation={1}
-                                    onClick={() => {
-                                        setSolutionDialogInitialTab('outcomes');
-                                        setEditingSolution(currentSolution);
-                                        setSolutionDialog(true);
-                                    }}
-                                    sx={{
-                                        p: 3,
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        border: '1px solid #e0e0e0',
-                                        '&:hover': {
-                                            boxShadow: 4,
-                                            borderColor: '#d0d0d0'
-                                        }
-                                    }}
-                                >
-                                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                                        Outcomes ({(currentSolution.outcomes || []).length})
-                                    </Typography>
-                                    {(currentSolution.outcomes || []).length > 0 ? (
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                            {((currentSolution.outcomes || []).length <= NAME_DISPLAY_LIMIT ? (currentSolution.outcomes || []) : (currentSolution.outcomes || []).slice(0, NAME_DISPLAY_LIMIT)).map((outcome: any, idx: number) => (
-                                                <Typography
-                                                    key={outcome.id}
-                                                    variant="body2"
-                                                    sx={{
-                                                        color: '#424242',
-                                                        whiteSpace: 'nowrap',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis'
-                                                    }}
-                                                >
-                                                    {idx + 1}. {outcome.name}
-                                                </Typography>
-                                            ))}
-                                            {(currentSolution.outcomes || []).length > NAME_DISPLAY_LIMIT && (
-                                                <Typography variant="caption" color="text.secondary">
-                                                    +{(currentSolution.outcomes || []).length - NAME_DISPLAY_LIMIT} more
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    ) : (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                            No outcomes yet
-                                        </Typography>
-                                    )}
-                                </Paper>
-
-                                {/* Releases Tile */}
-                                <Paper
-                                    elevation={1}
-                                    onClick={() => {
-                                        setSolutionDialogInitialTab('releases');
-                                        setEditingSolution(currentSolution);
-                                        setSolutionDialog(true);
-                                    }}
-                                    sx={{
-                                        p: 3,
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        border: '1px solid #e0e0e0',
-                                        '&:hover': {
-                                            boxShadow: 4,
-                                            borderColor: '#d0d0d0'
-                                        }
-                                    }}
-                                >
-                                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                                        Releases ({(currentSolution.releases || []).length})
-                                    </Typography>
-                                    {(currentSolution.releases || []).length > 0 ? (
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                            {((currentSolution.releases || []).length <= NAME_DISPLAY_LIMIT ? (currentSolution.releases || []) : (currentSolution.releases || []).slice(0, NAME_DISPLAY_LIMIT)).map((release: any, idx: number) => (
-                                                <Typography
-                                                    key={release.id}
-                                                    variant="body2"
-                                                    sx={{
-                                                        color: '#424242',
-                                                        whiteSpace: 'nowrap',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis'
-                                                    }}
-                                                >
-                                                    {idx + 1}. {release.name}
-                                                </Typography>
-                                            ))}
-                                            {(currentSolution.releases || []).length > NAME_DISPLAY_LIMIT && (
-                                                <Typography variant="caption" color="text.secondary">
-                                                    +{(currentSolution.releases || []).length - NAME_DISPLAY_LIMIT} more
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    ) : (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                            No releases yet
-                                        </Typography>
-                                    )}
-                                </Paper>
-
-                                {/* Custom Attributes Tile */}
-                                <Paper
-                                    elevation={1}
-                                    onClick={() => {
-                                        setSolutionDialogInitialTab('customAttributes');
-                                        setEditingSolution(currentSolution);
-                                        setSolutionDialog(true);
-                                    }}
-                                    sx={{
-                                        p: 3,
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        border: '1px solid #e0e0e0',
-                                        '&:hover': {
-                                            boxShadow: 4,
-                                            borderColor: '#d0d0d0'
-                                        }
-                                    }}
-                                >
-                                    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-                                        Custom Attributes ({Object.keys(currentSolution.customAttrs || {}).filter(k => k.toLowerCase() !== 'licenselevel').length})
-                                    </Typography>
-                                    {Object.keys(currentSolution.customAttrs || {}).filter(k => k.toLowerCase() !== 'licenselevel').length > 0 ? (
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                            {Object.entries(currentSolution.customAttrs || {}).filter(([k]) => k.toLowerCase() !== 'licenselevel').slice(0, NAME_DISPLAY_LIMIT).map(([key, value], idx) => (
-                                                <Typography
-                                                    key={key}
-                                                    variant="body2"
-                                                    sx={{
-                                                        color: '#424242',
-                                                        whiteSpace: 'nowrap',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis'
-                                                    }}
-                                                >
-                                                    {idx + 1}. {key}: {String(value)}
-                                                </Typography>
-                                            ))}
-                                            {Object.keys(currentSolution.customAttrs || {}).filter(k => k.toLowerCase() !== 'licenselevel').length > NAME_DISPLAY_LIMIT && (
-                                                <Typography variant="caption" color="text.secondary">
-                                                    +{Object.keys(currentSolution.customAttrs || {}).filter(k => k.toLowerCase() !== 'licenselevel').length - NAME_DISPLAY_LIMIT} more
-                                                </Typography>
-                                            )}
-                                        </Box>
-                                    ) : (
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                            No custom attributes yet
-                                        </Typography>
-                                    )}
-                                </Paper>
-                            </Box>
-                        </Box>
+                            </Grid>
+                        </Grid>
                     )}
 
                     {selectedSubSection === 'tasks' && (
                         <Box>
                             {/* Tasks View */}
-                            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end' }}>
-                                <Button
-                                    variant="contained"
-                                    startIcon={<Add />}
-                                    onClick={() => { setEditingTask(null); setTaskDialog(true); }}
-                                >
-                                    Add Task
-                                </Button>
-                            </Box>
+                            {(tasksLoading || tasksError) && (
+                                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
+                                    {tasksLoading && <CircularProgress size={24} />}
+                                    {tasksError && <Typography color="error" variant="body2">{tasksError.message}</Typography>}
+                                </Box>
+                            )}
 
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                                <TableContainer component={Paper}>
-                                    <Table>
+                                <TableContainer component={Paper} sx={{ maxHeight: '70vh' }}>
+                                    <Table size="small" stickyHeader>
                                         <TableHead>
                                             <TableRow>
                                                 <TableCell width={40}></TableCell>
@@ -542,6 +493,13 @@ export const SolutionsPage: React.FC = () => {
                                                         onDelete={handleDeleteTask}
                                                     />
                                                 ))}
+                                                {tasks.length === 0 && !tasksLoading && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                                                            <Typography color="text.secondary">No tasks found for this solution</Typography>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
                                             </SortableContext>
                                         </TableBody>
                                     </Table>

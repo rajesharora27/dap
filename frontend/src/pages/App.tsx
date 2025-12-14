@@ -100,7 +100,7 @@ import { AuthBar } from '../components/AuthBar';
 import { useAuth } from '../components/AuthContext';
 import { LoginPage } from '../components/LoginPage';
 // Development Tools
-import { EnhancedTestsPanel } from '../components/dev/EnhancedTestsPanel';
+import { TestPanelNew } from '../components/dev/TestPanelNew';
 import { DevelopmentCICDPanel } from '../components/dev/DevelopmentCICDPanel';
 import { DevelopmentDocsPanel } from '../components/dev/DevelopmentDocsPanel';
 import { DatabaseManagementPanel } from '../components/dev/DatabaseManagementPanel';
@@ -993,7 +993,7 @@ export function App() {
   const [profileDialog, setProfileDialog] = useState(false);
   const [openTaskPreview, setOpenTaskPreview] = useState(false);
   const [previewTaskId, setPreviewTaskId] = useState('');
-  
+
   // Preview dialog states for AI Chat navigation
   const [openProductPreview, setOpenProductPreview] = useState(false);
   const [previewProductId, setPreviewProductId] = useState('');
@@ -2576,7 +2576,7 @@ export function App() {
               {/* Development Section (Dev Mode + Admin Only) */}
               {selectedSection === 'development' && isDevelopmentMode && isAdminUser && (
                 <Box sx={{ p: 3 }}>
-                  {selectedDevSubSection === 'tests' && <EnhancedTestsPanel />}
+                  {selectedDevSubSection === 'tests' && <TestPanelNew />}
                   {selectedDevSubSection === 'cicd' && <DevelopmentCICDPanel />}
                   {selectedDevSubSection === 'docs' && <DevelopmentDocsPanel />}
                   {selectedDevSubSection === 'database' && <DatabaseManagementPanel />}
@@ -2802,28 +2802,28 @@ export function App() {
         onClose={() => setOpenTaskPreview(false)}
         taskId={previewTaskId}
       />
-      
+
       {/* Product Preview Dialog */}
       <ProductPreviewDialog
         open={openProductPreview}
         onClose={() => setOpenProductPreview(false)}
         productId={previewProductId}
       />
-      
+
       {/* Solution Preview Dialog */}
       <SolutionPreviewDialog
         open={openSolutionPreview}
         onClose={() => setOpenSolutionPreview(false)}
         solutionId={previewSolutionId}
       />
-      
+
       {/* Customer Preview Dialog */}
       <CustomerPreviewDialog
         open={openCustomerPreview}
         onClose={() => setOpenCustomerPreview(false)}
         customerId={previewCustomerId}
       />
-      
+
       {/* Adoption Plan Preview Dialog */}
       <AdoptionPlanDialog
         open={openAdoptionPlanPreview}

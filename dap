@@ -639,6 +639,12 @@ start_all() {
     log_info "Database: PostgreSQL running in container"
     log_info "Backend API: http://localhost:$BACKEND_PORT/graphql"
     log_info "Frontend App: http://localhost:$FRONTEND_PORT"
+    
+    # Ensure admin user exists and credentials are correct
+    if [ -x "$PROJECT_DIR/scripts/ensure-admin-user.sh" ]; then
+        echo ""
+        "$PROJECT_DIR/scripts/ensure-admin-user.sh"
+    fi
 }
 
 # Restart devtools only
@@ -708,88 +714,161 @@ check_frontend_running() {
     lsof -ti:$FRONTEND_PORT >/dev/null 2>&1
 }
 
-# Run comprehensive user test
+# Run comprehensive E2E test (same as GUI)
 run_comprehensive_test() {
-    log_header "COMPREHENSIVE USER TEST"
-    
-    # Check if comprehensive test script exists
-    if [ ! -f "$PROJECT_DIR/comprehensive-user-test.js" ]; then
-        log_error "Comprehensive test script not found at $PROJECT_DIR/comprehensive-user-test.js"
-        echo ""
-        log_info "Please ensure the comprehensive-user-test.js file exists in the project directory."
-        return 1
-    fi
-    
-    # Check if Node.js is available
-    if ! command -v node >/dev/null 2>&1; then
-        log_error "Node.js is not installed or not in PATH. Please install Node.js to run the comprehensive test."
-        return 1
-    fi
-    
-    # Check if the application is running
-    log_info "Checking application status..."
-    if ! check_backend_running && ! check_frontend_running; then
-        log_warning "Application is not running. Starting it now..."
-        if ! start_all; then
-            log_error "Failed to start application. Cannot run comprehensive test."
-            return 1
-        fi
-        echo ""
-        log_info "Waiting for services to be fully ready..."
-        sleep 5
-    fi
-    
-    # Verify backend is responding
-    log_info "Verifying backend API is responding..."
-    local max_attempts=10
-    local attempt=1
-    while [ $attempt -le $max_attempts ]; do
-        if curl -s "http://localhost:$BACKEND_PORT/graphql" -H "Content-Type: application/json" -d '{"query":"query{__typename}"}' >/dev/null 2>&1; then
-            log_success "Backend API is responding"
-            break
-        fi
-        
-        if [ $attempt -eq $max_attempts ]; then
-            log_error "Backend API is not responding after $max_attempts attempts"
-            return 1
-        fi
-        
-        echo -n "."
-        sleep 2
-        ((attempt++))
-    done
+    log_header "COMPREHENSIVE E2E TEST (Shadow Database)"
     
     echo ""
-    log_info "Running comprehensive end-user test..."
-    log_info "This will test complete functionality: Frontend → Backend → Database"
+    echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${CYAN}🧪 DAP Comprehensive E2E Test - Shadow Database Mode${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    log_info "📁 Working Directory: $BACKEND_DIR"
+    log_info "🗃️  Database: dap_test (shadow copy - dev data protected!)"
+    log_info "🔧 NODE_ENV: test"
+    log_info "🔍 Test: comprehensive-crud (38 tests)"
     echo ""
     
-    # Change to project directory and run the test
-    cd "$PROJECT_DIR"
+    # Ensure test database exists
+    log_info "⏳ Ensuring test database exists..."
+    if ! docker exec $DB_CONTAINER psql -U postgres -c '\l' 2>/dev/null | grep -q 'dap_test'; then
+        log_info "📝 Creating test database..."
+        docker exec $DB_CONTAINER psql -U postgres -c "CREATE DATABASE dap_test;" 2>/dev/null || true
+    fi
+    log_success "✅ Test database ready"
     
-    # Run the comprehensive test and capture its exit code
-    if node comprehensive-user-test.js; then
+    echo ""
+    log_info "💻 Command (identical to GUI):"
+    echo "   cd $BACKEND_DIR && DATABASE_URL=postgres://postgres:postgres@localhost:5432/dap_test npm test -- --runInBand --passWithNoTests --testPathPattern=\"comprehensive-crud\""
+    echo ""
+    echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
+    echo ""
+    
+    # Run E2E test with shadow database
+    cd "$BACKEND_DIR"
+    
+    export DATABASE_URL="postgres://postgres:postgres@localhost:5432/dap_test?schema=public"
+    export NODE_ENV="test"
+    export CI="true"
+    
+    if npm test -- --runInBand --passWithNoTests --testPathPattern="comprehensive-crud"; then
         echo ""
-        log_success "🎉 COMPREHENSIVE TEST PASSED! 🎉"
-        log_info "All application functionality is working correctly"
-        log_info "✅ Product creation and editing with mandatory attributes"
-        log_info "✅ Task management with all attributes (howToDoc, howToVideo)"
-        log_info "✅ Database persistence and relationship integrity"
-        log_info "✅ Complete end-user workflow validation"
+        echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
+        log_success "🎉 COMPREHENSIVE E2E TEST PASSED!"
+        echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
         echo ""
-        log_info "The application is ready for production use!"
+        log_info "All 38 tests passed:"
+        log_info "✅ Product CRUD (create, read, update, delete, outcomes, releases, licenses)"
+        log_info "✅ Task CRUD (create, read, update, delete, telemetry, reorder)"
+        log_info "✅ Solution CRUD (create, read, update, add/remove products)"
+        log_info "✅ Customer CRUD (create, read, update, delete)"
+        log_info "✅ Adoption Plans (assign products, create/update/delete plans)"
+        log_info "✅ Import/Export (full data export, custom attributes)"
+        log_info "✅ Telemetry Evaluation (success criteria, multiple data types)"
+        echo ""
         return 0
     else
         echo ""
-        log_error "❌ COMPREHENSIVE TEST FAILED!"
-        log_warning "Some functionality may not be working correctly"
-        log_info "Check the test output above for specific errors"
-        log_info "Fix any issues and run './dap test' again"
+        echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
+        log_error "❌ COMPREHENSIVE E2E TEST FAILED!"
+        echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
         echo ""
-        log_info "For help debugging, check:"
-        log_info "• Backend logs: Check terminal where backend is running"
-        log_info "• Frontend logs: Check browser console at http://localhost:$FRONTEND_PORT"
-        log_info "• Database: Ensure PostgreSQL container is running"
+        log_warning "Check the test output above for specific failures"
+        log_info "Fix any issues and run './dap test' again"
+        return 1
+    fi
+}
+
+# Run unit/integration tests on shadow database (dap_test)
+run_unit_tests() {
+    log_header "UNIT & INTEGRATION TESTS (Shadow Database)"
+    
+    echo ""
+    echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${CYAN}🧪 DAP Test Runner - Shadow Database Mode${NC}"
+    echo -e "${CYAN}═══════════════════════════════════════════════════════════════${NC}"
+    echo ""
+    log_info "📁 Working Directory: $BACKEND_DIR"
+    log_info "🗃️  Database: dap_test (shadow copy - dev data protected!)"
+    log_info "🔧 NODE_ENV: test"
+    echo ""
+    
+    # Parse optional arguments
+    local pattern=""
+    local coverage=false
+    
+    while [ "$#" -gt 0 ]; do
+        case "$1" in
+            --pattern=*)
+                pattern="${1#*=}"
+                log_info "🔍 Test Pattern: $pattern"
+                ;;
+            --coverage)
+                coverage=true
+                log_info "📊 Coverage: enabled"
+                ;;
+            *)
+                pattern="$1"
+                log_info "🔍 Test Pattern: $pattern"
+                ;;
+        esac
+        shift
+    done
+    
+    echo ""
+    
+    # Ensure test database exists
+    log_info "⏳ Ensuring test database exists..."
+    if ! docker exec $DB_CONTAINER psql -U postgres -c '\l' 2>/dev/null | grep -q 'dap_test'; then
+        log_info "📝 Creating test database..."
+        docker exec $DB_CONTAINER psql -U postgres -c "CREATE DATABASE dap_test;" 2>/dev/null || true
+    fi
+    log_success "✅ Test database ready"
+    
+    # Build the command
+    local test_cmd="npm test -- --runInBand --passWithNoTests"
+    
+    if [ "$coverage" = true ]; then
+        test_cmd="npm test -- --coverage --runInBand --passWithNoTests"
+    fi
+    
+    if [ -n "$pattern" ]; then
+        test_cmd="$test_cmd --testPathPattern=\"$pattern\""
+    fi
+    
+    echo ""
+    log_info "💻 Command (can run from CLI):"
+    echo "   cd $BACKEND_DIR && DATABASE_URL=postgres://postgres:postgres@localhost:5432/dap_test $test_cmd"
+    echo ""
+    echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
+    echo ""
+    
+    # Run tests with shadow database
+    cd "$BACKEND_DIR"
+    
+    export DATABASE_URL="postgres://postgres:postgres@localhost:5432/dap_test?schema=public"
+    export NODE_ENV="test"
+    export CI="true"
+    
+    if eval "$test_cmd"; then
+        echo ""
+        echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
+        log_success "✅ Tests PASSED!"
+        echo -e "${GREEN}═══════════════════════════════════════════════════════════════${NC}"
+        
+        # Show coverage summary if enabled
+        if [ "$coverage" = true ] && [ -f "coverage/coverage-summary.json" ]; then
+            echo ""
+            log_info "📊 Coverage Summary:"
+            cat coverage/coverage-summary.json | jq -r '.total | "   Lines: \(.lines.pct)% | Statements: \(.statements.pct)% | Functions: \(.functions.pct)% | Branches: \(.branches.pct)%"' 2>/dev/null || true
+        fi
+        
+        return 0
+    else
+        echo ""
+        echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
+        log_error "❌ Tests FAILED!"
+        echo -e "${RED}═══════════════════════════════════════════════════════════════${NC}"
         return 1
     fi
 }
@@ -1305,6 +1384,7 @@ show_help() {
     echo -e "  ${BLUE}add-sample${NC}     - ✅ Add sample data (preserves existing user data)"
     echo -e "  ${PURPLE}reset-sample${NC}   - ✅ Remove sample data only (preserves user data)"
     echo -e "  ${PURPLE}test${NC}           - Run comprehensive end-user test suite"
+    echo -e "  ${CYAN}unit-test${NC}      - Run Jest unit/integration tests on shadow database"
     echo -e "  ${YELLOW}restart-db${NC}     - Restart database container (clears ALL connections)"
     echo -e "  ${BLUE}status${NC}         - Show status of all services and data"
     echo -e "  ${PURPLE}help${NC}           - Show this help message"
@@ -1319,6 +1399,8 @@ show_help() {
     echo "  $0 full-rebuild    # ⚠️  Rebuild everything + fresh database"
     echo "  $0 clean-restart   # ⚠️  DANGER: Wipes everything, fresh start"
     echo "  $0 test            # Validate all functionality with comprehensive test"
+    echo "  $0 unit-test       # Run Jest tests on shadow database (dev data safe!)"
+    echo "  $0 unit-test auth  # Run only auth tests"
     echo "  $0 status          # Check what's running"
     echo "  $0 stop            # End development session"
     echo ""
@@ -1479,6 +1561,10 @@ main() {
             ;;
         test)
             run_comprehensive_test
+            ;;
+        unit-test)
+            shift
+            run_unit_tests "$@"
             ;;
         restart-db)
             log_header "RESTARTING DATABASE"

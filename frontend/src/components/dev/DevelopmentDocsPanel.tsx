@@ -50,113 +50,51 @@ export const DevelopmentDocsPanel: React.FC = () => {
     const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
     const [docContent, setDocContent] = useState<string>('');
 
-    const documents: Document[] = [
-        {
-            name: 'README',
-            path: '/README.md',
-            category: 'Overview',
-            description: 'Main project documentation and quickstart guide',
-            icon: <DocIcon />
-        },
-        {
-            name: 'Context',
-            path: '/CONTEXT.md',
-            category: 'Overview',
-            description: 'Application architecture and domain model',
-            icon: <ArticleIcon />
-        },
-        {
-            name: 'Contributing',
-            path: '/CONTRIBUTING.md',
-            category: 'Development',
-            description: 'Contribution guidelines and workflow',
-            icon: <GitHubIcon />
-        },
-        {
-            name: 'Comprehensive Analysis',
-            path: '/COMPREHENSIVE_ANALYSIS.md',
-            category: 'Analysis',
-            description: 'Complete codebase analysis with recommendations',
-            icon: <CodeIcon />
-        },
-        {
-            name: 'Executive Summary',
-            path: '/EXECUTIVE_SUMMARY.md',
-            category: 'Analysis',
-            description: 'High-level improvements overview',
-            icon: <DocIcon />
-        },
-        {
-            name: 'Quick Reference',
-            path: '/QUICK_REFERENCE.md',
-            category: 'Reference',
-            description: 'Quick reference for critical improvements',
-            icon: <CodeIcon />
-        },
-        {
-            name: 'Phase 2: Error Tracking',
-            path: '/PHASE2_SUMMARY.md',
-            category: 'Implementation',
-            description: 'Sentry error tracking implementation',
-            icon: <SecurityIcon />
-        },
-        {
-            name: 'Phase 4: Performance',
-            path: '/PHASE4_SUMMARY.md',
-            category: 'Implementation',
-            description: 'Performance optimization with DataLoader',
-            icon: <PerformanceIcon />
-        },
-        {
-            name: 'Phase 5: CI/CD',
-            path: '/PHASE5_SUMMARY.md',
-            category: 'Implementation',
-            description: 'GitHub Actions CI/CD pipeline',
-            icon: <GitHubIcon />
-        },
-        {
-            name: 'Test Coverage',
-            path: '/FINAL_TEST_COVERAGE.md',
-            category: 'Testing',
-            description: '70% test coverage achievement',
-            icon: <TestIcon />
-        },
-        {
-            name: 'Test Coverage Plan',
-            path: '/TEST_COVERAGE_PLAN.md',
-            category: 'Testing',
-            description: 'Test coverage implementation plan',
-            icon: <TestIcon />
-        },
-        {
-            name: 'Comprehensive Test Summary',
-            path: '/COMPREHENSIVE_TEST_SUMMARY.md',
-            category: 'Testing',
-            description: 'Complete test suite documentation',
-            icon: <TestIcon />
-        },
-        {
-            name: 'Final Summary',
-            path: '/FINAL_SUMMARY.md',
-            category: 'Summary',
-            description: 'Overall project improvements summary',
-            icon: <DocIcon />
-        },
-        {
-            name: 'Deployment README',
-            path: '/deploy/README.md',
-            category: 'Deployment',
-            description: 'Production deployment guide',
-            icon: <BuildIcon />
-        },
-        {
-            name: 'GitHub Workflows',
-            path: '/.github/workflows/README.md',
-            category: 'CI/CD',
-            description: 'GitHub Actions workflows documentation',
-            icon: <GitHubIcon />
-        }
-    ];
+    const [documents, setDocuments] = useState<Document[]>([]);
+    const [loadingDocs, setLoadingDocs] = useState(false);
+
+    // Helper to get icon based on category/name
+    const getIconForDoc = (doc: any) => {
+        const name = doc.name.toLowerCase();
+        const cat = doc.category.toLowerCase();
+
+        if (name.includes('readme')) return <InfoIcon />;
+        if (cat === 'testing') return <TestIcon />;
+        if (cat === 'deployment') return <BuildIcon />;
+        if (cat === 'security') return <SecurityIcon />;
+        if (cat === 'github' || cat === 'ci/cd') return <GitHubIcon />;
+        if (cat === 'analysis') return <PerformanceIcon />;
+        return <ArticleIcon />;
+    };
+
+    useEffect(() => {
+        const fetchDocs = async () => {
+            setLoadingDocs(true);
+            try {
+                const response = await fetch(`${getDevApiBaseUrl()}/api/dev/docs`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                const data = await response.json();
+                if (data.docs) {
+                    const mappedDocs = data.docs.map((d: any) => ({
+                        name: d.name,
+                        path: d.path,
+                        category: d.category,
+                        description: d.description || d.name,
+                        size: d.size,
+                        icon: getIconForDoc(d)
+                    }));
+                    setDocuments(mappedDocs);
+                }
+            } catch (error) {
+                console.error('Failed to fetch docs:', error);
+            } finally {
+                setLoadingDocs(false);
+            }
+        };
+
+        fetchDocs();
+    }, []);
 
     const filteredDocs = documents.filter(doc =>
         doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

@@ -313,6 +313,54 @@ const UPDATE_CUSTOMER_PRODUCT = gql`
       adoptionPlan {
         id
         needsSync
+        licenseLevel
+        selectedOutcomes {
+          id
+          name
+        }
+        selectedReleases {
+          id
+          name
+          level
+        }
+        tasks {
+          id
+          name
+          description
+          notes
+          status
+          weight
+          sequenceNumber
+          statusUpdatedAt
+          statusUpdatedBy
+          statusUpdateSource
+          statusNotes
+          licenseLevel
+          howToDoc
+          howToVideo
+          telemetryAttributes {
+            id
+            name
+            description
+            dataType
+            successCriteria
+            isMet
+            values {
+              id
+              value
+              criteriaMet
+            }
+          }
+          outcomes {
+            id
+            name
+          }
+          releases {
+            id
+            name
+            level
+          }
+        }
       }
     }
   }
@@ -1267,7 +1315,14 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
             {!hideTabs && (
               <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
                 <Box sx={{ mb: 2 }}>
-                  <Typography variant="h5">{selectedCustomer.name}</Typography>
+                  <Typography variant="h5">
+                    {selectedCustomer.name}
+                    {selectedCustomer.description && (
+                      <Typography component="span" variant="body1" color="text.secondary" sx={{ ml: 2, fontWeight: 400 }}>
+                        {selectedCustomer.description}
+                      </Typography>
+                    )}
+                  </Typography>
                 </Box>
 
                 {/* Tabs for Main, Products and Solutions */}
@@ -1291,8 +1346,8 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                         fontWeight: 700,
                         fontSize: '1rem',
                         textTransform: 'none',
-                        minWidth: 140,
-                        py: 2,
+                        minWidth: 100,
+                        py: 1.5,
                         px: 3,
                         color: '#64748b',
                         borderRadius: '12px 12px 0 0',
@@ -1331,7 +1386,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                     <Paper
                       elevation={0}
                       sx={{
-                        p: 2.5,
+                        p: 1.5,
                         borderRadius: 2,
                         background: 'linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%)',
                         border: '1px solid #80cbc4',
@@ -1353,7 +1408,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                     <Paper
                       elevation={0}
                       sx={{
-                        p: 2.5,
+                        p: 1.5,
                         borderRadius: 2,
                         background: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)',
                         border: '1px solid #ce93d8',
@@ -1375,7 +1430,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                     <Paper
                       elevation={0}
                       sx={{
-                        p: 2.5,
+                        p: 1.5,
                         borderRadius: 2,
                         background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
                         border: '1px solid #90caf9',
@@ -1390,35 +1445,8 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                     </Paper>
                   </Box>
 
-                  {/* Customer Details - compact version */}
-                  {!hideTabs && selectedCustomer.description && (
-                    <Paper
-                      elevation={0}
-                      sx={{
-                        p: 2,
-                        mb: 3,
-                        borderRadius: 2,
-                        bgcolor: '#fafafa',
-                        border: '1px solid #e0e0e0'
-                      }}
-                    >
-                      <Typography variant="body2" color="text.secondary">
-                        {selectedCustomer.description}
-                      </Typography>
-                    </Paper>
-                  )}
-
-                  {/* Product Adoption Plans Section */}
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 2.5,
-                      mb: 2,
-                      borderRadius: 2,
-                      border: '1px solid #e0e0e0',
-                      bgcolor: 'background.paper'
-                    }}
-                  >
+                  {/* Products Assignment List - Compact */}
+                  <Box sx={{ mb: 3 }}>
                     <Box
                       sx={{
                         display: 'flex',
@@ -1460,7 +1488,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                     </Box>
                     <Collapse in={productAssignmentsExpanded}>
                       {sortedProducts && sortedProducts.length > 0 ? (
-                        <Box sx={{ display: 'grid', gap: 2 }}>
+                        <Box sx={{ display: 'grid', gap: 1 }}>
                           {sortedProducts.map((cp: any) => {
                             const isFromSolution = !!cp.customerSolutionId;
                             return (
@@ -1480,7 +1508,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                     flexDirection: { xs: 'column', sm: 'row' },
                                     justifyContent: 'space-between',
                                     alignItems: { xs: 'stretch', sm: 'center' },
-                                    p: { xs: 1.5, sm: 2, md: 2.5 },
+                                    p: 1.5,
                                     border: '1.5px solid',
                                     borderColor: '#E0E0E0',
                                     borderLeft: '4px solid',
@@ -1488,7 +1516,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                     backgroundColor: isFromSolution ? '#F3E5F5' : '#E0F2F1',
                                     borderRadius: 2,
                                     transition: 'all 0.2s ease',
-                                    gap: { xs: 2, sm: 1 },
+                                    gap: 1,
                                     cursor: 'pointer',
                                     '&:hover': {
                                       boxShadow: 2,
@@ -1595,13 +1623,13 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                         </Box>
                       )}
                     </Collapse>
-                  </Paper>
+                  </Box>
 
                   {/* Solution Adoption Plans Section */}
                   <Paper
                     elevation={0}
                     sx={{
-                      p: 2.5,
+                      p: 1.5,
                       borderRadius: 2,
                       border: '1px solid #e0e0e0',
                       bgcolor: 'background.paper'
@@ -1648,7 +1676,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                     </Box>
                     <Collapse in={solutionAssignmentsExpanded}>
                       {selectedCustomer.solutions && selectedCustomer.solutions.length > 0 ? (
-                        <Box sx={{ display: 'grid', gap: 2 }}>
+                        <Box sx={{ display: 'grid', gap: 1 }}>
                           {selectedCustomer.solutions.map((cs: any) => (
                             <Tooltip
                               key={cs.id}
@@ -1666,7 +1694,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                   flexDirection: { xs: 'column', sm: 'row' },
                                   justifyContent: 'space-between',
                                   alignItems: { xs: 'stretch', sm: 'center' },
-                                  p: { xs: 1.5, sm: 2, md: 2.5 },
+                                  p: 1.5,
                                   border: '1.5px solid',
                                   borderColor: '#E0E0E0',
                                   borderLeft: '4px solid',
@@ -1674,7 +1702,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                   backgroundColor: '#F3E5F5',
                                   borderRadius: 2,
                                   transition: 'all 0.2s ease',
-                                  gap: { xs: 2, sm: 1 },
+                                  gap: 1,
                                   cursor: 'pointer',
                                   '&:hover': {
                                     boxShadow: 2,
@@ -2544,109 +2572,117 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
       />
 
       {/* Assign Product Dialog */}
-      {selectedCustomerId && (
-        <AssignProductDialog
-          open={assignProductDialogOpen}
-          onClose={() => setAssignProductDialogOpen(false)}
-          customerId={selectedCustomerId}
-          onAssigned={async () => {
-            setAssignProductDialogOpen(false);
-            await refetch();
-            // Refetch plan data if a product is already selected
-            if (adoptionPlanId) {
-              await refetchPlan();
-            }
-            setSuccess('Product assigned successfully');
-          }}
-        />
-      )}
+      {
+        selectedCustomerId && (
+          <AssignProductDialog
+            open={assignProductDialogOpen}
+            onClose={() => setAssignProductDialogOpen(false)}
+            customerId={selectedCustomerId}
+            onAssigned={async () => {
+              setAssignProductDialogOpen(false);
+              await refetch();
+              // Refetch plan data if a product is already selected
+              if (adoptionPlanId) {
+                await refetchPlan();
+              }
+              setSuccess('Product assigned successfully');
+            }}
+          />
+        )
+      }
 
       {/* Edit Entitlements Dialog */}
-      {selectedCustomerProduct && (
-        <EditEntitlementsDialog
-          open={editEntitlementsDialogOpen}
-          onClose={() => setEditEntitlementsDialogOpen(false)}
-          customerProductId={selectedCustomerProduct.id}
-          productId={selectedCustomerProduct.product.id}
-          currentLicenseLevel={selectedCustomerProduct.licenseLevel}
-          currentSelectedOutcomes={selectedCustomerProduct.selectedOutcomes || []}
-          currentSelectedReleases={selectedCustomerProduct.selectedReleases || []}
-          onSave={(licenseLevel, selectedOutcomeIds, selectedReleaseIds) => {
-            updateCustomerProduct({
-              variables: {
-                id: selectedCustomerProduct.id,
-                input: {
-                  licenseLevel,
-                  selectedOutcomeIds,
-                  selectedReleaseIds,
+      {
+        selectedCustomerProduct && (
+          <EditEntitlementsDialog
+            open={editEntitlementsDialogOpen}
+            onClose={() => setEditEntitlementsDialogOpen(false)}
+            customerProductId={selectedCustomerProduct.id}
+            productId={selectedCustomerProduct.product.id}
+            currentLicenseLevel={selectedCustomerProduct.licenseLevel}
+            currentSelectedOutcomes={selectedCustomerProduct.selectedOutcomes || []}
+            currentSelectedReleases={selectedCustomerProduct.selectedReleases || []}
+            onSave={(licenseLevel, selectedOutcomeIds, selectedReleaseIds) => {
+              updateCustomerProduct({
+                variables: {
+                  id: selectedCustomerProduct.id,
+                  input: {
+                    licenseLevel,
+                    selectedOutcomeIds,
+                    selectedReleaseIds,
+                  },
                 },
-              },
-            });
-          }}
-        />
-      )}
+              });
+            }}
+          />
+        )
+      }
 
       {/* Cannot Edit Product Directly - Warning Dialog */}
-      {selectedCustomerProduct && (
-        <Dialog
-          open={cannotEditProductDialogOpen}
-          onClose={() => setCannotEditProductDialogOpen(false)}
-        >
-          <DialogTitle>Cannot Edit Product Directly</DialogTitle>
-          <DialogContent>
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              <strong>{selectedCustomerProduct.product.name}</strong> was assigned as part of a solution and can only be edited through the solution adoption plan.
-            </Alert>
-            <Typography>
-              This product's entitlements (license level, outcomes, releases) are managed at the solution level.
-              Any changes must be made through the <strong>Solutions</strong> tab by editing the solution assignment.
-            </Typography>
-            <Typography sx={{ mt: 2 }}>
-              To make changes:
-            </Typography>
-            <ol>
-              <li>Navigate to the <strong>Solutions</strong> tab</li>
-              <li>Find the solution that includes this product</li>
-              <li>Click <strong>Edit Solution Assignment</strong></li>
-            </ol>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setCannotEditProductDialogOpen(false)} variant="contained">
-              Got It
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+      {
+        selectedCustomerProduct && (
+          <Dialog
+            open={cannotEditProductDialogOpen}
+            onClose={() => setCannotEditProductDialogOpen(false)}
+          >
+            <DialogTitle>Cannot Edit Product Directly</DialogTitle>
+            <DialogContent>
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                <strong>{selectedCustomerProduct.product.name}</strong> was assigned as part of a solution and can only be edited through the solution adoption plan.
+              </Alert>
+              <Typography>
+                This product's entitlements (license level, outcomes, releases) are managed at the solution level.
+                Any changes must be made through the <strong>Solutions</strong> tab by editing the solution assignment.
+              </Typography>
+              <Typography sx={{ mt: 2 }}>
+                To make changes:
+              </Typography>
+              <ol>
+                <li>Navigate to the <strong>Solutions</strong> tab</li>
+                <li>Find the solution that includes this product</li>
+                <li>Click <strong>Edit Solution Assignment</strong></li>
+              </ol>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setCannotEditProductDialogOpen(false)} variant="contained">
+                Got It
+              </Button>
+            </DialogActions>
+          </Dialog>
+        )
+      }
 
       {/* Delete Product Confirmation Dialog */}
-      {selectedCustomerProduct && (
-        <Dialog
-          open={deleteProductDialogOpen}
-          onClose={() => setDeleteProductDialogOpen(false)}
-        >
-          <DialogTitle>Remove Product from Customer?</DialogTitle>
-          <DialogContent>
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              This will permanently remove <strong>{selectedCustomerProduct.product.name}</strong> from this customer,
-              including the adoption plan and all task progress.
-            </Alert>
-            <Typography>
-              Are you sure you want to continue? This action cannot be undone.
-            </Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDeleteProductDialogOpen(false)}>Cancel</Button>
-            <Button
-              onClick={handleRemoveProduct}
-              color="error"
-              variant="contained"
-              disabled={removeLoading}
-            >
-              {removeLoading ? 'Removing...' : 'Remove Product'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-      )}
+      {
+        selectedCustomerProduct && (
+          <Dialog
+            open={deleteProductDialogOpen}
+            onClose={() => setDeleteProductDialogOpen(false)}
+          >
+            <DialogTitle>Remove Product from Customer?</DialogTitle>
+            <DialogContent>
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                This will permanently remove <strong>{selectedCustomerProduct.product.name}</strong> from this customer,
+                including the adoption plan and all task progress.
+              </Alert>
+              <Typography>
+                Are you sure you want to continue? This action cannot be undone.
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDeleteProductDialogOpen(false)}>Cancel</Button>
+              <Button
+                onClick={handleRemoveProduct}
+                color="error"
+                variant="contained"
+                disabled={removeLoading}
+              >
+                {removeLoading ? 'Removing...' : 'Remove Product'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+        )
+      }
 
       {/* Task Details Dialog - Uses shared component */}
       <TaskDetailsDialog
@@ -2862,29 +2898,31 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
 
       {/* Dialogs - Removed duplicate AssignProductDialog (was rendered twice, causing overlay issues) */}
 
-      {selectedCustomerProduct && (
-        <EditEntitlementsDialog
-          open={editEntitlementsDialogOpen}
-          onClose={() => setEditEntitlementsDialogOpen(false)}
-          customerProductId={selectedCustomerProduct.id}
-          productId={selectedCustomerProduct.product.id}
-          currentLicenseLevel={selectedCustomerProduct.licenseLevel}
-          currentSelectedOutcomes={selectedCustomerProduct.selectedOutcomes || []}
-          currentSelectedReleases={selectedCustomerProduct.selectedReleases || []}
-          onSave={(licenseLevel, selectedOutcomeIds, selectedReleaseIds) => {
-            updateCustomerProduct({
-              variables: {
-                id: selectedCustomerProduct.id,
-                input: {
-                  licenseLevel,
-                  selectedOutcomeIds,
-                  selectedReleaseIds,
+      {
+        selectedCustomerProduct && (
+          <EditEntitlementsDialog
+            open={editEntitlementsDialogOpen}
+            onClose={() => setEditEntitlementsDialogOpen(false)}
+            customerProductId={selectedCustomerProduct.id}
+            productId={selectedCustomerProduct.product.id}
+            currentLicenseLevel={selectedCustomerProduct.licenseLevel}
+            currentSelectedOutcomes={selectedCustomerProduct.selectedOutcomes || []}
+            currentSelectedReleases={selectedCustomerProduct.selectedReleases || []}
+            onSave={(licenseLevel, selectedOutcomeIds, selectedReleaseIds) => {
+              updateCustomerProduct({
+                variables: {
+                  id: selectedCustomerProduct.id,
+                  input: {
+                    licenseLevel,
+                    selectedOutcomeIds,
+                    selectedReleaseIds,
+                  },
                 },
-              },
-            });
-          }}
-        />
-      )}
+              });
+            }}
+          />
+        )
+      }
 
       <AssignSolutionDialog
         open={assignSolutionDialogOpen}
@@ -2893,14 +2931,16 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
         onSuccess={() => refetch()}
       />
 
-      {selectedCustomerSolutionId && (
-        <EditSolutionEntitlementsDialog
-          open={editSolutionEntitlementsDialogOpen}
-          onClose={() => setEditSolutionEntitlementsDialogOpen(false)}
-          customerSolutionId={selectedCustomerSolutionId}
-          onSuccess={() => refetch()}
-        />
-      )}
+      {
+        selectedCustomerSolutionId && (
+          <EditSolutionEntitlementsDialog
+            open={editSolutionEntitlementsDialogOpen}
+            onClose={() => setEditSolutionEntitlementsDialogOpen(false)}
+            customerSolutionId={selectedCustomerSolutionId}
+            onSuccess={() => refetch()}
+          />
+        )
+      }
 
       {/* Delete Product Confirmation Dialog */}
       <Dialog
@@ -2939,6 +2979,6 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Box >
   );
 }

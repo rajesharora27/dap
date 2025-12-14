@@ -144,10 +144,14 @@ function shouldIncludeTask(
   if (selectedOutcomeIds && selectedOutcomeIds.length > 0) {
     // Get task outcomes
     const taskOutcomeIds = task.outcomes?.map((o: any) => o.outcomeId) || [];
-    // Task must have at least one matching outcome
-    const hasMatchingOutcome = taskOutcomeIds.some((oid: string) => selectedOutcomeIds.includes(oid));
-    if (!hasMatchingOutcome) {
-      return false;
+
+    // If task has specific outcomes, it must match one of the selected outcomes
+    // If task has NO outcomes (generic task), it is applicable to all outcomes
+    if (taskOutcomeIds.length > 0) {
+      const hasMatchingOutcome = taskOutcomeIds.some((oid: string) => selectedOutcomeIds.includes(oid));
+      if (!hasMatchingOutcome) {
+        return false;
+      }
     }
   }
 
@@ -155,10 +159,14 @@ function shouldIncludeTask(
   if (selectedReleaseIds && selectedReleaseIds.length > 0) {
     // Get task releases
     const taskReleaseIds = task.releases?.map((r: any) => r.releaseId) || [];
-    // Task must have at least one matching release
-    const hasMatchingRelease = taskReleaseIds.some((rid: string) => selectedReleaseIds.includes(rid));
-    if (!hasMatchingRelease) {
-      return false;
+
+    // If task has specific releases, it must match one of the selected releases
+    // If task has NO releases (generic task), it is applicable to all releases
+    if (taskReleaseIds.length > 0) {
+      const hasMatchingRelease = taskReleaseIds.some((rid: string) => selectedReleaseIds.includes(rid));
+      if (!hasMatchingRelease) {
+        return false;
+      }
     }
   }
 
@@ -1945,7 +1953,13 @@ export const CustomerProductWithPlanResolvers = {
   },
   selectedOutcomes: async (parent: any) => {
     const outcomeIds = parent.selectedOutcomes as string[] || [];
-    if (outcomeIds.length === 0) return [];
+    if (outcomeIds.length === 0) {
+      // If none selected (meaning ALL), fetch all for the product
+      return await prisma.outcome.findMany({
+        where: { productId: parent.productId },
+        orderBy: { name: 'asc' },
+      });
+    }
 
     return await prisma.outcome.findMany({
       where: { id: { in: outcomeIds } },
@@ -1953,7 +1967,13 @@ export const CustomerProductWithPlanResolvers = {
   },
   selectedReleases: async (parent: any) => {
     const releaseIds = parent.selectedReleases as string[] || [];
-    if (releaseIds.length === 0) return [];
+    if (releaseIds.length === 0) {
+      // If none selected (meaning ALL), fetch all for the product
+      return await prisma.release.findMany({
+        where: { productId: parent.productId },
+        orderBy: { name: 'asc' },
+      });
+    }
 
     return await prisma.release.findMany({
       where: { id: { in: releaseIds } },
@@ -1976,7 +1996,13 @@ export const AdoptionPlanResolvers = {
   },
   selectedOutcomes: async (parent: any) => {
     const outcomeIds = parent.selectedOutcomes as string[] || [];
-    if (outcomeIds.length === 0) return [];
+    if (outcomeIds.length === 0) {
+      // If none selected (meaning ALL), fetch all for the product
+      return await prisma.outcome.findMany({
+        where: { productId: parent.productId },
+        orderBy: { name: 'asc' },
+      });
+    }
 
     return await prisma.outcome.findMany({
       where: { id: { in: outcomeIds } },
@@ -1984,7 +2010,13 @@ export const AdoptionPlanResolvers = {
   },
   selectedReleases: async (parent: any) => {
     const releaseIds = parent.selectedReleases as string[] || [];
-    if (releaseIds.length === 0) return [];
+    if (releaseIds.length === 0) {
+      // If none selected (meaning ALL), fetch all for the product
+      return await prisma.release.findMany({
+        where: { productId: parent.productId },
+        orderBy: { name: 'asc' },
+      });
+    }
 
     return await prisma.release.findMany({
       where: { id: { in: releaseIds } },

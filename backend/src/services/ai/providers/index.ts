@@ -338,7 +338,7 @@ export function getDefaultProvider(): ILLMProvider {
     }
 
     // Mock provider doesn't need an API key
-    if (providerType === 'mock') {
+    if (providerType === 'mock' || process.env.NODE_ENV === 'test') {
       console.log('[LLM] Using mock provider (for development/testing)');
       return createLLMProvider({ type: 'mock' });
     }

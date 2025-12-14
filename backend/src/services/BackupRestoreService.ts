@@ -165,13 +165,23 @@ export class BackupRestoreService {
    * Create a database backup
    * Note: Passwords are excluded from backup for security
    */
-  static async createBackup(): Promise<BackupResult> {
+  static async createBackup(customName?: string): Promise<BackupResult> {
     try {
       this.ensureDirectories();
 
       const dbConfig = this.parseDatabaseUrl();
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `dap_backup_${timestamp}.sql`;
+
+      let filenamePart = '';
+      if (customName) {
+        // Sanitize name: remove non-alphanumeric chars (keep - and _)
+        const safeName = customName.replace(/[^a-zA-Z0-9-_]/g, '');
+        if (safeName) {
+          filenamePart = `_${safeName}`;
+        }
+      }
+
+      const filename = `dap_backup${filenamePart}_${timestamp}.sql`;
       const filePath = path.join(this.BACKUP_DIR, filename);
 
       // Get record counts before backup

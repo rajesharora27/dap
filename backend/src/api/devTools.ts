@@ -95,11 +95,20 @@ router.post('/run-test', async (req: Request, res: Response) => {
 
         const startTime = Date.now();
 
-        // Execute command in backend directory
+        // Execute command in backend root (not src/) and force test-safe env
+        const backendRoot = path.join(__dirname, '../..');
+        const testDatabaseUrl = 'postgres://postgres:postgres@localhost:5432/dap_test?schema=public';
+
         const { stdout, stderr } = await execAsync(allowedCommands[command], {
-            cwd: path.join(__dirname, '..'),
+            cwd: backendRoot,
             timeout: 120000, // 2 minute timeout
-            maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+            maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+            env: {
+                ...process.env,
+                NODE_ENV: 'test',    // ensure test-mode behaviors
+                CI: 'true',
+                DATABASE_URL: process.env.DATABASE_URL || testDatabaseUrl // default to isolated test DB
+            }
         });
 
         const duration = Date.now() - startTime;
@@ -134,6 +143,7 @@ router.get('/tests/suites', async (req: Request, res: Response) => {
         const findTestFiles = (dir: string, basePath: string = '') => {
             try {
                 const items = require('fs').readdirSync(dir, { withFileTypes: true });
+                console.log(`[DevTools] Scanning directory: ${dir}, basePath: ${basePath}`);
 
                 for (const item of items) {
                     const fullPath = path.join(dir, item.name);
@@ -145,6 +155,8 @@ router.get('/tests/suites', async (req: Request, res: Response) => {
                         const type = relativePath.includes('services') ? 'unit' :
                             relativePath.includes('integration') ? 'integration' : 'e2e';
 
+                        console.log(`[DevTools] Found test: ${item.name}, relativePath: ${relativePath}, type: ${type}`);
+
                         suites.push({
                             id: relativePath.replace(/\\/g, '/'),
                             name: item.name.replace('.test.ts', '').replace('.test.tsx', ''),
@@ -155,7 +167,7 @@ router.get('/tests/suites', async (req: Request, res: Response) => {
                     }
                 }
             } catch (err) {
-                // Directory doesn't exist or isn't accessible
+                console.error(`[DevTools] Error scanning ${dir}:`, err);
             }
         };
 
@@ -194,18 +206,42 @@ setInterval(() => {
 /**
  * Start test execution in background
  * POST /api/dev/tests/run-stream
+ * 
+ * Request body:
+ * - pattern: (optional) Test pattern to filter tests (e.g., "auth|customer")
+ * - coverage: (optional) Boolean to enable coverage reporting
+ * - tests: (optional) Array of test file paths to run
+ * 
  * Returns job ID immediately, poll /api/dev/tests/status/:id for results
  */
 router.post('/tests/run-stream', async (req: Request, res: Response) => {
     const { spawn } = require('child_process');
+    const projectRoot = path.join(__dirname, '../../..');
     const workingDir = path.join(__dirname, '../..');
     const jobId = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Parse request options
+    const { pattern, coverage } = req.body || {};
+
+    // CRITICAL: Use isolated test database
+    const testDatabaseUrl = 'postgres://postgres:postgres@localhost:5432/dap_test?schema=public';
+
+    // Build command - use shell command execution like CLI does
+    let shellCmd = `cd ${workingDir} && DATABASE_URL="${testDatabaseUrl}" NODE_ENV=test CI=true npm test -- --runInBand --passWithNoTests`;
+
+    if (coverage) {
+        shellCmd += ' --coverage';
+    }
+
+    if (pattern && pattern.trim()) {
+        shellCmd += ` --testPathPattern="${pattern.trim()}"`;
+    }
 
     // Create job entry
     const job: TestJob = {
         id: jobId,
         status: 'running',
-        output: '🚀 Starting tests...\n\n',
+        output: '',
         exitCode: null,
         startTime: new Date(),
         passed: 0,
@@ -217,18 +253,34 @@ router.post('/tests/run-stream', async (req: Request, res: Response) => {
     // Return job ID immediately
     res.json({ jobId, status: 'started', message: 'Tests started in background' });
 
-    // Run tests in background
-    const testProcess = spawn('npm', ['test', '--', '--runInBand', '--passWithNoTests', '--no-cache'], {
-        cwd: workingDir,
-        shell: '/bin/bash',
+    // Log startup information
+    job.output += '═'.repeat(60) + '\n';
+    job.output += '🧪 DAP Test Runner - Shadow Database Mode\n';
+    job.output += '═'.repeat(60) + '\n\n';
+    job.output += '📁 Working Directory: ' + workingDir + '\n';
+    job.output += '🗃️  Database: dap_test (shadow copy - dev data safe!)\n';
+    job.output += '🔧 NODE_ENV: test\n';
+    if (pattern) {
+        job.output += '🔍 Test Pattern: ' + pattern + '\n';
+    }
+    if (coverage) {
+        job.output += '📊 Coverage: enabled\n';
+    }
+    job.output += '\n';
+    job.output += '💻 Command (identical to CLI):\n';
+    job.output += `   ${shellCmd}\n`;
+    job.output += '\n' + '─'.repeat(60) + '\n\n';
+
+    console.log('[DevTools Tests] Starting test execution via shell');
+    console.log('[DevTools Tests] Command:', shellCmd);
+
+    // Run tests via shell command (identical to CLI execution)
+    const testProcess = spawn('bash', ['-c', shellCmd], {
+        cwd: projectRoot,
         stdio: ['ignore', 'pipe', 'pipe'],
         env: {
             ...process.env,
-            CI: 'true',
-            NODE_ENV: 'test',
-            FORCE_COLOR: '0',
-            // Use isolated test database to prevent wiping dev data
-            DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/dap_test?schema=public'
+            FORCE_COLOR: '0'
         }
     });
 
@@ -257,18 +309,37 @@ router.post('/tests/run-stream', async (req: Request, res: Response) => {
         job.exitCode = code;
         job.endTime = new Date();
 
-        // Parse results
+        // Parse results from Jest output
         const passMatch = job.output.match(/(\d+) passed/);
         const failMatch = job.output.match(/(\d+) failed/);
         const totalMatch = job.output.match(/(\d+) total/);
+        const skippedMatch = job.output.match(/(\d+) skipped/);
 
         job.passed = passMatch ? parseInt(passMatch[1]) : 0;
         job.failed = failMatch ? parseInt(failMatch[1]) : 0;
-        job.total = totalMatch ? parseInt(totalMatch[1]) : 0;
+        job.total = totalMatch ? parseInt(totalMatch[1]) : (job.passed + job.failed);
 
-        job.output += `\n${'='.repeat(50)}\n`;
-        job.output += `✅ Tests completed with exit code ${code}\n`;
-        job.output += `📊 Passed: ${job.passed}, Failed: ${job.failed}, Total: ${job.total}\n`;
+        const duration = ((job.endTime.getTime() - job.startTime.getTime()) / 1000).toFixed(1);
+        const statusIcon = code === 0 ? '✅' : '❌';
+        const statusText = code === 0 ? 'PASSED' : 'FAILED';
+
+        job.output += '\n' + '═'.repeat(60) + '\n';
+        job.output += `${statusIcon} Test Run ${statusText}\n`;
+        job.output += '─'.repeat(60) + '\n';
+        job.output += `📊 Results:\n`;
+        job.output += `   ✅ Passed:  ${job.passed}\n`;
+        if (job.failed > 0) {
+            job.output += `   ❌ Failed:  ${job.failed}\n`;
+        }
+        if (skippedMatch) {
+            job.output += `   ⏭️  Skipped: ${skippedMatch[1]}\n`;
+        }
+        job.output += `   📋 Total:   ${job.total}\n`;
+        job.output += `   ⏱️  Duration: ${duration}s\n`;
+        job.output += `   📤 Exit Code: ${code}\n`;
+        job.output += '═'.repeat(60) + '\n';
+
+        console.log(`[DevTools Tests] Test run completed: ${statusText} (${job.passed} passed, ${job.failed} failed)`);
     });
 });
 
@@ -555,6 +626,19 @@ router.post('/database/generate', async (req: Request, res: Response) => {
         res.json({ success: true, output: stdout + stderr });
     } catch (error: any) {
         res.json({ success: false, output: error.stdout + error.stderr || error.message });
+    }
+});
+
+// Create backup
+router.post('/database/backup', async (req: Request, res: Response) => {
+    try {
+        const { customName } = req.body;
+        // Import dynamically to avoid circular dependencies or initialization issues
+        const { BackupRestoreService } = await import('../services/BackupRestoreService');
+        const result = await BackupRestoreService.createBackup(customName);
+        res.json(result);
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message, message: error.message });
     }
 });
 

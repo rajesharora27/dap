@@ -2,7 +2,14 @@ import { faker } from '@faker-js/faker';
 import { PrismaClient, SystemRole, LicenseLevel } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+// IMPORTANT: Explicitly configure to use test database to prevent wiping development data
+const prisma = new PrismaClient({
+    datasources: {
+        db: {
+            url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/dap_test?schema=public'
+        }
+    }
+});
 
 export class TestFactory {
     /**
@@ -122,8 +129,26 @@ export class TestFactory {
 
     /**
      * Clean up all test data
+     * 
+     * SAFETY: Only runs in test database to prevent wiping development data
      */
     static async cleanup() {
+        // CRITICAL SAFETY CHECK: Prevent wiping development database
+        const dbUrl = process.env.DATABASE_URL || '';
+        const isDapTest = dbUrl.includes('dap_test');
+        const isTest = process.env.NODE_ENV === 'test' || process.env.CI === 'true';
+
+        if (!isDapTest && !isTest) {
+            console.error('❌ SAFETY CHECK FAILED: cleanup() can only run in test database!');
+            console.error(`   Current DATABASE_URL: ${dbUrl}`);
+            console.error(`   NODE_ENV: ${process.env.NODE_ENV}`);
+            console.error(`   CI: ${process.env.CI}`);
+            throw new Error('Refusing to run cleanup() outside of test environment');
+        }
+
+        // IMPORTANT: Do NOT include User, Session, UserRole, Permission tables
+        // User credentials and auth data must be preserved even in tests
+        // Tests should create their own test users and not affect existing users
         const tablenames = [
             'CustomerTask',
             'AdoptionPlan',
@@ -134,12 +159,11 @@ export class TestFactory {
             'Task',
             'License',
             'Product',
-            'Solution',
-            'Session',
-            'UserRole',
-            'Permission',
-            'User'
+            'Solution'
+            // REMOVED: 'Session', 'UserRole', 'Permission', 'User' - DO NOT DELETE USER DATA
         ];
+
+        console.log('⚠️  TestFactory.cleanup(): Cleaning business data only (Users preserved)');
 
         for (const tablename of tablenames) {
             try {
