@@ -132,11 +132,12 @@ fi
 # Install dependencies (production only)
 echo "📦 Installing backend dependencies..."
 cd backend
-npm install --legacy-peer-deps --omit=dev
+# Use ci to respect lockfile versions exactly
+npm ci --legacy-peer-deps --omit=dev
 
 echo "📦 Installing frontend dependencies..."
 cd ../frontend
-npm install --legacy-peer-deps
+npm ci --legacy-peer-deps
 
 # Setup database
 echo "🗄️  Setting up database..."
