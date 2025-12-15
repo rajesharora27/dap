@@ -42,14 +42,17 @@ PACKAGE_FILE="/tmp/dap-mac-package.tar.gz"
 rm -rf "$PACKAGE_DIR" "$PACKAGE_FILE"
 mkdir -p "$PACKAGE_DIR"
 
-# Copy backend (excluding node_modules, dist)
+# Copy backend (excluding node_modules, dist, and dev-only files)
 echo "  Copying backend..."
 rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '*.log' \
+    --exclude 'src/__tests__' --exclude 'src/devtools-service.ts' \
+    --exclude 'src/api/devTools.ts' \
     "${SOURCE_DIR}/backend/" "$PACKAGE_DIR/backend/"
 
-# Copy frontend (excluding node_modules, dist)
+# Copy frontend (excluding node_modules, dist, and dev-only files)
 echo "  Copying frontend..."
 rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '*.log' \
+    --exclude 'src/components/dev' \
     "${SOURCE_DIR}/frontend/" "$PACKAGE_DIR/frontend/"
 
 # Copy scripts
@@ -57,10 +60,10 @@ echo "  Copying scripts..."
 mkdir -p "$PACKAGE_DIR/scripts"
 cp "${SCRIPT_DIR}/deploy-to-mac.sh" "$PACKAGE_DIR/scripts/"
 
-# Create Mac-specific .env
+# Create Mac-specific .env (PRODUCTION LIKE)
 cat > "$PACKAGE_DIR/.env" << 'ENVFILE'
-# DAP Mac Local Environment
-NODE_ENV=development
+# DAP Mac Local Environment (Production Mode)
+NODE_ENV=production
 
 # Database - Local PostgreSQL
 DATABASE_URL="postgresql://localhost:5432/dap_mac?schema=public"
@@ -72,9 +75,10 @@ API_HOST=0.0.0.0
 # Frontend
 FRONTEND_PORT=5173
 FRONTEND_HOST=0.0.0.0
-VITE_GRAPHQL_URL=http://localhost:4000/graphql
-VITE_API_URL=http://localhost:4000
-VITE_BASE_PATH=/
+# In prod mode, these are baked into the build, but good to have for ref
+VITE_GRAPHQL_URL=http://localhost:4000/dap/graphql
+VITE_API_URL=http://localhost:4000/dap/api
+VITE_BASE_PATH=/dap/
 
 # JWT Auth
 JWT_SECRET=mac-demo-jwt-secret-change-in-production
@@ -93,6 +97,9 @@ BACKUP_DIR=./backups
 
 # Logging
 LOG_LEVEL=info
+
+# Disable DevTools
+ENABLE_DEV_TOOLS=false
 ENVFILE
 
 cp "$PACKAGE_DIR/.env" "$PACKAGE_DIR/backend/.env"
@@ -104,7 +111,7 @@ cat > "$PACKAGE_DIR/setup-mac.sh" << 'SETUPSCRIPT'
 # DAP Mac Setup Script - Run this after extracting the package
 set -e
 
-echo "🍎 Setting up DAP on Mac..."
+echo "🍎 Setting up DAP on Mac (Production Mode)..."
 
 # Check prerequisites
 if ! command -v node &> /dev/null; then
@@ -122,10 +129,10 @@ if [ "$NODE_VERSION" -lt 22 ]; then
     echo "⚠️  Node.js version is $NODE_VERSION. Version 22+ recommended."
 fi
 
-# Install dependencies
+# Install dependencies (production only)
 echo "📦 Installing backend dependencies..."
 cd backend
-npm install --legacy-peer-deps
+npm install --legacy-peer-deps --omit=dev
 
 echo "📦 Installing frontend dependencies..."
 cd ../frontend
@@ -152,136 +159,91 @@ npm run seed 2>/dev/null || echo "  Seed data already exists"
 echo "🔨 Building backend..."
 npm run build
 
+# Build frontend
+echo "🔨 Building frontend..."
+cd ../frontend
+npm run build
+
 echo ""
 echo "✅ Setup complete!"
 echo ""
 echo "To start: ./dap start"
-echo "Access:   http://localhost:5173"
+echo "Access:   http://localhost:4000/dap/"
 SETUPSCRIPT
 chmod +x "$PACKAGE_DIR/setup-mac.sh"
 
-# Create management script
+# Create management script (PRODUCTION MODE)
 cat > "$PACKAGE_DIR/dap" << 'DAPSCRIPT'
 #!/bin/bash
-# DAP Mac Management Script
+# DAP Mac Management Script (Production Mode)
 DAP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DAP_DIR"
 
 BACKEND_PID_FILE="$DAP_DIR/.backend.pid"
-FRONTEND_PID_FILE="$DAP_DIR/.frontend.pid"
 
-start_backend() {
+start() {
     if [ -f "$BACKEND_PID_FILE" ] && kill -0 $(cat "$BACKEND_PID_FILE") 2>/dev/null; then
-        echo "Backend already running (PID: $(cat $BACKEND_PID_FILE))"
+        echo "DAP Service already running (PID: $(cat $BACKEND_PID_FILE))"
         return
     fi
-    echo "Starting backend..."
+    echo "Starting DAP Service (Backend + Frontend)..."
     cd "$DAP_DIR/backend"
-    nohup node dist/server.js > "$DAP_DIR/backend.log" 2>&1 &
+    # Ensure frontend build exists in backend/public/dist or similar if needed
+    # (Assuming backend is configured to serve frontend in prod)
+    
+    nohup node dist/server.js > "$DAP_DIR/dap.log" 2>&1 &
     echo $! > "$BACKEND_PID_FILE"
     sleep 2
     if kill -0 $(cat "$BACKEND_PID_FILE") 2>/dev/null; then
-        echo "✓ Backend started (PID: $(cat $BACKEND_PID_FILE))"
+        echo "✓ DAP Service started (PID: $(cat $BACKEND_PID_FILE))"
+        echo "🌐 Access at: http://localhost:4000/dap/"
     else
-        echo "✗ Backend failed to start"
+        echo "✗ DAP Service failed to start"
         rm -f "$BACKEND_PID_FILE"
     fi
 }
 
-start_frontend() {
-    if [ -f "$FRONTEND_PID_FILE" ] && kill -0 $(cat "$FRONTEND_PID_FILE") 2>/dev/null; then
-        echo "Frontend already running (PID: $(cat $FRONTEND_PID_FILE))"
-        return
-    fi
-    echo "Starting frontend..."
-    cd "$DAP_DIR/frontend"
-    nohup npm run dev > "$DAP_DIR/frontend.log" 2>&1 &
-    echo $! > "$FRONTEND_PID_FILE"
-    sleep 3
-    if kill -0 $(cat "$FRONTEND_PID_FILE") 2>/dev/null; then
-        echo "✓ Frontend started (PID: $(cat $FRONTEND_PID_FILE))"
-    else
-        echo "✗ Frontend failed to start"
-        rm -f "$FRONTEND_PID_FILE"
-    fi
-}
-
-stop_backend() {
+stop() {
     if [ -f "$BACKEND_PID_FILE" ]; then
         PID=$(cat "$BACKEND_PID_FILE")
         if kill -0 $PID 2>/dev/null; then
-            echo "Stopping backend (PID: $PID)..."
+            echo "Stopping DAP Service (PID: $PID)..."
             kill $PID 2>/dev/null
             sleep 2
         fi
         rm -f "$BACKEND_PID_FILE"
     fi
     pkill -f "node dist/server.js" 2>/dev/null || true
-    echo "✓ Backend stopped"
-}
-
-stop_frontend() {
-    if [ -f "$FRONTEND_PID_FILE" ]; then
-        PID=$(cat "$FRONTEND_PID_FILE")
-        if kill -0 $PID 2>/dev/null; then
-            echo "Stopping frontend (PID: $PID)..."
-            kill $PID 2>/dev/null
-            sleep 2
-        fi
-        rm -f "$FRONTEND_PID_FILE"
-    fi
-    pkill -f "vite" 2>/dev/null || true
-    echo "✓ Frontend stopped"
+    echo "✓ DAP Service stopped"
 }
 
 status() {
     echo "=== DAP Mac Status ==="
     if [ -f "$BACKEND_PID_FILE" ] && kill -0 $(cat "$BACKEND_PID_FILE") 2>/dev/null; then
-        echo "Backend:  ✓ Running (PID: $(cat $BACKEND_PID_FILE)) - http://localhost:4000/graphql"
+        echo "Status:  ✓ Running (PID: $(cat $BACKEND_PID_FILE))"
+        echo "URL:     http://localhost:4000/dap/"
     else
-        echo "Backend:  ✗ Stopped"
-    fi
-    if [ -f "$FRONTEND_PID_FILE" ] && kill -0 $(cat "$FRONTEND_PID_FILE") 2>/dev/null; then
-        echo "Frontend: ✓ Running (PID: $(cat $FRONTEND_PID_FILE)) - http://localhost:5173"
-    else
-        echo "Frontend: ✗ Stopped"
+        echo "Status:  ✗ Stopped"
     fi
 }
 
 case "$1" in
     start)
-        start_backend
-        start_frontend
-        echo ""
-        echo "🍎 DAP is running! Open: http://localhost:5173"
-        echo "   Credentials: admin/admin123, smeuser/sme123, cssuser/css123"
+        start
         ;;
     stop)
-        stop_frontend
-        stop_backend
+        stop
         ;;
     restart)
-        stop_frontend
-        stop_backend
+        stop
         sleep 2
-        start_backend
-        start_frontend
+        start
         ;;
     status)
         status
         ;;
     logs)
-        if [ "$2" = "backend" ]; then
-            tail -f "$DAP_DIR/backend.log"
-        elif [ "$2" = "frontend" ]; then
-            tail -f "$DAP_DIR/frontend.log"
-        else
-            echo "=== Backend (last 20 lines) ==="
-            tail -20 "$DAP_DIR/backend.log" 2>/dev/null || echo "(no logs)"
-            echo ""
-            echo "=== Frontend (last 20 lines) ==="
-            tail -20 "$DAP_DIR/frontend.log" 2>/dev/null || echo "(no logs)"
-        fi
+        tail -f "$DAP_DIR/dap.log"
         ;;
     *)
         echo "Usage: ./dap [start|stop|restart|status|logs]"
@@ -296,7 +258,7 @@ cd /tmp
 tar -czf dap-mac-package.tar.gz -C "$PACKAGE_DIR" .
 
 echo ""
-echo -e "${GREEN}✅ Package created: /tmp/dap-mac-package.tar.gz${NC}"
+echo -e "${GREEN}✅ Production-like Package created: /tmp/dap-mac-package.tar.gz${NC}"
 echo ""
 echo -e "${BLUE}To deploy to your Mac:${NC}"
 echo "1. Copy the package to your Mac:"
