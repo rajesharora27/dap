@@ -153,11 +153,11 @@ fi
 # Install dependencies
 echo "📦 Installing backend dependencies..."
 cd backend
-npm install
+npm install --legacy-peer-deps
 
 echo "📦 Installing frontend dependencies..."
 cd ../frontend
-npm install
+npm install --legacy-peer-deps
 
 # Setup database
 echo "🗄️  Setting up database..."
@@ -393,8 +393,8 @@ scp "${SCRIPT_DIR}/../dap-prod" "${MAC_USER}@${MAC_HOST}:~/dap/dap" 2>/dev/null 
     ssh "${MAC_USER}@${MAC_HOST}" 'chmod +x ~/dap/dap' 2>/dev/null || true
 
 echo -e "\n${YELLOW}📦 Installing dependencies on Mac...${NC}"
-ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/backend && npm install && npx prisma generate'
-ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/frontend && npm install'
+ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/backend && npm install --legacy-peer-deps && npx prisma generate'
+ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/frontend && npm install --legacy-peer-deps'
 
 echo -e "\n${YELLOW}🗄️  Setting up database...${NC}"
 ssh "${MAC_USER}@${MAC_HOST}" 'createdb dap_mac 2>/dev/null || echo "Database exists"'
