@@ -146,8 +146,8 @@ echo "📦 Installing backend dependencies..."
 cd backend
 # Clean slate to avoid ENOTEMPTY errors
 rm -rf node_modules
-# Use ci to respect lockfile versions exactly
-npm ci --legacy-peer-deps --omit=dev
+# Install full deps (dev deps needed for TypeScript build)
+npm ci --legacy-peer-deps
 
 # Force install specific Prisma version to avoid v7 breaking changes
 npm install prisma@6.14.0 --save-dev --legacy-peer-deps
@@ -205,26 +205,41 @@ DAP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DAP_DIR"
 
 BACKEND_PID_FILE="$DAP_DIR/.backend.pid"
+FRONTEND_PID_FILE="$DAP_DIR/.frontend.pid"
 
 start() {
     if [ -f "$BACKEND_PID_FILE" ] && kill -0 $(cat "$BACKEND_PID_FILE") 2>/dev/null; then
         echo "DAP Service already running (PID: $(cat $BACKEND_PID_FILE))"
-        return
-    fi
-    echo "Starting DAP Service (Backend + Frontend)..."
-    cd "$DAP_DIR/backend"
-    # Ensure frontend build exists in backend/public/dist or similar if needed
-    # (Assuming backend is configured to serve frontend in prod)
-    
-    nohup node dist/server.js > "$DAP_DIR/dap.log" 2>&1 &
-    echo $! > "$BACKEND_PID_FILE"
-    sleep 2
-    if kill -0 $(cat "$BACKEND_PID_FILE") 2>/dev/null; then
-        echo "✓ DAP Service started (PID: $(cat $BACKEND_PID_FILE))"
-        echo "🌐 Access at: http://localhost:4000/dap/"
     else
-        echo "✗ DAP Service failed to start"
-        rm -f "$BACKEND_PID_FILE"
+        echo "Starting DAP Backend..."
+        cd "$DAP_DIR/backend"
+        nohup node dist/server.js > "$DAP_DIR/dap-backend.log" 2>&1 &
+        echo $! > "$BACKEND_PID_FILE"
+        sleep 2
+        if kill -0 $(cat "$BACKEND_PID_FILE") 2>/dev/null; then
+            echo "✓ Backend started (PID: $(cat $BACKEND_PID_FILE))"
+            echo "  API: http://localhost:4000/dap/graphql"
+        else
+            echo "✗ Backend failed to start. See $DAP_DIR/dap-backend.log"
+            rm -f "$BACKEND_PID_FILE"
+        fi
+    fi
+
+    if [ -f "$FRONTEND_PID_FILE" ] && kill -0 $(cat "$FRONTEND_PID_FILE") 2>/dev/null; then
+        echo "DAP Frontend already running (PID: $(cat $FRONTEND_PID_FILE))"
+    else
+        echo "Starting DAP Frontend (Vite preview on 5173)..."
+        cd "$DAP_DIR/frontend"
+        nohup npm run preview -- --host --port 5173 > "$DAP_DIR/dap-frontend.log" 2>&1 &
+        echo $! > "$FRONTEND_PID_FILE"
+        sleep 2
+        if kill -0 $(cat "$FRONTEND_PID_FILE") 2>/dev/null; then
+            echo "✓ Frontend started (PID: $(cat $FRONTEND_PID_FILE))"
+            echo "  UI:  http://localhost:5173/dap/"
+        else
+            echo "✗ Frontend failed to start. See $DAP_DIR/dap-frontend.log"
+            rm -f "$FRONTEND_PID_FILE"
+        fi
     fi
 }
 
@@ -238,8 +253,18 @@ stop() {
         fi
         rm -f "$BACKEND_PID_FILE"
     fi
-    pkill -f "node dist/server.js" 2>/dev/null || true
-    echo "✓ DAP Service stopped"
+if [ -f "$FRONTEND_PID_FILE" ]; then
+    PID=$(cat "$FRONTEND_PID_FILE")
+    if kill -0 $PID 2>/dev/null; then
+        echo "Stopping DAP Frontend (PID: $PID)..."
+        kill $PID 2>/dev/null
+        sleep 2
+    fi
+    rm -f "$FRONTEND_PID_FILE"
+fi
+pkill -f "node dist/server.js" 2>/dev/null || true
+pkill -f "npm run preview" 2>/dev/null || true
+echo "✓ DAP Service stopped"
 }
 
 status() {
@@ -249,6 +274,11 @@ status() {
         echo "URL:     http://localhost:4000/dap/"
     else
         echo "Status:  ✗ Stopped"
+    fi
+    if [ -f "$FRONTEND_PID_FILE" ] && kill -0 $(cat "$FRONTEND_PID_FILE") 2>/dev/null; then
+        echo "Frontend: ✓ Running (PID: $(cat $FRONTEND_PID_FILE)) at http://localhost:5173/dap/"
+    else
+        echo "Frontend: ✗ Stopped"
     fi
 }
 
