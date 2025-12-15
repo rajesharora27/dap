@@ -292,6 +292,52 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         }
     };
 
+    // Handle weight change from inline edit
+    const handleWeightChange = async (taskId: string, taskName: string, newWeight: number) => {
+        try {
+            await client.mutate({
+                mutation: UPDATE_TASK,
+                variables: {
+                    id: taskId,
+                    input: { weight: newWeight }
+                },
+                refetchQueries: ['TasksForProduct'],
+                awaitRefetchQueries: true
+            });
+        } catch (error) {
+            console.error('Error updating task weight:', error);
+            alert('Failed to update weight');
+        }
+    };
+
+    // Handle sequence number change from inline edit
+    const handleSequenceChange = async (taskId: string, taskName: string, newSequence: number) => {
+        try {
+            // Create a new order based on moving the task to the new sequence position
+            const sortedTasks = [...tasks].sort((a: any, b: any) => a.sequenceNumber - b.sequenceNumber);
+            const currentIndex = sortedTasks.findIndex((t: any) => t.id === taskId);
+
+            if (currentIndex === -1) return;
+
+            // Calculate the target index (newSequence is 1-based)
+            let targetIndex = Math.min(Math.max(newSequence - 1, 0), sortedTasks.length - 1);
+
+            // Reorder the tasks
+            const reorderedTasks = arrayMove(sortedTasks, currentIndex, targetIndex);
+            const newOrder = reorderedTasks.map((t: any) => t.id);
+
+            await client.mutate({
+                mutation: REORDER_TASKS,
+                variables: { productId: selectedProduct, order: newOrder },
+                refetchQueries: ['TasksForProduct'],
+                awaitRefetchQueries: true
+            });
+        } catch (error) {
+            console.error('Error reordering tasks:', error);
+            alert('Failed to update sequence');
+        }
+    };
+
     const handleSaveOutcome = async (input: any) => {
         try {
             if (editingOutcome) {
@@ -725,6 +771,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         onEdit={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
                                                         onDelete={handleDeleteTask}
                                                         onDoubleClick={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
+                                                        onWeightChange={handleWeightChange}
+                                                        onSequenceChange={handleSequenceChange}
                                                     />
                                                 ))}
                                                 {tasks.length === 0 && !tasksLoading && (
