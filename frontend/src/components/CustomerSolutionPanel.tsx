@@ -18,7 +18,7 @@ import {
   DialogActions,
   Divider
 } from '@mui/material';
-import { Add, Edit, Delete, Sync, Download, Upload, Assessment } from '@mui/icons-material';
+import { Add, Edit, Delete, Download, Upload, Assessment } from '@mui/icons-material';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { AssignSolutionDialog } from './dialogs/AssignSolutionDialog';
 import { EditSolutionEntitlementsDialog } from './dialogs/EditSolutionEntitlementsDialog';
@@ -57,18 +57,7 @@ const CREATE_SOLUTION_ADOPTION_PLAN = gql`
   }
 `;
 
-const SYNC_SOLUTION_ADOPTION_PLAN = gql`
-  mutation SyncSolutionAdoptionPlan($solutionAdoptionPlanId: ID!) {
-    syncSolutionAdoptionPlan(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
-      id
-      progressPercentage
-      totalTasks
-      completedTasks
-      needsSync
-      lastSyncedAt
-    }
-  }
-`;
+
 
 const REMOVE_SOLUTION_FROM_CUSTOMER = gql`
   mutation RemoveSolutionFromCustomer($id: ID!) {
@@ -201,16 +190,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
     }
   });
 
-  const [syncPlan, { loading: syncLoading }] = useMutation(SYNC_SOLUTION_ADOPTION_PLAN, {
-    onCompleted: () => {
-      refetch();
-      refetchPlan();
-    },
-    onError: (err) => {
-      console.error('Error syncing adoption plan:', err);
-      alert('Failed to sync: ' + err.message);
-    }
-  });
+
 
   const [removeSolution, { loading: removeLoading }] = useMutation(REMOVE_SOLUTION_FROM_CUSTOMER, {
     refetchQueries: ['GetCustomers', 'GetCustomerSolutions'],
@@ -271,12 +251,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
 
 
 
-  const handleSync = () => {
-    const adoptionPlanId = selectedCustomerSolution?.adoptionPlan?.id;
-    if (adoptionPlanId) {
-      syncPlan({ variables: { solutionAdoptionPlanId: adoptionPlanId } });
-    }
-  };
+
 
   const handleDelete = () => {
     if (selectedSolutionId) {
@@ -423,30 +398,6 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
                   Edit
                 </Button>
               </Tooltip>
-              {selectedCustomerSolution?.adoptionPlan && (
-                <>
-                  <Tooltip title="Recalculate solution adoption plan progress from underlying product and solution adoption plans">
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Sync />}
-                      onClick={handleSync}
-                      disabled={syncLoading}
-                      sx={{
-                        borderColor: '#6B778C',
-                        color: '#42526E',
-                        '&:hover': {
-                          borderColor: '#42526E',
-                          backgroundColor: 'rgba(66, 82, 110, 0.04)'
-                        }
-                      }}
-                    >
-                      {syncLoading ? 'Syncing...' : 'Sync Solution Adoption Plan'}
-                    </Button>
-                  </Tooltip>
-
-                </>
-              )}
             </>
           )}
         </Box>
