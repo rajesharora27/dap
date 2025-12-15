@@ -161,7 +161,9 @@ export const TaskDialog: React.FC<Props> = ({
       setName('');
       setDescription('');
       setEstMinutes(60);
-      setWeight(Math.min(maxAllowedWeight, Math.max(0.01, remainingWeight)));
+      // Default weight for new tasks: min(1%, 50% of available weight)
+      const defaultWeight = Math.max(0.01, Math.min(1, remainingWeight * 0.5));
+      setWeight(Math.min(maxAllowedWeight, defaultWeight));
       setNotes('');
       setHowToDoc([]);
       setHowToVideo([]);
