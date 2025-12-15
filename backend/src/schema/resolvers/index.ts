@@ -2380,7 +2380,46 @@ export const resolvers = {
         if (fallbackActive) {
           fbSoftDeleteTask(id);
         } else {
+          // First, get the task to know its product/solution and sequence number
+          const taskToDelete = await prisma.task.findUnique({
+            where: { id },
+            select: { productId: true, solutionId: true, sequenceNumber: true }
+          });
+
+          if (!taskToDelete) {
+            throw new Error('Task not found');
+          }
+
+          // Delete the task
           await prisma.task.delete({ where: { id } });
+
+          // Recalculate sequence numbers for remaining tasks
+          const entityFilter = taskToDelete.productId
+            ? { productId: taskToDelete.productId }
+            : { solutionId: taskToDelete.solutionId };
+
+          // Get all remaining tasks ordered by sequence number
+          const remainingTasks = await prisma.task.findMany({
+            where: {
+              ...entityFilter,
+              deletedAt: null
+            },
+            orderBy: { sequenceNumber: 'asc' },
+            select: { id: true, sequenceNumber: true }
+          });
+
+          // Update sequence numbers to be contiguous (1, 2, 3, ...)
+          for (let i = 0; i < remainingTasks.length; i++) {
+            const expectedSeq = i + 1;
+            if (remainingTasks[i].sequenceNumber !== expectedSeq) {
+              await prisma.task.update({
+                where: { id: remainingTasks[i].id },
+                data: { sequenceNumber: expectedSeq }
+              });
+            }
+          }
+
+          console.log(`Reordered ${remainingTasks.length} remaining tasks after deletion`);
         }
         console.log(`Task deleted successfully: ${id}`);
       } catch (error: any) {
