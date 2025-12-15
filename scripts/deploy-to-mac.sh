@@ -55,7 +55,8 @@ import express from 'express';
 const router = express.Router();
 
 // Dummy implementation for production-like builds
-export const addLogEntry = () => {};
+// Must match signature: (level: string, message: string)
+export const addLogEntry = (_level: string, _message: string) => {};
 export default router;
 DUMMYDEV
 
