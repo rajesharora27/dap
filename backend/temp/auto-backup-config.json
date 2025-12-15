@@ -2,6 +2,6 @@
   "enabled": true,
   "schedule": "0 1 * * *",
   "retentionDays": 7,
-  "lastBackupTime": "2025-12-14T06:00:13.573Z",
-  "lastChangeChecksum": "{\"counts\":{\"userCount\":4,\"productCount\":5,\"solutionCount\":2,\"customerCount\":2,\"taskCount\":79},\"lastUpdates\":{\"user\":\"2025-12-13T22:23:33.601Z\",\"product\":\"2025-12-13T03:45:59.590Z\",\"solution\":\"2025-12-13T03:45:59.680Z\",\"customer\":\"2025-12-13T03:45:59.718Z\",\"task\":\"2025-12-13T03:45:59.697Z\"}}"
+  "lastBackupTime": "2025-12-15T14:31:39.533Z",
+  "lastChangeChecksum": "{\"users\":3,\"products\":6,\"solutions\":2,\"customers\":1,\"customerProducts\":6,\"customerSolutions\":2,\"adoptionPlans\":4,\"solutionAdoptionPlans\":2,\"tasks\":128,\"customerTasks\":136,\"customerSolutionTasks\":9}"
 }

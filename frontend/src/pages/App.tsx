@@ -946,9 +946,15 @@ export function App() {
     }
   };
 
-  // Development menu is ONLY available in development mode, NEVER in production
-  // This ensures dev tools are completely disabled in production builds
+  // Development menu toggle
+  // Dev tools render ONLY when explicitly enabled AND not a production build
+  const devToolsEnabled =
+    typeof import.meta !== 'undefined' &&
+    typeof import.meta.env !== 'undefined' &&
+    import.meta.env.VITE_ENABLE_DEV_TOOLS === 'true';
+
   const isDevelopmentMode =
+    devToolsEnabled &&
     import.meta.env.MODE !== 'production' &&
     (import.meta.env.DEV || import.meta.env.MODE === 'development');
 
