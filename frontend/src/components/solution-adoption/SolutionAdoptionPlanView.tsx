@@ -15,14 +15,15 @@ import {
   MenuItem,
   OutlinedInput,
   Checkbox,
-  ListItemText
+  ListItemText,
+  Tooltip
 } from '@mui/material';
 import { Sync, Assessment, FilterList } from '@mui/icons-material';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { ProductAdoptionGroup } from './ProductAdoptionGroup';
 import { SolutionTasksGroup } from './SolutionTasksGroup';
 import { TelemetryImportResultDialog } from '../shared/TelemetryImportResultDialog';
-import { 
+import {
   downloadFileFromUrl,
   importProductTelemetry,
   importSolutionTelemetry,
@@ -248,7 +249,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     open: false,
     success: false,
   });
-  
+
   // Filter states for UI display filtering
   const [filterReleases, setFilterReleases] = useState<string[]>([]);
   const [filterOutcomes, setFilterOutcomes] = useState<string[]>([]);
@@ -338,31 +339,31 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     return [...data.solutionAdoptionPlan.customerSolution.solution.outcomes]
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [data]);
-  
+
   // Apply UI filters to solution tasks
   const solutionTasks = useMemo(() => {
     let tasks = [...allSolutionTasks];
-    
+
     // Filter by releases (multiple selection - task must have at least one selected release)
     if (filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) {
       tasks = tasks.filter((task: any) => {
-        const hasSelectedRelease = task.releases?.some((release: any) => 
+        const hasSelectedRelease = task.releases?.some((release: any) =>
           filterReleases.includes(release.id)
         );
         return hasSelectedRelease;
       });
     }
-    
+
     // Filter by outcomes (multiple selection - task must have at least one selected outcome)
     if (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID)) {
       tasks = tasks.filter((task: any) => {
-        const hasSelectedOutcome = task.outcomes?.some((outcome: any) => 
+        const hasSelectedOutcome = task.outcomes?.some((outcome: any) =>
           filterOutcomes.includes(outcome.id)
         );
         return hasSelectedOutcome;
       });
     }
-    
+
     return tasks;
   }, [allSolutionTasks, filterReleases, filterOutcomes]);
 
@@ -407,18 +408,18 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
 
   // Calculate solution-specific task progress using WEIGHTS (excluding NOT_APPLICABLE)
   const applicableSolutionTasks = solutionTasks.filter(t => t.status !== 'NOT_APPLICABLE');
-  const solutionTasksCompleted = applicableSolutionTasks.filter(t => 
+  const solutionTasksCompleted = applicableSolutionTasks.filter(t =>
     t.status === 'COMPLETED' || t.status === 'DONE'
   ).length;
-  
+
   // Use weight-based progress calculation
   const totalSolutionWeight = applicableSolutionTasks.reduce((sum, task) => sum + (Number(task.weight) || 0), 0);
   const completedSolutionWeight = applicableSolutionTasks
     .filter(t => t.status === 'COMPLETED' || t.status === 'DONE')
     .reduce((sum, task) => sum + (Number(task.weight) || 0), 0);
-  
-  const solutionTasksProgress = totalSolutionWeight > 0 
-    ? (completedSolutionWeight / totalSolutionWeight) * 100 
+
+  const solutionTasksProgress = totalSolutionWeight > 0
+    ? (completedSolutionWeight / totalSolutionWeight) * 100
     : 0;
 
   const handleUpdateSolutionTaskStatus = (taskId: string, newStatus: string, notes?: string) => {
@@ -519,11 +520,11 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
       )}
 
       {/* Header */}
-      <Paper 
+      <Paper
         elevation={1}
-        sx={{ 
-          p: { xs: 2, sm: 2.5, md: 3 }, 
-          mb: { xs: 2, md: 3 }, 
+        sx={{
+          p: { xs: 2, sm: 2.5, md: 3 },
+          mb: { xs: 2, md: 3 },
           borderRadius: 2,
           border: '1.5px solid',
           borderColor: '#E0E0E0'
@@ -543,26 +544,26 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
               )}
             </Typography>
           </Box>
-          
+
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-            {plan.needsSync && (
+            <Tooltip title="Sync with latest solution tasks">
               <Button
                 variant="outlined"
                 size="small"
                 startIcon={<Sync />}
-                color="warning"
+                color={plan.needsSync ? 'warning' : 'primary'}
                 onClick={handleSync}
                 disabled={syncLoading}
                 sx={{ whiteSpace: 'nowrap' }}
               >
-                {syncLoading ? 'Syncing...' : 'Sync Required'}
+                {syncLoading ? 'Syncing...' : plan.needsSync ? '⚠️ Sync' : 'Sync'}
               </Button>
-            )}
-          <Chip 
-            label={`License: ${plan.licenseLevel}`} 
-            color="primary" 
+            </Tooltip>
+            <Chip
+              label={plan.licenseLevel}
+              color="primary"
               sx={{ fontWeight: 600, height: 32 }}
-          />
+            />
           </Box>
         </Box>
 
@@ -574,13 +575,13 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
               {Math.round(plan.progressPercentage)}%
             </Typography>
           </Box>
-          
+
           <LinearProgress
             variant="determinate"
             value={plan.progressPercentage}
             sx={{ height: 12, borderRadius: 1, mb: 2 }}
           />
-          
+
           <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="body2" fontWeight="600">📊</Typography>
@@ -600,13 +601,13 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
 
       {/* Interactive Filters for Solution Tasks */}
       {allSolutionTasks.length > 0 && (
-        <Paper 
+        <Paper
           elevation={1}
-          sx={{ 
-            p: 2.5, 
-            mb: 2, 
-            bgcolor: '#E0F7FA', 
-            border: '1.5px solid', 
+          sx={{
+            p: 2.5,
+            mb: 2,
+            bgcolor: '#E0F7FA',
+            border: '1.5px solid',
             borderColor: '#B2EBF2',
             borderRadius: 2,
             borderLeft: '4px solid',
@@ -618,21 +619,21 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
             <Typography variant="subtitle2" fontWeight="700" sx={{ color: '#00838F' }}>
               Filter Solution Tasks
             </Typography>
-            {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) || 
+            {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) ||
               (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
-              <Chip 
-                label={`Showing ${solutionTasks.length} of ${allSolutionTasks.length} tasks`}
-                size="small" 
-                sx={{ 
-                  ml: 1,
-                  bgcolor: '#00ACC1',
-                  color: 'white',
-                  fontWeight: 600
-                }}
-              />
-            )}
+                <Chip
+                  label={`Showing ${solutionTasks.length} of ${allSolutionTasks.length} tasks`}
+                  size="small"
+                  sx={{
+                    ml: 1,
+                    bgcolor: '#00ACC1',
+                    color: 'white',
+                    fontWeight: 600
+                  }}
+                />
+              )}
           </Box>
-          
+
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
             {/* License Level Display */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -645,7 +646,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
               </Typography>
             </Box>
           </Box>
-          
+
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
             {/* Releases Filter */}
             {availableReleases.length > 0 ? (
@@ -738,22 +739,22 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
                 </Typography>
               </Alert>
             )}
-            
+
             {/* Clear Filters Button */}
-            {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) || 
+            {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) ||
               (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
-              <Button
-                variant="text"
-                size="small"
-                onClick={() => {
-                  setFilterReleases([]);
-                  setFilterOutcomes([]);
-                }}
-                sx={{ alignSelf: 'center' }}
-              >
-                Clear Filters
-              </Button>
-            )}
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => {
+                    setFilterReleases([]);
+                    setFilterOutcomes([]);
+                  }}
+                  sx={{ alignSelf: 'center' }}
+                >
+                  Clear Filters
+                </Button>
+              )}
           </Box>
         </Paper>
       )}
@@ -773,14 +774,14 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
 
       {/* Product Groups - Shown After Solution Tasks */}
       {plan.products.map((product: any) => (
-      <ProductAdoptionGroup
-        key={product.id}
-        product={{
-          ...product,
-          progressPercentage: product.progressPercentage || 0,
-          productAdoptionPlanId: product.productAdoptionPlan?.id
-        }}
-        tasks={productTasks[product.productId] || []}
+        <ProductAdoptionGroup
+          key={product.id}
+          product={{
+            ...product,
+            progressPercentage: product.progressPercentage || 0,
+            productAdoptionPlanId: product.productAdoptionPlan?.id
+          }}
+          tasks={productTasks[product.productId] || []}
           onUpdateTaskStatus={handleUpdateProductTaskStatus}
           onViewProductPlan={(planId) => {
             console.log('Navigate to product plan:', planId);
