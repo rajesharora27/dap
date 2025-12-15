@@ -185,7 +185,9 @@ npm run build
 # Build frontend
 echo "🔨 Building frontend..."
 cd ../frontend
-npm run build
+# Explicitly force production mode to ensure dev tools are hidden
+# (ignoring the .env warning)
+npx vite build --mode production --base=/dap/
 
 echo ""
 echo "✅ Setup complete!"
