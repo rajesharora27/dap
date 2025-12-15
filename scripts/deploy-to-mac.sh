@@ -132,6 +132,8 @@ fi
 # Install dependencies (production only)
 echo "📦 Installing backend dependencies..."
 cd backend
+# Clean slate to avoid ENOTEMPTY errors
+rm -rf node_modules
 # Use ci to respect lockfile versions exactly
 npm ci --legacy-peer-deps --omit=dev
 
@@ -140,6 +142,7 @@ npm install prisma@6.14.0 --save-dev --legacy-peer-deps
 
 echo "📦 Installing frontend dependencies..."
 cd ../frontend
+rm -rf node_modules
 npm ci --legacy-peer-deps
 
 # Setup database
