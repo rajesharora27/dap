@@ -135,6 +135,9 @@ cd backend
 # Use ci to respect lockfile versions exactly
 npm ci --legacy-peer-deps --omit=dev
 
+# Force install specific Prisma version to avoid v7 breaking changes
+npm install prisma@6.14.0 --save-dev --legacy-peer-deps
+
 echo "📦 Installing frontend dependencies..."
 cd ../frontend
 npm ci --legacy-peer-deps
@@ -152,8 +155,12 @@ sed -i '' "s|postgresql://localhost|postgresql://$CURRENT_USER@localhost|g" .env
 sed -i '' "s|postgresql://localhost|postgresql://$CURRENT_USER@localhost|g" ../frontend/.env
 
 createdb dap_mac 2>/dev/null || echo "  Database 'dap_mac' already exists"
-npx prisma generate
-npx prisma db push --skip-generate
+
+# Use explicit local binary to ensure we don't accidentally use global v7+
+PRISMA_BIN="./node_modules/.bin/prisma"
+
+$PRISMA_BIN generate
+$PRISMA_BIN db push --skip-generate
 npm run seed 2>/dev/null || echo "  Seed data already exists"
 
 # Build backend
