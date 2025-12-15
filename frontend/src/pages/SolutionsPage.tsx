@@ -58,7 +58,6 @@ export const SolutionsPage: React.FC = () => {
     const handleSolutionChange = (solutionId: string) => {
         setSelectedSolution(solutionId);
         localStorage.setItem('lastSelectedSolutionId', solutionId);
-        setSelectedSubSection('tasks');
         // Force refetch tasks when solution changes or tab is selected
         setTimeout(() => refetchTasks && refetchTasks(), 0);
     };
