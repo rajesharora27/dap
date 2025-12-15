@@ -49,6 +49,16 @@ rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '*.log' \
     --exclude 'src/api/devTools.ts' \
     "${SOURCE_DIR}/backend/" "$PACKAGE_DIR/backend/"
 
+# Create dummy devTools.ts to satisfy build imports
+cat > "$PACKAGE_DIR/backend/src/api/devTools.ts" << 'DUMMYDEV'
+import express from 'express';
+const router = express.Router();
+
+// Dummy implementation for production-like builds
+export const addLogEntry = () => {};
+export default router;
+DUMMYDEV
+
 # Copy frontend (excluding node_modules, dist, and dev-only files)
 echo "  Copying frontend..."
 rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '*.log' \
