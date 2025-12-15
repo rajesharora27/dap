@@ -162,6 +162,15 @@ npm install --legacy-peer-deps
 # Setup database
 echo "🗄️  Setting up database..."
 cd ../backend
+
+# Fix DATABASE_URL to include current user (fixes P1010 error)
+CURRENT_USER=$(whoami)
+echo "  Configuring database access for user: $CURRENT_USER"
+
+# Update .env files (handle Mac specific sed)
+sed -i '' "s|postgresql://localhost|postgresql://$CURRENT_USER@localhost|g" .env
+sed -i '' "s|postgresql://localhost|postgresql://$CURRENT_USER@localhost|g" ../frontend/.env
+
 createdb dap_mac 2>/dev/null || echo "  Database 'dap_mac' already exists"
 npx prisma generate
 npx prisma db push --skip-generate
@@ -397,6 +406,8 @@ ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/backend && npm install --legacy-peer-dep
 ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/frontend && npm install --legacy-peer-deps'
 
 echo -e "\n${YELLOW}🗄️  Setting up database...${NC}"
+ssh "${MAC_USER}@${MAC_HOST}" "sed -i '' \"s|postgresql://localhost|postgresql://\$(whoami)@localhost|g\" ~/dap/backend/.env"
+ssh "${MAC_USER}@${MAC_HOST}" "sed -i '' \"s|postgresql://localhost|postgresql://\$(whoami)@localhost|g\" ~/dap/frontend/.env"
 ssh "${MAC_USER}@${MAC_HOST}" 'createdb dap_mac 2>/dev/null || echo "Database exists"'
 ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/backend && npx prisma db push --skip-generate'
 ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/backend && npm run seed 2>/dev/null || echo "Seed exists"'
