@@ -6,6 +6,7 @@
     "prisma": "^6.15.0"
   },
   "dependencies": {
-    "@prisma/client": "^6.15.0"
+    "@prisma/client": "^6.15.0",
+    "pg": "^8.16.3"
   }
 }

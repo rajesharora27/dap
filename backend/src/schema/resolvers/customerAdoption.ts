@@ -12,6 +12,7 @@ import * as path from 'path';
 type CustomerTaskStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'DONE' | 'NOT_APPLICABLE';
 
 // Helper function to calculate progress
+// Note: This is used for in-memory calculation (e.g., when creating a new plan before it is in DB)
 function calculateProgress(tasks: any[]): {
   totalTasks: number;
   completedTasks: number;
@@ -50,6 +51,58 @@ function calculateProgress(tasks: any[]): {
     completedWeight,
     progressPercentage: Math.round(progressPercentage * 100) / 100, // Round to 2 decimals
   };
+}
+
+async function getAdoptionPlanProgressFromDB(adoptionPlanId: string) {
+  const taskStats = await prisma.customerTask.groupBy({
+    by: ['status'],
+    where: { adoptionPlanId },
+    _count: { _all: true },
+    _sum: { weight: true }
+  });
+
+  let totalTasks = 0;
+  let completedTasks = 0;
+  let totalWeight = 0;
+  let completedWeight = 0;
+
+  for (const stat of taskStats) {
+    if (stat.status !== 'NOT_APPLICABLE') {
+      const count = stat._count._all;
+      const weight = stat._sum.weight
+        ? (typeof stat._sum.weight === 'object' && 'toNumber' in stat._sum.weight
+            ? stat._sum.weight.toNumber()
+            : Number(stat._sum.weight))
+        : 0;
+
+      totalTasks += count;
+      totalWeight += weight;
+
+      if (stat.status === 'COMPLETED' || stat.status === 'DONE') {
+        completedTasks += count;
+        completedWeight += weight;
+      }
+    }
+  }
+
+  const progressPercentage = totalWeight > 0 ? (completedWeight / totalWeight) * 100 : 0;
+
+  return {
+    totalTasks,
+    completedTasks,
+    totalWeight,
+    completedWeight,
+    progressPercentage: Math.round(progressPercentage * 100) / 100,
+  };
+}
+
+async function updateAdoptionPlanProgress(adoptionPlanId: string) {
+  const progress = await getAdoptionPlanProgressFromDB(adoptionPlanId);
+  await prisma.adoptionPlan.update({
+    where: { id: adoptionPlanId },
+    data: progress,
+  });
+  return progress;
 }
 
 // Helper function to evaluate telemetry criteria
@@ -664,11 +717,7 @@ export const CustomerAdoptionMutationResolvers = {
       }
 
       // Recalculate progress based on remaining tasks
-      const updatedTasks = await prisma.customerTask.findMany({
-        where: { adoptionPlanId },
-      });
-
-      const progress = calculateProgress(updatedTasks);
+      const progress = await getAdoptionPlanProgressFromDB(adoptionPlanId);
 
       // Update adoption plan metadata
       await prisma.adoptionPlan.update({
@@ -1101,8 +1150,7 @@ export const CustomerAdoptionMutationResolvers = {
     // ============================================
     // STEP 3: UPDATE ADOPTION PLAN
     // ============================================
-    const finalTasks = await prisma.customerTask.findMany({ where: { adoptionPlanId } });
-    const progress = calculateProgress(finalTasks);
+    const progress = await getAdoptionPlanProgressFromDB(adoptionPlanId);
 
     const updatedPlan = await prisma.adoptionPlan.update({
       where: { id: adoptionPlanId },
@@ -1192,16 +1240,7 @@ export const CustomerAdoptionMutationResolvers = {
     });
 
     // Recalculate adoption plan progress
-    const allTasks = await prisma.customerTask.findMany({
-      where: { adoptionPlanId: task.adoptionPlanId },
-    });
-
-    const progress = calculateProgress(allTasks);
-
-    await prisma.adoptionPlan.update({
-      where: { id: task.adoptionPlanId },
-      data: progress,
-    });
+    await updateAdoptionPlanProgress(task.adoptionPlanId);
 
     // Check if this product is part of a solution and trigger solution sync
     const adoptionPlan = await prisma.adoptionPlan.findUnique({
@@ -1307,16 +1346,7 @@ export const CustomerAdoptionMutationResolvers = {
     });
 
     // Recalculate adoption plan progress
-    const allTasks = await prisma.customerTask.findMany({
-      where: { adoptionPlanId },
-    });
-
-    const progress = calculateProgress(allTasks);
-
-    await prisma.adoptionPlan.update({
-      where: { id: adoptionPlanId },
-      data: progress,
-    });
+    await updateAdoptionPlanProgress(adoptionPlanId);
 
     // Check if this product is part of a solution and trigger solution sync
     const adoptionPlan = await prisma.adoptionPlan.findUnique({
@@ -1505,16 +1535,7 @@ export const CustomerAdoptionMutationResolvers = {
       });
 
       // Recalculate adoption plan progress
-      const allTasks = await prisma.customerTask.findMany({
-        where: { adoptionPlanId: task.adoptionPlanId },
-      });
-
-      const progress = calculateProgress(allTasks);
-
-      await prisma.adoptionPlan.update({
-        where: { id: task.adoptionPlanId },
-        data: progress,
-      });
+      await updateAdoptionPlanProgress(task.adoptionPlanId);
 
       await logAudit('EVALUATE_TASK_TELEMETRY', 'CustomerTask', customerTaskId, { oldStatus: task.status, newStatus }, ctx.user?.id);
 
@@ -1825,16 +1846,7 @@ export const CustomerAdoptionMutationResolvers = {
     }
 
     // Recalculate progress
-    const allTasks = await prisma.customerTask.findMany({
-      where: { adoptionPlanId: adoptionPlan.id },
-    });
-
-    const progress = calculateProgress(allTasks);
-
-    await prisma.adoptionPlan.update({
-      where: { id: adoptionPlan.id },
-      data: progress,
-    });
+    await updateAdoptionPlanProgress(adoptionPlan.id);
 
     await logAudit('IMPORT_CUSTOMER_ADOPTION', 'CustomerProduct', customerProductId, { telemetryValuesImported, taskStatusesUpdated }, ctx.user?.id);
 
