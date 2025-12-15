@@ -97,7 +97,6 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const handleProductChange = (productId: string) => {
         setSelectedProduct(productId);
         localStorage.setItem('lastSelectedProductId', productId);
-        setSelectedSubSection('tasks');
         // Force refetch tasks when product changes or tab is selected
         setTimeout(() => refetchTasks(), 0);
     };
