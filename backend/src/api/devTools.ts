@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs/promises';
@@ -7,6 +7,38 @@ import { authMiddleware } from '../middleware/authMiddleware';
 
 const execAsync = promisify(exec);
 const router = Router();
+
+// Helper for spawning processes safely (without shell injection)
+const spawnAsync = (command: string, args: string[], options: any = {}): Promise<string> => {
+    return new Promise((resolve, reject) => {
+        const proc = spawn(command, args, {
+            ...options,
+            stdio: ['ignore', 'pipe', 'pipe']
+        });
+
+        let stdout = '';
+        let stderr = '';
+
+        if (proc.stdout) {
+            proc.stdout.on('data', (data: Buffer) => { stdout += data; });
+        }
+        if (proc.stderr) {
+            proc.stderr.on('data', (data: Buffer) => { stderr += data; });
+        }
+
+        proc.on('close', (code: number) => {
+            if (code === 0) {
+                resolve(stdout + stderr);
+            } else {
+                reject({ message: stderr || stdout, stdout, stderr, code });
+            }
+        });
+
+        proc.on('error', (err: Error) => {
+            reject(err);
+        });
+    });
+};
 
 /**
  * Development Tools API
@@ -215,7 +247,6 @@ setInterval(() => {
  * Returns job ID immediately, poll /api/dev/tests/status/:id for results
  */
 router.post('/tests/run-stream', async (req: Request, res: Response) => {
-    const { spawn } = require('child_process');
     const projectRoot = path.join(__dirname, '../../..');
     const workingDir = path.join(__dirname, '../..');
     const jobId = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -226,15 +257,15 @@ router.post('/tests/run-stream', async (req: Request, res: Response) => {
     // CRITICAL: Use isolated test database
     const testDatabaseUrl = 'postgres://postgres:postgres@localhost:5432/dap_test?schema=public';
 
-    // Build command - use shell command execution like CLI does
-    let shellCmd = `cd ${workingDir} && DATABASE_URL="${testDatabaseUrl}" NODE_ENV=test CI=true npm test -- --runInBand --passWithNoTests`;
+    // Build command arguments
+    const npmArgs = ['test', '--', '--runInBand', '--passWithNoTests'];
 
     if (coverage) {
-        shellCmd += ' --coverage';
+        npmArgs.push('--coverage');
     }
 
     if (pattern && pattern.trim()) {
-        shellCmd += ` --testPathPattern="${pattern.trim()}"`;
+        npmArgs.push(`--testPathPattern=${pattern.trim()}`);
     }
 
     // Create job entry
@@ -267,20 +298,23 @@ router.post('/tests/run-stream', async (req: Request, res: Response) => {
         job.output += '📊 Coverage: enabled\n';
     }
     job.output += '\n';
-    job.output += '💻 Command (identical to CLI):\n';
-    job.output += `   ${shellCmd}\n`;
+    job.output += '💻 Command:\n';
+    job.output += `   npm ${npmArgs.join(' ')}\n`;
     job.output += '\n' + '─'.repeat(60) + '\n\n';
 
-    console.log('[DevTools Tests] Starting test execution via shell');
-    console.log('[DevTools Tests] Command:', shellCmd);
+    console.log('[DevTools Tests] Starting test execution');
+    console.log('[DevTools Tests] Args:', npmArgs);
 
-    // Run tests via shell command (identical to CLI execution)
-    const testProcess = spawn('bash', ['-c', shellCmd], {
-        cwd: projectRoot,
+    // Run tests directly using spawn to avoid shell injection
+    const testProcess = spawn('npm', npmArgs, {
+        cwd: workingDir,
         stdio: ['ignore', 'pipe', 'pipe'],
         env: {
             ...process.env,
-            FORCE_COLOR: '0'
+            FORCE_COLOR: '0',
+            NODE_ENV: 'test',
+            CI: 'true',
+            DATABASE_URL: testDatabaseUrl
         }
     });
 
@@ -716,21 +750,17 @@ router.post('/deploy/generic', async (req: Request, res: Response) => {
         }
 
         const scriptPath = path.join(__dirname, '../../deploy/deploy-generic.sh');
-        const sshKeyArg = sshKey ? ` "${sshKey}"` : '';
-        const command = `${scriptPath} "${host}" "${user}" "${targetDir}"${sshKeyArg}`;
+        const args = [scriptPath, host, user, targetDir];
+        if (sshKey) {
+            args.push(sshKey);
+        }
 
-        // Stream output? execAsync buffers it.
-        // For long running process, maybe spawn is better?
-        // But for simplicity, let's use execAsync with large buffer/timeout.
-        // Deployment can take a while.
-
-        const { stdout, stderr } = await execAsync(command, {
+        const output = await spawnAsync('bash', args, {
             cwd: path.join(__dirname, '../..'),
-            timeout: 600000, // 10 mins
-            maxBuffer: 10 * 1024 * 1024 // 10MB
+            timeout: 600000 // 10 mins
         });
 
-        res.json({ success: true, output: stdout + stderr });
+        res.json({ success: true, output });
     } catch (error: any) {
         res.json({ success: false, output: error.stdout + error.stderr || error.message });
     }
@@ -1127,8 +1157,8 @@ router.post('/git/commit', async (req: Request, res: Response) => {
         // Add all changes
         await execAsync('git add -A');
 
-        // Commit with message
-        const { stdout } = await execAsync(`git commit -m "${message.replace(/"/g, '\\"')}"`);
+        // Commit with message safely
+        const stdout = await spawnAsync('git', ['commit', '-m', message]);
 
         res.json({
             success: true,
@@ -1241,31 +1271,31 @@ router.post('/git/branch', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Action and name are required' });
         }
 
-        let command = '';
+        let args: string[] = [];
         let message = '';
 
         switch (action) {
             case 'create':
-                command = from ? `git checkout -b ${name} ${from}` : `git checkout -b ${name}`;
+                args = from ? ['checkout', '-b', name, from] : ['checkout', '-b', name];
                 message = `Created and switched to branch '${name}'`;
                 break;
             case 'switch':
-                command = `git checkout ${name}`;
+                args = ['checkout', name];
                 message = `Switched to branch '${name}'`;
                 break;
             case 'delete':
-                command = `git branch -d ${name}`;
+                args = ['branch', '-d', name];
                 message = `Deleted branch '${name}'`;
                 break;
             default:
                 return res.status(400).json({ error: 'Invalid action. Use: create, switch, or delete' });
         }
 
-        const { stdout, stderr } = await execAsync(command, { cwd: '/data/dap' });
+        const output = await spawnAsync('git', args, { cwd: '/data/dap' });
 
         res.json({
             success: true,
-            output: stdout + stderr,
+            output,
             message
         });
     } catch (error: any) {
@@ -1286,41 +1316,41 @@ router.post('/git/stash', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Action is required' });
         }
 
-        let command = '';
+        let args: string[] = [];
         let responseMessage = '';
 
         switch (action) {
             case 'save':
-                command = message ? `git stash push -m "${message}"` : 'git stash';
+                args = message ? ['stash', 'push', '-m', message] : ['stash'];
                 responseMessage = 'Changes stashed successfully';
                 break;
             case 'pop':
-                command = index !== undefined ? `git stash pop stash@{${index}}` : 'git stash pop';
+                args = index !== undefined ? ['stash', 'pop', `stash@{${index}}`] : ['stash', 'pop'];
                 responseMessage = 'Stash applied and removed';
                 break;
             case 'list':
-                command = 'git stash list';
+                args = ['stash', 'list'];
                 responseMessage = 'Stash list retrieved';
                 break;
             case 'apply':
-                command = index !== undefined ? `git stash apply stash@{${index}}` : 'git stash apply';
+                args = index !== undefined ? ['stash', 'apply', `stash@{${index}}`] : ['stash', 'apply'];
                 responseMessage = 'Stash applied (kept in stash)';
                 break;
             case 'drop':
-                command = index !== undefined ? `git stash drop stash@{${index}}` : 'git stash drop';
+                args = index !== undefined ? ['stash', 'drop', `stash@{${index}}`] : ['stash', 'drop'];
                 responseMessage = 'Stash dropped';
                 break;
             default:
                 return res.status(400).json({ error: 'Invalid action. Use: save, pop, list, apply, or drop' });
         }
 
-        const { stdout, stderr } = await execAsync(command, { cwd: '/data/dap' });
+        const output = await spawnAsync('git', args, { cwd: '/data/dap' });
 
         res.json({
             success: true,
-            output: stdout + stderr,
+            output: output,
             message: responseMessage,
-            stashes: action === 'list' ? stdout.split('\n').filter(Boolean) : undefined
+            stashes: action === 'list' ? output.split('\n').filter(Boolean) : undefined
         });
     } catch (error: any) {
         res.json({
