@@ -60,10 +60,11 @@ export const addLogEntry = (_level: string, _message: string) => {};
 export default router;
 DUMMYDEV
 
-# Copy frontend (excluding node_modules, dist, and dev-only files)
+# Copy frontend (excluding node_modules, dist)
+# We include dev source files to allow build to succeed (App.tsx imports them)
+# runtime config ENABLE_DEV_TOOLS=false will hide them
 echo "  Copying frontend..."
 rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '*.log' \
-    --exclude 'src/components/dev' \
     "${SOURCE_DIR}/frontend/" "$PACKAGE_DIR/frontend/"
 
 # Copy scripts
