@@ -1,92 +1,64 @@
 #!/bin/bash
 #
 # Deploy DAP to MacBook for Demo/Backup
-# Run this FROM the dev environment to push code to your Mac
-#
-# Prerequisites:
-#   1. SSH access to your Mac (either local network or tunneled)
-#   2. On Mac: Node.js 22+, PostgreSQL installed
+# This script creates a portable tarball package containing:
+#   - Backend code
+#   - Frontend code
+#   - Setup scripts (with Mac-specific fixes)
+#   - Management script
 #
 # Usage:
-#   MAC_HOST=your-mac-ip ./scripts/deploy-to-mac.sh
-#   OR if Mac is accessible via SSH config:
-#   MAC_HOST=macbook ./scripts/deploy-to-mac.sh
+#   ./scripts/deploy-to-mac.sh
+#
+# Output:
+#   /tmp/dap-mac-package.tar.gz
+#
+# Deployment:
+#   1. Copy the tarball to your Mac: scp user@dev:/tmp/dap-mac-package.tar.gz .
+#   2. Extract and run setup: ./setup-mac.sh
 #
 
 set -e
-
-# Configuration - CHANGE THESE OR SET AS ENV VARS
-MAC_HOST="${MAC_HOST:-}"
-MAC_USER="${MAC_USER:-$(whoami)}"
-MAC_DAP_DIR="\$HOME/dap"  # Will expand on the Mac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SOURCE_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Colors
-RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${BLUE}==========================================${NC}"
-echo -e "${BLUE}🍎 DAP Mac Deployment Script${NC}"
+echo -e "${BLUE}🍎 DAP Mac Package Generator${NC}"
 echo -e "${BLUE}==========================================${NC}"
 echo ""
 
-# Check if MAC_HOST is set
-if [ -z "$MAC_HOST" ]; then
-    echo -e "${YELLOW}No MAC_HOST specified.${NC}"
-    echo ""
-    echo "Options:"
-    echo ""
-    echo "1. Deploy via SSH to your Mac:"
-    echo "   MAC_HOST=your-mac-ip $0"
-    echo "   MAC_HOST=macbook.local $0"
-    echo ""
-    echo "2. Generate a portable package to transfer manually:"
-    echo "   $0 --package"
-    echo ""
-    echo "3. If running directly on Mac, use --local:"
-    echo "   $0 --local"
-    echo ""
-    
-    read -p "Enter Mac hostname/IP (or press Enter to create package): " MAC_INPUT
-    if [ -z "$MAC_INPUT" ]; then
-        MAC_HOST="__PACKAGE__"
-    else
-        MAC_HOST="$MAC_INPUT"
-    fi
-fi
+echo -e "${YELLOW}📦 Creating portable deployment package...${NC}"
 
-# Handle package mode
-if [ "$MAC_HOST" == "__PACKAGE__" ] || [ "$1" == "--package" ]; then
-    echo -e "\n${YELLOW}📦 Creating portable deployment package...${NC}"
-    
-    PACKAGE_DIR="/tmp/dap-mac-package"
-    PACKAGE_FILE="/tmp/dap-mac-package.tar.gz"
-    
-    rm -rf "$PACKAGE_DIR" "$PACKAGE_FILE"
-    mkdir -p "$PACKAGE_DIR"
-    
-    # Copy backend (excluding node_modules, dist)
-    echo "  Copying backend..."
-    rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '*.log' \
-        "${SOURCE_DIR}/backend/" "$PACKAGE_DIR/backend/"
-    
-    # Copy frontend (excluding node_modules, dist)
-    echo "  Copying frontend..."
-    rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '*.log' \
-        "${SOURCE_DIR}/frontend/" "$PACKAGE_DIR/frontend/"
-    
-    # Copy scripts
-    echo "  Copying scripts..."
-    mkdir -p "$PACKAGE_DIR/scripts"
-    cp "${SCRIPT_DIR}/deploy-to-mac.sh" "$PACKAGE_DIR/scripts/"
-    
-    # Create Mac-specific .env
-    cat > "$PACKAGE_DIR/.env" << 'ENVFILE'
+PACKAGE_DIR="/tmp/dap-mac-package"
+PACKAGE_FILE="/tmp/dap-mac-package.tar.gz"
+
+rm -rf "$PACKAGE_DIR" "$PACKAGE_FILE"
+mkdir -p "$PACKAGE_DIR"
+
+# Copy backend (excluding node_modules, dist)
+echo "  Copying backend..."
+rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '*.log' \
+    "${SOURCE_DIR}/backend/" "$PACKAGE_DIR/backend/"
+
+# Copy frontend (excluding node_modules, dist)
+echo "  Copying frontend..."
+rsync -a --exclude 'node_modules' --exclude 'dist' --exclude '*.log' \
+    "${SOURCE_DIR}/frontend/" "$PACKAGE_DIR/frontend/"
+
+# Copy scripts
+echo "  Copying scripts..."
+mkdir -p "$PACKAGE_DIR/scripts"
+cp "${SCRIPT_DIR}/deploy-to-mac.sh" "$PACKAGE_DIR/scripts/"
+
+# Create Mac-specific .env
+cat > "$PACKAGE_DIR/.env" << 'ENVFILE'
 # DAP Mac Local Environment
 NODE_ENV=development
 
@@ -123,11 +95,11 @@ BACKUP_DIR=./backups
 LOG_LEVEL=info
 ENVFILE
 
-    cp "$PACKAGE_DIR/.env" "$PACKAGE_DIR/backend/.env"
-    cp "$PACKAGE_DIR/.env" "$PACKAGE_DIR/frontend/.env"
-    
-    # Create setup script for Mac
-    cat > "$PACKAGE_DIR/setup-mac.sh" << 'SETUPSCRIPT'
+cp "$PACKAGE_DIR/.env" "$PACKAGE_DIR/backend/.env"
+cp "$PACKAGE_DIR/.env" "$PACKAGE_DIR/frontend/.env"
+
+# Create setup script for Mac
+cat > "$PACKAGE_DIR/setup-mac.sh" << 'SETUPSCRIPT'
 #!/bin/bash
 # DAP Mac Setup Script - Run this after extracting the package
 set -e
@@ -186,10 +158,10 @@ echo ""
 echo "To start: ./dap start"
 echo "Access:   http://localhost:5173"
 SETUPSCRIPT
-    chmod +x "$PACKAGE_DIR/setup-mac.sh"
-    
-    # Create management script
-    cat > "$PACKAGE_DIR/dap" << 'DAPSCRIPT'
+chmod +x "$PACKAGE_DIR/setup-mac.sh"
+
+# Create management script
+cat > "$PACKAGE_DIR/dap" << 'DAPSCRIPT'
 #!/bin/bash
 # DAP Mac Management Script
 DAP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -316,113 +288,25 @@ case "$1" in
         ;;
 esac
 DAPSCRIPT
-    chmod +x "$PACKAGE_DIR/dap"
-    
-    # Create tarball
-    echo "  Creating archive..."
-    cd /tmp
-    tar -czf dap-mac-package.tar.gz -C "$PACKAGE_DIR" .
-    
-    echo ""
-    echo -e "${GREEN}✅ Package created: /tmp/dap-mac-package.tar.gz${NC}"
-    echo ""
-    echo -e "${BLUE}To deploy to your Mac:${NC}"
-    echo "1. Copy the package to your Mac:"
-    echo "   scp /tmp/dap-mac-package.tar.gz your-mac:~/"
-    echo ""
-    echo "2. On your Mac, extract and setup:"
-    echo "   mkdir -p ~/dap && cd ~/dap"
-    echo "   tar -xzf ~/dap-mac-package.tar.gz"
-    echo "   ./setup-mac.sh"
-    echo ""
-    echo "3. Start the app:"
-    echo "   ./dap start"
-    echo ""
-    exit 0
-fi
+chmod +x "$PACKAGE_DIR/dap"
 
-# SSH deployment mode
-echo -e "${GREEN}📍 Deploying to ${MAC_USER}@${MAC_HOST}:~/dap${NC}"
-
-# Test SSH connection
-echo -e "\n${YELLOW}🔐 Testing SSH connection...${NC}"
-if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "${MAC_USER}@${MAC_HOST}" "echo 'SSH connection successful'" 2>/dev/null; then
-    echo -e "${RED}❌ Cannot connect to ${MAC_USER}@${MAC_HOST}${NC}"
-    echo "Please ensure:"
-    echo "  1. SSH is enabled on your Mac (System Preferences > Sharing > Remote Login)"
-    echo "  2. You have SSH key access or can provide password"
-    echo "  3. The hostname/IP is correct"
-    exit 1
-fi
-echo -e "${GREEN}✓ SSH connection successful${NC}"
-
-# Create directory on Mac
-echo -e "\n${YELLOW}📁 Creating directory on Mac...${NC}"
-ssh "${MAC_USER}@${MAC_HOST}" "mkdir -p ~/dap"
-
-# Sync code
-echo -e "\n${YELLOW}📂 Syncing code to Mac...${NC}"
-RSYNC_OPTS="-avz --delete --exclude 'node_modules' --exclude 'dist' --exclude '.git' --exclude '*.log' --exclude 'backups'"
-
-echo "  Syncing backend..."
-rsync $RSYNC_OPTS "${SOURCE_DIR}/backend/" "${MAC_USER}@${MAC_HOST}:~/dap/backend/"
-
-echo "  Syncing frontend..."
-rsync $RSYNC_OPTS "${SOURCE_DIR}/frontend/" "${MAC_USER}@${MAC_HOST}:~/dap/frontend/"
-
-echo "  Syncing scripts..."
-rsync $RSYNC_OPTS "${SOURCE_DIR}/scripts/" "${MAC_USER}@${MAC_HOST}:~/dap/scripts/"
-
-# Create .env and management script on Mac
-echo -e "\n${YELLOW}⚙️  Creating configuration...${NC}"
-ssh "${MAC_USER}@${MAC_HOST}" 'cat > ~/dap/.env' << 'ENVFILE'
-NODE_ENV=development
-DATABASE_URL="postgresql://localhost:5432/dap_mac?schema=public"
-API_PORT=4000
-API_HOST=0.0.0.0
-FRONTEND_PORT=5173
-FRONTEND_HOST=0.0.0.0
-VITE_GRAPHQL_URL=http://localhost:4000/graphql
-VITE_API_URL=http://localhost:4000
-VITE_BASE_PATH=/
-JWT_SECRET=mac-demo-jwt-secret
-JWT_EXPIRES_IN=24h
-REFRESH_TOKEN_SECRET=mac-demo-refresh-secret
-REFRESH_TOKEN_EXPIRES_IN=7d
-SESSION_SECRET=mac-demo-session-secret
-AI_PROVIDER=mock
-BACKUP_DIR=./backups
-LOG_LEVEL=info
-ENVFILE
-
-ssh "${MAC_USER}@${MAC_HOST}" 'cp ~/dap/.env ~/dap/backend/.env && cp ~/dap/.env ~/dap/frontend/.env'
-
-# Copy management script
-scp "${SCRIPT_DIR}/../dap-prod" "${MAC_USER}@${MAC_HOST}:~/dap/dap" 2>/dev/null || \
-    ssh "${MAC_USER}@${MAC_HOST}" 'chmod +x ~/dap/dap' 2>/dev/null || true
-
-echo -e "\n${YELLOW}📦 Installing dependencies on Mac...${NC}"
-ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/backend && npm install --legacy-peer-deps && npx prisma generate'
-ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/frontend && npm install --legacy-peer-deps'
-
-echo -e "\n${YELLOW}🗄️  Setting up database...${NC}"
-ssh "${MAC_USER}@${MAC_HOST}" "sed -i '' \"s|postgresql://localhost|postgresql://\$(whoami)@localhost|g\" ~/dap/backend/.env"
-ssh "${MAC_USER}@${MAC_HOST}" "sed -i '' \"s|postgresql://localhost|postgresql://\$(whoami)@localhost|g\" ~/dap/frontend/.env"
-ssh "${MAC_USER}@${MAC_HOST}" 'createdb dap_mac 2>/dev/null || echo "Database exists"'
-ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/backend && npx prisma db push --skip-generate'
-ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/backend && npm run seed 2>/dev/null || echo "Seed exists"'
-
-echo -e "\n${YELLOW}🔨 Building backend...${NC}"
-ssh "${MAC_USER}@${MAC_HOST}" 'cd ~/dap/backend && npm run build'
+# Create tarball
+echo "  Creating archive..."
+cd /tmp
+tar -czf dap-mac-package.tar.gz -C "$PACKAGE_DIR" .
 
 echo ""
-echo -e "${GREEN}==========================================${NC}"
-echo -e "${GREEN}✅ DAP Successfully Deployed to Mac!${NC}"
-echo -e "${GREEN}==========================================${NC}"
+echo -e "${GREEN}✅ Package created: /tmp/dap-mac-package.tar.gz${NC}"
 echo ""
-echo "On your Mac:"
-echo "  cd ~/dap"
-echo "  ./dap start"
+echo -e "${BLUE}To deploy to your Mac:${NC}"
+echo "1. Copy the package to your Mac:"
+echo "   scp rajarora@$(hostname):/tmp/dap-mac-package.tar.gz ~/"
 echo ""
-echo "Access: http://localhost:5173"
-echo "Credentials: admin/admin123, smeuser/sme123, cssuser/css123"
+echo "2. On your Mac, extract and setup:"
+echo "   mkdir -p ~/dap && cd ~/dap"
+echo "   tar -xzf ~/dap-mac-package.tar.gz"
+echo "   ./setup-mac.sh"
+echo ""
+echo "3. Start the app:"
+echo "   ./dap start"
+echo ""
