@@ -1984,6 +1984,18 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                 Adoption Progress for {selectedCustomerProduct.name || selectedCustomerProduct.product?.name || 'Product'}
                               </Typography>
                               <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                <Tooltip title="Sync with latest product tasks">
+                                  <Button
+                                    size="small"
+                                    variant="outlined"
+                                    startIcon={<Sync />}
+                                    color={planData.adoptionPlan.needsSync ? 'warning' : 'primary'}
+                                    onClick={handleSync}
+                                    disabled={syncLoading}
+                                  >
+                                    {syncLoading ? 'Syncing...' : planData.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
+                                  </Button>
+                                </Tooltip>
                                 <Chip
                                   label={selectedCustomerProduct.licenseLevel}
                                   color="primary"
@@ -1998,9 +2010,6 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                     <Edit fontSize="small" />
                                   </IconButton>
                                 </Tooltip>
-                                {planData.adoptionPlan.needsSync && (
-                                  <Chip label="Sync Needed" variant="outlined" color="warning" icon={<Sync />} size="small" />
-                                )}
                               </Box>
                             </Box>
 
