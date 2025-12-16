@@ -17,7 +17,7 @@ import { TaskDialog } from '../components/dialogs/TaskDialog';
 export const SolutionsPage: React.FC = () => {
     // State
     const [selectedSolution, setSelectedSolution] = useState<string | null>(localStorage.getItem('lastSelectedSolutionId'));
-    const [selectedSubSection, setSelectedSubSection] = useState<'tasks' | 'products' | 'outcomes' | 'releases' | 'customAttributes'>('tasks');
+    const [selectedSubSection, setSelectedSubSection] = useState<'tasks' | 'products' | 'outcomes' | 'releases' | 'customAttributes'>('products');
 
     // Dialog States
     const [solutionDialog, setSolutionDialog] = useState(false);
@@ -327,11 +327,11 @@ export const SolutionsPage: React.FC = () => {
                 <>
                     <Box sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Tabs value={selectedSubSection} onChange={(_, v) => setSelectedSubSection(v)} variant="scrollable" scrollButtons="auto">
-                            <Tab label="Tasks" value="tasks" />
                             <Tab label="Products" value="products" />
                             <Tab label="Outcomes" value="outcomes" />
                             <Tab label="Releases" value="releases" />
                             <Tab label="Custom Attributes" value="customAttributes" />
+                            <Tab label="Tasks" value="tasks" />
                         </Tabs>
                         <Button
                             variant="contained"

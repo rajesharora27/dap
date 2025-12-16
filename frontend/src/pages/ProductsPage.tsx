@@ -27,7 +27,7 @@ interface ProductsPageProps {
 export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => {
     // State
     const [selectedProduct, setSelectedProduct] = useState<string | null>(localStorage.getItem('lastSelectedProductId'));
-    const [selectedSubSection, setSelectedSubSection] = useState<'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes'>('tasks');
+    const [selectedSubSection, setSelectedSubSection] = useState<'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes'>('outcomes');
     const importFileRef = useRef<HTMLInputElement>(null);
 
     // Dialog States
@@ -538,11 +538,11 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 <>
                     <Box sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Tabs value={selectedSubSection} onChange={(_, v) => setSelectedSubSection(v)} variant="scrollable" scrollButtons="auto">
-                            <Tab label="Tasks" value="tasks" />
                             <Tab label="Outcomes" value="outcomes" />
                             <Tab label="Releases" value="releases" />
                             <Tab label="Licenses" value="licenses" />
                             <Tab label="Custom Attributes" value="customAttributes" />
+                            <Tab label="Tasks" value="tasks" />
                         </Tabs>
                         <Button
                             variant="contained"
@@ -790,7 +790,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                         </Box>
                     )}
                 </>
-            )}
+            )
+            }
 
             {/* Dialogs */}
             <TaskDialog
@@ -872,7 +873,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 attribute={editingCustomAttr}
                 existingKeys={Object.keys(displayProduct?.customAttrs || {})}
             />
-        </Box>
+        </Box >
     );
 };
 

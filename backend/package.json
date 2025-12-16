@@ -17,6 +17,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
     "seed": "ts-node src/seed.ts",
+    "seed:light-demo": "ts-node scripts/seed-light-demo.ts",
     "seed:sample": "ts-node scripts/add-laptop-sample.ts",
     "seed:dev": "ts-node src/seed-dev.ts",
     "fix-auth": "ts-node scripts/fix_user_auth.ts",

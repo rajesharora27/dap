@@ -82,22 +82,25 @@ export class BackupRestoreService {
     port: string;
     database: string;
     user: string;
-    password: string;
+    password?: string;
   } {
     const dbUrl = process.env.DATABASE_URL;
     if (!dbUrl) {
       throw new Error('DATABASE_URL environment variable is not set');
     }
 
-    // Parse postgres://user:password@host:port/database
-    const match = dbUrl.match(/postgres(?:ql)?:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/([^?]+)/);
+    // Parse postgres://user:password@host:port/database or postgres://user@host:port/database
+    // Regex allows optional password part
+    const match = dbUrl.match(/postgres(?:ql)?:\/\/([^:@]+)(?::([^@]+))?@([^:]+):(\d+)\/([^?]+)/);
+
     if (!match) {
-      throw new Error('Invalid DATABASE_URL format');
+      // Try fallback for simple connection strings without strict validation
+      throw new Error('Invalid DATABASE_URL format. Expected postgres://user:password@host:port/database');
     }
 
     return {
       user: match[1],
-      password: match[2],
+      password: match[2], // Can be undefined
       host: match[3],
       port: match[4],
       database: match[5],
@@ -189,21 +192,41 @@ export class BackupRestoreService {
 
       // Create backup
       // In production, we use native pg_dump as the database is running as a system service
-      // In development, we use podman exec to run pg_dump inside the container
+      // In development, we use docker/podman exec to run pg_dump inside the container
       const containerName = process.env.DB_CONTAINER_NAME || 'dap_db_1';
       let command: string;
-      const env = { ...process.env, PGPASSWORD: dbConfig.password };
+
+      // Construct env with password only if it exists
+      const env: NodeJS.ProcessEnv = { ...process.env };
+      if (dbConfig.password) {
+        env.PGPASSWORD = dbConfig.password;
+      }
 
       // Check if pg_dump is available natively
       const hasPgDump = await this.checkCommand('pg_dump');
       const forceContainer = process.env.DB_FORCE_CONTAINER === 'true';
 
+      // Detect container runtime
+      let containerRuntime = 'docker';
+      if (await this.checkCommand('podman')) {
+        containerRuntime = 'podman';
+      } else if (await this.checkCommand('docker')) {
+        containerRuntime = 'docker';
+      }
+
       if (hasPgDump && !forceContainer) {
-        // Native Postgres
+        // Native Postgres (macOS light mode or prod)
         command = `pg_dump -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
       } else {
-        // Podman container
-        command = `podman exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
+        // Containerized Postgres
+        // Verify container runtime exists
+        if (!(await this.checkCommand(containerRuntime))) {
+          if (!hasPgDump) {
+            throw new Error(`pg_dump not found natively and ${containerRuntime} not found. Cannot create backup.`);
+          }
+        }
+
+        command = `${containerRuntime} exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
       }
 
       await execPromise(command, { maxBuffer: 50 * 1024 * 1024, env }); // 50MB buffer
@@ -319,6 +342,28 @@ export class BackupRestoreService {
       const forceContainer = process.env.DB_FORCE_CONTAINER === 'true';
       const useNative = hasPsql && !forceContainer;
 
+      // Detect container runtime
+      let containerRuntime = 'docker';
+      if (await this.checkCommand('podman')) {
+        containerRuntime = 'podman';
+      } else if (await this.checkCommand('docker')) {
+        containerRuntime = 'docker';
+      }
+
+      const env: NodeJS.ProcessEnv = { ...process.env };
+      if (dbConfig.password) {
+        env.PGPASSWORD = dbConfig.password;
+      }
+
+      // Helper for commands
+      const runQuery = async (query: string, timeoutMs: number = 10000) => {
+        const cmd = useNative
+          ? `psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -c "${query}"`
+          : `${containerRuntime} exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "${query}"`;
+
+        await execPromise(cmd, { timeout: timeoutMs, env });
+      };
+
       // IMPORTANT: Save existing user passwords before restore
       console.log('Saving existing user passwords...');
       let existingPasswords: Map<string, string> = new Map();
@@ -352,12 +397,14 @@ export class BackupRestoreService {
         // First, terminate other connections (except ours)
         console.log('Terminating active connections...');
         try {
+          const terminateSql = `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbConfig.database}' AND pid <> pg_backend_pid();`;
 
+          // Use a different database (postgres) to terminate connections to target DB
           const terminateCmd = useNative
-            ? `psql -U ${dbConfig.user} -h ${dbConfig.host} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbConfig.database}' AND pid <> pg_backend_pid();"`
-            : `podman exec ${containerName} psql -U ${dbConfig.user} -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '${dbConfig.database}' AND pid <> pg_backend_pid();"`;
+            ? `psql -U ${dbConfig.user} -h ${dbConfig.host} -d postgres -c "${terminateSql}"`
+            : `${containerRuntime} exec ${containerName} psql -U ${dbConfig.user} -d postgres -c "${terminateSql}"`;
 
-          await execPromise(terminateCmd, { timeout: 5000, env: { ...process.env, PGPASSWORD: dbConfig.password } });
+          await execPromise(terminateCmd, { timeout: 5000, env });
         } catch {
           // Ignore errors - might not have permission
           console.log('Could not terminate connections (may lack permission), continuing...');
@@ -365,19 +412,11 @@ export class BackupRestoreService {
 
         // Drop the public schema (this drops all tables, functions, etc.)
         console.log('Dropping public schema...');
-        const dropCmd = useNative
-          ? `psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -c "DROP SCHEMA IF EXISTS public CASCADE;"`
-          : `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "DROP SCHEMA IF EXISTS public CASCADE;"`;
-
-        await execPromise(dropCmd, { timeout: 15000, env: { ...process.env, PGPASSWORD: dbConfig.password } });
+        await runQuery("DROP SCHEMA IF EXISTS public CASCADE;", 15000);
 
         // Recreate the public schema
         console.log('Recreating public schema...');
-        const createCmd = useNative
-          ? `psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -c "CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO ${dbConfig.user}; GRANT ALL ON SCHEMA public TO public;"`
-          : `podman exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO ${dbConfig.user}; GRANT ALL ON SCHEMA public TO public;"`;
-
-        await execPromise(createCmd, { timeout: 10000, env: { ...process.env, PGPASSWORD: dbConfig.password } });
+        await runQuery(`CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO ${dbConfig.user}; GRANT ALL ON SCHEMA public TO public;`, 10000);
 
         console.log('Database cleared successfully');
       } catch (err: any) {
@@ -393,12 +432,11 @@ export class BackupRestoreService {
       // Simpler restore command - pipe file directly into psql
       // Set statement timeout to prevent hanging
       let restoreCommand: string;
-      const env = { ...process.env, PGPASSWORD: dbConfig.password };
 
       if (useNative) {
         restoreCommand = `cat "${filePath}" | psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -q 2>&1`;
       } else {
-        restoreCommand = `cat "${filePath}" | podman exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -q 2>&1`;
+        restoreCommand = `cat "${filePath}" | ${containerRuntime} exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -q 2>&1`;
       }
 
       console.log('Starting restore execution...');

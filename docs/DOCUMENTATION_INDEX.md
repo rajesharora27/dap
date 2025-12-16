@@ -49,6 +49,7 @@ Perfect for new users and team members getting familiar with DAP.
 |----------|-------------|----------|
 | **README** | Project overview, quick start, and basic commands | [/README.md](/README.md) |
 | **Quick Start Guide** | Get DAP running in minutes | [/QUICK_START.md](/QUICK_START.md) |
+| **Local Dev Context** | Mac demo vs centos1 development guidance | [DEV_CONTEXT_LOCAL.md](./DEV_CONTEXT_LOCAL.md) |
 | **Features Overview** | Complete list of DAP capabilities | [FEATURES.md](./FEATURES.md) |
 | **Context Document** | Comprehensive application overview for AI assistants and developers | [/CONTEXT.md](/CONTEXT.md) |
 

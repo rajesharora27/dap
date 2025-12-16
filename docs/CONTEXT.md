@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.5.0
-**Last Updated:** December 8, 2025  
+**Version:** 2.6.0
+**Last Updated:** December 16, 2025  
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -545,10 +545,11 @@ ADMIN > WRITE > READ
 
 ### Environments
 
-| Environment | Server | URL | Purpose |
-|------------|--------|-----|---------|
-| **DEV** | centos1.rajarora.csslab | http://dev.rajarora.csslab/dap/ | Development & Testing |
-| **PROD** | centos2.rajarora.csslab | https://myapps.cxsaaslab.com/dap/ | Production |
+| Environment | Server | URL | Purpose | Mode |
+|------------|--------|-----|---------|------|
+| **MAC** | MacBook | http://localhost:5173 | Offline Demos | `mac-demo` |
+| **DEV** | centos1.rajarora.csslab | http://dev.rajarora.csslab/dap/ | Development & Testing | `linux-dev` |
+| **PROD** | centos2.rajarora.csslab | https://myapps.cxsaaslab.com/dap/ | Production | `production` |
 
 ### Standard Release Workflow
 
@@ -724,34 +725,64 @@ npx prisma db push
 
 ## Development Workflow
 
-### Local Development Setup
+### Cross-Platform Development
+
+DAP supports three deployment environments with unified CLI:
+
+| Environment | Platform | Mode | ./dap Behavior | Environment File |
+|------------|----------|------|----------------|------------------|
+| **MacBook** | macOS | `mac-demo` | Light production for demos | `.env.macbook` |
+| **centos1** | Linux | `linux-dev` | Full development toolkit | `.env.development` |
+| **centos2** | Linux | `production` | Production (delegates to `dap-prod`) | `.env.production` |
+
+The `./dap` script automatically detects the environment based on OS and hostname.
+
+**For detailed cross-platform documentation, see:** `docs/DEV_CONTEXT_LOCAL.md`
+
+### Mac Demo Setup (No Docker Required)
+
+```bash
+# 1. Clone repository
+cd ~/Develop/dap
+
+# 2. Start (auto-detected on macOS)
+./dap start
+
+# This automatically:
+# - Installs PostgreSQL via Homebrew (if needed)
+# - Syncs .env.macbook to backend/.env
+# - Runs migrations
+# - Builds backend/frontend
+# - Starts services on ports 4000/5173
+
+# 3. Access
+# Frontend: http://localhost:5173
+# Backend: http://localhost:4000/graphql
+
+# 4. Run tests
+./dap test
+
+# 5. Reset database with demo data
+./dap reset
+```
+
+### Linux Development Setup (Docker-based)
 
 ```bash
 # 1. Clone repository
 cd /data/dap
 
-# 2. Setup database (Podman)
-podman run --name dap_db \
+# 2. Setup database (Docker/Podman)
+docker run --name dap_db \
   -e POSTGRES_DB=dap \
-  -e POSTGRES_PASSWORD=yourpassword \
+  -e POSTGRES_PASSWORD=postgres \
   -p 5432:5432 \
   -d postgres:16
 
-# 3. Backend setup
-cd backend
-npm install
-cp .env.example .env  # Edit with your settings
-npx prisma migrate deploy
-npx prisma generate
-npm run seed  # Optional: add sample data
-npm start
+# 3. Start
+./dap start
 
-# 4. Frontend setup (new terminal)
-cd frontend
-npm install
-npm run dev
-
-# 5. Access
+# 4. Access
 # Frontend: http://localhost:5173
 # Backend: http://localhost:4000/graphql
 ```
@@ -760,13 +791,13 @@ npm run dev
 
 1. **Backend Changes:**
    - Edit files in `backend/src/`
-   - Server auto-restarts (nodemon)
+   - Server auto-restarts (nodemon in dev, manual restart in Mac demo)
    - Run migrations if schema changes
 
 2. **Frontend Changes:**
    - Edit files in `frontend/src/`
-   - Hot module reload enabled
-   - Changes appear immediately
+   - Hot module reload enabled in dev
+   - Mac demo requires rebuild: `./dap restart`
 
 3. **Database Schema:**
    - Edit `backend/prisma/schema.prisma`
@@ -774,6 +805,12 @@ npm run dev
    - Run `npx prisma generate`
 
 ### Testing
+
+**Automated Tests:**
+```bash
+./dap test               # Runs comprehensive E2E tests
+./dap test --pattern=auth  # Run specific tests
+```
 
 **Manual Testing Checklist:**
 1. Login/logout with different roles
