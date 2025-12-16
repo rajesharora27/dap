@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     envDir: '..',
-    base: env.VITE_BASE_PATH || '/',
+    base: process.env.VITE_BASE_PATH || env.VITE_BASE_PATH || '/',
     plugins: [
       react({
         fastRefresh: true,

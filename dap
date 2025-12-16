@@ -17,7 +17,6 @@ set -e
 
 # Configuration - Load from environment or use defaults
 APP_NAME="DAP Application"
-DB_CONTAINER="$(docker ps -a --format '{{.Names}}' | grep -E '^dap[-_]db[-_]1$|^dap_db_1$|^dap-db-1$|^db$' | head -n 1)"
 BACKEND_PORT="${BACKEND_PORT:-4000}"
 DEVTOOLS_PORT="${DEVTOOLS_PORT:-4001}"
 FRONTEND_PORT="${FRONTEND_PORT:-5173}"
@@ -27,8 +26,41 @@ PROJECT_DIR="$SCRIPT_DIR"
 BACKEND_DIR="$PROJECT_DIR/backend"
 FRONTEND_DIR="$PROJECT_DIR/frontend"
 
-# Dependency checks (Docker, Node.js, npm, lsof, pkill)
-for dep in docker node npm lsof pkill; do
+# Platform-aware mode selection
+OS_NAME="$(uname -s)"
+HOSTNAME_LOWER="$(hostname | tr '[:upper:]' '[:lower:]' || echo 'unknown')"
+
+DEFAULT_DAP_MODE="linux-dev"
+
+# Auto-detect environment
+if [ "$OS_NAME" = "Darwin" ]; then
+    DEFAULT_DAP_MODE="mac-demo"
+elif [[ "$HOSTNAME_LOWER" == *"centos2"* ]]; then
+    DEFAULT_DAP_MODE="production"
+elif [[ "$HOSTNAME_LOWER" == *"centos1"* ]]; then
+    DEFAULT_DAP_MODE="linux-dev"
+fi
+
+DAP_MODE="${DAP_MODE:-$DEFAULT_DAP_MODE}"
+
+# Production mode delegation
+if [ "$DAP_MODE" = "production" ]; then
+    if [ -x "$PROJECT_DIR/dap-prod" ]; then
+        exec "$PROJECT_DIR/dap-prod" "$@"
+    else
+        echo -e "\033[0;31m[ERROR] Production manager script (dap-prod) not found or not executable.\033[0m" >&2
+        exit 1
+    fi
+fi
+MAC_DEPLOY_SCRIPT="$PROJECT_DIR/scripts/mac-light-deploy.sh"
+
+# Dependency checks - Docker only required for linux-dev mode
+REQUIRED_DEPS="node npm lsof pkill"
+if [ "$DAP_MODE" = "linux-dev" ]; then
+    REQUIRED_DEPS="docker $REQUIRED_DEPS"
+fi
+
+for dep in $REQUIRED_DEPS; do
     if ! command -v $dep >/dev/null 2>&1; then
         echo "[ERROR] Required dependency '$dep' is not installed or not in PATH. Please install it before running this script."
         exit 1
@@ -50,6 +82,47 @@ log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 log_header() { echo -e "${PURPLE}=== $1 ===${NC}"; }
+
+use_mac_mode() {
+    [ "$DAP_MODE" = "mac-demo" ]
+}
+
+ensure_mac_script() {
+    if [ ! -x "$MAC_DEPLOY_SCRIPT" ]; then
+        log_error "Mac deploy script not found or not executable: $MAC_DEPLOY_SCRIPT"
+        exit 1
+    fi
+}
+
+mac_start() {
+    ensure_mac_script
+    log_header "STARTING MAC LIGHT PROD MODE"
+    "$MAC_DEPLOY_SCRIPT" start
+}
+
+mac_stop() {
+    ensure_mac_script
+    log_header "STOPPING MAC LIGHT PROD MODE"
+    "$MAC_DEPLOY_SCRIPT" stop
+}
+
+mac_restart() {
+    ensure_mac_script
+    log_header "RESTARTING MAC LIGHT PROD MODE"
+    "$MAC_DEPLOY_SCRIPT" restart
+}
+
+mac_status() {
+    ensure_mac_script
+    log_header "STATUS - MAC LIGHT PROD MODE"
+    "$MAC_DEPLOY_SCRIPT" status
+}
+
+mac_reset() {
+    ensure_mac_script
+    log_header "RESETTING DATABASE - MAC LIGHT PROD MODE"
+    "$MAC_DEPLOY_SCRIPT" reset
+}
 
 # Check if a port is in use
 check_port() {
@@ -164,9 +237,13 @@ force_kill_all() {
     log_success "Force kill complete"
 }
 
-# Manage Docker containers
+# Manage Docker containers (linux-dev mode only)
 manage_docker() {
     local action=$1
+    
+    # Get DB container name dynamically (only when docker is available)
+    local DB_CONTAINER
+    DB_CONTAINER="$(docker ps -a --format '{{.Names}}' 2>/dev/null | grep -E '^dap[-_]db[-_]1$|^dap_db_1$|^dap-db-1$|^db$' | head -n 1)"
     
     case $action in
 
@@ -731,23 +808,52 @@ run_comprehensive_test() {
     
     # Ensure test database exists
     log_info "⏳ Ensuring test database exists..."
-    if ! docker exec $DB_CONTAINER psql -U postgres -c '\l' 2>/dev/null | grep -q 'dap_test'; then
-        log_info "📝 Creating test database..."
-        docker exec $DB_CONTAINER psql -U postgres -c "CREATE DATABASE dap_test;" 2>/dev/null || true
+    
+    if use_mac_mode; then
+        # Mac: Use local psql (Homebrew PostgreSQL)
+        local current_user=$(whoami)
+        if ! psql -h localhost -p 5432 -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw 'dap_test'; then
+            log_info "📝 Creating test database..."
+            createdb -h localhost -p 5432 dap_test 2>/dev/null || true
+        fi
+        log_success "✅ Test database ready"
+        
+        echo ""
+        log_info "💻 Command (Mac mode):"
+        echo "   cd $BACKEND_DIR && DATABASE_URL=postgresql://${current_user}@localhost:5432/dap_test npm test -- --runInBand --passWithNoTests --testPathPattern=\"comprehensive-crud\""
+        echo ""
+        echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
+        echo ""
+        
+        # Run E2E test with shadow database (Mac)
+        cd "$BACKEND_DIR"
+        
+        export DATABASE_URL="postgresql://${current_user}@localhost:5432/dap_test?schema=public"
+        
+        # Run migrations on test database
+        log_info "🔄 Running migrations on test database..."
+        npx prisma migrate deploy --skip-generate 2>/dev/null || npx prisma db push --skip-generate 2>/dev/null || true
+        log_success "✅ Test database schema ready"
+    else
+        # Linux: Use Docker
+        if ! docker exec $DB_CONTAINER psql -U postgres -c '\l' 2>/dev/null | grep -q 'dap_test'; then
+            log_info "📝 Creating test database..."
+            docker exec $DB_CONTAINER psql -U postgres -c "CREATE DATABASE dap_test;" 2>/dev/null || true
+        fi
+        log_success "✅ Test database ready"
+        
+        echo ""
+        log_info "💻 Command (identical to GUI):"
+        echo "   cd $BACKEND_DIR && DATABASE_URL=postgres://postgres:postgres@localhost:5432/dap_test npm test -- --runInBand --passWithNoTests --testPathPattern=\"comprehensive-crud\""
+        echo ""
+        echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
+        echo ""
+        
+        # Run E2E test with shadow database (Linux)
+        cd "$BACKEND_DIR"
+        
+        export DATABASE_URL="postgres://postgres:postgres@localhost:5432/dap_test?schema=public"
     fi
-    log_success "✅ Test database ready"
-    
-    echo ""
-    log_info "💻 Command (identical to GUI):"
-    echo "   cd $BACKEND_DIR && DATABASE_URL=postgres://postgres:postgres@localhost:5432/dap_test npm test -- --runInBand --passWithNoTests --testPathPattern=\"comprehensive-crud\""
-    echo ""
-    echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
-    echo ""
-    
-    # Run E2E test with shadow database
-    cd "$BACKEND_DIR"
-    
-    export DATABASE_URL="postgres://postgres:postgres@localhost:5432/dap_test?schema=public"
     export NODE_ENV="test"
     export CI="true"
     
@@ -819,34 +925,74 @@ run_unit_tests() {
     
     # Ensure test database exists
     log_info "⏳ Ensuring test database exists..."
-    if ! docker exec $DB_CONTAINER psql -U postgres -c '\l' 2>/dev/null | grep -q 'dap_test'; then
-        log_info "📝 Creating test database..."
-        docker exec $DB_CONTAINER psql -U postgres -c "CREATE DATABASE dap_test;" 2>/dev/null || true
+    
+    if use_mac_mode; then
+        # Mac: Use local psql (Homebrew PostgreSQL)
+        local current_user=$(whoami)
+        if ! psql -h localhost -p 5432 -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw 'dap_test'; then
+            log_info "📝 Creating test database..."
+            createdb -h localhost -p 5432 dap_test 2>/dev/null || true
+        fi
+        log_success "✅ Test database ready"
+        
+        # Build the command
+        local test_cmd="npm test -- --runInBand --passWithNoTests"
+        
+        if [ "$coverage" = true ]; then
+            test_cmd="npm test -- --coverage --runInBand --passWithNoTests"
+        fi
+        
+        if [ -n "$pattern" ]; then
+            test_cmd="$test_cmd --testPathPattern=\"$pattern\""
+        fi
+        
+        echo ""
+        log_info "💻 Command (Mac mode):"
+        echo "   cd $BACKEND_DIR && DATABASE_URL=postgresql://${current_user}@localhost:5432/dap_test $test_cmd"
+        echo ""
+        echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
+        echo ""
+        
+        # Run tests with shadow database (Mac)
+        cd "$BACKEND_DIR"
+        
+        export DATABASE_URL="postgresql://${current_user}@localhost:5432/dap_test?schema=public"
+        
+        # Run migrations on test database
+        log_info "🔄 Running migrations on test database..."
+        npx prisma migrate deploy --skip-generate 2>/dev/null || npx prisma db push --skip-generate 2>/dev/null || true
+        log_success "✅ Test database schema ready"
+    else
+        # Linux: Use Docker
+        if ! docker exec $DB_CONTAINER psql -U postgres -c '\l' 2>/dev/null | grep -q 'dap_test'; then
+            log_info "📝 Creating test database..."
+            docker exec $DB_CONTAINER psql -U postgres -c "CREATE DATABASE dap_test;" 2>/dev/null || true
+        fi
+        log_success "✅ Test database ready"
+        
+        # Build the command
+        local test_cmd="npm test -- --runInBand --passWithNoTests"
+        
+        if [ "$coverage" = true ]; then
+            test_cmd="npm test -- --coverage --runInBand --passWithNoTests"
+        fi
+        
+        if [ -n "$pattern" ]; then
+            test_cmd="$test_cmd --testPathPattern=\"$pattern\""
+        fi
+        
+        echo ""
+        log_info "💻 Command (can run from CLI):"
+        echo "   cd $BACKEND_DIR && DATABASE_URL=postgres://postgres:postgres@localhost:5432/dap_test $test_cmd"
+        echo ""
+        echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
+        echo ""
+        
+        # Run tests with shadow database (Linux)
+        cd "$BACKEND_DIR"
+        
+        export DATABASE_URL="postgres://postgres:postgres@localhost:5432/dap_test?schema=public"
     fi
-    log_success "✅ Test database ready"
-    
-    # Build the command
-    local test_cmd="npm test -- --runInBand --passWithNoTests"
-    
-    if [ "$coverage" = true ]; then
-        test_cmd="npm test -- --coverage --runInBand --passWithNoTests"
-    fi
-    
-    if [ -n "$pattern" ]; then
-        test_cmd="$test_cmd --testPathPattern=\"$pattern\""
-    fi
-    
-    echo ""
-    log_info "💻 Command (can run from CLI):"
-    echo "   cd $BACKEND_DIR && DATABASE_URL=postgres://postgres:postgres@localhost:5432/dap_test $test_cmd"
-    echo ""
-    echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
-    echo ""
-    
-    # Run tests with shadow database
-    cd "$BACKEND_DIR"
-    
-    export DATABASE_URL="postgres://postgres:postgres@localhost:5432/dap_test?schema=public"
     export NODE_ENV="test"
     export CI="true"
     
@@ -1389,6 +1535,11 @@ show_help() {
     echo -e "  ${BLUE}status${NC}         - Show status of all services and data"
     echo -e "  ${PURPLE}help${NC}           - Show this help message"
     echo ""
+    echo "Mode detection:"
+    echo "  • macOS => mac-demo (uses scripts/mac-light-deploy.sh for light prod demo)"
+    echo "  • Linux => linux-dev (full development toolkit)"
+    echo "  • Override with DAP_MODE=mac-demo|linux-dev ./dap <command>"
+    echo ""
     echo "Examples:"
     echo "  $0 start                # Start for daily development"
     echo "  $0 restart frontend     # Restart only frontend"
@@ -1447,17 +1598,27 @@ main() {
             dev_mode
             ;;
         start)
-            start_all
+            if use_mac_mode; then
+                mac_start
+            else
+                start_all
+            fi
             ;;
         stop)
-            stop_all
+            if use_mac_mode; then
+                mac_stop
+            else
+                stop_all
+            fi
             ;;
         restart)
             shift
             target=${1:-all}
-            log_header "RESTARTING ${target^^}"
+            log_header "RESTARTING $(echo "$target" | tr '[:lower:]' '[:upper:]')"
             
-            if [ "$target" == "backend" ]; then
+            if use_mac_mode; then
+                mac_restart
+            elif [ "$target" == "backend" ]; then
                 stop_backend
                 start_backend
             elif [ "$target" == "frontend" ]; then
@@ -1474,7 +1635,7 @@ main() {
         rebuild)
             shift
             target=${1:-all}
-            log_header "REBUILDING ${target^^}"
+            log_header "REBUILDING $(echo "$target" | tr '[:lower:]' '[:upper:]')"
             log_info "This will rebuild components without affecting database data"
             echo ""
             
@@ -1572,8 +1733,19 @@ main() {
             manage_docker restart
             log_success "Database restarted - all connections cleared"
             ;;
+        reset)
+            if use_mac_mode; then
+                mac_reset
+            else
+                log_info "For linux-dev mode, use './dap reset-sample' to reset database with sample data"
+            fi
+            ;;
         status)
-            show_status
+            if use_mac_mode; then
+                mac_status
+            else
+                show_status
+            fi
             ;;
         help|--help|-h)
             show_help
