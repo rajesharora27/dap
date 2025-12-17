@@ -368,6 +368,26 @@ stop_all() {
     run_as_dap pm2 list
 }
 
+# Helper function to check if PostgreSQL is ready (handles PATH issues on CentOS)
+pg_is_running() {
+    # Try pg_isready with various paths
+    if pg_isready -h localhost -p 5432 -q 2>/dev/null; then
+        return 0
+    elif /usr/pgsql-16/bin/pg_isready -h localhost -p 5432 -q 2>/dev/null; then
+        return 0
+    elif sudo -u postgres /usr/pgsql-16/bin/pg_isready -q 2>/dev/null; then
+        return 0
+    elif sudo -u postgres pg_isready -q 2>/dev/null; then
+        return 0
+    # Fallback: check if port 5432 is listening
+    elif netstat -tuln 2>/dev/null | grep -q ":5432 "; then
+        return 0
+    elif ss -tuln 2>/dev/null | grep -q ":5432 "; then
+        return 0
+    fi
+    return 1
+}
+
 # Start all services from ecosystem.config.js
 start_all() {
     log_header "STARTING ALL SERVICES"
@@ -375,16 +395,75 @@ start_all() {
     # Sync environment before start
     sync_env
     
-    log_info "Starting PM2 processes from ${PM2_CONFIG}..."
+    # Step 1: Ensure PostgreSQL is running
+    log_info "Step 1/3: Ensuring PostgreSQL is running..."
+    
+    # Check if PostgreSQL is already running
+    if pg_is_running; then
+        log_success "PostgreSQL is already running"
+    else
+        log_info "PostgreSQL not running, starting it..."
+        
+        # Try systemctl with different PostgreSQL service names
+        if command -v systemctl &> /dev/null; then
+            # Try versioned service first (e.g., postgresql-16), then generic
+            if sudo systemctl start postgresql-16 2>/dev/null; then
+                log_success "PostgreSQL started via postgresql-16"
+            elif sudo systemctl start postgresql 2>/dev/null; then
+                log_success "PostgreSQL started via postgresql"
+            else
+                log_error "Failed to start PostgreSQL service"
+                log_info "Try: sudo systemctl list-units | grep postgres"
+                return 1
+            fi
+        # Fallback to service command (older systems)
+        elif command -v service &> /dev/null; then
+            sudo service postgresql start
+            log_success "PostgreSQL started via service"
+        else
+            log_error "Cannot start PostgreSQL - no systemctl or service command found"
+            return 1
+        fi
+        
+        # Wait for PostgreSQL to be ready
+        log_info "Waiting for PostgreSQL to accept connections..."
+        local max_attempts=30
+        local attempt=1
+        
+        while [ $attempt -le $max_attempts ]; do
+            if pg_is_running; then
+                log_success "PostgreSQL is ready and accepting connections"
+                break
+            fi
+            
+            if [ $attempt -eq $max_attempts ]; then
+                log_error "PostgreSQL failed to become ready within ${max_attempts} seconds"
+                return 1
+            fi
+            
+            echo -n "."
+            sleep 1
+            ((attempt++))
+        done
+        echo ""
+    fi
+    
+    # Step 2: Start PM2 processes
+    log_info "Step 2/3: Starting PM2 processes from ${PM2_CONFIG}..."
     cd "${APP_DIR}"
     
     if run_as_dap pm2 start "${PM2_CONFIG}" --update-env; then
-        log_success "All services started successfully"
+        log_success "PM2 processes started"
     else
-        log_error "Failed to start services"
+        log_error "Failed to start PM2 services"
         return 1
     fi
     
+    # Step 3: Verify services
+    log_info "Step 3/3: Verifying services..."
+    sleep 2
+    
+    log_success "All services started successfully!"
     echo ""
     run_as_dap pm2 list
 }

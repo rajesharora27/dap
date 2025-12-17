@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.6.0
-**Last Updated:** December 16, 2025  
+**Version:** 2.6.1
+**Last Updated:** December 17, 2025  
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -908,9 +908,66 @@ sudo tail -f /var/log/httpd/error_log
 - Existing passwords preserved on restore
 - Manual backups before deployments
 
+### Production Storage Locations
+
+All DAP data is stored on `/data` partition (not root):
+
+| Component | Location |
+|-----------|----------|
+| **DAP User Home** | `/data/dap` |
+| **Application Code** | `/data/dap/app` |
+| **PM2 Home** | `/data/dap/.pm2` |
+| **PM2/App Logs** | `/data/dap/logs` |
+| **NPM Cache** | `/data/dap/.npm` |
+| **Backups** | `/data/dap/backups` |
+| **PostgreSQL Data** | `/data/pgsql/16/data` |
+
+> **Note:** PostgreSQL data moved from `/var/lib/pgsql/16/data` via systemd override.
+
 ---
 
 ## Recent Changes & Fixes
+
+### Version 2.6.1 (December 17, 2025)
+
+#### Production Infrastructure Improvements
+
+**Feature 1: PostgreSQL Auto-Start in Production**
+- **Issue**: `./dap start` on production (centos2) did not start PostgreSQL if it was stopped.
+- **Fix**: Updated `dap-prod` script with `start_all()` function that:
+  - Checks if PostgreSQL is running before starting PM2
+  - Starts PostgreSQL via `systemctl start postgresql-16` if not running
+  - Waits for PostgreSQL to accept connections (30s timeout)
+  - Handles CentOS PATH issues with `pg_is_running()` helper
+- **Files Changed**: `dap-prod`
+
+**Feature 2: PostgreSQL Data Moved to /data Partition**
+- **Issue**: PostgreSQL data was on root partition which had limited space.
+- **Fix**: Migrated PostgreSQL data directory from `/var/lib/pgsql/16/data` to `/data/pgsql/16/data`
+- **Implementation**:
+  - Created `/data/pgsql/16/data` with postgres ownership
+  - Copied data via rsync
+  - Created systemd override at `/etc/systemd/system/postgresql-16.service.d/override.conf`
+  - Verified PostgreSQL starts with new data directory
+- **Result**: All DAP data now on `/data` partition (238GB available)
+
+**Feature 3: Mac PostgreSQL Auto-Detection**
+- **Issue**: Mac script hardcoded `postgresql@16` but different versions could be installed.
+- **Fix**: Updated `mac-light-deploy.sh` with:
+  - `detect_postgres_version()` function to find installed version
+  - `cleanup_postgres_locks()` to handle stale PID files
+  - Improved startup with retry after lock cleanup
+- **Files Changed**: `scripts/mac-light-deploy.sh`
+
+**Feature 4: Mac Seed Script Fixed**
+- **Issue**: `seed-light-demo.ts` was empty, causing login failures after `./dap reset`.
+- **Fix**: Implemented proper seeding script that creates:
+  - `admin` / `DAP123!!!` (Administrator)
+  - `smeuser` / `DAP123` (SME User)
+  - `cssuser` / `DAP123` (CSS User)
+- **Files Changed**: `backend/scripts/seed-light-demo.ts`
+
+---
 
 ### Version 2.5.0 (December 8, 2025)
 
@@ -1487,8 +1544,8 @@ sudo tail -f /var/log/httpd/error_log
 
 ---
 
-**Last Updated:** December 8, 2025  
-**Version:** 2.5.0  
+**Last Updated:** December 17, 2025  
+**Version:** 2.6.1  
 **Status:** Production Ready
 
 *This document should be updated whenever significant changes are made to the application.*

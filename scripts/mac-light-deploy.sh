@@ -44,8 +44,88 @@ check_dependencies() {
   done
 }
 
+# Detect which PostgreSQL version is installed via Homebrew
+detect_postgres_version() {
+  local pg_version=""
+  
+  # Check for installed PostgreSQL versions (prefer newer)
+  if brew list postgresql@16 >/dev/null 2>&1; then
+    pg_version="postgresql@16"
+  elif brew list postgresql@15 >/dev/null 2>&1; then
+    pg_version="postgresql@15"
+  elif brew list postgresql@14 >/dev/null 2>&1; then
+    pg_version="postgresql@14"
+  elif brew list postgresql >/dev/null 2>&1; then
+    pg_version="postgresql"
+  fi
+  
+  echo "$pg_version"
+}
+
+# Get PostgreSQL data directory for the installed version
+get_postgres_data_dir() {
+  local pg_version="$1"
+  local data_dir=""
+  
+  # Check common locations
+  if [ -d "/opt/homebrew/var/${pg_version}" ]; then
+    data_dir="/opt/homebrew/var/${pg_version}"
+  elif [ -d "/usr/local/var/${pg_version}" ]; then
+    data_dir="/usr/local/var/${pg_version}"
+  elif [ -d "/opt/homebrew/var/postgres" ]; then
+    data_dir="/opt/homebrew/var/postgres"
+  elif [ -d "/usr/local/var/postgres" ]; then
+    data_dir="/usr/local/var/postgres"
+  fi
+  
+  echo "$data_dir"
+}
+
+# Clean up stale PostgreSQL lock files
+cleanup_postgres_locks() {
+  local pg_version="$1"
+  local data_dir
+  data_dir=$(get_postgres_data_dir "$pg_version")
+  
+  if [ -z "$data_dir" ]; then
+    echo "[WARN] Could not find PostgreSQL data directory"
+    return 1
+  fi
+  
+  local pid_file="${data_dir}/postmaster.pid"
+  
+  if [ -f "$pid_file" ]; then
+    local stale_pid
+    stale_pid=$(head -1 "$pid_file" 2>/dev/null || echo "")
+    
+    if [ -n "$stale_pid" ]; then
+      # Check if the PID is still a postgres process
+      local proc_name
+      proc_name=$(ps -p "$stale_pid" -o comm= 2>/dev/null || echo "")
+      
+      if [ -z "$proc_name" ] || [[ "$proc_name" != *"postgres"* ]]; then
+        echo "[INFO] Found stale PostgreSQL lock file (PID $stale_pid is not postgres)"
+        echo "[INFO] Removing stale lock file: $pid_file"
+        rm -f "$pid_file"
+        
+        # Also remove any socket files in /tmp
+        rm -f /tmp/.s.PGSQL.${PG_PORT}* 2>/dev/null || true
+        
+        echo "[INFO] Stale lock files cleaned up"
+        return 0
+      fi
+    fi
+  fi
+  
+  return 1
+}
+
 ensure_postgres() {
   echo "[INFO] Checking PostgreSQL installation..."
+  
+  # Detect installed PostgreSQL version
+  local pg_version
+  pg_version=$(detect_postgres_version)
   
   # Check if postgres is installed
   if ! command -v psql >/dev/null 2>&1; then
@@ -59,6 +139,7 @@ ensure_postgres() {
     fi
     
     brew install postgresql@16
+    pg_version="postgresql@16"
     
     # Add to PATH if needed
     if ! command -v psql >/dev/null 2>&1; then
@@ -67,13 +148,38 @@ ensure_postgres() {
     fi
   fi
   
+  if [ -z "$pg_version" ]; then
+    pg_version=$(detect_postgres_version)
+  fi
+  
+  echo "[INFO] Detected PostgreSQL version: ${pg_version:-unknown}"
+  
   # Check if postgres service is running
   if ! pg_isready -h localhost -p "${PG_PORT}" >/dev/null 2>&1; then
-    echo "[INFO] Starting PostgreSQL service..."
+    echo "[INFO] PostgreSQL not responding, attempting to start..."
     
-    # Try brew services first
+    # First, check for and clean up stale lock files
+    if cleanup_postgres_locks "$pg_version"; then
+      echo "[INFO] Cleaned stale lock files, now starting PostgreSQL..."
+    fi
+    
+    # Stop the service first to ensure clean state
+    if command -v brew >/dev/null 2>&1 && [ -n "$pg_version" ]; then
+      echo "[INFO] Stopping any existing PostgreSQL service..."
+      brew services stop "$pg_version" 2>/dev/null || true
+      sleep 1
+    fi
+    
+    # Start PostgreSQL service
+    echo "[INFO] Starting PostgreSQL service (${pg_version})..."
     if command -v brew >/dev/null 2>&1; then
-      brew services start postgresql@16 2>/dev/null || brew services start postgresql 2>/dev/null || true
+      if [ -n "$pg_version" ]; then
+        brew services start "$pg_version" 2>/dev/null || true
+      else
+        brew services start postgresql@16 2>/dev/null || \
+        brew services start postgresql@14 2>/dev/null || \
+        brew services start postgresql 2>/dev/null || true
+      fi
     fi
     
     # Wait for postgres to start
@@ -88,9 +194,36 @@ ensure_postgres() {
       sleep 1
     done
     
+    # If still not running, try lock cleanup and restart one more time
+    if ! pg_isready -h localhost -p "${PG_PORT}" >/dev/null 2>&1; then
+      echo "[WARN] PostgreSQL failed to start, attempting lock cleanup and retry..."
+      
+      # Force stop and cleanup
+      if [ -n "$pg_version" ]; then
+        brew services stop "$pg_version" 2>/dev/null || true
+        sleep 1
+        cleanup_postgres_locks "$pg_version"
+        sleep 1
+        brew services start "$pg_version" 2>/dev/null || true
+        
+        # Wait again
+        attempts=0
+        while (( attempts < 15 )); do
+          if pg_isready -h localhost -p "${PG_PORT}" >/dev/null 2>&1; then
+            echo "[INFO] PostgreSQL is running after lock cleanup."
+            break
+          fi
+          attempts=$((attempts + 1))
+          sleep 1
+        done
+      fi
+    fi
+    
     if ! pg_isready -h localhost -p "${PG_PORT}" >/dev/null 2>&1; then
       echo "[ERROR] Failed to start PostgreSQL. Try manually:"
-      echo "       brew services start postgresql@16"
+      echo "       brew services stop ${pg_version:-postgresql}"
+      echo "       rm -f $(get_postgres_data_dir "$pg_version")/postmaster.pid"
+      echo "       brew services start ${pg_version:-postgresql}"
       exit 1
     fi
   else
@@ -331,8 +464,12 @@ reset_database() {
 stop_stack() {
   stop_process "${BACKEND_PID_FILE}" "backend"
   stop_process "${FRONTEND_PID_FILE}" "frontend"
+  
+  local pg_version
+  pg_version=$(detect_postgres_version)
+  
   echo "[SUCCESS] Mac demo stack stopped."
-  echo "          (PostgreSQL still running - use 'brew services stop postgresql@16' to stop it)"
+  echo "          (PostgreSQL still running - use 'brew services stop ${pg_version:-postgresql}' to stop it)"
 }
 
 status_stack() {
