@@ -1,6 +1,6 @@
 ## Local Development Context (Mac Demo + CentOS1 Dev + CentOS2 Prod)
 
-**Updated:** 2025-12-16  
+**Updated:** 2025-12-17  
 **Purpose:** Document cross-platform development, deployment, and environment-specific configurations.
 
 ---
@@ -64,6 +64,8 @@ Located at project root. Key settings:
 This command:
 1. Syncs `.env.macbook` to `backend/.env`
 2. Ensures PostgreSQL is installed and running (via Homebrew)
+   - **Auto-detects installed version** (14, 15, or 16)
+   - **Cleans up stale lock files** if PostgreSQL fails to start
 3. Creates `dap` database if it doesn't exist
 4. Runs migrations
 5. Builds backend/frontend in production mode with correct env vars:
@@ -82,6 +84,16 @@ This command:
 ```bash
 ./dap reset              # Reseeds with demo data
 ```
+
+This command:
+1. Drops and recreates the `dap` database
+2. Runs migrations
+3. Executes `seed-light-demo.ts` to create demo users
+
+### Demo Users (Mac)
+- `admin` / `DAP123!!!` (Administrator)
+- `smeuser` / `DAP123` (SME User)
+- `cssuser` / `DAP123` (CSS User)
 
 **Run Tests:**
 ```bash
@@ -130,10 +142,27 @@ Clean production deployment. No development toolkit, no updating user tables/app
 ### Environment File: `.env.production`
 Located at project root.
 
+### Production Storage Locations
+
+All DAP data is stored on the `/data` partition (not root):
+
+| Component | Location |
+|-----------|----------|
+| **DAP User Home** | `/data/dap` |
+| **Application Code** | `/data/dap/app` |
+| **PM2 Home** | `/data/dap/.pm2` |
+| **PM2/App Logs** | `/data/dap/logs` |
+| **NPM Cache** | `/data/dap/.npm` |
+| **Backups** | `/data/dap/backups` |
+| **PostgreSQL Data** | `/data/pgsql/16/data` |
+
+> **Note:** PostgreSQL data directory was moved from `/var/lib/pgsql/16/data` to `/data/pgsql/16/data` via systemd override (`/etc/systemd/system/postgresql-16.service.d/override.conf`).
+
 ### Production Workflow
 When `./dap` detects hostname contains "centos2", it automatically delegates to `./dap-prod`:
 
 ```bash
+./dap start              # Starts PostgreSQL + PM2 processes
 ./dap restart            # Runs ./dap-prod restart
 ./dap status             # Runs ./dap-prod status
 ./dap logs               # Runs ./dap-prod logs
@@ -141,6 +170,7 @@ When `./dap` detects hostname contains "centos2", it automatically delegates to 
 
 ### Direct `dap-prod` Usage
 ```bash
+./dap-prod start             # Start PostgreSQL + all PM2 processes
 ./dap-prod restart           # Restart all services
 ./dap-prod restart-backend   # Restart backend only
 ./dap-prod restart-db        # Restart PostgreSQL
@@ -152,6 +182,7 @@ When `./dap` detects hostname contains "centos2", it automatically delegates to 
 ### Production Guardrails
 - Uses PM2 for process management
 - Uses systemd PostgreSQL service
+- **`./dap start` now automatically starts PostgreSQL** if not running
 - No development toolkit visible
 - Follow `deploy/README.md` for deployments
 
@@ -200,6 +231,7 @@ Tabs in Products and Solutions pages are ordered consistently across all environ
 - `scripts/mac-light-deploy.sh` - Mac demo deployment script
 - `dap` - Main application manager script
 - `dap-prod` - Production manager script
+- `backend/scripts/seed-light-demo.ts` - Mac demo seeding script
 
 ---
 
@@ -208,3 +240,5 @@ Tabs in Products and Solutions pages are ordered consistently across all environ
 - If you need the dev stack on macOS temporarily, set `DAP_MODE=linux-dev` when running `./dap`.
 - The Mac demo intentionally avoids Docker and heavy tooling to keep startup fast for live demos.
 - The `./dap` script unifies the CLI experience across all platforms.
+- **Mac:** Auto-detects PostgreSQL version (14/15/16) and cleans stale lock files on startup failures.
+- **Production:** All data stored on `/data` partition to avoid filling root filesystem.
