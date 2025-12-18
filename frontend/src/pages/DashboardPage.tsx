@@ -102,16 +102,16 @@ export const DashboardPage = () => {
                     }}>
                         <CardContent sx={{ p: 4 }}>
                             <Typography variant="h5" gutterBottom sx={{ color: theme.palette.primary.main, fontWeight: '800' }}>
-                                Technical Delivery Management
+                                The Single Source of Truth for Adoption
                             </Typography>
                             <Typography variant="subtitle1" color="text.secondary" gutterBottom sx={{ fontWeight: 500 }}>
-                                Purpose: Bridge the gap between Product Creation and Field Implementation.
+                                DAP centrally defines all adoption components of a product and solution.
                             </Typography>
                             <Typography variant="body1" paragraph sx={{ mt: 2 }}>
-                                <strong>Solution:</strong> Managed by Technical Delivery PMs with inputs from cross-functional SMEs (Sales, Marketing, Product).
+                                <strong>Problem it solves:</strong> Lack of clarity on necessary steps and inconsistent adoption of products.
                             </Typography>
                             <Typography variant="body1" sx={{ fontStyle: 'italic', color: theme.palette.primary.dark, bgcolor: alpha(theme.palette.primary.main, 0.05), p: 2, borderRadius: 1, borderLeft: `4px solid ${theme.palette.primary.light}` }}>
-                                Value: Ensures delivery teams have technically vetted, field-ready implementation plans, separate from core product development.
+                                Value: Provides a unified, authoritative reference for all stakeholders to ensure consistent, repeatable adoption success.
                             </Typography>
                         </CardContent>
                     </Card>

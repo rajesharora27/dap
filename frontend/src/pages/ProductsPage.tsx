@@ -3,10 +3,10 @@ import { EntitySummary } from '../components/EntitySummary';
 import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button,
     IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, CircularProgress
+    List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, CircularProgress, Card, CardContent
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload } from '@mui/icons-material';
+import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension } from '@mui/icons-material';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -100,7 +100,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const handleProductChange = (productId: string) => {
         setSelectedProduct(productId);
         localStorage.setItem('lastSelectedProductId', productId);
-        setSelectedSubSection('dashboard');
+        // Preserve the current tab when changing products
+        // setSelectedSubSection('dashboard'); // Removed to persist tab
         // Force refetch tasks when product changes or tab is selected
         setTimeout(() => refetchTasks(), 0);
     };
@@ -585,6 +586,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                             <Tab label="Outcomes" value="outcomes" />
                             <Tab label="Releases" value="releases" />
                             <Tab label="Licenses" value="licenses" />
+                            <Tab label="Custom Attributes" value="customAttributes" />
                         </Tabs>
 
                         {selectedSubSection !== 'dashboard' && (
@@ -599,144 +601,131 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                         case 'outcomes': setEditingOutcome(null); setOutcomeDialog(true); break;
                                         case 'releases': setEditingRelease(null); setReleaseDialog(true); break;
                                         case 'licenses': setEditingLicense(null); setLicenseDialog(true); break;
+                                        case 'customAttributes': setEditingCustomAttr(null); setCustomAttrDialog(true); break;
                                     }
                                 }}
                             >
                                 {selectedSubSection === 'tasks' ? 'Add Task' :
                                     selectedSubSection === 'outcomes' ? 'Add Outcome' :
                                         selectedSubSection === 'releases' ? 'Add Release' :
-                                            selectedSubSection === 'licenses' ? 'Add License' : 'Add'}
+                                            selectedSubSection === 'licenses' ? 'Add License' :
+                                                selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'}
                             </Button>
                         )}
                     </Box>
 
                     {selectedSubSection === 'dashboard' && (
                         <Box sx={{ mt: 2 }}>
-                            {/* Summary Header - Now inside Dashboard */}
-                            <EntitySummary
-                                title={displayProduct.name}
-                                description={""}
-                                stats={[
-                                    { label: 'Outcomes', value: displayProduct.outcomes?.length || 0, color: theme.palette.primary.main },
-                                    { label: 'Releases', value: displayProduct.releases?.length || 0, color: theme.palette.success.main },
-                                    { label: 'Licenses', value: displayProduct.licenses?.length || 0, color: theme.palette.warning.main },
-                                    { label: 'Total Tasks', value: tasks?.length || 0, color: theme.palette.secondary.main }
-                                ]}
-                                badges={displayProduct.licenses?.map((l: any) => l.name).slice(0, 3)}
-                            />
-
-                            <Grid container spacing={3} sx={{ mt: 1 }}>
-                                {/* Left Column: Description & Custom Attributes */}
-                                <Grid size={{ xs: 12, md: 7 }}>
-                                    {/* Description Card */}
-                                    <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 2, position: 'relative', overflow: 'hidden' }}>
-                                        <Box sx={{
-                                            position: 'absolute', top: 0, left: 0, width: '4px', height: '100%',
-                                            bgcolor: theme.palette.primary.main
-                                        }} />
-                                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
-                                            Product Overview
-                                        </Typography>
-                                        <Typography variant="body1" sx={{
-                                            lineHeight: 1.6,
-                                            color: 'text.secondary',
-                                            whiteSpace: 'pre-line'
-                                        }}>
-                                            {displayProduct.description || 'No detailed description provided for this product.'}
+                            {/* Read-only Dashboard Layout - Full Width */}
+                            <Grid container spacing={3}>
+                                <Grid size={{ xs: 12 }}>
+                                    {/* Product Name Header */}
+                                    <Paper
+                                        elevation={3}
+                                        sx={{
+                                            p: 3,
+                                            mb: 3,
+                                            borderRadius: 2,
+                                            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${theme.palette.background.paper} 100%)`,
+                                            borderLeft: `6px solid ${theme.palette.primary.main}`
+                                        }}
+                                    >
+                                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.primary.dark }}>
+                                            {displayProduct.name}
                                         </Typography>
                                     </Paper>
 
-                                    {/* Custom Attributes (Sortable) */}
-                                    <Paper elevation={2} sx={{ p: 2, borderRadius: 2 }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                                                Custom Attributes
-                                            </Typography>
-                                            <Button
-                                                startIcon={<Edit />}
-                                                size="small"
-                                                onClick={() => { setEditingProduct(displayProduct); setProductDialog(true); }}
+                                    {/* Overview */}
+                                    <Card
+                                        elevation={2}
+                                        sx={{
+                                            mb: 3,
+                                            borderRadius: 2,
+                                            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
+                                        }}
+                                    >
+                                        <CardContent>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                                <Description sx={{ color: theme.palette.primary.main }} />
+                                                <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
+                                                    Overview
+                                                </Typography>
+                                            </Box>
+                                            <Typography
+                                                variant="body1"
+                                                sx={{
+                                                    lineHeight: 1.7,
+                                                    color: theme.palette.text.secondary,
+                                                    whiteSpace: 'pre-line',
+                                                    pl: 1,
+                                                    borderLeft: `3px solid ${alpha(theme.palette.primary.main, 0.3)}`
+                                                }}
                                             >
-                                                Manage Attributes
-                                            </Button>
-                                        </Box>
-
-                                        <TableContainer>
-                                            <Table size="small">
-                                                <TableHead>
-                                                    <TableRow>
-                                                        <TableCell sx={{ fontWeight: 'bold' }}>Attribute</TableCell>
-                                                        <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
-                                                    </TableRow>
-                                                </TableHead>
-                                                <TableBody>
-                                                    {getSortedAttributes(displayProduct?.customAttrs).map(([key, value]) => (
-                                                        <TableRow key={key}>
-                                                            <TableCell>{key}</TableCell>
-                                                            <TableCell>
-                                                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                    {getSortedAttributes(displayProduct.customAttrs).length === 0 && (
-                                                        <TableRow>
-                                                            <TableCell colSpan={2} sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
-                                                                No custom attributes defined
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                        </TableContainer>
-                                    </Paper>
-                                </Grid>
-
-                                {/* Right Column: Outcomes & Quick Actions */}
-                                <Grid size={{ xs: 12, md: 5 }}>
-                                    <Paper elevation={2} sx={{ p: 3, borderRadius: 2 }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                            <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                                                Expected Outcomes
+                                                {displayProduct.description || 'No detailed description provided for this product.'}
                                             </Typography>
-                                        </Box>
+                                        </CardContent>
+                                    </Card>
 
-                                        {displayProduct.outcomes && displayProduct.outcomes.length > 0 ? (
-                                            <List disablePadding>
-                                                {displayProduct.outcomes.map((o: any) => (
-                                                    <Tooltip key={o.id} title={o.description || ''} placement="top" arrow>
+                                    {/* Outcomes */}
+                                    <Card
+                                        elevation={2}
+                                        sx={{
+                                            borderRadius: 2,
+                                            border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`
+                                        }}
+                                    >
+                                        <CardContent>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                                <CheckCircle sx={{ color: theme.palette.success.main }} />
+                                                <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.palette.success.main }}>
+                                                    Outcomes
+                                                </Typography>
+                                                <Chip
+                                                    label={displayProduct.outcomes?.length || 0}
+                                                    size="small"
+                                                    sx={{
+                                                        ml: 1,
+                                                        bgcolor: alpha(theme.palette.success.main, 0.15),
+                                                        color: theme.palette.success.dark,
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                />
+                                            </Box>
+                                            {displayProduct.outcomes && displayProduct.outcomes.length > 0 ? (
+                                                <List disablePadding>
+                                                    {displayProduct.outcomes.map((o: any, idx: number) => (
                                                         <ListItem
-                                                            divider
+                                                            key={o.id}
                                                             sx={{
-                                                                px: 0,
                                                                 py: 1.5,
-                                                                cursor: 'pointer',
-                                                                '&:hover': { bgcolor: 'action.hover' }
+                                                                px: 2,
+                                                                bgcolor: idx % 2 === 0 ? alpha(theme.palette.success.main, 0.03) : 'transparent',
+                                                                borderRadius: 1,
+                                                                mb: 0.5
                                                             }}
-                                                            onClick={() => { setSelectedSubSection('outcomes'); setEditingOutcome(o); setOutcomeDialog(true); }}
                                                         >
                                                             <ListItemText
-                                                                primary={o.name}
-                                                                secondary={o.description ? (o.description.length > 50 ? o.description.substring(0, 50) + '...' : o.description) : null}
+                                                                primary={
+                                                                    <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                                                                        {o.name}
+                                                                    </Typography>
+                                                                }
+                                                                secondary={o.description && (
+                                                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                                        {o.description}
+                                                                    </Typography>
+                                                                )}
                                                             />
-                                                            <Chip size="small" label="Outcome" color="primary" variant="outlined" />
                                                         </ListItem>
-                                                    </Tooltip>
-                                                ))}
-                                                <Box sx={{ mt: 2, textAlign: 'right' }}>
-                                                    <Button size="small" onClick={() => setSelectedSubSection('outcomes')}>
-                                                        Manage Outcomes
-                                                    </Button>
-                                                </Box>
-                                            </List>
-                                        ) : (
-                                            <Box sx={{ textAlign: 'center', py: 3 }}>
-                                                <Typography variant="body2" color="text.secondary" paragraph>No outcomes defined yet.</Typography>
-                                                <Button variant="outlined" startIcon={<Add />} size="small" onClick={() => { setEditingOutcome(null); setOutcomeDialog(true); }}>
-                                                    Add Outcome
-                                                </Button>
-                                            </Box>
-                                        )}
-                                    </Paper>
+                                                    ))}
+                                                </List>
+                                            ) : (
+                                                <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                                                    No outcomes defined for this product.
+                                                </Typography>
+                                            )}
+                                        </CardContent>
+                                    </Card>
                                 </Grid>
                             </Grid>
                         </Box>
@@ -910,6 +899,65 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                             </Typography>
                                         )}
                                     </List>
+                                </Paper>
+                            </Grid>
+                        </Grid>
+                    )}
+
+                    {selectedSubSection === 'customAttributes' && (
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12 }}>
+                                <Paper sx={{ p: 2 }}>
+                                    <TableContainer>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell width={40}></TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Attribute</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
+                                                    <TableCell width={100} align="right">Actions</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {getSortedAttributes(displayProduct?.customAttrs).map(([key, value]) => (
+                                                    <TableRow key={key} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                                                        <TableCell>
+                                                            <DragIndicator fontSize="small" sx={{ color: 'text.disabled' }} />
+                                                        </TableCell>
+                                                        <TableCell sx={{ fontWeight: 500 }}>{key}</TableCell>
+                                                        <TableCell>
+                                                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                                        </TableCell>
+                                                        <TableCell align="right">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => {
+                                                                    setEditingCustomAttr({ key, value });
+                                                                    setCustomAttrDialog(true);
+                                                                }}
+                                                            >
+                                                                <Edit fontSize="small" />
+                                                            </IconButton>
+                                                            <IconButton
+                                                                size="small"
+                                                                color="error"
+                                                                onClick={() => handleDeleteCustomAttr(key)}
+                                                            >
+                                                                <Delete fontSize="small" />
+                                                            </IconButton>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                                {getSortedAttributes(displayProduct?.customAttrs).length === 0 && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={4} sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
+                                                            No custom attributes defined
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
                                 </Paper>
                             </Grid>
                         </Grid>

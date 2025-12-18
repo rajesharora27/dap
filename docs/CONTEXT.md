@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.6.1
-**Last Updated:** December 17, 2025  
+**Version:** 2.6.2
+**Last Updated:** December 18, 2025  
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -928,6 +928,36 @@ All DAP data is stored on `/data` partition (not root):
 
 ## Recent Changes & Fixes
 
+### Version 2.6.2 (December 18, 2025)
+
+#### Dashboard Simplification & Solutions Enhancements
+
+**Feature 1: Simplified Dashboard Layout (Products & Solutions)**
+- **Issue**: The dashboard view was previously cluttered with licenses, product chips, and a redundant summary card.
+- **Fix**: Streamlined the dashboard for both Products and Solutions:
+  - Removed licenses from Product name header and product chips from Solutions name header.
+  - Removed the sticky Summary Card from the right column for a cleaner, full-width presentation.
+  - Renamed "Description" to "Overview" and "Product Outcomes" to "Outcomes".
+  - Moved "Custom Attributes" from the dashboard view to its own dedicated tab.
+- **Files Changed**: `frontend/src/pages/ProductsPage.tsx`, `frontend/src/pages/SolutionsPage.tsx`
+
+**Feature 2: Enhanced Solutions Dashboard**
+- **Improvement**: Added a "Products" section directly below the Solution name header in the dashboard for immediate visibility.
+- **Cleanup**: Removed the redundant description tile from the "Products" tab in the Solutions section.
+- **Files Changed**: `frontend/src/pages/SolutionsPage.tsx`
+
+**Feature 3: GraphQL Mutation Bug Fix**
+- **Issue**: "Variable $input is never used" error when updating solutions with outcomes.
+- **Root Cause**: Typos in `UPDATE_OUTCOME` mutation passing `$id` where `$input` was expected.
+- **Fix**: Corrected the mutation definition in `SolutionDialog.tsx`.
+- **Files Changed**: `frontend/src/components/dialogs/SolutionDialog.tsx`
+
+**Feature 4: Theming & Visual Consistency**
+- **Improvement**: Refactored `EntitySummary` and main entity pages to strictly use theme-derived colors via Material-UI's `alpha()` and `useTheme()`.
+- **Files Changed**: `EntitySummary.tsx`, `CustomersPage.tsx`, `ProductsPage.tsx`, `SolutionsPage.tsx`
+
+---
+
 ### Version 2.6.1 (December 17, 2025)
 
 #### Production Infrastructure Improvements
@@ -1544,8 +1574,8 @@ sudo tail -f /var/log/httpd/error_log
 
 ---
 
-**Last Updated:** December 17, 2025  
-**Version:** 2.6.1  
+**Last Updated:** December 18, 2025  
+**Version:** 2.6.2  
 **Status:** Production Ready
 
 *This document should be updated whenever significant changes are made to the application.*

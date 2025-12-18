@@ -3,11 +3,12 @@ import { EntitySummary } from '../components/EntitySummary';
 import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button
 } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, alpha } from '@mui/material/styles';
 import { Edit, Delete, Add } from '@mui/icons-material';
 import { useQuery } from '@apollo/client';
 import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
 import { gql } from '@apollo/client';
+
 
 const CUSTOMERS = gql`
   query Customers {
