@@ -50,10 +50,11 @@ create_release_snapshot() {
 set -e
 
 SNAPSHOT_DIR="${BACKUP_DIR}/${TIMESTAMP}"
-mkdir -p "\${SNAPSHOT_DIR}"
+sudo mkdir -p "\${SNAPSHOT_DIR}"
+sudo chown -R ${PROD_USER}:${PROD_USER} "\${SNAPSHOT_DIR}"
 
 # Backup database
-log_info "Creating database backup..."
+echo "[INFO] Creating database backup..."
 sudo -u postgres pg_dump -d dap --no-owner > "\${SNAPSHOT_DIR}/database.sql"
 
 # Exclude passwords from backup
@@ -61,15 +62,15 @@ sed -i '/INSERT INTO "User".*password/d' "\${SNAPSHOT_DIR}/database.sql"
 echo "-- Passwords excluded from backup for security" >> "\${SNAPSHOT_DIR}/database.sql"
 
 # Backup backend
-log_info "Backing up backend..."
-tar czf "\${SNAPSHOT_DIR}/backend.tar.gz" -C ${PROD_PATH}/app/backend .
+echo "[INFO] Backing up backend..."
+sudo tar czf "\${SNAPSHOT_DIR}/backend.tar.gz" -C ${PROD_PATH}/app/backend .
 
 # Backup frontend
-log_info "Backing up frontend..."
-tar czf "\${SNAPSHOT_DIR}/frontend.tar.gz" -C ${PROD_PATH}/app/frontend/dist .
+echo "[INFO] Backing up frontend..."
+sudo tar czf "\${SNAPSHOT_DIR}/frontend.tar.gz" -C ${PROD_PATH}/app/frontend/dist .
 
 # Save current versions
-pm2 list | grep dap > "\${SNAPSHOT_DIR}/pm2-status.txt" || true
+sudo -u dap pm2 list | grep dap > "\${SNAPSHOT_DIR}/pm2-status.txt" || true
 node --version > "\${SNAPSHOT_DIR}/node-version.txt"
 npm --version >> "\${SNAPSHOT_DIR}/npm-version.txt"
 
@@ -77,10 +78,10 @@ npm --version >> "\${SNAPSHOT_DIR}/npm-version.txt"
 sudo -u postgres psql -d dap -c "SELECT * FROM _prisma_migrations ORDER BY finished_at DESC LIMIT 5;" > "\${SNAPSHOT_DIR}/migrations.txt" 2>/dev/null || echo "No migrations table" > "\${SNAPSHOT_DIR}/migrations.txt"
 
 # Create manifest
-cat > "\${SNAPSHOT_DIR}/MANIFEST.txt" << EOF
+sudo bash -c "cat > \${SNAPSHOT_DIR}/MANIFEST.txt" << EOF
 DAP Release Snapshot
 ====================
-Date: $(date)
+Date: \$(date)
 Type: Pre-deployment backup
 Server: ${PROD_SERVER}
 
@@ -94,7 +95,7 @@ Contents:
 This snapshot can be used for rollback.
 EOF
 
-log_success "Snapshot created: \${SNAPSHOT_DIR}"
+echo "[SUCCESS] Snapshot created: \${SNAPSHOT_DIR}"
 ENDSSH
 }
 
@@ -137,11 +138,11 @@ mkdir -p "$RELEASE_DIR"
 cd "$RELEASE_DIR"
 tar xzf /tmp/release.tar.gz
 
-log_info "Stopping services..."
+echo "[INFO] Stopping services..."
 sudo -u dap pm2 stop all
 
 # Backup current state
-log_info "Deploying backend..."
+echo "[INFO] Deploying backend..."
 if [ -d "backend" ]; then
     sudo rm -rf ${PROD_PATH}/app/backend.old
     sudo mv ${PROD_PATH}/app/backend ${PROD_PATH}/app/backend.old || true
@@ -155,7 +156,7 @@ if [ -d "backend" ]; then
     sudo -u dap bash -c "cd ${PROD_PATH}/app/backend && npm run build"
 fi
 
-log_info "Deploying frontend..."
+echo "[INFO] Deploying frontend..."
 if [ -d "frontend/dist" ]; then
     sudo rm -rf ${PROD_PATH}/app/frontend/dist.old
     sudo mv ${PROD_PATH}/app/frontend/dist ${PROD_PATH}/app/frontend/dist.old || true
@@ -164,9 +165,9 @@ if [ -d "frontend/dist" ]; then
 fi
 
 # Apply database migrations
-log_info "Checking for database migrations..."
+echo "[INFO] Checking for database migrations..."
 if [ -d "migrations" ] || [ -f "migration.sql" ]; then
-    log_info "Applying migrations..."
+    echo "[INFO] Applying migrations..."
     if [ -f "migration.sql" ]; then
         sudo -u postgres psql -d dap < migration.sql
     fi
@@ -177,7 +178,7 @@ if [ -d "migrations" ] || [ -f "migration.sql" ]; then
     fi
 fi
 
-log_info "Starting services..."
+echo "[INFO] Starting services..."
 sudo -u dap pm2 start all
 
 sleep 5
@@ -186,7 +187,7 @@ sleep 5
 rm -rf "$RELEASE_DIR"
 rm -f /tmp/release.tar.gz
 
-log_success "Deployment complete"
+echo "[SUCCESS] Deployment complete"
 ENDSSH
     
     # Verify deployment
@@ -287,7 +288,7 @@ verify_deployment() {
     
     # Check services
     log_info "Checking services..."
-    ssh ${PROD_USER}@${PROD_SERVER} "sudo -u dap pm2 list | grep -E 'online.*dap-backend'" > /dev/null
+    ssh ${PROD_USER}@${PROD_SERVER} "sudo -u dap pm2 list | grep -E 'dap-backend.*online'" > /dev/null
     if [ $? -eq 0 ]; then
         log_success "Services running"
     else
@@ -327,15 +328,15 @@ set -e
 SNAPSHOT_DIR="${BACKUP_DIR}/${LATEST_SNAPSHOT}"
 
 if [ ! -d "\$SNAPSHOT_DIR" ]; then
-    log_error "Snapshot directory not found: \$SNAPSHOT_DIR"
+    echo "[ERROR] Snapshot directory not found: \$SNAPSHOT_DIR"
     exit 1
 fi
 
-log_info "Stopping services..."
+echo "[INFO] Stopping services..."
 sudo -u dap pm2 stop all
 
 # Restore backend
-log_info "Restoring backend..."
+echo "[INFO] Restoring backend..."
 if [ -f "\${SNAPSHOT_DIR}/backend.tar.gz" ]; then
     sudo rm -rf ${PROD_PATH}/app/backend
     sudo mkdir -p ${PROD_PATH}/app/backend
@@ -344,7 +345,7 @@ if [ -f "\${SNAPSHOT_DIR}/backend.tar.gz" ]; then
 fi
 
 # Restore frontend
-log_info "Restoring frontend..."
+echo "[INFO] Restoring frontend..."
 if [ -f "\${SNAPSHOT_DIR}/frontend.tar.gz" ]; then
     sudo rm -rf ${PROD_PATH}/app/frontend/dist
     sudo mkdir -p ${PROD_PATH}/app/frontend/dist
@@ -353,7 +354,7 @@ if [ -f "\${SNAPSHOT_DIR}/frontend.tar.gz" ]; then
 fi
 
 # Restore database
-log_info "Restoring database..."
+echo "[INFO] Restoring database..."
 if [ -f "\${SNAPSHOT_DIR}/database.sql" ]; then
     # Backup current passwords first
     sudo -u postgres psql -d dap -c "CREATE TEMP TABLE temp_passwords AS SELECT id, password FROM \"User\";"
@@ -364,15 +365,15 @@ if [ -f "\${SNAPSHOT_DIR}/database.sql" ]; then
     # Restore passwords
     sudo -u postgres psql -d dap -c "UPDATE \"User\" u SET password = tp.password FROM temp_passwords tp WHERE u.id = tp.id;" || true
     
-    log_info "Database restored (passwords preserved)"
+    echo "[INFO] Database restored (passwords preserved)"
 fi
 
-log_info "Starting services..."
+echo "[INFO] Starting services..."
 sudo -u dap pm2 start all
 
 sleep 5
 
-log_success "Rollback complete"
+echo "[SUCCESS] Rollback complete"
 ENDSSH
     
     # Verify after rollback
@@ -391,7 +392,7 @@ ENDSSH
 show_status() {
     log_info "Checking production deployment status..."
     
-    ssh ${PROD_USER}@${PROD_SERVER} << 'ENDSSH'
+    ssh ${PROD_USER}@${PROD_SERVER} << ENDSSH
 echo "========================================="
 echo "Production Deployment Status"
 echo "========================================="
@@ -402,9 +403,13 @@ sudo -u dap pm2 list | grep dap
 
 echo ""
 echo "Backend Version:"
-cd ${PROD_PATH}/app/backend
-node --version
-npm --version
+if [ -d "${PROD_PATH}/app/backend" ]; then
+    cd ${PROD_PATH}/app/backend
+    node --version
+    npm --version
+else
+    echo "Backend directory not found at ${PROD_PATH}/app/backend"
+fi
 
 echo ""
 echo "Database Status:"
@@ -416,12 +421,10 @@ df -h ${PROD_PATH}
 
 echo ""
 echo "Recent Snapshots:"
-if [ -d "${BACKUP_DIR}/releases" ]; then
-    ls -lht ${BACKUP_DIR}/releases | head -5
-elif [ -d "/data/dap/backups/releases" ]; then
-    ls -lht /data/dap/backups/releases | head -5
+if [ -d "${BACKUP_DIR}" ]; then
+    ls -lht ${BACKUP_DIR} | head -5
 else
-    echo "No snapshots directory found"
+    echo "No snapshots directory found at ${BACKUP_DIR}"
 fi
 
 echo ""
