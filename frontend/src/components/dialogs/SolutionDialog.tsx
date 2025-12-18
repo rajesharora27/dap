@@ -90,7 +90,7 @@ const CREATE_OUTCOME = gql`
 
 const UPDATE_OUTCOME = gql`
   mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
-    updateOutcome(id: $id, input: $id) {
+    updateOutcome(id: $id, input: $input) {
       id
       name
       description
