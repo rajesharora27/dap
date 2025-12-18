@@ -49,6 +49,7 @@ import { CustomerPreviewDialog } from '../components/dialogs/CustomerPreviewDial
 import { AdoptionPlanDialog } from '../components/dialogs/AdoptionPlanDialog';
 
 // Code splitting: Lazy load heavy page components
+const DashboardPage = lazy(() => import('./DashboardPage').then(m => ({ default: m.DashboardPage })));
 const ProductsPage = lazy(() => import('./ProductsPage').then(m => ({ default: m.ProductsPage })));
 const SolutionsPage = lazy(() => import('./SolutionsPage').then(m => ({ default: m.SolutionsPage })));
 const CustomersPage = lazy(() => import('./CustomersPage').then(m => ({ default: m.CustomersPage })));
@@ -846,7 +847,7 @@ export function App() {
   const { token, isAuthenticated, isLoading, user } = useAuth();
 
   // State management
-  const [selectedSection, setSelectedSection] = useState<'products' | 'solutions' | 'customers' | 'admin' | 'development'>('products');
+
 
   // Development menu state
   const [devExpanded, setDevExpanded] = useState(false);
@@ -958,6 +959,8 @@ export function App() {
     import.meta.env.MODE !== 'production' &&
     (import.meta.env.DEV || import.meta.env.MODE === 'development');
 
+
+  const [selectedSection, setSelectedSection] = useState<'dashboard' | 'products' | 'solutions' | 'customers' | 'admin' | 'development'>('dashboard');
 
   const [selectedCustomer, setSelectedCustomer] = useState('');
 
@@ -1155,7 +1158,9 @@ export function App() {
     if (!isAuthenticated) return;
 
     // Check if current section is accessible
+    // Check if current section is accessible
     const sectionAccessible =
+      (selectedSection === 'dashboard') ||
       (selectedSection === 'products' && hasProducts) ||
       (selectedSection === 'solutions' && hasSolutions) ||
       (selectedSection === 'customers' && hasCustomers) ||
@@ -2144,6 +2149,27 @@ export function App() {
         <Toolbar />
         <Box sx={{ overflow: 'auto' }}>
           <List>
+            {/* Dashboard Section - Always Visible */}
+            {/* Dashboard Section - Always Visible */}
+            <ListItemButton
+              selected={selectedSection === 'dashboard'}
+              onClick={() => {
+                setSelectedSection('dashboard');
+                setViewMode('list');
+              }}
+              sx={{
+                '&.Mui-selected': {
+                  backgroundColor: 'rgba(4, 159, 217, 0.08)',
+                  '& .MuiListItemIcon-root': { color: '#049FD9' },
+                  '& .MuiListItemText-primary': { color: '#049FD9', fontWeight: 600 }
+                },
+                '&.Mui-selected:hover': { backgroundColor: 'rgba(4, 159, 217, 0.12)' }
+              }}
+            >
+              <ListItemIcon><MainIcon /></ListItemIcon>
+              <ListItemText primary="Dashboard" />
+            </ListItemButton>
+
             {/* Products Section - Only show if user has access to at least one product */}
             {hasProducts && (
               <>
@@ -2527,6 +2553,13 @@ export function App() {
         {
           viewMode === 'list' && (
             <>
+              {/* Dashboard Section */}
+              {selectedSection === 'dashboard' && (
+                <Suspense fallback={<LinearProgress />}>
+                  <DashboardPage />
+                </Suspense>
+              )}
+
               {/* Products Section */}
               {
                 selectedSection === 'products' && (

@@ -149,6 +149,17 @@ export const DELETE_SOLUTION = gql`
   }
 `;
 
+export const UPDATE_SOLUTION = gql`
+  mutation UpdateSolution($id: ID!, $input: SolutionInput!) {
+    updateSolution(id: $id, input: $input) {
+      id
+      name
+      description
+      customAttrs
+    }
+  }
+`;
+
 export const CREATE_LICENSE = gql`
   mutation CreateLicense($input: LicenseInput!) {
     createLicense(input: $input) {

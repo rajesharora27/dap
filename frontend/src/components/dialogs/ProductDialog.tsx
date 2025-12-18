@@ -14,8 +14,12 @@ import {
   ListItemButton,
   ListItemText,
   Tabs,
-  Tab
+  Tab,
+  DialogContentText
 } from '@mui/material';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableAttributeItem } from '../SortableAttributeItem';
 import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@mui/icons-material';
 import { License, Outcome, Product, CustomAttribute, Release } from '../../types/shared';
 import { ValidationUtils } from '../../utils/sharedHandlers';
@@ -98,6 +102,11 @@ export const ProductDialog: React.FC<Props> = ({
   const [addReleaseDialog, setAddReleaseDialog] = useState(false);
   const [editReleaseDialog, setEditReleaseDialog] = useState(false);
   const [editingRelease, setEditingRelease] = useState<Release | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   useEffect(() => {
     if (product) {
@@ -257,7 +266,49 @@ export const ProductDialog: React.FC<Props> = ({
   const handleDeleteCustomAttribute = (key: string) => {
     const updatedCustomAttrs = { ...customAttrs };
     delete updatedCustomAttrs[key];
+
+    // Clean up order
+    if (updatedCustomAttrs._order) {
+      updatedCustomAttrs._order = updatedCustomAttrs._order.filter((k: string) => k !== key);
+    }
+
     setCustomAttrs(updatedCustomAttrs);
+  };
+
+  const handleAttributeDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const currentKeys = Object.keys(customAttrs).filter(k => k !== '_order' && k !== '__typename');
+      const order = customAttrs._order || currentKeys;
+
+      // Ensure all keys are in order array
+      const completeOrder = [...new Set([...order, ...currentKeys])].filter(k => customAttrs[k] !== undefined);
+
+      const oldIndex = completeOrder.indexOf(active.id);
+      const newIndex = completeOrder.indexOf(over.id);
+
+      const newOrder = arrayMove(completeOrder, oldIndex, newIndex);
+
+      setCustomAttrs({
+        ...customAttrs,
+        _order: newOrder
+      });
+    }
+  };
+
+  const getSortedAttributes = (attrs: any) => {
+    if (!attrs) return [];
+    const order = attrs._order || [];
+    const entries = Object.entries(attrs).filter(([k]) => k !== '_order' && k !== '__typename');
+
+    return entries.sort((a, b) => {
+      const indexA = order.indexOf(a[0]);
+      const indexB = order.indexOf(b[0]);
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
   };
 
   // Release handlers
@@ -667,39 +718,22 @@ export const ProductDialog: React.FC<Props> = ({
             </Box>
 
             {Object.keys(customAttrs).length > 0 ? (
-              <List dense>
-                {Object.entries(customAttrs).map(([key, value]: [string, any]) => (
-                  <ListItemButton
-                    key={key}
-                    sx={{
-                      border: '1px solid #e0e0e0',
-                      borderRadius: 1,
-                      mb: 1,
-                      '&:hover': {
-                        backgroundColor: '#f5f5f5'
-                      }
-                    }}
-                    onDoubleClick={() => {
-                      setEditingCustomAttribute({
-                        key,
-                        value,
-                        type: Array.isArray(value) ? 'array' :
-                          typeof value === 'object' && value !== null ? 'object' :
-                            typeof value === 'number' ? 'number' :
-                              typeof value === 'boolean' ? 'boolean' : 'string'
-                      });
-                      setEditCustomAttributeDialog(true);
-                    }}
-                  >
-                    <ListItemText
-                      primary={key}
-                      secondary={typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                    />
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <IconButton
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleAttributeDragEnd}
+              >
+                <SortableContext
+                  items={getSortedAttributes(customAttrs).map(([k]) => k)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <List dense>
+                    {getSortedAttributes(customAttrs).map(([key, value]) => (
+                      <SortableAttributeItem
+                        key={key}
+                        attrKey={key}
+                        value={value}
+                        onDoubleClick={() => {
                           setEditingCustomAttribute({
                             key,
                             value,
@@ -710,25 +744,27 @@ export const ProductDialog: React.FC<Props> = ({
                           });
                           setEditCustomAttributeDialog(true);
                         }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                        onEdit={() => {
+                          setEditingCustomAttribute({
+                            key,
+                            value,
+                            type: Array.isArray(value) ? 'array' :
+                              typeof value === 'object' && value !== null ? 'object' :
+                                typeof value === 'number' ? 'number' :
+                                  typeof value === 'boolean' ? 'boolean' : 'string'
+                          });
+                          setEditCustomAttributeDialog(true);
+                        }}
+                        onDelete={() => {
                           if (confirm(`Are you sure you want to delete the attribute "${key}"?`)) {
                             handleDeleteCustomAttribute(key);
                           }
                         }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Box>
-                  </ListItemButton>
-                ))}
-              </List>
+                      />
+                    ))}
+                  </List>
+                </SortableContext>
+              </DndContext>
             ) : (
               <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
                 No additional attributes defined for this product.

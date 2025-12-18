@@ -41,6 +41,7 @@ cp backend/tsconfig.json /tmp/dap-deploy/
 cp backend/eslint.config.mjs /tmp/dap-deploy/ 2>/dev/null || true
 cp -r backend/dist /tmp/dap-deploy/backend-dist
 cp -r frontend/dist /tmp/dap-deploy/frontend-dist
+cp -r docs /tmp/dap-deploy/docs 2>/dev/null || true
 
 # Copy environment files
 # Copy environment files (from root)
@@ -99,7 +100,7 @@ fi
 mkdir -p "$DAP_ROOT/backend/src"
 mkdir -p "$DAP_ROOT/backend/dist"
 mkdir -p "$DAP_ROOT/frontend/dist"
-mkdir -p "$DAP_ROOT/frontend/dist"
+mkdir -p "$DAP_ROOT/docs"
 mkdir -p "/data/dap/scripts"
 
 # Copy environment files to root
@@ -163,6 +164,12 @@ echo "📝 Copying frontend files..."
 rm -rf "$DAP_ROOT/frontend/dist"/*
 cp -r /tmp/dap-deploy-prod/frontend-dist/* "$DAP_ROOT/frontend/dist/"
 echo "✅ Frontend files copied"
+
+# Copy docs
+echo "📝 Copying documentation..."
+rm -rf "$DAP_ROOT/docs"/*
+cp -r /tmp/dap-deploy-prod/docs/* "$DAP_ROOT/docs/" 2>/dev/null || true
+echo "✅ Documentation updated"
 
 # Scripts already copied in earlier step
 echo "✅ Scripts already updated"
@@ -350,11 +357,12 @@ echo "  ✅ Frontend: New distribution with updated UI"
 echo "  ✅ Scripts: Latest utility scripts"
 echo "  ✅ Services: Restarted and verified"
 echo ""
-echo "✨ New Features in this deployment:"
-echo "  • Fixed Backup Download URL (subpath support)"
-echo "  • Enhanced Production Backup Reliability (podman fallback)"
-echo "  • Fixed About Menu visibility"
-echo "  • Updated Build & Deploy GUI text"
+echo "✨ New Features in this deployment (v2.6.2):"
+echo "  • Simplified Dashboard (Full-width, less noise)"
+echo "  • Moved Custom Attributes to dedicated tab"
+echo "  • Fixed Solution update bug (UPDATE_OUTCOME mutation)"
+echo "  • Enhanced Solutions Dashboard with Products list"
+echo "  • Themed Entity Summary with proper alpha transparency"
 echo ""
 echo "🧪 Testing checklist:"
 echo "  1. Login as cssuser / cssuser"
