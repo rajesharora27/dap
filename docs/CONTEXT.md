@@ -1567,7 +1567,7 @@ sudo tail -f /var/log/httpd/error_log
 
 ### Access
 - **DEV**: http://dev.rajarora.csslab/dap/ (centos1)
-- **STAGING**: http://centos2.rajarora.csslab/dap/ 
+- **STAGING**: http://stage.rajarora.csslab/dap/ (or centos2.rajarora.csslab) 
 - **PRODUCTION**: https://dapoc.cisco.com/dap/ (SSL enabled)
 - **GraphQL Playground**: http://localhost:4000/graphql (dev only)
 
