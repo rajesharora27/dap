@@ -34,6 +34,9 @@ import { gql, useMutation, useApolloClient } from '@apollo/client';
 import { CustomAttributeDialog } from './CustomAttributeDialog';
 import { OutcomeDialog } from './OutcomeDialog';
 import { SolutionReleaseDialog } from './SolutionReleaseDialog';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { SortableAttributeItem } from '../SortableAttributeItem';
 
 const CREATE_SOLUTION = gql`
   mutation CreateSolution($input: SolutionInput!) {
@@ -87,7 +90,7 @@ const CREATE_OUTCOME = gql`
 
 const UPDATE_OUTCOME = gql`
   mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
-    updateOutcome(id: $id, input: $input) {
+    updateOutcome(id: $id, input: $id) {
       id
       name
       description
@@ -202,7 +205,12 @@ export const SolutionDialog: React.FC<Props> = ({
   const [editingOutcome, setEditingOutcome] = useState<any>(null);
   const [addReleaseDialog, setAddReleaseDialog] = useState(false);
   const [editReleaseDialog, setEditReleaseDialog] = useState(false);
-  const [editingRelease, setEditingRelease] = useState<any>(null);
+  const [editingRelease, setEditingRelease] = useState<any | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
 
   const client = useApolloClient();
 
@@ -516,13 +524,51 @@ export const SolutionDialog: React.FC<Props> = ({
   };
 
   const handleDeleteCustomAttribute = (key: string) => {
-    if (confirm(`Delete attribute "${key}"?`)) {
-      setCustomAttrs(prev => {
-        const newAttrs = { ...prev };
-        delete newAttrs[key];
-        return newAttrs;
+    const updatedCustomAttrs = { ...customAttrs };
+    delete updatedCustomAttrs[key];
+
+    // Clean up order
+    if (updatedCustomAttrs._order) {
+      updatedCustomAttrs._order = updatedCustomAttrs._order.filter((k: string) => k !== key);
+    }
+
+    setCustomAttrs(updatedCustomAttrs);
+  };
+
+  const handleAttributeDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const currentKeys = Object.keys(customAttrs).filter(k => k !== '_order' && k !== '__typename');
+      const order = customAttrs._order || currentKeys;
+
+      // Ensure all keys are in order array
+      const completeOrder = [...new Set([...order, ...currentKeys])].filter(k => customAttrs[k] !== undefined);
+
+      const oldIndex = completeOrder.indexOf(active.id);
+      const newIndex = completeOrder.indexOf(over.id);
+
+      const newOrder = arrayMove(completeOrder, oldIndex, newIndex);
+
+      setCustomAttrs({
+        ...customAttrs,
+        _order: newOrder
       });
     }
+  };
+
+  const getSortedAttributes = (attrs: any) => {
+    if (!attrs) return [];
+    const order = attrs._order || [];
+    const entries = Object.entries(attrs).filter(([k]) => k !== '_order' && k !== '__typename');
+
+    return entries.sort((a, b) => {
+      const indexA = order.indexOf(a[0]);
+      const indexB = order.indexOf(b[0]);
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
   };
 
   const handleEditCustomAttribute = (attr: any) => {
@@ -1002,41 +1048,29 @@ export const SolutionDialog: React.FC<Props> = ({
                 No custom attributes defined.
               </Typography>
             ) : (
-              <List dense>
-                {Object.entries(customAttrs).map(([key, value]) => (
-                  <ListItemButton
-                    key={key}
-                    onDoubleClick={() => handleEditCustomAttribute({ key, value, type: typeof value })}
-                    sx={{ border: '1px solid #e0e0e0', borderRadius: 1, mb: 1 }}
-                  >
-                    <ListItemText
-                      primary={<Typography variant="subtitle2" fontWeight="bold">{key}</Typography>}
-                      secondary={typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                    />
-                    <IconButton
-                      edge="end"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleEditCustomAttribute({ key, value, type: typeof value });
-                      }}
-                      size="small"
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      edge="end"
-                      color="error"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteCustomAttribute(key);
-                      }}
-                      size="small"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </ListItemButton>
-                ))}
-              </List>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleAttributeDragEnd}
+              >
+                <SortableContext
+                  items={getSortedAttributes(customAttrs).map(([k]) => k)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <List dense>
+                    {getSortedAttributes(customAttrs).map(([key, value]) => (
+                      <SortableAttributeItem
+                        key={key}
+                        attrKey={key}
+                        value={value}
+                        onDoubleClick={() => handleEditCustomAttribute({ key, value, type: typeof value })}
+                        onEdit={() => handleEditCustomAttribute({ key, value, type: typeof value })}
+                        onDelete={() => handleDeleteCustomAttribute(key)}
+                      />
+                    ))}
+                  </List>
+                </SortableContext>
+              </DndContext>
             )}
           </TabPanel>
 
