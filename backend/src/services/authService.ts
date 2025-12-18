@@ -5,7 +5,7 @@ import { PrismaClient, ResourceType, PermissionLevel } from '@prisma/client';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = '8h';
 const REFRESH_TOKEN_EXPIRES_IN = '7d';
-const DEFAULT_PASSWORD = 'DAP123!!!';
+const DEFAULT_PASSWORD = 'DAP123';
 
 export interface User {
   id: string;
