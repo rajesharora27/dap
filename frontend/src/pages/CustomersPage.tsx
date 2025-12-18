@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { EntitySummary } from '../components/EntitySummary';
 import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button
 } from '@mui/material';
+import { useTheme, alpha } from '@mui/material/styles';
 import { Edit, Delete, Add } from '@mui/icons-material';
 import { useQuery } from '@apollo/client';
 import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
 import { gql } from '@apollo/client';
+
 
 const CUSTOMERS = gql`
   query Customers {
@@ -40,6 +43,7 @@ const CUSTOMERS = gql`
 `;
 
 export const CustomersPage: React.FC = () => {
+    const theme = useTheme();
     const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(() => {
         return localStorage.getItem('lastSelectedCustomerId');
     });
@@ -49,6 +53,7 @@ export const CustomersPage: React.FC = () => {
     });
 
     const customers = customersData?.customers || [];
+    const selectedCustomer = customers.find((c: any) => c.id === selectedCustomerId);
 
     useEffect(() => {
         if (selectedCustomerId) {
@@ -154,19 +159,32 @@ export const CustomersPage: React.FC = () => {
             )}
 
             {/* Customer Content */}
-            {!customersLoading && !customersError && (
-                <CustomerAdoptionPanelV4
-                    selectedCustomerId={selectedCustomerId}
-                    onRequestAddCustomer={() => {
-                        localStorage.removeItem('lastSelectedCustomerId');
-                        setSelectedCustomerId(null);
-                        setTimeout(() => {
-                            if ((window as any).__openAddCustomerDialog) {
-                                (window as any).__openAddCustomerDialog();
-                            }
-                        }, 100);
-                    }}
-                />
+            {!customersLoading && !customersError && customers.find((c: any) => c.id === selectedCustomerId) && (
+                <>
+                    <EntitySummary
+                        title={customers.find((c: any) => c.id === selectedCustomerId).name}
+                        description={customers.find((c: any) => c.id === selectedCustomerId).description || 'No description.'}
+                        stats={[
+                            { label: 'Active Products', value: customers.find((c: any) => c.id === selectedCustomerId).products?.length || 0, color: theme.palette.primary.main },
+                            { label: 'Active Solutions', value: customers.find((c: any) => c.id === selectedCustomerId).solutions?.length || 0, color: theme.palette.warning.main }
+                        ]}
+                    />
+                    <CustomerAdoptionPanelV4
+                        selectedCustomerId={selectedCustomerId}
+                        onRequestAddCustomer={() => {
+                            localStorage.removeItem('lastSelectedCustomerId');
+                            setSelectedCustomerId(null);
+                            setTimeout(() => {
+                                if ((window as any).__openAddCustomerDialog) {
+                                    (window as any).__openAddCustomerDialog();
+                                }
+                            }, 100);
+                        }}
+                    />
+                </>
+            )}
+            {!customersLoading && !customersError && !selectedCustomer && selectedCustomerId && (
+                <Typography>Customer not found.</Typography>
             )}
         </Box>
     );

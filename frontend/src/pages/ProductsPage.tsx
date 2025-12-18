@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { EntitySummary } from '../components/EntitySummary';
 import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button,
     IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, CircularProgress
+    List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, CircularProgress, Card, CardContent
 } from '@mui/material';
-import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload } from '@mui/icons-material';
+import { useTheme, alpha } from '@mui/material/styles';
+import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension } from '@mui/icons-material';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import { PRODUCTS, TASKS_FOR_PRODUCT, OUTCOMES, PRODUCT } from '../graphql/queries';
 import { DELETE_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE, CREATE_PRODUCT, UPDATE_PRODUCT } from '../graphql/mutations';
@@ -27,7 +30,7 @@ interface ProductsPageProps {
 export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => {
     // State
     const [selectedProduct, setSelectedProduct] = useState<string | null>(localStorage.getItem('lastSelectedProductId'));
-    const [selectedSubSection, setSelectedSubSection] = useState<'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes'>('outcomes');
+    const [selectedSubSection, setSelectedSubSection] = useState<'dashboard' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes'>('dashboard');
     const importFileRef = useRef<HTMLInputElement>(null);
 
     // Dialog States
@@ -97,6 +100,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const handleProductChange = (productId: string) => {
         setSelectedProduct(productId);
         localStorage.setItem('lastSelectedProductId', productId);
+        // Preserve the current tab when changing products
+        // setSelectedSubSection('dashboard'); // Removed to persist tab
         // Force refetch tasks when product changes or tab is selected
         setTimeout(() => refetchTasks(), 0);
     };
@@ -147,19 +152,45 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         }
     };
 
+    // Helper to get sorted attributes
+    const getSortedAttributes = (attrs: any) => {
+        if (!attrs) return [];
+        const order = attrs._order || [];
+        const entries = Object.entries(attrs).filter(([k]) => k !== '_order' && k !== '__typename');
+
+        return entries.sort((a, b) => {
+            const indexA = order.indexOf(a[0]);
+            const indexB = order.indexOf(b[0]);
+            if (indexA === -1 && indexB === -1) return 0;
+            if (indexA === -1) return 1;
+            if (indexB === -1) return -1;
+            return indexA - indexB;
+        });
+    };
+
+    // Attribute Drag End
+
+
     // Custom Attribute handlers
     const handleSaveCustomAttr = async (attrData: { key: string; value: any }) => {
         if (!displayProduct) return;
 
         const currentAttrs = displayProduct.customAttrs || {};
         const updatedAttrs = { ...currentAttrs };
+        const order = [...(updatedAttrs._order || [])];
 
         // If editing and key changed, remove old key
         if (editingCustomAttr && editingCustomAttr.key !== attrData.key) {
             delete updatedAttrs[editingCustomAttr.key];
+            const idx = order.indexOf(editingCustomAttr.key);
+            if (idx > -1) order.splice(idx, 1);
         }
 
         updatedAttrs[attrData.key] = attrData.value;
+        if (!order.includes(attrData.key)) {
+            order.push(attrData.key);
+        }
+        updatedAttrs._order = order;
 
         try {
             await client.mutate({
@@ -193,6 +224,11 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         const currentAttrs = displayProduct.customAttrs || {};
         const updatedAttrs = { ...currentAttrs };
         delete updatedAttrs[key];
+
+        // Remove from order
+        if (updatedAttrs._order) {
+            updatedAttrs._order = updatedAttrs._order.filter((k: string) => k !== key);
+        }
 
         try {
             await client.mutate({
@@ -445,8 +481,10 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         }
     };
 
+    const theme = useTheme();
+
     return (
-        <Box>
+        <React.Fragment> {/* Wrapping just in case */}
             {/* Product Selection Header */}
             {productsLoading && <LinearProgress sx={{ mb: 2 }} />}
 
@@ -533,38 +571,218 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
             )}
 
             {/* Content Area */}
-            {selectedProduct && (
+            {selectedProduct && displayProduct && (
                 <>
-                    <Box sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Tabs value={selectedSubSection} onChange={(_, v) => setSelectedSubSection(v)} variant="scrollable" scrollButtons="auto">
+                    <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Tabs
+                            value={selectedSubSection}
+                            onChange={(_, v) => setSelectedSubSection(v)}
+                            variant="scrollable"
+                            scrollButtons="auto"
+                            sx={{ borderBottom: 1, borderColor: 'divider', flex: 1 }}
+                        >
+                            <Tab label="Dashboard" value="dashboard" />
+                            <Tab label="Tasks" value="tasks" />
                             <Tab label="Outcomes" value="outcomes" />
                             <Tab label="Releases" value="releases" />
                             <Tab label="Licenses" value="licenses" />
                             <Tab label="Custom Attributes" value="customAttributes" />
-                            <Tab label="Tasks" value="tasks" />
                         </Tabs>
-                        <Button
-                            variant="contained"
-                            startIcon={<Add />}
-                            size="small"
-                            sx={{ width: 240, flexShrink: 0 }}
-                            onClick={() => {
-                                switch (selectedSubSection) {
-                                    case 'tasks': setEditingTask(null); setTaskDialog(true); break;
-                                    case 'outcomes': setEditingOutcome(null); setOutcomeDialog(true); break;
-                                    case 'releases': setEditingRelease(null); setReleaseDialog(true); break;
-                                    case 'licenses': setEditingLicense(null); setLicenseDialog(true); break;
-                                    case 'customAttributes': setEditingCustomAttr(null); setCustomAttrDialog(true); break;
-                                }
-                            }}
-                        >
-                            {selectedSubSection === 'tasks' ? 'Add Task' :
-                                selectedSubSection === 'outcomes' ? 'Add Outcome' :
-                                    selectedSubSection === 'releases' ? 'Add Release' :
-                                        selectedSubSection === 'licenses' ? 'Add License' :
-                                            selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'}
-                        </Button>
+
+                        {selectedSubSection !== 'dashboard' && (
+                            <Button
+                                variant="contained"
+                                startIcon={<Add />}
+                                size="small"
+                                sx={{ ml: 2, flexShrink: 0 }}
+                                onClick={() => {
+                                    switch (selectedSubSection) {
+                                        case 'tasks': setEditingTask(null); setTaskDialog(true); break;
+                                        case 'outcomes': setEditingOutcome(null); setOutcomeDialog(true); break;
+                                        case 'releases': setEditingRelease(null); setReleaseDialog(true); break;
+                                        case 'licenses': setEditingLicense(null); setLicenseDialog(true); break;
+                                        case 'customAttributes': setEditingCustomAttr(null); setCustomAttrDialog(true); break;
+                                    }
+                                }}
+                            >
+                                {selectedSubSection === 'tasks' ? 'Add Task' :
+                                    selectedSubSection === 'outcomes' ? 'Add Outcome' :
+                                        selectedSubSection === 'releases' ? 'Add Release' :
+                                            selectedSubSection === 'licenses' ? 'Add License' :
+                                                selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'}
+                            </Button>
+                        )}
                     </Box>
+
+                    {selectedSubSection === 'dashboard' && (
+                        <Box sx={{ mt: 2 }}>
+                            {/* Read-only Dashboard Layout - Full Width */}
+                            <Grid container spacing={3}>
+                                <Grid size={{ xs: 12 }}>
+                                    {/* Product Name Header */}
+                                    <Paper
+                                        elevation={3}
+                                        sx={{
+                                            p: 3,
+                                            mb: 3,
+                                            borderRadius: 2,
+                                            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${theme.palette.background.paper} 100%)`,
+                                            borderLeft: `6px solid ${theme.palette.primary.main}`
+                                        }}
+                                    >
+                                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.primary.dark }}>
+                                            {displayProduct.name}
+                                        </Typography>
+                                    </Paper>
+
+                                    {/* Overview */}
+                                    <Card
+                                        elevation={2}
+                                        sx={{
+                                            mb: 3,
+                                            borderRadius: 2,
+                                            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
+                                        }}
+                                    >
+                                        <CardContent>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                                <Description sx={{ color: theme.palette.primary.main }} />
+                                                <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
+                                                    Overview
+                                                </Typography>
+                                            </Box>
+                                            <Typography
+                                                variant="body1"
+                                                sx={{
+                                                    lineHeight: 1.7,
+                                                    color: theme.palette.text.secondary,
+                                                    whiteSpace: 'pre-line',
+                                                    pl: 1,
+                                                    borderLeft: `3px solid ${alpha(theme.palette.primary.main, 0.3)}`
+                                                }}
+                                            >
+                                                {displayProduct.description || 'No detailed description provided for this product.'}
+                                            </Typography>
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* Outcomes */}
+                                    <Card
+                                        elevation={2}
+                                        sx={{
+                                            borderRadius: 2,
+                                            border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`
+                                        }}
+                                    >
+                                        <CardContent>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                                <CheckCircle sx={{ color: theme.palette.success.main }} />
+                                                <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.palette.success.main }}>
+                                                    Outcomes
+                                                </Typography>
+                                                <Chip
+                                                    label={displayProduct.outcomes?.length || 0}
+                                                    size="small"
+                                                    sx={{
+                                                        ml: 1,
+                                                        bgcolor: alpha(theme.palette.success.main, 0.15),
+                                                        color: theme.palette.success.dark,
+                                                        fontWeight: 'bold'
+                                                    }}
+                                                />
+                                            </Box>
+                                            {displayProduct.outcomes && displayProduct.outcomes.length > 0 ? (
+                                                <List disablePadding>
+                                                    {displayProduct.outcomes.map((o: any, idx: number) => (
+                                                        <ListItem
+                                                            key={o.id}
+                                                            sx={{
+                                                                py: 1.5,
+                                                                px: 2,
+                                                                bgcolor: idx % 2 === 0 ? alpha(theme.palette.success.main, 0.03) : 'transparent',
+                                                                borderRadius: 1,
+                                                                mb: 0.5
+                                                            }}
+                                                        >
+                                                            <ListItemText
+                                                                primary={
+                                                                    <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                                                                        {o.name}
+                                                                    </Typography>
+                                                                }
+                                                                secondary={o.description && (
+                                                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                                        {o.description}
+                                                                    </Typography>
+                                                                )}
+                                                            />
+                                                        </ListItem>
+                                                    ))}
+                                                </List>
+                                            ) : (
+                                                <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
+                                                    No outcomes defined for this product.
+                                                </Typography>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                            </Grid>
+                        </Box>
+                    )}
+
+                    {selectedSubSection === 'tasks' && (
+                        <Box>
+                            {/* Tasks View */}
+                            {(tasksLoading || tasksError) && (
+                                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
+                                    {tasksLoading && <CircularProgress size={24} />}
+                                    {tasksError && <Typography color="error" variant="body2">{tasksError.message}</Typography>}
+                                </Box>
+                            )}
+
+                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                <TableContainer component={Paper} sx={{ maxHeight: '70vh' }}>
+                                    <Table size="small" stickyHeader>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell width={40}></TableCell>
+                                                <TableCell width={80}>Seq</TableCell>
+                                                <TableCell>Name</TableCell>
+                                                <TableCell>Resources</TableCell>
+                                                <TableCell width={100}>Weight</TableCell>
+                                                <TableCell>Telemetry</TableCell>
+                                                <TableCell width={100}>Actions</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+
+                                        <TableBody>
+                                            <SortableContext items={tasks.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
+                                                {tasks.map((task: any) => (
+                                                    <SortableTaskItem
+                                                        key={task.id}
+                                                        task={task}
+                                                        onEdit={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
+                                                        onDelete={handleDeleteTask}
+                                                        onDoubleClick={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
+                                                        onWeightChange={handleWeightChange}
+                                                        onSequenceChange={handleSequenceChange}
+                                                    />
+                                                ))}
+                                                {tasks.length === 0 && !tasksLoading && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                                                            <Typography color="text.secondary">No tasks found for this product</Typography>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </SortableContext>
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </DndContext>
+                        </Box>
+                    )}
 
                     {selectedSubSection === 'outcomes' && (
                         <Grid container spacing={3}>
@@ -690,104 +908,62 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                         <Grid container spacing={3}>
                             <Grid size={{ xs: 12 }}>
                                 <Paper sx={{ p: 2 }}>
-
-                                    {displayProduct?.customAttrs && Object.keys(displayProduct.customAttrs).length > 0 ? (
-                                        <TableContainer>
-                                            <Table>
-                                                <TableHead>
-                                                    <TableRow>
-                                                        <TableCell sx={{ fontWeight: 'bold' }}>Attribute</TableCell>
-                                                        <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
-                                                        <TableCell width={100} align="right">Actions</TableCell>
+                                    <TableContainer>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell width={40}></TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Attribute</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
+                                                    <TableCell width={100} align="right">Actions</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {getSortedAttributes(displayProduct?.customAttrs).map(([key, value]) => (
+                                                    <TableRow key={key} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                                                        <TableCell>
+                                                            <DragIndicator fontSize="small" sx={{ color: 'text.disabled' }} />
+                                                        </TableCell>
+                                                        <TableCell sx={{ fontWeight: 500 }}>{key}</TableCell>
+                                                        <TableCell>
+                                                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                                                        </TableCell>
+                                                        <TableCell align="right">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => {
+                                                                    setEditingCustomAttr({ key, value });
+                                                                    setCustomAttrDialog(true);
+                                                                }}
+                                                            >
+                                                                <Edit fontSize="small" />
+                                                            </IconButton>
+                                                            <IconButton
+                                                                size="small"
+                                                                color="error"
+                                                                onClick={() => handleDeleteCustomAttr(key)}
+                                                            >
+                                                                <Delete fontSize="small" />
+                                                            </IconButton>
+                                                        </TableCell>
                                                     </TableRow>
-                                                </TableHead>
-                                                <TableBody>
-                                                    {Object.entries(displayProduct.customAttrs).map(([key, value]: [string, any]) => (
-                                                        <TableRow
-                                                            key={key}
-                                                            sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
-                                                            onDoubleClick={() => { setEditingCustomAttr({ key, value }); setCustomAttrDialog(true); }}
-                                                        >
-                                                            <TableCell>{key}</TableCell>
-                                                            <TableCell>
-                                                                <Tooltip title={typeof value === 'string' ? value : JSON.stringify(value)} placement="top" arrow>
-                                                                    <span>{typeof value === 'string' ? value : JSON.stringify(value)}</span>
-                                                                </Tooltip>
-                                                            </TableCell>
-                                                            <TableCell align="right">
-                                                                <IconButton size="small" onClick={() => { setEditingCustomAttr({ key, value }); setCustomAttrDialog(true); }}>
-                                                                    <Edit fontSize="small" />
-                                                                </IconButton>
-                                                                <IconButton size="small" color="error" onClick={() => handleDeleteCustomAttr(key)}>
-                                                                    <Delete fontSize="small" />
-                                                                </IconButton>
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        </TableContainer>
-                                    ) : (
-                                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2 }}>
-                                            No custom attributes defined
-                                        </Typography>
-                                    )}
+                                                ))}
+                                                {getSortedAttributes(displayProduct?.customAttrs).length === 0 && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={4} sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
+                                                            No custom attributes defined
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
                                 </Paper>
                             </Grid>
                         </Grid>
                     )}
-                    {selectedSubSection === 'tasks' && (
-                        <Box>
-                            {/* Tasks View */}
-                            {(tasksLoading || tasksError) && (
-                                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 2 }}>
-                                    {tasksLoading && <CircularProgress size={24} />}
-                                    {tasksError && <Typography color="error" variant="body2">{tasksError.message}</Typography>}
-                                </Box>
-                            )}
 
-                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                                <TableContainer component={Paper} sx={{ maxHeight: '70vh' }}>
-                                    <Table size="small" stickyHeader>
-                                        <TableHead>
-                                            <TableRow>
-                                                <TableCell width={40}></TableCell>
-                                                <TableCell width={80}>Seq</TableCell>
-                                                <TableCell>Name</TableCell>
-                                                <TableCell>Resources</TableCell>
-                                                <TableCell width={100}>Weight</TableCell>
-                                                <TableCell>Telemetry</TableCell>
-                                                <TableCell width={100}>Actions</TableCell>
-                                            </TableRow>
-                                        </TableHead>
 
-                                        <TableBody>
-                                            <SortableContext items={tasks.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
-                                                {tasks.map((task: any) => (
-                                                    <SortableTaskItem
-                                                        key={task.id}
-                                                        task={task}
-                                                        onEdit={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
-                                                        onDelete={handleDeleteTask}
-                                                        onDoubleClick={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
-                                                        onWeightChange={handleWeightChange}
-                                                        onSequenceChange={handleSequenceChange}
-                                                    />
-                                                ))}
-                                                {tasks.length === 0 && !tasksLoading && (
-                                                    <TableRow>
-                                                        <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
-                                                            <Typography color="text.secondary">No tasks found for this product</Typography>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
-                                            </SortableContext>
-                                        </TableBody>
-                                    </Table>
-                                </TableContainer>
-                            </DndContext>
-                        </Box>
-                    )}
                 </>
             )
             }
@@ -842,21 +1018,47 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 onClose={() => setProductDialog(false)}
                 onSave={async (data: any) => {
                     try {
-                        // Create new product
-                        const result = await client.mutate({
-                            mutation: CREATE_PRODUCT,
-                            variables: { input: { name: data.name, description: data.description } },
-                            refetchQueries: ['Products'],
-                            awaitRefetchQueries: true
-                        });
-                        const newProductId = result.data.createProduct.id;
-                        setSelectedProduct(newProductId);
-                        localStorage.setItem('lastSelectedProductId', newProductId);
+                        if (editingProduct) {
+                            // Update existing product
+                            await client.mutate({
+                                mutation: UPDATE_PRODUCT,
+                                variables: {
+                                    id: editingProduct.id,
+                                    input: {
+                                        name: data.name,
+                                        description: data.description,
+                                        customAttrs: data.customAttrs
+                                    }
+                                },
+                                refetchQueries: ['Products', 'ProductDetail'],
+                                awaitRefetchQueries: true
+                            });
+
+                            // Note: Outcomes, Licenses, and Releases are currently handled by their own dialogs
+                            // or would need separate reconciliation logic here if they were modified in ProductDialog.
+                            // For now, we focus on name, description, and customAttrs (including order).
+                        } else {
+                            // Create new product
+                            const result = await client.mutate({
+                                mutation: CREATE_PRODUCT,
+                                variables: { input: { name: data.name, description: data.description, customAttrs: data.customAttrs } },
+                                refetchQueries: ['Products'],
+                                awaitRefetchQueries: true
+                            });
+                            const newProductId = result.data.createProduct.id;
+                            setSelectedProduct(newProductId);
+                            localStorage.setItem('lastSelectedProductId', newProductId);
+                        }
+
                         setProductDialog(false);
-                        await refetchProducts();
+                        setEditingProduct(null);
+                        await Promise.all([
+                            refetchProducts(),
+                            selectedProduct ? refetchProductDetail() : Promise.resolve()
+                        ]);
                     } catch (error: any) {
-                        console.error('Error creating product:', error);
-                        alert('Failed to create product: ' + error.message);
+                        console.error('Error saving product:', error);
+                        alert('Failed to save product: ' + error.message);
                     }
                 }}
                 product={editingProduct}
@@ -872,7 +1074,60 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 attribute={editingCustomAttr}
                 existingKeys={Object.keys(displayProduct?.customAttrs || {})}
             />
-        </Box >
+        </React.Fragment>
     );
 };
 
+// Sortable Row Component (Internal)
+const SortableAttributeRow = ({ id, attrKey, value, onEdit, onDelete }: any) => {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        backgroundColor: isDragging ? alpha('#000', 0.05) : undefined,
+        zIndex: isDragging ? 1 : undefined,
+    };
+
+    return (
+        <TableRow ref={setNodeRef} style={style} sx={{ '&:hover .drag-handle': { opacity: 1 } }}>
+            <TableCell>
+                <IconButton
+                    size="small"
+                    className="drag-handle"
+                    sx={{ opacity: 0.3, cursor: 'grab' }}
+                    {...attributes}
+                    {...listeners}
+                >
+                    <DragIndicator fontSize="small" />
+                </IconButton>
+            </TableCell>
+            <TableCell
+                onClick={onEdit}
+                sx={{ cursor: 'pointer', fontWeight: 500 }}
+            >
+                {attrKey}
+            </TableCell>
+            <TableCell onClick={onEdit} sx={{ cursor: 'pointer' }}>
+                <Tooltip title={typeof value === 'string' ? value : JSON.stringify(value)} placement="top" arrow>
+                    <span>{typeof value === 'string' ? value : JSON.stringify(value)}</span>
+                </Tooltip>
+            </TableCell>
+            <TableCell align="right">
+                <IconButton size="small" onClick={onEdit}>
+                    <Edit fontSize="small" />
+                </IconButton>
+                <IconButton size="small" color="error" onClick={onDelete}>
+                    <Delete fontSize="small" />
+                </IconButton>
+            </TableCell>
+        </TableRow>
+    );
+};
