@@ -1314,16 +1314,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
             {/* Header with Customer Info - Only show in standalone mode */}
             {!hideTabs && (
               <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
-                <Box sx={{ mb: 2 }}>
-                  <Typography variant="h5">
-                    {selectedCustomer.name}
-                    {selectedCustomer.description && (
-                      <Typography component="span" variant="body1" color="text.secondary" sx={{ ml: 2, fontWeight: 400 }}>
-                        {selectedCustomer.description}
-                      </Typography>
-                    )}
-                  </Typography>
-                </Box>
+
 
                 {/* Tabs for Main, Products and Solutions */}
                 <Box sx={{
@@ -1368,140 +1359,260 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                     <Tab label="Solutions" value="solutions" />
                   </Tabs>
                 </Box>
-              </Box>
+              </Box >
             )}
 
             {/* Main Tab Content */}
-            {activeTab === 'main' && (
-              <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 1.5, sm: 2, md: 3 } }}>
-                <Box sx={{ width: '100%', maxWidth: 1200 }}>
-                  {/* Quick Stats Cards */}
-                  <Box sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
-                    gap: 2,
-                    mb: 3
-                  }}>
-                    {/* Products Count */}
-                    <Paper
-                      elevation={0}
-                      sx={{
-                        p: 1.5,
-                        borderRadius: 2,
-                        background: 'linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%)',
-                        border: '1px solid #80cbc4',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        '&:hover': { transform: 'translateY(-2px)', boxShadow: 2 }
-                      }}
-                      onClick={() => setActiveTab('products')}
-                    >
-                      <Typography variant="h3" fontWeight="700" color="#00695c" sx={{ mb: 0.5 }}>
-                        {sortedProducts?.filter((p: any) => !p.customerSolutionId)?.length || 0}
-                      </Typography>
-                      <Typography variant="body2" color="#00897b" fontWeight="500">
-                        Direct Products
-                      </Typography>
-                    </Paper>
+            {
+              activeTab === 'main' && (
+                <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 1.5, sm: 2, md: 3 } }}>
+                  <Box sx={{ width: '100%', maxWidth: 1200 }}>
+                    {/* Quick Stats Cards */}
 
-                    {/* Solutions Count */}
-                    <Paper
-                      elevation={0}
-                      sx={{
-                        p: 1.5,
-                        borderRadius: 2,
-                        background: 'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)',
-                        border: '1px solid #ce93d8',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease',
-                        '&:hover': { transform: 'translateY(-2px)', boxShadow: 2 }
-                      }}
-                      onClick={() => setActiveTab('solutions')}
-                    >
-                      <Typography variant="h3" fontWeight="700" color="#6a1b9a" sx={{ mb: 0.5 }}>
-                        {selectedCustomer.solutions?.length || 0}
-                      </Typography>
-                      <Typography variant="body2" color="#8e24aa" fontWeight="500">
-                        Solutions
-                      </Typography>
-                    </Paper>
 
-                    {/* Total Products (including from solutions) */}
-                    <Paper
-                      elevation={0}
-                      sx={{
-                        p: 1.5,
-                        borderRadius: 2,
-                        background: 'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
-                        border: '1px solid #90caf9',
-                      }}
-                    >
-                      <Typography variant="h3" fontWeight="700" color="#1565c0" sx={{ mb: 0.5 }}>
-                        {sortedProducts?.length || 0}
-                      </Typography>
-                      <Typography variant="body2" color="#1976d2" fontWeight="500">
-                        Total Products
-                      </Typography>
-                    </Paper>
-                  </Box>
-
-                  {/* Products Assignment List - Compact */}
-                  <Box sx={{ mb: 3 }}>
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        mb: productAssignmentsExpanded ? 2 : 0,
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => setProductAssignmentsExpanded(!productAssignmentsExpanded)}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <IconButton size="small" sx={{ p: 0.5, bgcolor: '#e0f2f1', color: '#00897b' }}>
-                          {productAssignmentsExpanded ? <ExpandLess /> : <ExpandMore />}
-                        </IconButton>
-                        <Typography variant="subtitle1" fontWeight="600" color="text.primary">
-                          Product Assignments
-                        </Typography>
-                        <Chip
-                          label={sortedProducts?.length || 0}
-                          size="small"
-                          variant="outlined"
-                          color="success"
-                          sx={{ height: 22, fontWeight: 600 }}
-                        />
-                      </Box>
-                      <Button
-                        startIcon={<Add />}
-                        variant="outlined"
-                        size="small"
-                        color="success"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAssignProductDialogOpen(true);
+                    {/* Products Assignment List - Compact */}
+                    <Box sx={{ mb: 3 }}>
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          mb: productAssignmentsExpanded ? 2 : 0,
+                          cursor: 'pointer'
                         }}
-                        sx={{ minWidth: 100 }}
+                        onClick={() => setProductAssignmentsExpanded(!productAssignmentsExpanded)}
                       >
-                        Add
-                      </Button>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <IconButton size="small" sx={{ p: 0.5, bgcolor: '#e0f2f1', color: '#00897b' }}>
+                            {productAssignmentsExpanded ? <ExpandLess /> : <ExpandMore />}
+                          </IconButton>
+                          <Typography variant="subtitle1" fontWeight="600" color="text.primary">
+                            Product Assignments
+                          </Typography>
+                          <Chip
+                            label={sortedProducts?.length || 0}
+                            size="small"
+                            variant="outlined"
+                            color="success"
+                            sx={{ height: 22, fontWeight: 600 }}
+                          />
+                        </Box>
+                        <Button
+                          startIcon={<Add />}
+                          variant="outlined"
+                          size="small"
+                          color="success"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAssignProductDialogOpen(true);
+                          }}
+                          sx={{ minWidth: 100 }}
+                        >
+                          Add
+                        </Button>
+                      </Box>
+                      <Collapse in={productAssignmentsExpanded}>
+                        {sortedProducts && sortedProducts.length > 0 ? (
+                          <Box sx={{ display: 'grid', gap: 1 }}>
+                            {sortedProducts.map((cp: any) => {
+                              const isFromSolution = !!cp.customerSolutionId;
+                              return (
+                                <Tooltip
+                                  key={cp.id}
+                                  title={isFromSolution ? "Part of solution assignment • Edit via solution • Double-click to view adoption plan" : "Product assignment • Double-click to view adoption plan"}
+                                  arrow
+                                  placement="top"
+                                >
+                                  <Box
+                                    onDoubleClick={() => {
+                                      setSelectedCustomerProductId(cp.id);
+                                      setActiveTab('products');
+                                    }}
+                                    sx={{
+                                      display: 'flex',
+                                      flexDirection: { xs: 'column', sm: 'row' },
+                                      justifyContent: 'space-between',
+                                      alignItems: { xs: 'stretch', sm: 'center' },
+                                      p: 1.5,
+                                      border: '1.5px solid',
+                                      borderColor: '#E0E0E0',
+                                      borderLeft: '4px solid',
+                                      borderLeftColor: isFromSolution ? '#7B1FA2' : '#00897B',
+                                      backgroundColor: isFromSolution ? '#F3E5F5' : '#E0F2F1',
+                                      borderRadius: 2,
+                                      transition: 'all 0.2s ease',
+                                      gap: 1,
+                                      cursor: 'pointer',
+                                      '&:hover': {
+                                        boxShadow: 2,
+                                        borderColor: isFromSolution ? '#7B1FA2' : '#00897B'
+                                      }
+                                    }}
+                                  >
+                                    <Box sx={{ flex: 1 }}>
+                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                        <Typography variant="body1" fontWeight="500" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
+                                          {cp.customerSolutionId ? (
+                                            `${cp.name}`
+                                          ) : (
+                                            `${cp.name} - ${cp.product.name}`
+                                          )}
+                                        </Typography>
+                                        <Chip
+                                          label={cp.licenseLevel}
+                                          size="small"
+                                          variant="outlined"
+                                          color="primary"
+                                          sx={{ height: 22, fontWeight: 500, fontSize: '0.75rem' }}
+                                        />
+                                      </Box>
+                                    </Box>
+                                    <Box
+                                      sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      {cp.adoptionPlan && (
+                                        <Tooltip title="Sync with latest product tasks">
+                                          <Button
+                                            size="small"
+                                            variant="outlined"
+                                            startIcon={<Sync sx={{ display: { xs: 'none', sm: 'block' } }} />}
+                                            color={cp.adoptionPlan.needsSync ? 'warning' : 'primary'}
+                                            onClick={() => {
+                                              setSyncingProductId(cp.adoptionPlan.id);
+                                              syncAdoptionPlan({ variables: { adoptionPlanId: cp.adoptionPlan.id } });
+                                            }}
+                                            disabled={syncingProductId === cp.adoptionPlan.id}
+                                            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '80px' } }}
+                                          >
+                                            {syncingProductId === cp.adoptionPlan.id ? 'Syncing...' : cp.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
+                                          </Button>
+                                        </Tooltip>
+                                      )}
+                                      <Tooltip
+                                        title={isFromSolution ? "Cannot edit product assigned as part of solution. Edit the solution instead." : ""}
+                                        arrow
+                                      >
+                                        <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                                          <Button
+                                            size="small"
+                                            variant="outlined"
+                                            startIcon={<Edit sx={{ display: { xs: 'none', sm: 'block' } }} />}
+                                            disabled={isFromSolution}
+                                            onClick={() => {
+                                              if (!isFromSolution) {
+                                                setSelectedCustomerProductId(cp.id);
+                                                handleEditProductEntitlements();
+                                              }
+                                            }}
+                                            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
+                                          >
+                                            Edit
+                                          </Button>
+                                        </Box>
+                                      </Tooltip>
+                                      <Tooltip
+                                        title={isFromSolution ? "Cannot remove product assigned as part of solution. Remove the solution instead." : ""}
+                                        arrow
+                                      >
+                                        <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                                          <Button
+                                            size="small"
+                                            variant="outlined"
+                                            color="error"
+                                            startIcon={<Delete sx={{ display: { xs: 'none', sm: 'block' } }} />}
+                                            disabled={isFromSolution}
+                                            onClick={() => {
+                                              if (!isFromSolution) {
+                                                setSelectedCustomerProductId(cp.id);
+                                                setDeleteProductDialogOpen(true);
+                                              }
+                                            }}
+                                            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
+                                          >
+                                            Remove
+                                          </Button>
+                                        </Box>
+                                      </Tooltip>
+                                    </Box>
+                                  </Box>
+                                </Tooltip>
+                              );
+                            })}
+                          </Box>
+                        ) : (
+                          <Box sx={{ textAlign: 'center', py: 4, backgroundColor: 'background.default', borderRadius: 1 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              No product assignments yet
+                            </Typography>
+                          </Box>
+                        )}
+                      </Collapse>
                     </Box>
-                    <Collapse in={productAssignmentsExpanded}>
-                      {sortedProducts && sortedProducts.length > 0 ? (
-                        <Box sx={{ display: 'grid', gap: 1 }}>
-                          {sortedProducts.map((cp: any) => {
-                            const isFromSolution = !!cp.customerSolutionId;
-                            return (
+
+                    {/* Solution Adoption Plans Section */}
+                    <Paper
+                      elevation={0}
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        border: '1px solid #e0e0e0',
+                        bgcolor: 'background.paper'
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          mb: solutionAssignmentsExpanded ? 2 : 0,
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => setSolutionAssignmentsExpanded(!solutionAssignmentsExpanded)}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <IconButton size="small" sx={{ p: 0.5, bgcolor: '#f3e5f5', color: '#8e24aa' }}>
+                            {solutionAssignmentsExpanded ? <ExpandLess /> : <ExpandMore />}
+                          </IconButton>
+                          <Typography variant="subtitle1" fontWeight="600" color="text.primary">
+                            Solution Assignments
+                          </Typography>
+                          <Chip
+                            label={selectedCustomer.solutions?.length || 0}
+                            size="small"
+                            variant="outlined"
+                            color="secondary"
+                            sx={{ height: 22, fontWeight: 600 }}
+                          />
+                        </Box>
+                        <Button
+                          startIcon={<Add />}
+                          variant="outlined"
+                          size="small"
+                          color="secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAssignSolutionDialogOpen(true);
+                          }}
+                          sx={{ minWidth: 100 }}
+                        >
+                          Add
+                        </Button>
+                      </Box>
+                      <Collapse in={solutionAssignmentsExpanded}>
+                        {selectedCustomer.solutions && selectedCustomer.solutions.length > 0 ? (
+                          <Box sx={{ display: 'grid', gap: 1 }}>
+                            {selectedCustomer.solutions.map((cs: any) => (
                               <Tooltip
-                                key={cp.id}
-                                title={isFromSolution ? "Part of solution assignment • Edit via solution • Double-click to view adoption plan" : "Product assignment • Double-click to view adoption plan"}
+                                key={cs.id}
+                                title="Solution assignment with multiple products • Double-click to view adoption plan"
                                 arrow
                                 placement="top"
                               >
                                 <Box
                                   onDoubleClick={() => {
-                                    setSelectedCustomerProductId(cp.id);
-                                    setActiveTab('products');
+                                    setSelectedCustomerSolutionId(cs.id);
+                                    setActiveTab('solutions');
                                   }}
                                   sx={{
                                     display: 'flex',
@@ -1512,32 +1623,28 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                     border: '1.5px solid',
                                     borderColor: '#E0E0E0',
                                     borderLeft: '4px solid',
-                                    borderLeftColor: isFromSolution ? '#7B1FA2' : '#00897B',
-                                    backgroundColor: isFromSolution ? '#F3E5F5' : '#E0F2F1',
+                                    borderLeftColor: '#7B1FA2',
+                                    backgroundColor: '#F3E5F5',
                                     borderRadius: 2,
                                     transition: 'all 0.2s ease',
                                     gap: 1,
                                     cursor: 'pointer',
                                     '&:hover': {
                                       boxShadow: 2,
-                                      borderColor: isFromSolution ? '#7B1FA2' : '#00897B'
+                                      borderColor: '#7B1FA2'
                                     }
                                   }}
                                 >
                                   <Box sx={{ flex: 1 }}>
                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.5 }}>
                                       <Typography variant="body1" fontWeight="500" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
-                                        {cp.customerSolutionId ? (
-                                          `${cp.name}`
-                                        ) : (
-                                          `${cp.name} - ${cp.product.name}`
-                                        )}
+                                        {cs.name} - {cs.solution.name}
                                       </Typography>
                                       <Chip
-                                        label={cp.licenseLevel}
+                                        label={cs.licenseLevel}
                                         size="small"
                                         variant="outlined"
-                                        color="primary"
+                                        color="secondary"
                                         sx={{ height: 22, fontWeight: 500, fontSize: '0.75rem' }}
                                       />
                                     </Box>
@@ -1546,885 +1653,670 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                     sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}
                                     onClick={(e) => e.stopPropagation()}
                                   >
-                                    {cp.adoptionPlan && (
-                                      <Tooltip title="Sync with latest product tasks">
+                                    {cs.adoptionPlan && (
+                                      <Tooltip title="Sync solution and all underlying products with latest definitions">
                                         <Button
                                           size="small"
                                           variant="outlined"
                                           startIcon={<Sync sx={{ display: { xs: 'none', sm: 'block' } }} />}
-                                          color={cp.adoptionPlan.needsSync ? 'warning' : 'primary'}
+                                          color={cs.adoptionPlan.needsSync ? 'warning' : 'primary'}
                                           onClick={() => {
-                                            setSyncingProductId(cp.adoptionPlan.id);
-                                            syncAdoptionPlan({ variables: { adoptionPlanId: cp.adoptionPlan.id } });
+                                            setSyncingSolutionId(cs.adoptionPlan.id);
+                                            syncSolutionPlan({ variables: { solutionAdoptionPlanId: cs.adoptionPlan.id } });
                                           }}
-                                          disabled={syncingProductId === cp.adoptionPlan.id}
+                                          disabled={syncingSolutionId === cs.adoptionPlan.id}
                                           sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '80px' } }}
                                         >
-                                          {syncingProductId === cp.adoptionPlan.id ? 'Syncing...' : cp.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
+                                          {syncingSolutionId === cs.adoptionPlan.id ? 'Syncing...' : cs.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
                                         </Button>
                                       </Tooltip>
                                     )}
-                                    <Tooltip
-                                      title={isFromSolution ? "Cannot edit product assigned as part of solution. Edit the solution instead." : ""}
-                                      arrow
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<Edit sx={{ display: { xs: 'none', sm: 'block' } }} />}
+                                      onClick={() => {
+                                        setSelectedCustomerSolutionId(cs.id);
+                                        setEditSolutionEntitlementsDialogOpen(true);
+                                      }}
+                                      sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
                                     >
-                                      <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                                        <Button
-                                          size="small"
-                                          variant="outlined"
-                                          startIcon={<Edit sx={{ display: { xs: 'none', sm: 'block' } }} />}
-                                          disabled={isFromSolution}
-                                          onClick={() => {
-                                            if (!isFromSolution) {
-                                              setSelectedCustomerProductId(cp.id);
-                                              handleEditProductEntitlements();
-                                            }
-                                          }}
-                                          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
-                                        >
-                                          Edit
-                                        </Button>
-                                      </Box>
-                                    </Tooltip>
-                                    <Tooltip
-                                      title={isFromSolution ? "Cannot remove product assigned as part of solution. Remove the solution instead." : ""}
-                                      arrow
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      color="error"
+                                      startIcon={<Delete sx={{ display: { xs: 'none', sm: 'block' } }} />}
+                                      onClick={() => {
+                                        setSelectedCustomerSolutionId(cs.id);
+                                        setDeleteSolutionDialogOpen(true);
+                                      }}
+                                      sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
                                     >
-                                      <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                                        <Button
-                                          size="small"
-                                          variant="outlined"
-                                          color="error"
-                                          startIcon={<Delete sx={{ display: { xs: 'none', sm: 'block' } }} />}
-                                          disabled={isFromSolution}
-                                          onClick={() => {
-                                            if (!isFromSolution) {
-                                              setSelectedCustomerProductId(cp.id);
-                                              setDeleteProductDialogOpen(true);
-                                            }
-                                          }}
-                                          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
-                                        >
-                                          Remove
-                                        </Button>
-                                      </Box>
-                                    </Tooltip>
+                                      Remove
+                                    </Button>
                                   </Box>
                                 </Box>
                               </Tooltip>
-                            );
-                          })}
-                        </Box>
-                      ) : (
-                        <Box sx={{ textAlign: 'center', py: 4, backgroundColor: 'background.default', borderRadius: 1 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            No product assignments yet
-                          </Typography>
-                        </Box>
-                      )}
-                    </Collapse>
+                            ))}
+                          </Box>
+                        ) : (
+                          <Box sx={{ textAlign: 'center', py: 4, backgroundColor: 'background.default', borderRadius: 1 }}>
+                            <Typography variant="body2" color="text.secondary">
+                              No solution assignments yet
+                            </Typography>
+                          </Box>
+                        )}
+                      </Collapse>
+                    </Paper>
                   </Box>
-
-                  {/* Solution Adoption Plans Section */}
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 1.5,
-                      borderRadius: 2,
-                      border: '1px solid #e0e0e0',
-                      bgcolor: 'background.paper'
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        mb: solutionAssignmentsExpanded ? 2 : 0,
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => setSolutionAssignmentsExpanded(!solutionAssignmentsExpanded)}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <IconButton size="small" sx={{ p: 0.5, bgcolor: '#f3e5f5', color: '#8e24aa' }}>
-                          {solutionAssignmentsExpanded ? <ExpandLess /> : <ExpandMore />}
-                        </IconButton>
-                        <Typography variant="subtitle1" fontWeight="600" color="text.primary">
-                          Solution Assignments
-                        </Typography>
-                        <Chip
-                          label={selectedCustomer.solutions?.length || 0}
-                          size="small"
-                          variant="outlined"
-                          color="secondary"
-                          sx={{ height: 22, fontWeight: 600 }}
-                        />
-                      </Box>
-                      <Button
-                        startIcon={<Add />}
-                        variant="outlined"
-                        size="small"
-                        color="secondary"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAssignSolutionDialogOpen(true);
-                        }}
-                        sx={{ minWidth: 100 }}
-                      >
-                        Add
-                      </Button>
-                    </Box>
-                    <Collapse in={solutionAssignmentsExpanded}>
-                      {selectedCustomer.solutions && selectedCustomer.solutions.length > 0 ? (
-                        <Box sx={{ display: 'grid', gap: 1 }}>
-                          {selectedCustomer.solutions.map((cs: any) => (
-                            <Tooltip
-                              key={cs.id}
-                              title="Solution assignment with multiple products • Double-click to view adoption plan"
-                              arrow
-                              placement="top"
-                            >
-                              <Box
-                                onDoubleClick={() => {
-                                  setSelectedCustomerSolutionId(cs.id);
-                                  setActiveTab('solutions');
-                                }}
-                                sx={{
-                                  display: 'flex',
-                                  flexDirection: { xs: 'column', sm: 'row' },
-                                  justifyContent: 'space-between',
-                                  alignItems: { xs: 'stretch', sm: 'center' },
-                                  p: 1.5,
-                                  border: '1.5px solid',
-                                  borderColor: '#E0E0E0',
-                                  borderLeft: '4px solid',
-                                  borderLeftColor: '#7B1FA2',
-                                  backgroundColor: '#F3E5F5',
-                                  borderRadius: 2,
-                                  transition: 'all 0.2s ease',
-                                  gap: 1,
-                                  cursor: 'pointer',
-                                  '&:hover': {
-                                    boxShadow: 2,
-                                    borderColor: '#7B1FA2'
-                                  }
-                                }}
-                              >
-                                <Box sx={{ flex: 1 }}>
-                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                    <Typography variant="body1" fontWeight="500" sx={{ fontSize: { xs: '0.9rem', md: '1rem' } }}>
-                                      {cs.name} - {cs.solution.name}
-                                    </Typography>
-                                    <Chip
-                                      label={cs.licenseLevel}
-                                      size="small"
-                                      variant="outlined"
-                                      color="secondary"
-                                      sx={{ height: 22, fontWeight: 500, fontSize: '0.75rem' }}
-                                    />
-                                  </Box>
-                                </Box>
-                                <Box
-                                  sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {cs.adoptionPlan && (
-                                    <Tooltip title="Sync solution and all underlying products with latest definitions">
-                                      <Button
-                                        size="small"
-                                        variant="outlined"
-                                        startIcon={<Sync sx={{ display: { xs: 'none', sm: 'block' } }} />}
-                                        color={cs.adoptionPlan.needsSync ? 'warning' : 'primary'}
-                                        onClick={() => {
-                                          setSyncingSolutionId(cs.adoptionPlan.id);
-                                          syncSolutionPlan({ variables: { solutionAdoptionPlanId: cs.adoptionPlan.id } });
-                                        }}
-                                        disabled={syncingSolutionId === cs.adoptionPlan.id}
-                                        sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '80px' } }}
-                                      >
-                                        {syncingSolutionId === cs.adoptionPlan.id ? 'Syncing...' : cs.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
-                                      </Button>
-                                    </Tooltip>
-                                  )}
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    startIcon={<Edit sx={{ display: { xs: 'none', sm: 'block' } }} />}
-                                    onClick={() => {
-                                      setSelectedCustomerSolutionId(cs.id);
-                                      setEditSolutionEntitlementsDialogOpen(true);
-                                    }}
-                                    sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
-                                  >
-                                    Edit
-                                  </Button>
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    color="error"
-                                    startIcon={<Delete sx={{ display: { xs: 'none', sm: 'block' } }} />}
-                                    onClick={() => {
-                                      setSelectedCustomerSolutionId(cs.id);
-                                      setDeleteSolutionDialogOpen(true);
-                                    }}
-                                    sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
-                                  >
-                                    Remove
-                                  </Button>
-                                </Box>
-                              </Box>
-                            </Tooltip>
-                          ))}
-                        </Box>
-                      ) : (
-                        <Box sx={{ textAlign: 'center', py: 4, backgroundColor: 'background.default', borderRadius: 1 }}>
-                          <Typography variant="body2" color="text.secondary">
-                            No solution assignments yet
-                          </Typography>
-                        </Box>
-                      )}
-                    </Collapse>
-                  </Paper>
                 </Box>
-              </Box>
-            )}
+              )
+            }
 
             {/* Products Tab Content */}
-            {activeTab === 'products' && (
-              <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center' }}>
-                <Box sx={{ width: '100%', maxWidth: 1400, p: { xs: 1.5, sm: 2, md: 0 } }}>
-                  {/* Product Selection */}
-                  <Box
-                    sx={{
-                      p: { xs: 1.5, sm: 2, md: 2.5 },
-                      mb: 2,
-                      bgcolor: 'background.paper',
-                      borderRadius: 2,
-                      border: '1.5px solid',
-                      borderColor: '#E0E0E0'
-                    }}
-                  >
-                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                      <FormControl sx={{ minWidth: 300 }} size="small">
-                        <InputLabel>Select Product</InputLabel>
-                        <Select
-                          value={selectedCustomerProductId || ''}
-                          onChange={(e) => handleProductChange(e.target.value)}
-                          label="Select Product"
-                        >
-                          {sortedProducts?.map((cp: any) => {
-                            const isFromSolution = !!cp.customerSolutionId;
-                            return (
-                              <MenuItem
-                                key={cp.id}
-                                value={cp.id}
-                                sx={{
-                                  borderLeft: `4px solid ${isFromSolution ? '#2196f3' : '#8bc34a'}`,
-                                  backgroundColor: isFromSolution ? '#f8fcff' : '#fafff5',
-                                  mb: 0.5
-                                }}
-                              >
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                                  <Chip
-                                    label={isFromSolution ? "Solution" : "Direct"}
-                                    size="small"
-                                    sx={{
-                                      height: 18,
-                                      fontSize: '0.65rem',
-                                      backgroundColor: isFromSolution ? '#2196f3' : '#8bc34a',
-                                      color: 'white',
-                                      fontWeight: 'bold'
-                                    }}
-                                  />
-                                  <Typography variant="body2">
-                                    {cp.customerSolutionId ? (
-                                      // For products from solutions: name already has "Assignment - Solution - Product"
-                                      `${cp.name} (${cp.licenseLevel})`
-                                    ) : (
-                                      // For standalone products: show "Assignment Name - Product Name"
-                                      `${cp.name} - ${cp.product.name} (${cp.licenseLevel})`
-                                    )}
+            {
+              activeTab === 'products' && (
+                <Box sx={{ flex: 1, overflow: 'auto', display: 'flex', justifyContent: 'center' }}>
+                  <Box sx={{ width: '100%', maxWidth: 1400, p: { xs: 1.5, sm: 2, md: 0 } }}>
+                    {/* Product Selection */}
+                    <Box
+                      sx={{
+                        p: { xs: 1.5, sm: 2, md: 2.5 },
+                        mb: 2,
+                        bgcolor: 'background.paper',
+                        borderRadius: 2,
+                        border: '1.5px solid',
+                        borderColor: '#E0E0E0'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                        <FormControl sx={{ minWidth: 300 }} size="small">
+                          <InputLabel>Select Product</InputLabel>
+                          <Select
+                            value={selectedCustomerProductId || ''}
+                            onChange={(e) => handleProductChange(e.target.value)}
+                            label="Select Product"
+                          >
+                            {sortedProducts?.map((cp: any) => {
+                              const isFromSolution = !!cp.customerSolutionId;
+                              return (
+                                <MenuItem
+                                  key={cp.id}
+                                  value={cp.id}
+                                  sx={{
+                                    borderLeft: `4px solid ${isFromSolution ? '#2196f3' : '#8bc34a'}`,
+                                    backgroundColor: isFromSolution ? '#f8fcff' : '#fafff5',
+                                    mb: 0.5
+                                  }}
+                                >
+                                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                                    <Chip
+                                      label={isFromSolution ? "Solution" : "Direct"}
+                                      size="small"
+                                      sx={{
+                                        height: 18,
+                                        fontSize: '0.65rem',
+                                        backgroundColor: isFromSolution ? '#2196f3' : '#8bc34a',
+                                        color: 'white',
+                                        fontWeight: 'bold'
+                                      }}
+                                    />
+                                    <Typography variant="body2">
+                                      {cp.customerSolutionId ? (
+                                        // For products from solutions: name already has "Assignment - Solution - Product"
+                                        `${cp.name} (${cp.licenseLevel})`
+                                      ) : (
+                                        // For standalone products: show "Assignment Name - Product Name"
+                                        `${cp.name} - ${cp.product.name} (${cp.licenseLevel})`
+                                      )}
+                                    </Typography>
+                                  </Box>
+                                </MenuItem>
+                              );
+                            })}
+                          </Select>
+                        </FormControl>
+                        {selectedCustomerProductId && planData?.adoptionPlan && (
+                          <>
+                            <Tooltip
+                              title={
+                                <Box>
+                                  <Typography variant="body2" fontWeight="bold">Export Telemetry Template</Typography>
+                                  <Typography variant="caption">
+                                    Download an Excel template with all tasks and telemetry attributes.
+                                    Fill in the telemetry values and import back to update task statuses automatically.
                                   </Typography>
                                 </Box>
-                              </MenuItem>
-                            );
-                          })}
-                        </Select>
-                      </FormControl>
-                      {selectedCustomerProductId && planData?.adoptionPlan && (
-                        <>
-                          <Tooltip
-                            title={
-                              <Box>
-                                <Typography variant="body2" fontWeight="bold">Export Telemetry Template</Typography>
-                                <Typography variant="caption">
-                                  Download an Excel template with all tasks and telemetry attributes.
-                                  Fill in the telemetry values and import back to update task statuses automatically.
-                                </Typography>
-                              </Box>
-                            }
-                            arrow
-                          >
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              color="primary"
-                              startIcon={<Download />}
-                              onClick={handleExportTelemetry}
+                              }
+                              arrow
                             >
-                              Export Telemetry Template
-                            </Button>
-                          </Tooltip>
-                          <Tooltip
-                            title={
-                              <Box>
-                                <Typography variant="body2" fontWeight="bold">Import Telemetry</Typography>
-                                <Typography variant="caption">
-                                  Upload the completed Excel template with telemetry values.
-                                  Task statuses will be automatically evaluated based on success criteria.
-                                </Typography>
-                              </Box>
-                            }
-                            arrow
-                          >
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              color="primary"
-                              startIcon={<Upload />}
-                              component="label"
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                color="primary"
+                                startIcon={<Download />}
+                                onClick={handleExportTelemetry}
+                              >
+                                Export Telemetry Template
+                              </Button>
+                            </Tooltip>
+                            <Tooltip
+                              title={
+                                <Box>
+                                  <Typography variant="body2" fontWeight="bold">Import Telemetry</Typography>
+                                  <Typography variant="caption">
+                                    Upload the completed Excel template with telemetry values.
+                                    Task statuses will be automatically evaluated based on success criteria.
+                                  </Typography>
+                                </Box>
+                              }
+                              arrow
                             >
-                              Import Telemetry
-                              <input
-                                type="file"
-                                hidden
-                                accept=".xlsx"
-                                onChange={handleImportTelemetry}
-                              />
-                            </Button>
-                          </Tooltip>
-                        </>
-                      )}
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                color="primary"
+                                startIcon={<Upload />}
+                                component="label"
+                              >
+                                Import Telemetry
+                                <input
+                                  type="file"
+                                  hidden
+                                  accept=".xlsx"
+                                  onChange={handleImportTelemetry}
+                                />
+                              </Button>
+                            </Tooltip>
+                          </>
+                        )}
+                      </Box>
                     </Box>
-                  </Box>
 
-                  {/* Progress and Tasks */}
-                  <Box sx={{ p: 2.5 }}>
-                    {/* Solution-based Product Info */}
-                    {selectedCustomerProductId && (() => {
-                      const selectedProd = sortedProducts?.find((p: any) => p.id === selectedCustomerProductId);
-                      return selectedProd?.customerSolutionId ? (
-                        <Alert
-                          severity="info"
-                          sx={{
-                            mb: 2,
-                            borderLeft: '4px solid #2196f3',
-                            backgroundColor: '#f8fcff'
-                          }}
-                        >
-                          <Typography variant="subtitle2" gutterBottom>
-                            🔗 Solution-Based Product
+                    {/* Progress and Tasks */}
+                    <Box sx={{ p: 2.5 }}>
+                      {/* Solution-based Product Info */}
+                      {selectedCustomerProductId && (() => {
+                        const selectedProd = sortedProducts?.find((p: any) => p.id === selectedCustomerProductId);
+                        return selectedProd?.customerSolutionId ? (
+                          <Alert
+                            severity="info"
+                            sx={{
+                              mb: 2,
+                              borderLeft: '4px solid #2196f3',
+                              backgroundColor: '#f8fcff'
+                            }}
+                          >
+                            <Typography variant="subtitle2" gutterBottom>
+                              🔗 Solution-Based Product
+                            </Typography>
+                            <Typography variant="body2">
+                              This product was assigned as part of a solution. Some operations may be restricted.
+                              To modify entitlements, please edit the solution assignment.
+                            </Typography>
+                          </Alert>
+                        ) : null;
+                      })()}
+
+                      {/* Loading State */}
+                      {selectedCustomerProductId && planLoading && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: 2 }}>
+                          <CircularProgress size={60} thickness={4} />
+                          <Typography variant="h6" color="text.secondary">
+                            Loading Adoption Plan...
                           </Typography>
+                        </Box>
+                      )}
+
+                      {/* Error State */}
+                      {selectedCustomerProductId && planError && !planLoading && (
+                        <Alert severity="error" sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" gutterBottom>Unable to Load Adoption Plan</Typography>
                           <Typography variant="body2">
-                            This product was assigned as part of a solution. Some operations may be restricted.
-                            To modify entitlements, please edit the solution assignment.
+                            {planError.message || 'An error occurred while loading the adoption plan. Please try refreshing the page.'}
                           </Typography>
                         </Alert>
-                      ) : null;
-                    })()}
+                      )}
 
-                    {/* Loading State */}
-                    {selectedCustomerProductId && planLoading && (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: 2 }}>
-                        <CircularProgress size={60} thickness={4} />
-                        <Typography variant="h6" color="text.secondary">
-                          Loading Adoption Plan...
-                        </Typography>
-                      </Box>
-                    )}
+                      {/* No Adoption Plan State */}
+                      {selectedCustomerProductId && !planData?.adoptionPlan && !planLoading && !planError && (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: 2 }}>
+                          <Typography variant="h6" color="text.secondary">
+                            No Adoption Plan Available
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" align="center">
+                            This product assignment doesn't have an adoption plan yet. Try syncing to create one.
+                          </Typography>
+                          <Button
+                            variant="contained"
+                            startIcon={<Sync />}
+                            onClick={handleSync}
+                            disabled={syncLoading}
+                          >
+                            {syncLoading ? 'Syncing...' : 'Sync Now'}
+                          </Button>
+                        </Box>
+                      )}
 
-                    {/* Error State */}
-                    {selectedCustomerProductId && planError && !planLoading && (
-                      <Alert severity="error" sx={{ mb: 2 }}>
-                        <Typography variant="subtitle2" gutterBottom>Unable to Load Adoption Plan</Typography>
-                        <Typography variant="body2">
-                          {planError.message || 'An error occurred while loading the adoption plan. Please try refreshing the page.'}
-                        </Typography>
-                      </Alert>
-                    )}
-
-                    {/* No Adoption Plan State */}
-                    {selectedCustomerProductId && !planData?.adoptionPlan && !planLoading && !planError && (
-                      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: 2 }}>
-                        <Typography variant="h6" color="text.secondary">
-                          No Adoption Plan Available
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" align="center">
-                          This product assignment doesn't have an adoption plan yet. Try syncing to create one.
-                        </Typography>
-                        <Button
-                          variant="contained"
-                          startIcon={<Sync />}
-                          onClick={handleSync}
-                          disabled={syncLoading}
-                        >
-                          {syncLoading ? 'Syncing...' : 'Sync Now'}
-                        </Button>
-                      </Box>
-                    )}
-
-                    {/* Adoption Plan Content */}
-                    {selectedCustomerProductId && planData?.adoptionPlan && !planLoading ? (
-                      <>
-                        {/* Progress Card */}
-                        <Card sx={{ mb: 2 }}>
-                          <CardContent>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                              <Typography variant="h6">
-                                Adoption Progress for {selectedCustomerProduct.name || selectedCustomerProduct.product?.name || 'Product'}
-                              </Typography>
-                              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                <Tooltip title="Sync with latest product tasks">
-                                  <Button
+                      {/* Adoption Plan Content */}
+                      {selectedCustomerProductId && planData?.adoptionPlan && !planLoading ? (
+                        <>
+                          {/* Progress Card */}
+                          <Card sx={{ mb: 2 }}>
+                            <CardContent>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="h6">
+                                  Adoption Progress for {selectedCustomerProduct.name || selectedCustomerProduct.product?.name || 'Product'}
+                                </Typography>
+                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                  <Tooltip title="Sync with latest product tasks">
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      startIcon={<Sync />}
+                                      color={planData.adoptionPlan.needsSync ? 'warning' : 'primary'}
+                                      onClick={handleSync}
+                                      disabled={syncLoading}
+                                    >
+                                      {syncLoading ? 'Syncing...' : planData.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
+                                    </Button>
+                                  </Tooltip>
+                                  <Chip
+                                    label={selectedCustomerProduct.licenseLevel}
+                                    color="primary"
                                     size="small"
-                                    variant="outlined"
-                                    startIcon={<Sync />}
-                                    color={planData.adoptionPlan.needsSync ? 'warning' : 'primary'}
-                                    onClick={handleSync}
-                                    disabled={syncLoading}
-                                  >
-                                    {syncLoading ? 'Syncing...' : planData.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
-                                  </Button>
-                                </Tooltip>
-                                <Chip
-                                  label={selectedCustomerProduct.licenseLevel}
-                                  color="primary"
-                                  size="small"
+                                  />
+                                  <Tooltip title="Edit license and outcomes">
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => setEditEntitlementsDialogOpen(true)}
+                                      sx={{ ml: -0.5 }}
+                                    >
+                                      <Edit fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </Box>
+                              </Box>
+
+                              <Box sx={{ mb: 2 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                  <Typography variant="body2" color="text.secondary">
+                                    {filteredProgress.completedTasks} / {filteredProgress.totalTasks} tasks completed
+                                    {/* Show "Filtered" chip only if actual filters are active (not "All") */}
+                                    {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) ||
+                                      (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
+                                        <Chip
+                                          label="Filtered"
+                                          size="small"
+                                          sx={{ ml: 1, height: 18, fontSize: '0.65rem' }}
+                                          color="info"
+                                        />
+                                      )}
+                                  </Typography>
+                                  <Typography variant="body2" fontWeight="bold" color="primary">
+                                    {filteredProgress.percentage.toFixed(1)}%
+                                  </Typography>
+                                </Box>
+                                <LinearProgress
+                                  variant="determinate"
+                                  value={filteredProgress.percentage}
+                                  sx={{ height: 10, borderRadius: 5 }}
                                 />
-                                <Tooltip title="Edit license and outcomes">
-                                  <IconButton
-                                    size="small"
-                                    onClick={() => setEditEntitlementsDialogOpen(true)}
-                                    sx={{ ml: -0.5 }}
-                                  >
-                                    <Edit fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
                               </Box>
-                            </Box>
 
-                            <Box sx={{ mb: 2 }}>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                <Typography variant="body2" color="text.secondary">
-                                  {filteredProgress.completedTasks} / {filteredProgress.totalTasks} tasks completed
-                                  {/* Show "Filtered" chip only if actual filters are active (not "All") */}
-                                  {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) ||
-                                    (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
-                                      <Chip
-                                        label="Filtered"
-                                        size="small"
-                                        sx={{ ml: 1, height: 18, fontSize: '0.65rem' }}
-                                        color="info"
-                                      />
-                                    )}
+                              {planData.adoptionPlan.lastSyncedAt && (
+                                <Typography variant="caption" color="text.secondary">
+                                  Last synced: {new Date(planData.adoptionPlan.lastSyncedAt).toLocaleString()}
                                 </Typography>
-                                <Typography variant="body2" fontWeight="bold" color="primary">
-                                  {filteredProgress.percentage.toFixed(1)}%
-                                </Typography>
-                              </Box>
-                              <LinearProgress
-                                variant="determinate"
-                                value={filteredProgress.percentage}
-                                sx={{ height: 10, borderRadius: 5 }}
-                              />
-                            </Box>
+                              )}
+                            </CardContent>
+                          </Card>
 
-                            {planData.adoptionPlan.lastSyncedAt && (
-                              <Typography variant="caption" color="text.secondary">
-                                Last synced: {new Date(planData.adoptionPlan.lastSyncedAt).toLocaleString()}
-                              </Typography>
-                            )}
-                          </CardContent>
-                        </Card>
-
-                        {/* Tasks Table */}
-                        <Card>
-                          <CardContent>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                              <Typography variant="h6">Tasks</Typography>
-                              <Box sx={{ display: 'flex', gap: 2 }}>
-                                {/* Releases - Multi-select */}
-                                <FormControl size="small" sx={{ minWidth: 200 }}>
-                                  <InputLabel>Releases</InputLabel>
-                                  <Select
-                                    multiple
-                                    value={filterReleases}
-                                    onChange={(e) => {
-                                      const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
-                                      // If "All" is clicked, toggle between "All" and empty
-                                      if (value.includes(ALL_RELEASES_ID)) {
-                                        if (filterReleases.includes(ALL_RELEASES_ID)) {
-                                          // Was "All", now deselect
-                                          setFilterReleases([]);
+                          {/* Tasks Table */}
+                          <Card>
+                            <CardContent>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="h6">Tasks</Typography>
+                                <Box sx={{ display: 'flex', gap: 2 }}>
+                                  {/* Releases - Multi-select */}
+                                  <FormControl size="small" sx={{ minWidth: 200 }}>
+                                    <InputLabel>Releases</InputLabel>
+                                    <Select
+                                      multiple
+                                      value={filterReleases}
+                                      onChange={(e) => {
+                                        const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                                        // If "All" is clicked, toggle between "All" and empty
+                                        if (value.includes(ALL_RELEASES_ID)) {
+                                          if (filterReleases.includes(ALL_RELEASES_ID)) {
+                                            // Was "All", now deselect
+                                            setFilterReleases([]);
+                                          } else {
+                                            // Select "All" only
+                                            setFilterReleases([ALL_RELEASES_ID]);
+                                          }
                                         } else {
-                                          // Select "All" only
-                                          setFilterReleases([ALL_RELEASES_ID]);
+                                          // Regular selection - remove "All" if present
+                                          setFilterReleases(value.filter(id => id !== ALL_RELEASES_ID));
                                         }
-                                      } else {
-                                        // Regular selection - remove "All" if present
-                                        setFilterReleases(value.filter(id => id !== ALL_RELEASES_ID));
-                                      }
-                                    }}
-                                    input={<OutlinedInput label="Releases" />}
-                                    renderValue={(selected) => (
-                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                        {selected.length === 0 || selected.includes(ALL_RELEASES_ID) ? (
-                                          <em>All Releases</em>
-                                        ) : (
-                                          selected.map((id) => {
-                                            const release = availableReleases.find((r: any) => r.id === id);
-                                            return (
-                                              <Chip
-                                                key={id}
-                                                label={release?.name || id}
-                                                size="small"
-                                                variant="outlined"
-                                              />
-                                            );
-                                          })
-                                        )}
-                                      </Box>
-                                    )}
-                                  >
-                                    {[
-                                      // Always show "All Releases" option
-                                      <MenuItem
-                                        key={ALL_RELEASES_ID}
-                                        value={ALL_RELEASES_ID}
-                                        sx={{
-                                          backgroundColor: filterReleases.includes(ALL_RELEASES_ID) ? 'rgba(33, 150, 243, 0.08)' : 'inherit',
-                                          borderBottom: '1px solid',
-                                          borderColor: 'divider',
-                                          '&:hover': {
-                                            backgroundColor: 'rgba(33, 150, 243, 0.12)',
-                                          },
-                                        }}
-                                      >
-                                        <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID)} sx={{ color: 'primary.main' }} />
-                                        <ListItemText
-                                          primary="All Releases"
-                                          primaryTypographyProps={{
-                                            fontWeight: 600,
-                                            color: 'primary.main'
+                                      }}
+                                      input={<OutlinedInput label="Releases" />}
+                                      renderValue={(selected) => (
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                          {selected.length === 0 || selected.includes(ALL_RELEASES_ID) ? (
+                                            <em>All Releases</em>
+                                          ) : (
+                                            selected.map((id) => {
+                                              const release = availableReleases.find((r: any) => r.id === id);
+                                              return (
+                                                <Chip
+                                                  key={id}
+                                                  label={release?.name || id}
+                                                  size="small"
+                                                  variant="outlined"
+                                                />
+                                              );
+                                            })
+                                          )}
+                                        </Box>
+                                      )}
+                                    >
+                                      {[
+                                        // Always show "All Releases" option
+                                        <MenuItem
+                                          key={ALL_RELEASES_ID}
+                                          value={ALL_RELEASES_ID}
+                                          sx={{
+                                            backgroundColor: filterReleases.includes(ALL_RELEASES_ID) ? 'rgba(33, 150, 243, 0.08)' : 'inherit',
+                                            borderBottom: '1px solid',
+                                            borderColor: 'divider',
+                                            '&:hover': {
+                                              backgroundColor: 'rgba(33, 150, 243, 0.12)',
+                                            },
                                           }}
-                                        />
-                                      </MenuItem>,
-                                      ...availableReleases.map((release: any) => (
-                                        <MenuItem key={release.id} value={release.id}>
-                                          <Checkbox checked={filterReleases.includes(release.id)} />
-                                          <ListItemText primary={`${release.name}${release.version ? ` (${release.version})` : ''}`} />
-                                        </MenuItem>
-                                      ))
-                                    ]}
-                                  </Select>
-                                </FormControl>
+                                        >
+                                          <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID)} sx={{ color: 'primary.main' }} />
+                                          <ListItemText
+                                            primary="All Releases"
+                                            primaryTypographyProps={{
+                                              fontWeight: 600,
+                                              color: 'primary.main'
+                                            }}
+                                          />
+                                        </MenuItem>,
+                                        ...availableReleases.map((release: any) => (
+                                          <MenuItem key={release.id} value={release.id}>
+                                            <Checkbox checked={filterReleases.includes(release.id)} />
+                                            <ListItemText primary={`${release.name}${release.version ? ` (${release.version})` : ''}`} />
+                                          </MenuItem>
+                                        ))
+                                      ]}
+                                    </Select>
+                                  </FormControl>
 
-                                {/* Outcomes - Multi-select */}
-                                <FormControl size="small" sx={{ minWidth: 200 }}>
-                                  <InputLabel>Outcomes</InputLabel>
-                                  <Select
-                                    multiple
-                                    value={filterOutcomes}
-                                    onChange={(e) => {
-                                      const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
-                                      // If "All" is clicked, toggle between "All" and empty
-                                      if (value.includes(ALL_OUTCOMES_ID)) {
-                                        if (filterOutcomes.includes(ALL_OUTCOMES_ID)) {
-                                          // Was "All", now deselect
-                                          setFilterOutcomes([]);
+                                  {/* Outcomes - Multi-select */}
+                                  <FormControl size="small" sx={{ minWidth: 200 }}>
+                                    <InputLabel>Outcomes</InputLabel>
+                                    <Select
+                                      multiple
+                                      value={filterOutcomes}
+                                      onChange={(e) => {
+                                        const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                                        // If "All" is clicked, toggle between "All" and empty
+                                        if (value.includes(ALL_OUTCOMES_ID)) {
+                                          if (filterOutcomes.includes(ALL_OUTCOMES_ID)) {
+                                            // Was "All", now deselect
+                                            setFilterOutcomes([]);
+                                          } else {
+                                            // Select "All" only
+                                            setFilterOutcomes([ALL_OUTCOMES_ID]);
+                                          }
                                         } else {
-                                          // Select "All" only
-                                          setFilterOutcomes([ALL_OUTCOMES_ID]);
+                                          // Regular selection - remove "All" if present
+                                          setFilterOutcomes(value.filter(id => id !== ALL_OUTCOMES_ID));
                                         }
-                                      } else {
-                                        // Regular selection - remove "All" if present
-                                        setFilterOutcomes(value.filter(id => id !== ALL_OUTCOMES_ID));
-                                      }
-                                    }}
-                                    input={<OutlinedInput label="Outcomes" />}
-                                    renderValue={(selected) => (
-                                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                        {selected.length === 0 || selected.includes(ALL_OUTCOMES_ID) ? (
-                                          <em>All Outcomes</em>
-                                        ) : (
-                                          selected.map((id) => {
-                                            const outcome = availableOutcomes.find((o: any) => o.id === id);
-                                            return (
-                                              <Chip
-                                                key={id}
-                                                label={outcome?.name || id}
-                                                size="small"
-                                                variant="outlined"
-                                              />
-                                            );
-                                          })
-                                        )}
-                                      </Box>
-                                    )}
-                                  >
-                                    {[
-                                      // Always show "All Outcomes" option
-                                      <MenuItem
-                                        key={ALL_OUTCOMES_ID}
-                                        value={ALL_OUTCOMES_ID}
-                                        sx={{
-                                          backgroundColor: filterOutcomes.includes(ALL_OUTCOMES_ID) ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
-                                          borderBottom: '1px solid',
-                                          borderColor: 'divider',
-                                          '&:hover': {
-                                            backgroundColor: 'rgba(76, 175, 80, 0.12)',
-                                          },
-                                        }}
-                                      >
-                                        <Checkbox checked={filterOutcomes.includes(ALL_OUTCOMES_ID)} sx={{ color: 'success.main' }} />
-                                        <ListItemText
-                                          primary="All Outcomes"
-                                          primaryTypographyProps={{
-                                            fontWeight: 600,
-                                            color: 'success.main'
+                                      }}
+                                      input={<OutlinedInput label="Outcomes" />}
+                                      renderValue={(selected) => (
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                          {selected.length === 0 || selected.includes(ALL_OUTCOMES_ID) ? (
+                                            <em>All Outcomes</em>
+                                          ) : (
+                                            selected.map((id) => {
+                                              const outcome = availableOutcomes.find((o: any) => o.id === id);
+                                              return (
+                                                <Chip
+                                                  key={id}
+                                                  label={outcome?.name || id}
+                                                  size="small"
+                                                  variant="outlined"
+                                                />
+                                              );
+                                            })
+                                          )}
+                                        </Box>
+                                      )}
+                                    >
+                                      {[
+                                        // Always show "All Outcomes" option
+                                        <MenuItem
+                                          key={ALL_OUTCOMES_ID}
+                                          value={ALL_OUTCOMES_ID}
+                                          sx={{
+                                            backgroundColor: filterOutcomes.includes(ALL_OUTCOMES_ID) ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
+                                            borderBottom: '1px solid',
+                                            borderColor: 'divider',
+                                            '&:hover': {
+                                              backgroundColor: 'rgba(76, 175, 80, 0.12)',
+                                            },
                                           }}
-                                        />
-                                      </MenuItem>,
-                                      ...availableOutcomes.map((outcome: any) => (
-                                        <MenuItem key={outcome.id} value={outcome.id}>
-                                          <Checkbox checked={filterOutcomes.includes(outcome.id)} />
-                                          <ListItemText primary={outcome.name} />
-                                        </MenuItem>
-                                      ))
-                                    ]}
-                                  </Select>
-                                </FormControl>
+                                        >
+                                          <Checkbox checked={filterOutcomes.includes(ALL_OUTCOMES_ID)} sx={{ color: 'success.main' }} />
+                                          <ListItemText
+                                            primary="All Outcomes"
+                                            primaryTypographyProps={{
+                                              fontWeight: 600,
+                                              color: 'success.main'
+                                            }}
+                                          />
+                                        </MenuItem>,
+                                        ...availableOutcomes.map((outcome: any) => (
+                                          <MenuItem key={outcome.id} value={outcome.id}>
+                                            <Checkbox checked={filterOutcomes.includes(outcome.id)} />
+                                            <ListItemText primary={outcome.name} />
+                                          </MenuItem>
+                                        ))
+                                      ]}
+                                    </Select>
+                                  </FormControl>
 
-                                {(filterReleases.length > 0 || filterOutcomes.length > 0) && (
-                                  <Button
-                                    size="small"
-                                    variant="outlined"
-                                    onClick={() => {
-                                      setFilterReleases([]);
-                                      setFilterOutcomes([]);
-                                    }}
-                                  >
-                                    Clear Filters
-                                  </Button>
-                                )}
+                                  {(filterReleases.length > 0 || filterOutcomes.length > 0) && (
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      onClick={() => {
+                                        setFilterReleases([]);
+                                        setFilterOutcomes([]);
+                                      }}
+                                    >
+                                      Clear Filters
+                                    </Button>
+                                  )}
+                                </Box>
                               </Box>
-                            </Box>
-                            <TableContainer component={Paper} variant="outlined">
-                              <Table size="small">
-                                <TableHead>
-                                  <TableRow sx={{
-                                    backgroundColor: '#eeeeee',
-                                    borderBottom: '2px solid #d0d0d0'
-                                  }}>
-                                    <TableCell width={60} sx={{ whiteSpace: 'nowrap' }}>
-                                      <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>#</Typography>
-                                    </TableCell>
-                                    <TableCell sx={{ minWidth: 200, maxWidth: 300 }}>
-                                      <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Task Name</Typography>
-                                    </TableCell>
-                                    <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
-                                      <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
-                                    </TableCell>
-                                    <TableCell width={80} sx={{ whiteSpace: 'nowrap' }}>
-                                      <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Weight</Typography>
-                                    </TableCell>
+                              <TableContainer component={Paper} variant="outlined">
+                                <Table size="small">
+                                  <TableHead>
+                                    <TableRow sx={{
+                                      backgroundColor: '#eeeeee',
+                                      borderBottom: '2px solid #d0d0d0'
+                                    }}>
+                                      <TableCell width={60} sx={{ whiteSpace: 'nowrap' }}>
+                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>#</Typography>
+                                      </TableCell>
+                                      <TableCell sx={{ minWidth: 200, maxWidth: 300 }}>
+                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Task Name</Typography>
+                                      </TableCell>
+                                      <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
+                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
+                                      </TableCell>
+                                      <TableCell width={80} sx={{ whiteSpace: 'nowrap' }}>
+                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Weight</Typography>
+                                      </TableCell>
 
-                                    <TableCell width={160} sx={{ whiteSpace: 'nowrap' }}>
-                                      <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Telemetry</Typography>
-                                    </TableCell>
-                                    <TableCell width={130} sx={{ whiteSpace: 'nowrap' }}>
-                                      <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Updated Via</Typography>
-                                    </TableCell>
-                                    <TableCell width={160} sx={{ whiteSpace: 'nowrap' }}>
-                                      <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Actions</Typography>
-                                    </TableCell>
-                                  </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                  {filteredTasks.length === 0 ? (
-                                    <TableRow>
-                                      <TableCell colSpan={8} align="center">
-                                        <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-                                          No tasks match the selected filters
-                                        </Typography>
+                                      <TableCell width={160} sx={{ whiteSpace: 'nowrap' }}>
+                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Telemetry</Typography>
+                                      </TableCell>
+                                      <TableCell width={130} sx={{ whiteSpace: 'nowrap' }}>
+                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Updated Via</Typography>
+                                      </TableCell>
+                                      <TableCell width={160} sx={{ whiteSpace: 'nowrap' }}>
+                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Actions</Typography>
                                       </TableCell>
                                     </TableRow>
-                                  ) : (
-                                    filteredTasks.map((task: any) => (
-                                      <TableRow
-                                        key={task.id}
-                                        hover
-                                        title={task.description || 'No description available'}
-                                        onDoubleClick={() => {
-                                          setSelectedTask(task);
-                                          setTaskDetailsDialogOpen(true);
-                                        }}
-                                        sx={{
-                                          cursor: 'pointer',
-                                          backgroundColor: getStatusBackgroundColor(task.status),
-                                          borderLeft: `4px solid ${getStatusColor(task.status)}`,
-                                          opacity: task.status === 'NOT_APPLICABLE' ? 0.5 : 1,
-                                          textDecoration: task.status === 'NOT_APPLICABLE' ? 'line-through' : 'none',
-                                          '&:hover': {
-                                            backgroundColor: getStatusBackgroundColor(task.status),
-                                            filter: 'brightness(0.97)',
-                                          },
-                                          transition: 'all 0.2s ease-in-out',
-                                        }}
-                                      >
-                                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.sequenceNumber}</TableCell>
-                                        <TableCell sx={{ maxWidth: 300 }}>
-                                          <Typography variant="body2" sx={{
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap'
-                                          }}>
-                                            {task.name}
+                                  </TableHead>
+                                  <TableBody>
+                                    {filteredTasks.length === 0 ? (
+                                      <TableRow>
+                                        <TableCell colSpan={8} align="center">
+                                          <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                                            No tasks match the selected filters
                                           </Typography>
                                         </TableCell>
-                                        <TableCell>
-                                          <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'center' }}>
-                                            {/* How-to documentation links */}
-                                            {task.howToDoc && task.howToDoc.length > 0 && (
-                                              <Chip
-                                                size="small"
-                                                label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
-                                                color="primary"
-                                                variant="outlined"
-                                                sx={{
-                                                  fontSize: '0.7rem',
-                                                  height: '20px',
-                                                  cursor: 'pointer',
-                                                  '&:hover': { backgroundColor: 'primary.light' }
-                                                }}
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  if (task.howToDoc.length === 1) {
-                                                    window.open(task.howToDoc[0], '_blank');
-                                                  } else {
-                                                    setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
+                                      </TableRow>
+                                    ) : (
+                                      filteredTasks.map((task: any) => (
+                                        <TableRow
+                                          key={task.id}
+                                          hover
+                                          title={task.description || 'No description available'}
+                                          onDoubleClick={() => {
+                                            setSelectedTask(task);
+                                            setTaskDetailsDialogOpen(true);
+                                          }}
+                                          sx={{
+                                            cursor: 'pointer',
+                                            backgroundColor: getStatusBackgroundColor(task.status),
+                                            borderLeft: `4px solid ${getStatusColor(task.status)}`,
+                                            opacity: task.status === 'NOT_APPLICABLE' ? 0.5 : 1,
+                                            textDecoration: task.status === 'NOT_APPLICABLE' ? 'line-through' : 'none',
+                                            '&:hover': {
+                                              backgroundColor: getStatusBackgroundColor(task.status),
+                                              filter: 'brightness(0.97)',
+                                            },
+                                            transition: 'all 0.2s ease-in-out',
+                                          }}
+                                        >
+                                          <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.sequenceNumber}</TableCell>
+                                          <TableCell sx={{ maxWidth: 300 }}>
+                                            <Typography variant="body2" sx={{
+                                              overflow: 'hidden',
+                                              textOverflow: 'ellipsis',
+                                              whiteSpace: 'nowrap'
+                                            }}>
+                                              {task.name}
+                                            </Typography>
+                                          </TableCell>
+                                          <TableCell>
+                                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'center' }}>
+                                              {/* How-to documentation links */}
+                                              {task.howToDoc && task.howToDoc.length > 0 && (
+                                                <Chip
+                                                  size="small"
+                                                  label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
+                                                  color="primary"
+                                                  variant="outlined"
+                                                  sx={{
+                                                    fontSize: '0.7rem',
+                                                    height: '20px',
+                                                    cursor: 'pointer',
+                                                    '&:hover': { backgroundColor: 'primary.light' }
+                                                  }}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (task.howToDoc.length === 1) {
+                                                      window.open(task.howToDoc[0], '_blank');
+                                                    } else {
+                                                      setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
+                                                    }
+                                                  }}
+                                                  title={task.howToDoc.length === 1
+                                                    ? `Documentation: ${task.howToDoc[0]}`
+                                                    : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
                                                   }
-                                                }}
-                                                title={task.howToDoc.length === 1
-                                                  ? `Documentation: ${task.howToDoc[0]}`
-                                                  : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
-                                                }
-                                              />
-                                            )}
-                                            {/* How-to video links */}
-                                            {task.howToVideo && task.howToVideo.length > 0 && (
-                                              <Chip
-                                                size="small"
-                                                label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
-                                                color="error"
-                                                variant="outlined"
-                                                sx={{
-                                                  fontSize: '0.7rem',
-                                                  height: '20px',
-                                                  cursor: 'pointer',
-                                                  '&:hover': { backgroundColor: 'error.light' }
-                                                }}
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  if (task.howToVideo.length === 1) {
-                                                    window.open(task.howToVideo[0], '_blank');
-                                                  } else {
-                                                    setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
+                                                />
+                                              )}
+                                              {/* How-to video links */}
+                                              {task.howToVideo && task.howToVideo.length > 0 && (
+                                                <Chip
+                                                  size="small"
+                                                  label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
+                                                  color="error"
+                                                  variant="outlined"
+                                                  sx={{
+                                                    fontSize: '0.7rem',
+                                                    height: '20px',
+                                                    cursor: 'pointer',
+                                                    '&:hover': { backgroundColor: 'error.light' }
+                                                  }}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (task.howToVideo.length === 1) {
+                                                      window.open(task.howToVideo[0], '_blank');
+                                                    } else {
+                                                      setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
+                                                    }
+                                                  }}
+                                                  title={task.howToVideo.length === 1
+                                                    ? `Video: ${task.howToVideo[0]}`
+                                                    : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
                                                   }
-                                                }}
-                                                title={task.howToVideo.length === 1
-                                                  ? `Video: ${task.howToVideo[0]}`
-                                                  : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
-                                                }
-                                              />
-                                            )}
-                                            {!task.howToDoc && !task.howToVideo && (
-                                              <Typography variant="caption" color="text.secondary">-</Typography>
-                                            )}
-                                          </Box>
-                                        </TableCell>
-                                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.weight}%</TableCell>
+                                                />
+                                              )}
+                                              {!task.howToDoc && !task.howToVideo && (
+                                                <Typography variant="caption" color="text.secondary">-</Typography>
+                                              )}
+                                            </Box>
+                                          </TableCell>
+                                          <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.weight}%</TableCell>
 
-                                        <TableCell>
-                                          {(() => {
-                                            const totalAttributes = task.telemetryAttributes?.length || 0;
-                                            const attributesWithValues = task.telemetryAttributes?.filter((attr: any) =>
-                                              attr.values && attr.values.length > 0
-                                            ).length || 0;
+                                          <TableCell>
+                                            {(() => {
+                                              const totalAttributes = task.telemetryAttributes?.length || 0;
+                                              const attributesWithValues = task.telemetryAttributes?.filter((attr: any) =>
+                                                attr.values && attr.values.length > 0
+                                              ).length || 0;
 
-                                            // Count attributes that have criteria met based on the latest evaluation (isMet field)
-                                            const attributesWithCriteriaMet = task.telemetryAttributes?.filter((attr: any) =>
-                                              attr.isMet === true
-                                            ).length || 0;
+                                              // Count attributes that have criteria met based on the latest evaluation (isMet field)
+                                              const attributesWithCriteriaMet = task.telemetryAttributes?.filter((attr: any) =>
+                                                attr.isMet === true
+                                              ).length || 0;
 
-                                            const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) =>
-                                              attr.successCriteria && attr.successCriteria !== 'No criteria'
-                                            ).length || 0;
+                                              const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) =>
+                                                attr.successCriteria && attr.successCriteria !== 'No criteria'
+                                              ).length || 0;
 
-                                            if (totalAttributes === 0) {
-                                              return <Typography variant="caption" color="text.secondary">-</Typography>;
-                                            }
+                                              if (totalAttributes === 0) {
+                                                return <Typography variant="caption" color="text.secondary">-</Typography>;
+                                              }
 
-                                            const hasData = attributesWithValues > 0;
-                                            const percentage = attributesWithCriteria > 0 ? Math.round((attributesWithCriteriaMet / attributesWithCriteria) * 100) : 0;
+                                              const hasData = attributesWithValues > 0;
+                                              const percentage = attributesWithCriteria > 0 ? Math.round((attributesWithCriteriaMet / attributesWithCriteria) * 100) : 0;
 
-                                            return (
-                                              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap' }}>
-                                                <Tooltip
-                                                  title={
-                                                    <Box>
-                                                      <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Telemetry Values Filled</Typography>
-                                                      <Typography variant="caption" display="block">
-                                                        {attributesWithValues} out of {totalAttributes} telemetry attributes have imported values
-                                                      </Typography>
-                                                      {!hasData && (
-                                                        <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
-                                                          No telemetry data imported yet
-                                                        </Typography>
-                                                      )}
-                                                    </Box>
-                                                  }
-                                                  arrow
-                                                >
-                                                  <Chip
-                                                    label={`${attributesWithValues}/${totalAttributes}`}
-                                                    size="small"
-                                                    variant="outlined"
-                                                    color={hasData ? 'info' : 'default'}
-                                                    sx={{ fontSize: '0.7rem', height: 20 }}
-                                                  />
-                                                </Tooltip>
-                                                {attributesWithCriteria > 0 && (
+                                              return (
+                                                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap' }}>
                                                   <Tooltip
                                                     title={
                                                       <Box>
-                                                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Success Criteria Met</Typography>
+                                                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Telemetry Values Filled</Typography>
                                                         <Typography variant="caption" display="block">
-                                                          {attributesWithCriteriaMet} out of {attributesWithCriteria} success criteria are currently met
+                                                          {attributesWithValues} out of {totalAttributes} telemetry attributes have imported values
                                                         </Typography>
-                                                        {percentage === 100 && (
-                                                          <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'success.light' }}>
-                                                            ✓ All criteria met! Task can be marked as "Done via Telemetry"
-                                                          </Typography>
-                                                        )}
-                                                        {percentage < 100 && percentage > 0 && (
+                                                        {!hasData && (
                                                           <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
-                                                            {percentage}% complete - Some criteria still need to be met
-                                                          </Typography>
-                                                        )}
-                                                        {percentage === 0 && (
-                                                          <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'error.light' }}>
-                                                            No criteria met yet
+                                                            No telemetry data imported yet
                                                           </Typography>
                                                         )}
                                                       </Box>
@@ -2432,98 +2324,136 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                                     arrow
                                                   >
                                                     <Chip
-                                                      label={`${attributesWithCriteriaMet}/${attributesWithCriteria} ✓`}
+                                                      label={`${attributesWithValues}/${totalAttributes}`}
                                                       size="small"
                                                       variant="outlined"
-                                                      color={percentage === 100 ? 'success' : percentage > 0 ? 'warning' : 'default'}
+                                                      color={hasData ? 'info' : 'default'}
                                                       sx={{ fontSize: '0.7rem', height: 20 }}
                                                     />
                                                   </Tooltip>
-                                                )}
-                                              </Box>
-                                            );
-                                          })()}
-                                        </TableCell>
-                                        <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                                          {task.statusUpdateSource ? (
-                                            <Chip
-                                              label={task.statusUpdateSource}
-                                              size="small"
-                                              variant="outlined"
-                                              color={getUpdateSourceChipColor(task.statusUpdateSource)}
-                                              sx={{ fontSize: '0.7rem', height: '22px' }}
-                                            />
-                                          ) : (
-                                            <Typography variant="caption" color="text.secondary">-</Typography>
-                                          )}
-                                        </TableCell>
-                                        <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                                          <FormControl size="small" sx={{ minWidth: 140 }}>
-                                            <Select
-                                              value={task.status}
-                                              onChange={(e) => handleStatusChange(task.id, task.name, e.target.value)}
-                                              variant="outlined"
-                                              sx={{
-                                                '& .MuiSelect-select': {
-                                                  py: 0.5,
-                                                  fontSize: '0.875rem'
-                                                }
-                                              }}
-                                            >
-                                              <MenuItem value="NOT_STARTED">Not Started</MenuItem>
-                                              <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
-                                              <MenuItem value="DONE">Done</MenuItem>
-                                              <MenuItem value="NO_LONGER_USING">No Longer Using</MenuItem>
-                                              <MenuItem value="NOT_APPLICABLE">Not Applicable</MenuItem>
-                                            </Select>
-                                          </FormControl>
-                                        </TableCell>
-                                      </TableRow>
-                                    ))
-                                  )}
-                                </TableBody>
-                              </Table>
-                            </TableContainer>
-                          </CardContent>
-                        </Card>
-                      </>
-                    ) : selectedCustomerProductId ? (
-                      <Alert severity="warning">
-                        <strong>No adoption plan found for this product.</strong>
-                        <br />
-                        Customer Product ID: {selectedCustomerProductId}
-                        <br />
-                        Customer Product: {selectedCustomerProduct ? 'Found' : 'Not Found'}
-                        <br />
-                        Adoption Plan ID: {adoptionPlanId || 'NULL'}
-                        <br />
-                        {!selectedCustomerProduct && `Could not find customer product with id = ${selectedCustomerProductId}`}
-                      </Alert>
-                    ) : (
-                      <Alert severity="info">
-                        <strong>No product selected.</strong>
-                        <br />
-                        Available products: {sortedProducts?.length || 0}
-                        <br />
-                        {sortedProducts?.length > 0 ?
-                          `Products: ${sortedProducts.map((cp: any) => cp.name ? `${cp.product.name} (${cp.name})` : cp.product.name).join(', ')}` :
-                          'Assign a product to this customer to get started.'
-                        }
-                      </Alert>
-                    )}
+                                                  {attributesWithCriteria > 0 && (
+                                                    <Tooltip
+                                                      title={
+                                                        <Box>
+                                                          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Success Criteria Met</Typography>
+                                                          <Typography variant="caption" display="block">
+                                                            {attributesWithCriteriaMet} out of {attributesWithCriteria} success criteria are currently met
+                                                          </Typography>
+                                                          {percentage === 100 && (
+                                                            <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'success.light' }}>
+                                                              ✓ All criteria met! Task can be marked as "Done via Telemetry"
+                                                            </Typography>
+                                                          )}
+                                                          {percentage < 100 && percentage > 0 && (
+                                                            <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
+                                                              {percentage}% complete - Some criteria still need to be met
+                                                            </Typography>
+                                                          )}
+                                                          {percentage === 0 && (
+                                                            <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'error.light' }}>
+                                                              No criteria met yet
+                                                            </Typography>
+                                                          )}
+                                                        </Box>
+                                                      }
+                                                      arrow
+                                                    >
+                                                      <Chip
+                                                        label={`${attributesWithCriteriaMet}/${attributesWithCriteria} ✓`}
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color={percentage === 100 ? 'success' : percentage > 0 ? 'warning' : 'default'}
+                                                        sx={{ fontSize: '0.7rem', height: 20 }}
+                                                      />
+                                                    </Tooltip>
+                                                  )}
+                                                </Box>
+                                              );
+                                            })()}
+                                          </TableCell>
+                                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                            {task.statusUpdateSource ? (
+                                              <Chip
+                                                label={task.statusUpdateSource}
+                                                size="small"
+                                                variant="outlined"
+                                                color={getUpdateSourceChipColor(task.statusUpdateSource)}
+                                                sx={{ fontSize: '0.7rem', height: '22px' }}
+                                              />
+                                            ) : (
+                                              <Typography variant="caption" color="text.secondary">-</Typography>
+                                            )}
+                                          </TableCell>
+                                          <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                            <FormControl size="small" sx={{ minWidth: 140 }}>
+                                              <Select
+                                                value={task.status}
+                                                onChange={(e) => handleStatusChange(task.id, task.name, e.target.value)}
+                                                variant="outlined"
+                                                sx={{
+                                                  '& .MuiSelect-select': {
+                                                    py: 0.5,
+                                                    fontSize: '0.875rem'
+                                                  }
+                                                }}
+                                              >
+                                                <MenuItem value="NOT_STARTED">Not Started</MenuItem>
+                                                <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
+                                                <MenuItem value="DONE">Done</MenuItem>
+                                                <MenuItem value="NO_LONGER_USING">No Longer Using</MenuItem>
+                                                <MenuItem value="NOT_APPLICABLE">Not Applicable</MenuItem>
+                                              </Select>
+                                            </FormControl>
+                                          </TableCell>
+                                        </TableRow>
+                                      ))
+                                    )}
+                                  </TableBody>
+                                </Table>
+                              </TableContainer>
+                            </CardContent>
+                          </Card>
+                        </>
+                      ) : selectedCustomerProductId ? (
+                        <Alert severity="warning">
+                          <strong>No adoption plan found for this product.</strong>
+                          <br />
+                          Customer Product ID: {selectedCustomerProductId}
+                          <br />
+                          Customer Product: {selectedCustomerProduct ? 'Found' : 'Not Found'}
+                          <br />
+                          Adoption Plan ID: {adoptionPlanId || 'NULL'}
+                          <br />
+                          {!selectedCustomerProduct && `Could not find customer product with id = ${selectedCustomerProductId}`}
+                        </Alert>
+                      ) : (
+                        <Alert severity="info">
+                          <strong>No product selected.</strong>
+                          <br />
+                          Available products: {sortedProducts?.length || 0}
+                          <br />
+                          {sortedProducts?.length > 0 ?
+                            `Products: ${sortedProducts.map((cp: any) => cp.name ? `${cp.product.name} (${cp.name})` : cp.product.name).join(', ')}` :
+                            'Assign a product to this customer to get started.'
+                          }
+                        </Alert>
+                      )}
+                    </Box>
                   </Box>
                 </Box>
-              </Box>
-            )}
+              )
+            }
 
             {/* Solutions Tab Content */}
-            {activeTab === 'solutions' && (
-              <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 1.5, sm: 2, md: 3 }, display: 'flex', justifyContent: 'center' }}>
-                <Box sx={{ width: '100%', maxWidth: 1400 }}>
-                  <CustomerSolutionPanel customerId={selectedCustomerId || ''} />
+            {
+              activeTab === 'solutions' && (
+                <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 1.5, sm: 2, md: 3 }, display: 'flex', justifyContent: 'center' }}>
+                  <Box sx={{ width: '100%', maxWidth: 1400 }}>
+                    <CustomerSolutionPanel customerId={selectedCustomerId || ''} />
+                  </Box>
                 </Box>
-              </Box>
-            )}
+              )
+            }
           </>
         ) : (
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
@@ -2540,10 +2470,10 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
             </Box>
           </Box>
         )}
-      </Box>
+      </Box >
 
       {/* Status Change Notes Dialog */}
-      <Dialog open={statusDialog.open} onClose={() => setStatusDialog({ ...statusDialog, open: false })} maxWidth="sm" fullWidth>
+      < Dialog open={statusDialog.open} onClose={() => setStatusDialog({ ...statusDialog, open: false })} maxWidth="sm" fullWidth >
         <DialogTitle>Update Task Status: {statusDialog.taskName}</DialogTitle>
         <DialogContent>
           <Alert severity="info" sx={{ mt: 2, mb: 2 }}>
@@ -2566,10 +2496,10 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
             Confirm Change
           </Button>
         </DialogActions>
-      </Dialog>
+      </Dialog >
 
       {/* Customer Dialog */}
-      <CustomerDialog
+      < CustomerDialog
         open={customerDialogOpen}
         onClose={() => {
           setCustomerDialogOpen(false);
