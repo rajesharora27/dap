@@ -48,8 +48,11 @@ create_release_snapshot() {
     
     ssh ${PROD_USER}@${PROD_SERVER} << ENDSSH
 set -e
+PROD_PATH="${PROD_PATH}"
+BACKUP_DIR="${BACKUP_DIR}"
+TIMESTAMP="${TIMESTAMP}"
 
-SNAPSHOT_DIR="${BACKUP_DIR}/${TIMESTAMP}"
+SNAPSHOT_DIR="\${BACKUP_DIR}/\${TIMESTAMP}"
 sudo mkdir -p "\${SNAPSHOT_DIR}"
 sudo chown -R ${PROD_USER}:${PROD_USER} "\${SNAPSHOT_DIR}"
 
@@ -63,11 +66,11 @@ echo "-- Passwords excluded from backup for security" >> "\${SNAPSHOT_DIR}/datab
 
 # Backup backend
 echo "[INFO] Backing up backend..."
-sudo tar czf "\${SNAPSHOT_DIR}/backend.tar.gz" -C ${PROD_PATH}/app/backend .
+sudo tar czf "\${SNAPSHOT_DIR}/backend.tar.gz" -C \${PROD_PATH}/app/backend .
 
 # Backup frontend
 echo "[INFO] Backing up frontend..."
-sudo tar czf "\${SNAPSHOT_DIR}/frontend.tar.gz" -C ${PROD_PATH}/app/frontend/dist .
+sudo tar czf "\${SNAPSHOT_DIR}/frontend.tar.gz" -C \${PROD_PATH}/app/frontend/dist .
 
 # Save current versions
 sudo -u dap pm2 list | grep dap > "\${SNAPSHOT_DIR}/pm2-status.txt" || true
@@ -81,7 +84,7 @@ sudo -u postgres psql -d dap -c "SELECT * FROM _prisma_migrations ORDER BY finis
 sudo bash -c "cat > \${SNAPSHOT_DIR}/MANIFEST.txt" << EOF
 DAP Release Snapshot
 ====================
-Date: \$(date)
+Date: \\\$(date)
 Type: Pre-deployment backup
 Server: ${PROD_SERVER}
 
@@ -129,14 +132,15 @@ deploy_release() {
     
     # Deploy on production
     log_info "Deploying on production..."
-    ssh ${PROD_USER}@${PROD_SERVER} << 'ENDSSH'
+    ssh ${PROD_USER}@${PROD_SERVER} << ENDSSH
 set -e
+PROD_PATH="${PROD_PATH}"
 
-RELEASE_DIR="/tmp/release-$$"
-mkdir -p "$RELEASE_DIR"
+RELEASE_DIR="/tmp/release-\$\$"
+mkdir -p "\$RELEASE_DIR"
 
-cd "$RELEASE_DIR"
-tar xzf /tmp/release.tar.gz
+cd "\$RELEASE_DIR"
+tar xzf /tmp/release.tar.gz --strip-components=1
 
 echo "[INFO] Stopping services..."
 sudo -u dap pm2 stop all
@@ -144,24 +148,21 @@ sudo -u dap pm2 stop all
 # Backup current state
 echo "[INFO] Deploying backend..."
 if [ -d "backend" ]; then
-    sudo rm -rf ${PROD_PATH}/app/backend.old
-    sudo mv ${PROD_PATH}/app/backend ${PROD_PATH}/app/backend.old || true
-    sudo cp -r backend ${PROD_PATH}/app/
-    sudo chown -R dap:dap ${PROD_PATH}/app/backend
+    sudo rm -rf \${PROD_PATH}/app/backend.old
+    sudo mv \${PROD_PATH}/app/backend \${PROD_PATH}/app/backend.old || true
+    sudo cp -r backend \${PROD_PATH}/app/
+    sudo chown -R dap:dap \${PROD_PATH}/app/backend
     
-    # Install dependencies if package.json changed
-    sudo -u dap bash -c "cd ${PROD_PATH}/app/backend && npm install --production"
-    
-    # Build backend
-    sudo -u dap bash -c "cd ${PROD_PATH}/app/backend && npm run build"
+    # Install dependencies and build
+    sudo -u dap bash -c "cd \${PROD_PATH}/app/backend && npm install --legacy-peer-deps && npm run build && npm prune --production --legacy-peer-deps"
 fi
 
 echo "[INFO] Deploying frontend..."
 if [ -d "frontend/dist" ]; then
-    sudo rm -rf ${PROD_PATH}/app/frontend/dist.old
-    sudo mv ${PROD_PATH}/app/frontend/dist ${PROD_PATH}/app/frontend/dist.old || true
-    sudo cp -r frontend/dist ${PROD_PATH}/app/frontend/
-    sudo chown -R dap:dap ${PROD_PATH}/app/frontend/dist
+    sudo rm -rf \${PROD_PATH}/app/frontend/dist.old
+    sudo mv \${PROD_PATH}/app/frontend/dist \${PROD_PATH}/app/frontend/dist.old || true
+    sudo cp -r frontend/dist \${PROD_PATH}/app/frontend/
+    sudo chown -R dap:dap \${PROD_PATH}/app/frontend/dist
 fi
 
 # Apply database migrations
@@ -173,8 +174,8 @@ if [ -d "migrations" ] || [ -f "migration.sql" ]; then
     fi
     
     # Run Prisma migrations if available
-    if [ -f "${PROD_PATH}/app/backend/prisma/schema.prisma" ]; then
-        sudo -u dap bash -c "cd ${PROD_PATH}/app/backend && npx prisma migrate deploy"
+    if [ -f "\${PROD_PATH}/app/backend/prisma/schema.prisma" ]; then
+        sudo -u dap bash -c "cd \${PROD_PATH}/app/backend && npx prisma migrate deploy"
     fi
 fi
 
@@ -184,7 +185,7 @@ sudo -u dap pm2 start all
 sleep 5
 
 # Cleanup
-rm -rf "$RELEASE_DIR"
+rm -rf "\$RELEASE_DIR"
 rm -f /tmp/release.tar.gz
 
 echo "[SUCCESS] Deployment complete"
