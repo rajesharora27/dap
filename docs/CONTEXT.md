@@ -1,6 +1,6 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.6.2
+**Version:** 2.7.0
 **Last Updated:** December 18, 2025  
 **Purpose:** Comprehensive context for AI assistants and developers
 
@@ -108,7 +108,9 @@ DAP is a customer adoption tracking system where an **Executive Dashboard** prov
 - **Process Management:** PM2 (production)
 
 #### Infrastructure
-- **Web Server:** Apache httpd (development) or Nginx (production)
+- **Development Server:** centos1.rajarora.csslab (Node.js 20.12.1)
+- **Staging Server:** centos2.rajarora.csslab (CentOS 8, Apache httpd)
+- **Production Server:** dapoc.cisco.com (RHEL 9, Nginx with SSL)
 - **Deployment:** SSH-based deployment scripts
 - **Database Backups:** Automated daily backups
 - **Monitoring:** PM2 monitoring, application logs
@@ -1501,12 +1503,13 @@ sudo tail -f /var/log/httpd/error_log
 6. Deploy via quick patch or standard release
 
 **Deploying to production:**
-1. Test in development
-2. Create release package (./deploy/create-release.sh)
-3. Deploy (./deploy/release-to-prod.sh)
-4. Monitor logs
-5. Verify all roles work correctly
-6. Update CONTEXT.md if needed
+1. Test in development (centos1)
+2. Deploy to staging: `./deploy-to-stage.sh` (centos2)
+3. Verify staging works correctly
+4. Deploy to production: `./deploy-to-production.sh` (dapoc)
+5. Monitor logs: `ssh root@dapoc "sudo -u dap pm2 logs"`
+6. Verify all roles work correctly
+7. Update CONTEXT.md if needed
 
 ### Critical Paths
 
@@ -1563,19 +1566,29 @@ sudo tail -f /var/log/httpd/error_log
 - **Password Security**: `/data/dap/PASSWORD_SECURITY_BACKUPS.md`
 
 ### Access
-- **DEV**: http://dev.rajarora.csslab/dap/
-- **PROD**: https://myapps.cxsaaslab.com/dap/
+- **DEV**: http://dev.rajarora.csslab/dap/ (centos1)
+- **STAGING**: http://centos2.rajarora.csslab/dap/ 
+- **PRODUCTION**: https://dapoc.cisco.com/dap/ (SSL enabled)
 - **GraphQL Playground**: http://localhost:4000/graphql (dev only)
+
+### Default Credentials
+- **Admin**: admin / admin
+- **Users**: *(username)* / DAP123
+
+### Deployment Scripts
+- `./deploy-to-stage.sh` - Deploy to staging (centos2)
+- `./deploy-to-production.sh` - Deploy to production (dapoc)
+- `./dap` - Local development management script
 
 ### Key People
 - **Developer**: AI Assistant + Human Operator
-- **SSH User**: rajarora
-- **App User**: dap (production)
+- **SSH User**: rajarora (staging), root (production)
+- **App User**: dap (staging/production)
 
 ---
 
 **Last Updated:** December 18, 2025  
-**Version:** 2.6.2  
-**Status:** Production Ready
+**Version:** 2.7.0  
+**Status:** Production Ready (SSL Enabled)
 
 *This document should be updated whenever significant changes are made to the application.*
