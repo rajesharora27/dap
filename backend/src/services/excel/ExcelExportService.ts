@@ -64,6 +64,9 @@ export class ExcelExportService {
         },
         customAttributes: {
           orderBy: { displayOrder: 'asc' }
+        },
+        tags: {
+          orderBy: { displayOrder: 'asc' }
         }
       }
     });
@@ -85,11 +88,12 @@ export class ExcelExportService {
     await this.createOutcomesTab(workbook, product.outcomes);
     await this.createReleasesTab(workbook, product.releases);
     await this.createCustomAttributesTab(workbook, product.customAttributes);
-    
+    await this.createTagsTab(workbook, product.tags);
+
     if (includeTelemetry) {
       await this.createTelemetryTab(workbook, product.tasks);
     }
-    
+
     if (includeInstructions) {
       await this.createInstructionsTab(workbook);
     }
@@ -109,7 +113,7 @@ export class ExcelExportService {
       licensesExported: product.licenses.length,
       outcomesExported: product.outcomes.length,
       releasesExported: product.releases.length,
-      telemetryAttributesExported: includeTelemetry 
+      telemetryAttributesExported: includeTelemetry
         ? product.tasks.reduce((sum: number, task: any) => sum + (task.telemetryAttributes?.length || 0), 0)
         : 0
     };
@@ -128,7 +132,7 @@ export class ExcelExportService {
    */
   private async createProductInfoTab(workbook: ExcelJS.Workbook, product: Product) {
     const sheet = workbook.addWorksheet('Product Info');
-    
+
     // Set column widths
     sheet.columns = [
       { key: 'field', width: 25 },
@@ -144,7 +148,7 @@ export class ExcelExportService {
       fgColor: { argb: 'FF4472C4' }
     };
     headerRow.font = { ...headerRow.font, color: { argb: 'FFFFFFFF' } };
-    
+
     sheet.addRow([]); // Empty row
 
     // Product fields
@@ -187,7 +191,8 @@ export class ExcelExportService {
       { header: 'How To Video', key: 'howToVideo', width: 40 },
       { header: 'Notes', key: 'notes', width: 40 },
       { header: 'Outcomes', key: 'outcomes', width: 30 },
-      { header: 'Releases', key: 'releases', width: 20 }
+      { header: 'Releases', key: 'releases', width: 20 },
+      { header: 'Tags', key: 'tags', width: 20 }
     ];
 
     // Style header row
@@ -213,7 +218,8 @@ export class ExcelExportService {
         howToVideo: Array.isArray(task.howToVideo) ? task.howToVideo.join(', ') : (task.howToVideo || ''),
         notes: task.notes || '',
         outcomes: task.outcomes.map((to: any) => to.outcome.name).join(', '),
-        releases: task.releases.map((tr: any) => tr.release.name).join(', ')
+        releases: task.releases.map((tr: any) => tr.release.name).join(', '),
+        tags: task.tags.map((tt: any) => tt.tag.name).join(', ')
       });
     });
 
@@ -254,6 +260,15 @@ export class ExcelExportService {
         showErrorMessage: true,
         errorTitle: 'Invalid Release',
         error: 'Provide comma-separated release names from the Releases tab.'
+      };
+
+      sheet.getCell(`M${row}`).dataValidation = {
+        type: 'custom',
+        allowBlank: true,
+        formulae: [buildMultiSelectFormula(`M${row}`, "'Tags'!$A:$A")],
+        showErrorMessage: true,
+        errorTitle: 'Invalid Tag',
+        error: 'Provide comma-separated tag names from the Tags tab.'
       };
     }
   }
@@ -428,6 +443,42 @@ export class ExcelExportService {
   }
 
   /**
+   * Tab: Tags
+   */
+  private async createTagsTab(workbook: ExcelJS.Workbook, tags: any[]) {
+    const sheet = workbook.addWorksheet('Tags');
+
+    // Define columns
+    sheet.columns = [
+      { header: 'Tag Name', key: 'name', width: 30 },
+      { header: 'Color', key: 'color', width: 15 },
+      { header: 'Display Order', key: 'displayOrder', width: 15 }
+    ];
+
+    // Style header row
+    const headerRow = sheet.getRow(1);
+    headerRow.font = { bold: true };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFED7D31' }
+    };
+    headerRow.font = { ...headerRow.font, color: { argb: 'FFFFFFFF' } };
+
+    // Add tags
+    tags.forEach(tag => {
+      sheet.addRow({
+        name: tag.name,
+        color: tag.color || 'default',
+        displayOrder: tag.displayOrder || 0
+      });
+    });
+
+    // Freeze header row
+    sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
+  }
+
+  /**
    * Tab 7: Telemetry (optional)
    */
   private async createTelemetryTab(workbook: ExcelJS.Workbook, tasks: any[]) {
@@ -478,7 +529,7 @@ export class ExcelExportService {
    */
   private async createInstructionsTab(workbook: ExcelJS.Workbook) {
     const sheet = workbook.addWorksheet('Instructions');
-    
+
     // Set column width
     sheet.columns = [
       { key: 'content', width: 100 }

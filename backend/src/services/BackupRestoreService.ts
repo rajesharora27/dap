@@ -25,6 +25,10 @@ export interface BackupMetadata {
     tasks: number;
     customerTasks: number;
     customerSolutionTasks: number;
+    productTags: number;
+    solutionTags: number;
+    taskTags: number;
+    solutionTaskTags: number;
   };
 }
 
@@ -54,6 +58,10 @@ export interface RestoreResult {
     tasks: number;
     customerTasks: number;
     customerSolutionTasks: number;
+    productTags: number;
+    solutionTags: number;
+    taskTags: number;
+    solutionTaskTags: number;
   };
   error?: string;
 }
@@ -123,6 +131,7 @@ export class BackupRestoreService {
    * Get record counts for all major tables
    */
   private static async getRecordCounts() {
+    // Core tables - always exist
     const [
       users,
       products,
@@ -149,6 +158,20 @@ export class BackupRestoreService {
       prisma.customerSolutionTask.count(),
     ]);
 
+    // Tag tables - may not exist in older backups, fail gracefully
+    let productTags = 0, solutionTags = 0, taskTags = 0, solutionTaskTags = 0;
+    try {
+      [productTags, solutionTags, taskTags, solutionTaskTags] = await Promise.all([
+        prisma.productTag.count(),
+        prisma.solutionTag.count(),
+        prisma.taskTag.count(),
+        prisma.solutionTaskTag.count(),
+      ]);
+    } catch (err) {
+      // Tag tables may not exist in older databases - that's ok
+      console.log('[Backup] Tag tables not found, using 0 counts');
+    }
+
     return {
       users,
       products,
@@ -161,6 +184,10 @@ export class BackupRestoreService {
       tasks,
       customerTasks,
       customerSolutionTasks,
+      productTags,
+      solutionTags,
+      taskTags,
+      solutionTaskTags,
     };
   }
 
@@ -576,6 +603,10 @@ export class BackupRestoreService {
               tasks: 0,
               customerTasks: 0,
               customerSolutionTasks: 0,
+              productTags: 0,
+              solutionTags: 0,
+              taskTags: 0,
+              solutionTaskTags: 0,
             },
           };
         }

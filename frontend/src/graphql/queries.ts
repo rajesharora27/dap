@@ -148,6 +148,11 @@ export const TASKS_FOR_PRODUCT = gql`
               createdAt
             }
           }
+          tags {
+            id
+            name
+            color
+          }
           isCompleteBasedOnTelemetry
           telemetryCompletionPercentage
         }
@@ -203,6 +208,16 @@ export const TASKS_FOR_SOLUTION = gql`
               createdAt
             }
           }
+          tags {
+            id
+            name
+            color
+          }
+          solutionTags {
+            id
+            name
+            color
+          }
           isCompleteBasedOnTelemetry
           telemetryCompletionPercentage
         }
@@ -251,6 +266,12 @@ export const PRODUCT = gql`
         name
         description
       }
+      tags {
+        id
+        name
+        color
+        displayOrder
+      }
     }
   }
 `;
@@ -281,6 +302,68 @@ export const SOLUTION = gql`
           }
         }
       }
+      tags {
+        id
+        name
+        color
+        displayOrder
+      }
     }
+  }
+`;
+export const PRODUCT_TAGS = gql`
+  query ProductTags($productId: ID!) {
+   productTags(productId: $productId) {
+     id
+     name
+     color
+     displayOrder
+   }
+  }
+`;
+
+export const TASK_TAGS = gql`
+  query TaskTags($taskId: ID!) {
+    taskTags(taskId: $taskId) {
+      id
+      tag {
+        id
+        name
+        color
+      }
+    }
+  }
+`;
+
+export const CUSTOMER_PRODUCT_TAGS = gql`
+  query CustomerProductTags($customerProductId: ID!) {
+    customerProductTags(customerProductId: $customerProductId) {
+      id
+      name
+      color
+      displayOrder
+    }
+  }
+`;
+
+export const SOLUTION_TAGS = gql`
+  query SolutionTags($solutionId: ID!) {
+    solutionTags(solutionId: $solutionId) {
+      id
+      name
+      color
+      displayOrder
+    }
+  }
+`;
+
+export const CUSTOMER_SOLUTION_TAGS = gql`
+  query CustomerSolutionTags($customerSolutionId: ID!) {
+     customerSolutionTags(customerSolutionId: $customerSolutionId) {
+       id
+       name
+       color
+       displayOrder
+     }
   }
 `;

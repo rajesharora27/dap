@@ -291,7 +291,15 @@ User Query → QueryTemplates (regex match) → Direct Prisma Query (fast)
 - `backend/src/services/ai/DataContextManager.ts` - Dynamic data context
 - `frontend/src/components/AIChat.tsx` - Chat UI
 
-### 8. Advanced Features
+### 8. Task Tagging System
+The tagging system allows categorizing tasks within products and solutions to help CSS and customers filter and prioritize adoption activities.
+- **Hierarchical Scoping**: Tags are defined at the Product or Solution level.
+- **Automatic Syncing**: Tags and their assignments are synchronized to customer adoption plans during create/sync operations.
+- **Multi-tag Filtering**: Users can filter task lists by one or more tags using OR logic.
+- **Theme Integration**: Tags use standardized colors from the MUI theme palette.
+- **Future-Proof Sync**: A generic field-copying mechanism ensures that any new task fields added in the future are automatically synchronized.
+
+### 9. Advanced Features
 - Drag-and-drop task reordering
 - Real-time progress calculation
 - Audit logging

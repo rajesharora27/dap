@@ -3,7 +3,8 @@ import { EntitySummary } from '../components/EntitySummary';
 import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button,
     IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-    List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, CircularProgress, Card, CardContent
+    List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, CircularProgress, Card, CardContent,
+    Checkbox, OutlinedInput
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension } from '@mui/icons-material';
@@ -13,7 +14,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { CSS } from '@dnd-kit/utilities';
 
 import { PRODUCTS, TASKS_FOR_PRODUCT, OUTCOMES, PRODUCT } from '../graphql/queries';
-import { DELETE_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE, CREATE_PRODUCT, UPDATE_PRODUCT } from '../graphql/mutations';
+import { DELETE_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE, CREATE_PRODUCT, UPDATE_PRODUCT, CREATE_PRODUCT_TAG, UPDATE_PRODUCT_TAG, DELETE_PRODUCT_TAG } from '../graphql/mutations';
 import { SortableTaskItem } from '../components/SortableTaskItem';
 import { ProductDialog } from '../components/dialogs/ProductDialog';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
@@ -21,6 +22,7 @@ import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
 import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { LicenseDialog } from '../components/dialogs/LicenseDialog';
 import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
+import { TagDialog, ProductTag } from '../components/dialogs/TagDialog';
 import { useProductImportExport } from '../hooks/useProductImportExport';
 
 interface ProductsPageProps {
@@ -30,7 +32,7 @@ interface ProductsPageProps {
 export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => {
     // State
     const [selectedProduct, setSelectedProduct] = useState<string | null>(localStorage.getItem('lastSelectedProductId'));
-    const [selectedSubSection, setSelectedSubSection] = useState<'dashboard' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes'>('dashboard');
+    const [selectedSubSection, setSelectedSubSection] = useState<'dashboard' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('dashboard');
     const importFileRef = useRef<HTMLInputElement>(null);
 
     // Dialog States
@@ -46,6 +48,9 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const [editingProduct, setEditingProduct] = useState<any>(null);
     const [customAttrDialog, setCustomAttrDialog] = useState(false);
     const [editingCustomAttr, setEditingCustomAttr] = useState<any>(null);
+    const [tagDialog, setTagDialog] = useState(false);
+    const [editingTag, setEditingTag] = useState<ProductTag | null>(null);
+    const [taskTagFilter, setTaskTagFilter] = useState<string[]>([]);
 
     // Queries
     const { data: productsData, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PRODUCTS, {
@@ -71,13 +76,20 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     }
 
     const fetchedProduct = productData?.product;
-    const displayProduct = products.find((p: any) => p.id === selectedProduct) || fetchedProduct;
+    const listProduct = products.find((p: any) => p.id === selectedProduct);
+    const displayProduct = (fetchedProduct?.id === selectedProduct) ? fetchedProduct : listProduct;
 
     const { data: tasksData, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useQuery(TASKS_FOR_PRODUCT, {
         variables: { productId: selectedProduct },
         skip: !selectedProduct
     });
     const tasks = tasksData?.tasks?.edges?.map((e: any) => e.node) || [];
+
+    // Filter tasks based on selected tags
+    const filteredTasks = tasks.filter((task: any) => {
+        if (taskTagFilter.length === 0) return true;
+        return task.tags?.some((t: any) => taskTagFilter.includes(t.id));
+    });
 
     const client = useApolloClient();
 
@@ -128,6 +140,48 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 console.error('Error deleting product:', error);
                 alert('Failed to delete product: ' + error.message);
             }
+        }
+    };
+
+    // Tag Handlers
+    const handleSaveTag = async (tagData: Omit<ProductTag, 'id'>, existingId?: string) => {
+        try {
+            if (existingId) {
+                await client.mutate({
+                    mutation: UPDATE_PRODUCT_TAG,
+                    variables: { id: existingId, input: tagData },
+                    refetchQueries: ['Products', 'Product', 'ProductDetail', 'GetProductTags'],
+                    awaitRefetchQueries: true
+                });
+            } else {
+                await client.mutate({
+                    mutation: CREATE_PRODUCT_TAG,
+                    variables: { input: { ...tagData, productId: selectedProduct } },
+                    refetchQueries: ['Products', 'Product', 'ProductDetail', 'GetProductTags'],
+                    awaitRefetchQueries: true
+                });
+            }
+            // Force refetch because sometimes cache update is tricky with nested fields
+            refetchProductDetail();
+        } catch (error) {
+            console.error('Error saving tag:', error);
+            alert('Failed to save tag');
+        }
+    };
+
+    const handleDeleteTag = async (tagId: string) => {
+        if (!window.confirm('Delete this tag?')) return;
+        try {
+            await client.mutate({
+                mutation: DELETE_PRODUCT_TAG,
+                variables: { id: tagId },
+                refetchQueries: ['Products', 'Product', 'ProductDetail', 'GetProductTags'],
+                awaitRefetchQueries: true
+            });
+            refetchProductDetail();
+        } catch (error) {
+            console.error('Error deleting tag:', error);
+            alert('Failed to delete tag');
         }
     };
 
@@ -276,6 +330,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
             if (taskData.licenseId) input.licenseId = taskData.licenseId;
             if (taskData.outcomeIds) input.outcomeIds = taskData.outcomeIds;
             if (taskData.releaseIds) input.releaseIds = taskData.releaseIds;
+            if (taskData.tags) input.tagIds = taskData.tags;
 
             if (taskData.telemetryAttributes) {
                 input.telemetryAttributes = taskData.telemetryAttributes.map((attr: any) => ({
@@ -587,6 +642,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                             <Tab label="Releases" value="releases" />
                             <Tab label="Licenses" value="licenses" />
                             <Tab label="Custom Attributes" value="customAttributes" />
+                            <Tab label="Tags" value="tags" />
                         </Tabs>
 
                         {selectedSubSection !== 'dashboard' && (
@@ -602,6 +658,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                         case 'releases': setEditingRelease(null); setReleaseDialog(true); break;
                                         case 'licenses': setEditingLicense(null); setLicenseDialog(true); break;
                                         case 'customAttributes': setEditingCustomAttr(null); setCustomAttrDialog(true); break;
+                                        case 'tags': setEditingTag(null); setTagDialog(true); break;
                                     }
                                 }}
                             >
@@ -741,6 +798,41 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                 </Box>
                             )}
 
+                            {/* Filter Section */}
+                            <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+                                <FormControl size="small" sx={{ minWidth: 250 }}>
+                                    <InputLabel>Filter by Tags</InputLabel>
+                                    <Select
+                                        multiple
+                                        value={taskTagFilter}
+                                        onChange={(e) => setTaskTagFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                                        input={<OutlinedInput label="Filter by Tags" />}
+                                        renderValue={(selected) => (
+                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                {selected.map((value) => {
+                                                    const tag = displayProduct?.tags?.find((t: any) => t.id === value);
+                                                    return (
+                                                        <Chip key={value} label={tag?.name || value} size="small" sx={{ bgcolor: tag?.color, color: '#fff', height: 24 }} />
+                                                    );
+                                                })}
+                                            </Box>
+                                        )}
+                                    >
+                                        {displayProduct?.tags?.map((tag: any) => (
+                                            <MenuItem key={tag.id} value={tag.id}>
+                                                <Checkbox checked={taskTagFilter.indexOf(tag.id) > -1} />
+                                                <Typography sx={{ color: tag.color, fontWeight: 'bold' }}>{tag.name}</Typography>
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                                {taskTagFilter.length > 0 && (
+                                    <Button size="small" onClick={() => setTaskTagFilter([])} variant="outlined">
+                                        Clear Filter
+                                    </Button>
+                                )}
+                            </Box>
+
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                                 <TableContainer component={Paper} sx={{ maxHeight: '70vh' }}>
                                     <Table size="small" stickyHeader>
@@ -757,8 +849,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                         </TableHead>
 
                                         <TableBody>
-                                            <SortableContext items={tasks.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
-                                                {tasks.map((task: any) => (
+                                            <SortableContext items={filteredTasks.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
+                                                {filteredTasks.map((task: any) => (
                                                     <SortableTaskItem
                                                         key={task.id}
                                                         task={task}
@@ -767,12 +859,15 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         onDoubleClick={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
                                                         onWeightChange={handleWeightChange}
                                                         onSequenceChange={handleSequenceChange}
+                                                        disableDrag={taskTagFilter.length > 0}
                                                     />
                                                 ))}
-                                                {tasks.length === 0 && !tasksLoading && (
+                                                {filteredTasks.length === 0 && !tasksLoading && (
                                                     <TableRow>
                                                         <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
-                                                            <Typography color="text.secondary">No tasks found for this product</Typography>
+                                                            <Typography color="text.secondary">
+                                                                {taskTagFilter.length > 0 ? 'No tasks match the selected content filters' : 'No tasks found for this product'}
+                                                            </Typography>
                                                         </TableCell>
                                                     </TableRow>
                                                 )}
@@ -963,6 +1058,51 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                         </Grid>
                     )}
 
+                    {selectedSubSection === 'tags' && (
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12 }}>
+                                <Paper sx={{ p: 2 }}>
+                                    {(!displayProduct?.tags || displayProduct.tags.length === 0) ? (
+                                        <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
+                                            No tags defined for this product. Click "Add" to create one.
+                                        </Typography>
+                                    ) : (
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                            {displayProduct.tags.map((tag: any) => (
+                                                <Chip
+                                                    key={tag.id}
+                                                    label={tag.name}
+                                                    sx={{
+                                                        backgroundColor: tag.color,
+                                                        color: '#fff',
+                                                        fontWeight: 500,
+                                                        cursor: 'pointer',
+                                                        '& .MuiChip-deleteIcon': {
+                                                            color: 'rgba(255, 255, 255, 0.7)',
+                                                            '&:hover': {
+                                                                color: '#fff'
+                                                            }
+                                                        }
+                                                    }}
+                                                    onClick={() => {
+                                                        setEditingTag(tag);
+                                                        setTagDialog(true);
+                                                    }}
+                                                    onDelete={() => handleDeleteTag(tag.id)}
+                                                    deleteIcon={
+                                                        <Tooltip title="Delete Tag">
+                                                            <Delete />
+                                                        </Tooltip>
+                                                    }
+                                                />
+                                            ))}
+                                        </Box>
+                                    )}
+                                </Paper>
+                            </Grid>
+                        </Grid>
+                    )}
+
 
                 </>
             )
@@ -980,6 +1120,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 outcomes={displayProduct?.outcomes || []}
                 availableLicenses={displayProduct?.licenses || []}
                 availableReleases={displayProduct?.releases || []}
+                availableTags={displayProduct?.tags || []}
             />
             <OutcomeDialog
                 open={outcomeDialog}
@@ -1073,6 +1214,15 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 onSave={handleSaveCustomAttr}
                 attribute={editingCustomAttr}
                 existingKeys={Object.keys(displayProduct?.customAttrs || {})}
+            />
+
+            {/* Tag Dialog */}
+            <TagDialog
+                open={tagDialog}
+                onClose={() => { setTagDialog(false); setEditingTag(null); }}
+                onSave={handleSaveTag}
+                tag={editingTag}
+                existingNames={displayProduct?.tags?.map((t: any) => t.name) || []}
             />
         </React.Fragment>
     );

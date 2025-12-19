@@ -18,7 +18,7 @@ import {
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChange, onSequenceChange }: any) {
+export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChange, onSequenceChange, disableDrag }: any) {
     const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
     const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
 
@@ -29,7 +29,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
         transform,
         transition,
         isDragging,
-    } = useSortable({ id: task.id });
+    } = useSortable({ id: task.id, disabled: disableDrag });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -56,12 +56,12 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 }}
             >
                 {/* Drag handle */}
-                <TableCell sx={{ width: 32, padding: '8px 4px', cursor: 'grab' }} {...attributes} {...listeners}>
-                    <DragIndicator sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />
+                <TableCell sx={{ width: 40, minWidth: 40, padding: '8px 4px', cursor: disableDrag ? 'default' : 'grab' }} {...(!disableDrag ? attributes : {})} {...(!disableDrag ? listeners : {})}>
+                    {!disableDrag && <DragIndicator sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />}
                 </TableCell>
 
                 {/* Sequence number - editable */}
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                <TableCell sx={{ width: 80, minWidth: 80, whiteSpace: 'nowrap' }}>
                     {task.sequenceNumber && (
                         <input
                             key={`seq-${task.id}-${task.sequenceNumber}`}
@@ -121,10 +121,37 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                     }}>
                         {task.name}
                     </Typography>
+                    {/* Display tags - combine both 'tags' (for product tasks) and 'solutionTags' (for solution tasks) */}
+                    {(() => {
+                        const allTags = [...(task.tags || []), ...(task.solutionTags || [])];
+                        if (allTags.length === 0) return null;
+                        return (
+                            <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                                {allTags.map((tagRef: any) => {
+                                    // Handle both direct tag objects and tag references (with .tag property)
+                                    const tag = tagRef.tag || tagRef;
+                                    return (
+                                        <Chip
+                                            key={tag.id}
+                                            label={tag.name}
+                                            size="small"
+                                            sx={{
+                                                height: 18,
+                                                fontSize: '0.65rem',
+                                                backgroundColor: tag.color || '#888',
+                                                color: '#fff',
+                                                fontWeight: 600
+                                            }}
+                                        />
+                                    );
+                                })}
+                            </Box>
+                        );
+                    })()}
                 </TableCell>
 
                 {/* Resources */}
-                <TableCell>
+                <TableCell sx={{ minWidth: 100 }}>
                     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'center' }}>
                         {task.howToDoc && task.howToDoc.length > 0 && (
                             <Chip
@@ -186,7 +213,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 </TableCell>
 
                 {/* Weight - editable */}
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                <TableCell sx={{ width: 100, minWidth: 100, whiteSpace: 'nowrap' }}>
                     <input
                         key={`weight-${task.id}-${task.weight}`}
                         type="number"
@@ -239,7 +266,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 </TableCell>
 
                 {/* Telemetry */}
-                <TableCell>
+                <TableCell sx={{ minWidth: 80 }}>
                     {(() => {
                         const totalAttributes = task.telemetryAttributes?.length || 0;
                         const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) =>
@@ -273,7 +300,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 </TableCell>
 
                 {/* Actions */}
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                <TableCell sx={{ width: 100, minWidth: 100, whiteSpace: 'nowrap' }}>
                     <IconButton size="small" onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
                         <Edit fontSize="small" />
                     </IconButton>
@@ -292,18 +319,20 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
                     Documentation Links:
                 </MenuItem>
-                {docMenuAnchor?.links.map((link, index) => (
-                    <MenuItem
-                        key={index}
-                        onClick={() => {
-                            window.open(link, '_blank');
-                            setDocMenuAnchor(null);
-                        }}
-                        sx={{ fontSize: '0.875rem' }}
-                    >
-                        {link.length > 50 ? `${link.substring(0, 50)}...` : link}
-                    </MenuItem>
-                ))}
+                {
+                    docMenuAnchor?.links.map((link, index) => (
+                        <MenuItem
+                            key={index}
+                            onClick={() => {
+                                window.open(link, '_blank');
+                                setDocMenuAnchor(null);
+                            }}
+                            sx={{ fontSize: '0.875rem' }}
+                        >
+                            {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                        </MenuItem>
+                    ))
+                }
                 <MenuItem
                     onClick={() => {
                         docMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));
@@ -324,18 +353,20 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
                     Video Links:
                 </MenuItem>
-                {videoMenuAnchor?.links.map((link, index) => (
-                    <MenuItem
-                        key={index}
-                        onClick={() => {
-                            window.open(link, '_blank');
-                            setVideoMenuAnchor(null);
-                        }}
-                        sx={{ fontSize: '0.875rem' }}
-                    >
-                        {link.length > 50 ? `${link.substring(0, 50)}...` : link}
-                    </MenuItem>
-                ))}
+                {
+                    videoMenuAnchor?.links.map((link, index) => (
+                        <MenuItem
+                            key={index}
+                            onClick={() => {
+                                window.open(link, '_blank');
+                                setVideoMenuAnchor(null);
+                            }}
+                            sx={{ fontSize: '0.875rem' }}
+                        >
+                            {link.length > 50 ? `${link.substring(0, 50)}...` : link}
+                        </MenuItem>
+                    ))
+                }
                 <MenuItem
                     onClick={() => {
                         videoMenuAnchor?.links.forEach((link) => window.open(link, '_blank'));

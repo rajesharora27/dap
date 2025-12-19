@@ -55,6 +55,7 @@ export const typeDefs = gql`
     licenses: [License!]!
     outcomes: [Outcome!]!
     releases: [Release!]!
+    tags: [ProductTag!]!
   }
 
   type Solution implements Node {
@@ -69,6 +70,7 @@ export const typeDefs = gql`
     licenses: [License!]!
     releases: [Release!]!
     outcomes: [Outcome!]!
+    tags: [SolutionTag!]!
   }
 
   type Customer implements Node {
@@ -103,6 +105,8 @@ export const typeDefs = gql`
     isCompleteBasedOnTelemetry: Boolean! # Computed field based on telemetry criteria
     telemetryCompletionPercentage: Float! # 0-100% completion based on telemetry
     deletedAt: String               # Soft delete timestamp
+    tags: [ProductTag!]!
+    solutionTags: [SolutionTag!]!
   }
 
   type License implements Node { 
@@ -163,6 +167,65 @@ export const typeDefs = gql`
 
   type TaskEdge { cursor: String! node: Task! }
   type TaskConnection { edges: [TaskEdge!]! pageInfo: PageInfo! totalCount: Int! }
+  type ProductTag {
+  id: ID!
+  productId: ID!
+  name: String!
+  color: String
+  displayOrder: Int
+  taskTags: [TaskTag!]
+}
+
+type SolutionTag {
+  id: ID!
+  solutionId: ID!
+  name: String!
+  color: String
+  displayOrder: Int
+  taskTags: [SolutionTaskTag!]
+}
+
+type TaskTag {
+  id: ID!
+  taskId: ID!
+  tag: ProductTag!
+}
+
+type SolutionTaskTag {
+  id: ID!
+  taskId: ID!
+  tag: SolutionTag!
+}
+
+type CustomerProductTag {
+    id: ID!
+    customerProductId: ID!
+    sourceTagId: ID
+    name: String!
+    color: String
+    displayOrder: Int
+}
+
+type CustomerTaskTag {
+    id: ID!
+    customerTaskId: ID!
+    tag: CustomerProductTag!
+}
+
+type CustomerSolutionTag {
+    id: ID!
+    customerSolutionId: ID!
+    sourceTagId: ID
+    name: String!
+    color: String
+    displayOrder: Int
+}
+
+type CustomerSolutionTaskTag {
+    id: ID!
+    customerSolutionTaskId: ID!
+    tag: CustomerSolutionTag!
+}
   type ProductEdge { cursor: String! node: Product! }
   type ProductConnection { edges: [ProductEdge!]! pageInfo: PageInfo! totalCount: Int! }
   type SolutionEdge { cursor: String! node: Solution! }
@@ -287,6 +350,15 @@ export const typeDefs = gql`
   }
 
   type Query {
+  # Existing queries...
+  productTag(id: ID!): ProductTag
+  productTags(productId: ID!): [ProductTag!]
+  taskTag(id: ID!): TaskTag
+  taskTags(taskId: ID!): [TaskTag!]
+  customerProductTags(customerProductId: ID!): [CustomerProductTag!]
+  solutionTags(solutionId: ID!): [SolutionTag!]
+  customerSolutionTags(customerSolutionId: ID!): [CustomerSolutionTag!]
+
     node(id: ID!): Node
     product(id: ID!): Product
     solution(id: ID!): Solution
@@ -466,6 +538,7 @@ export const typeDefs = gql`
     licenseId: ID                   # Single license ID for hierarchical system
     releaseIds: [ID!]               # Release IDs this task should be assigned to
     telemetryAttributes: [TelemetryAttributeNestedInput!]  # Telemetry attributes to create with the task
+    tagIds: [ID!]
   }
 
   input TaskUpdateInput { 
@@ -482,6 +555,7 @@ export const typeDefs = gql`
     licenseId: ID                   # Single license ID for hierarchical system
     releaseIds: [ID!]               # Release IDs this task should be assigned to
     telemetryAttributes: [TelemetryAttributeNestedInput!]  # Telemetry attributes to update for the task (replaces all existing)
+    tagIds: [ID!]
   }
 
   input TelemetryAttributeNestedInput {
@@ -525,6 +599,32 @@ export const typeDefs = gql`
   input BatchTelemetryValueInput {
     batchId: String!
     values: [TelemetryValueInput!]!
+  }
+
+  input ProductTagInput {
+    productId: ID!
+    name: String!
+    color: String
+    displayOrder: Int
+  }
+
+  input ProductTagUpdateInput {
+    name: String
+    color: String
+    displayOrder: Int
+  }
+
+  input SolutionTagInput {
+    solutionId: ID!
+    name: String!
+    color: String
+    displayOrder: Int
+  }
+
+  input SolutionTagUpdateInput {
+    name: String
+    color: String
+    displayOrder: Int
   }
 
   type Mutation {
@@ -640,6 +740,22 @@ export const typeDefs = gql`
   
   # Data Migration
   migrateProductNamesToNewFormat: ProductNameMigrationResult!
+  
+  # Product Tag Management
+  createProductTag(input: ProductTagInput!): ProductTag!
+  updateProductTag(id: ID!, input: ProductTagUpdateInput!): ProductTag!
+  deleteProductTag(id: ID!): Boolean!
+  setTaskTags(taskId: ID!, tagIds: [ID!]!): Task!
+  addTagToTask(taskId: ID!, tagId: ID!): Task!
+  removeTagFromTask(taskId: ID!, tagId: ID!): Task!
+
+  # Solution Tag Management
+  createSolutionTag(input: SolutionTagInput!): SolutionTag!
+  updateSolutionTag(id: ID!, input: SolutionTagUpdateInput!): SolutionTag!
+  deleteSolutionTag(id: ID!): Boolean!
+  setSolutionTaskTags(taskId: ID!, tagIds: [ID!]!): Task!
+  addSolutionTagToTask(taskId: ID!, tagId: ID!): Task!
+  removeSolutionTagFromTask(taskId: ID!, tagId: ID!): Task!
   }
 
   # Telemetry Import/Export Types
@@ -694,6 +810,7 @@ export const typeDefs = gql`
     purchasedAt: String!
     createdAt: String!
     updatedAt: String!
+    tags: [CustomerProductTag!]!
   }
 
   type AdoptionPlan {
@@ -744,6 +861,7 @@ export const typeDefs = gql`
     telemetryProgress: TelemetryProgress!
     createdAt: String!
     updatedAt: String!
+    tags: [CustomerProductTag!]!
   }
 
   type CustomerTelemetryAttribute {
@@ -974,6 +1092,10 @@ export const typeDefs = gql`
     tasks: Int!
     customerTasks: Int!
     customerSolutionTasks: Int!
+    productTags: Int
+    solutionTags: Int
+    taskTags: Int
+    solutionTaskTags: Int
   }
 
   type BackupResult {

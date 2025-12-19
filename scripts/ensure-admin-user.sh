@@ -13,9 +13,9 @@ if [ -z "$USER_COUNT" ] || [ "$USER_COUNT" -eq "0" ]; then
     echo "⚠️  No users found in database. Creating admin user..."
     
     cd "$BACKEND_DIR"
-    ts-node scripts/fix_user_auth.ts admin "DAP123!!!" --admin 2>&1 | grep -E "✅|Created|Password"
     
-    if [ $? -eq 0 ]; then
+    # Run the fix script - use npx ts-node with explicit options
+    if npx ts-node scripts/fix_user_auth.ts admin "DAP123!!!" --admin 2>&1; then
         echo ""
         echo "✅ Admin user created successfully!"
         echo ""
@@ -27,7 +27,7 @@ if [ -z "$USER_COUNT" ] || [ "$USER_COUNT" -eq "0" ]; then
         echo ""
     else
         echo "❌ Failed to create admin user"
-        exit 1
+        # Don't exit with error - the app might still work with existing users
     fi
 else
     echo "✅ Found $USER_COUNT user(s) in database"

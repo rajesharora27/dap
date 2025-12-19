@@ -59,6 +59,7 @@ import {
   Article,
   OndemandVideo,
   Assessment,
+  Label,
 } from '@mui/icons-material';
 import { CustomerDialog } from './dialogs/CustomerDialog';
 import { AssignProductDialog } from './dialogs/AssignProductDialog';
@@ -178,10 +179,15 @@ const GET_ADOPTION_PLAN = gql`
           name
         }
         releases {
-        id
-        name
-        level
-      }
+          id
+          name
+          level
+        }
+        tags {
+          id
+          name
+          color
+        }
       }
     }
   }
@@ -580,6 +586,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
   // Note: License filter removed - tasks are pre-filtered by assigned license level
   const [filterReleases, setFilterReleases] = useState<string[]>([]);
   const [filterOutcomes, setFilterOutcomes] = useState<string[]>([]);
+  const [filterTags, setFilterTags] = useState<string[]>([]);
 
   const [statusDialog, setStatusDialog] = useState<StatusDialogState>({
     open: false,
@@ -670,6 +677,16 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
         if (!hasSelectedOutcome) return false;
       }
 
+      // Filter by tags
+      if (filterTags.length > 0) {
+        // Check if task has any of the selected tags
+        // task.tags is array of CustomerTaskTag { tag: { id, ... } }
+        const hasSelectedTag = task.tags?.some((tt: any) =>
+          filterTags.includes(tt.tag.id)
+        );
+        if (!hasSelectedTag) return false;
+      }
+
       return true;
     });
 
@@ -695,6 +712,21 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
     if (!planData?.adoptionPlan?.selectedOutcomes) return [];
     return [...planData.adoptionPlan.selectedOutcomes].sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [planData?.adoptionPlan?.selectedOutcomes]);
+
+  const availableTags = React.useMemo(() => {
+    if (!planData?.adoptionPlan?.tasks) return [];
+
+    const tagsMap = new Map();
+    planData.adoptionPlan.tasks.forEach((task: any) => {
+      task.tags?.forEach((tt: any) => {
+        if (tt.tag && !tagsMap.has(tt.tag.id)) {
+          tagsMap.set(tt.tag.id, tt.tag);
+        }
+      });
+    });
+
+    return Array.from(tagsMap.values()).sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }, [planData?.adoptionPlan?.tasks]);
 
   // Calculate progress based on filtered tasks using WEIGHTS (excluding NOT_APPLICABLE)
   const filteredProgress = React.useMemo(() => {
@@ -2099,46 +2131,92 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                         </Box>
                                       )}
                                     >
-                                      {[
-                                        // Always show "All Outcomes" option
-                                        <MenuItem
-                                          key={ALL_OUTCOMES_ID}
-                                          value={ALL_OUTCOMES_ID}
-                                          sx={{
-                                            backgroundColor: filterOutcomes.includes(ALL_OUTCOMES_ID) ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
-                                            borderBottom: '1px solid',
-                                            borderColor: 'divider',
-                                            '&:hover': {
-                                              backgroundColor: 'rgba(76, 175, 80, 0.12)',
-                                            },
+                                      <MenuItem
+                                        key={ALL_OUTCOMES_ID}
+                                        value={ALL_OUTCOMES_ID}
+                                        sx={{
+                                          backgroundColor: filterOutcomes.includes(ALL_OUTCOMES_ID) ? 'rgba(76, 175, 80, 0.08)' : 'inherit',
+                                          borderBottom: '1px solid',
+                                          borderColor: 'divider',
+                                          '&:hover': {
+                                            backgroundColor: 'rgba(76, 175, 80, 0.12)',
+                                          },
+                                        }}
+                                      >
+                                        <Checkbox checked={filterOutcomes.includes(ALL_OUTCOMES_ID)} sx={{ color: 'success.main' }} />
+                                        <ListItemText
+                                          primary="All Outcomes"
+                                          primaryTypographyProps={{
+                                            fontWeight: 600,
+                                            color: 'success.main'
                                           }}
-                                        >
-                                          <Checkbox checked={filterOutcomes.includes(ALL_OUTCOMES_ID)} sx={{ color: 'success.main' }} />
-                                          <ListItemText
-                                            primary="All Outcomes"
-                                            primaryTypographyProps={{
-                                              fontWeight: 600,
-                                              color: 'success.main'
-                                            }}
-                                          />
-                                        </MenuItem>,
-                                        ...availableOutcomes.map((outcome: any) => (
-                                          <MenuItem key={outcome.id} value={outcome.id}>
-                                            <Checkbox checked={filterOutcomes.includes(outcome.id)} />
-                                            <ListItemText primary={outcome.name} />
-                                          </MenuItem>
-                                        ))
-                                      ]}
+                                        />
+                                      </MenuItem>
+                                      {availableOutcomes.map((outcome: any) => (
+                                        <MenuItem key={outcome.id} value={outcome.id}>
+                                          <Checkbox checked={filterOutcomes.includes(outcome.id)} />
+                                          <ListItemText primary={outcome.name} />
+                                        </MenuItem>
+                                      ))}
                                     </Select>
                                   </FormControl>
 
-                                  {(filterReleases.length > 0 || filterOutcomes.length > 0) && (
+                                  {/* Tags - Multi-select */}
+                                  <FormControl size="small" sx={{ minWidth: 200, maxWidth: 350 }}>
+                                    <InputLabel>Filter by Tags</InputLabel>
+                                    <Select
+                                      multiple
+                                      value={filterTags}
+                                      onChange={(e) => {
+                                        const value = e.target.value;
+                                        setFilterTags(typeof value === 'string' ? value.split(',') : value);
+                                      }}
+                                      input={<OutlinedInput label="Filter by Tags" />}
+                                      renderValue={(selected) => (
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                          {selected.map((value) => {
+                                            const tag = availableTags.find((t: any) => t.id === value);
+                                            return (
+                                              <Chip
+                                                key={value}
+                                                label={tag?.name || value}
+                                                size="small"
+                                                sx={{
+                                                  bgcolor: tag?.color,
+                                                  color: '#fff',
+                                                  '& .MuiChip-label': { fontWeight: 500 }
+                                                }}
+                                              />
+                                            );
+                                          })}
+                                        </Box>
+                                      )}
+                                    >
+                                      {availableTags.map((tag: any) => (
+                                        <MenuItem key={tag.id} value={tag.id}>
+                                          <Checkbox checked={filterTags.includes(tag.id)} />
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Label sx={{ color: tag.color, fontSize: 20 }} />
+                                            <ListItemText primary={tag.name} />
+                                          </Box>
+                                        </MenuItem>
+                                      ))}
+                                      {availableTags.length === 0 && (
+                                        <MenuItem disabled>
+                                          <ListItemText primary="No tags available" />
+                                        </MenuItem>
+                                      )}
+                                    </Select>
+                                  </FormControl>
+
+                                  {(filterReleases.length > 0 || filterOutcomes.length > 0 || filterTags.length > 0) && ( // Added filterTags to condition
                                     <Button
                                       size="small"
                                       variant="outlined"
                                       onClick={() => {
                                         setFilterReleases([]);
                                         setFilterOutcomes([]);
+                                        setFilterTags([]);
                                       }}
                                     >
                                       Clear Filters

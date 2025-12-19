@@ -52,6 +52,33 @@ function calculateProgress(tasks: any[]): {
   };
 }
 
+/**
+ * Extracts base task fields from a Product/Solution Task for syncing to a Customer Task.
+ * This is future-proof: any new content fields added to Task will be automatically 
+ * copied if they aren't explicitly excluded (identity/status/relations).
+ */
+function getTaskDataForSync(task: any) {
+  const {
+    id,
+    productId,
+    solutionId,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    telemetryAttributes,
+    outcomes,
+    releases,
+    taskTags,
+    solutionTaskTags,
+    status, // From existing customer task if present
+    adoptionPlanId,
+    originalTaskId,
+    ...baseFields
+  } = task;
+
+  return baseFields;
+}
+
 // Helper function to evaluate telemetry criteria
 function evaluateCriteria(criteria: any, value: any): boolean {
   try {
@@ -760,6 +787,7 @@ export const CustomerAdoptionMutationResolvers = {
                 telemetryAttributes: true,
                 outcomes: true,
                 releases: true,
+                taskTags: true,
               },
               orderBy: { sequenceNumber: 'asc' },
             },
@@ -806,21 +834,31 @@ export const CustomerAdoptionMutationResolvers = {
       },
     });
 
+    // Create Customer Product Tags
+    const productTags = await prisma.productTag.findMany({ where: { productId: customerProduct.productId } });
+    const tagMap = new Map<string, string>(); // sourceTagId -> newTagId
+
+    for (const tag of productTags) {
+      const newTag = await prisma.customerProductTag.create({
+        data: {
+          customerProductId,
+          sourceTagId: tag.id,
+          name: tag.name,
+          color: tag.color,
+          displayOrder: tag.displayOrder
+        }
+      });
+      tagMap.set(tag.id, newTag.id);
+    }
+
     // Create customer tasks (snapshots of product tasks)
     for (const task of eligibleTasks) {
+      const taskData = getTaskDataForSync(task);
       const customerTask = await prisma.customerTask.create({
         data: {
+          ...taskData,
           adoptionPlanId: adoptionPlan.id,
           originalTaskId: task.id,
-          name: task.name,
-          description: task.description,
-          estMinutes: task.estMinutes,
-          weight: task.weight,
-          sequenceNumber: task.sequenceNumber,
-          howToDoc: task.howToDoc,
-          howToVideo: task.howToVideo,
-          notes: task.notes,
-          licenseLevel: task.licenseLevel,
           status: 'NOT_STARTED',
           statusUpdateSource: 'SYSTEM',
         },
@@ -861,6 +899,18 @@ export const CustomerAdoptionMutationResolvers = {
             releaseId: taskRelease.releaseId,
           },
         });
+      }
+
+      // Copy tags
+      if (task.taskTags) {
+        for (const tt of task.taskTags) {
+          const newTagId = tagMap.get(tt.tagId);
+          if (newTagId) {
+            await prisma.customerTaskTag.create({
+              data: { customerTaskId: customerTask.id, tagId: newTagId }
+            });
+          }
+        }
       }
     }
 
@@ -910,6 +960,7 @@ export const CustomerAdoptionMutationResolvers = {
                     telemetryAttributes: true,
                     outcomes: true,
                     releases: true,
+                    taskTags: true,
                   },
                 },
                 outcomes: true,
@@ -953,6 +1004,30 @@ export const CustomerAdoptionMutationResolvers = {
     });
 
     // ============================================
+    // STEP 1.5: SYNC TAGS
+    // ============================================
+    console.log(`STEP 1.5: Syncing tags for customerProduct ${customerProduct.id}`);
+    await prisma.customerProductTag.deleteMany({ where: { customerProductId: customerProduct.id } });
+
+    const productTags = await prisma.productTag.findMany({ where: { productId: product.id } });
+    console.log(`  Found ${productTags.length} product tags to sync`);
+    const tagMap = new Map<string, string>();
+
+    for (const tag of productTags) {
+      const newTag = await prisma.customerProductTag.create({
+        data: {
+          customerProductId: customerProduct.id,
+          sourceTagId: tag.id,
+          name: tag.name,
+          color: tag.color,
+          displayOrder: tag.displayOrder
+        }
+      });
+      tagMap.set(tag.id, newTag.id);
+      console.log(`  Created CustomerProductTag: ${tag.name} (source: ${tag.id} -> new: ${newTag.id})`);
+    }
+
+    // ============================================
     // STEP 2: SYNC TASKS (match by license level only)
     // ============================================
     // Get ALL product tasks that match the license level (no outcome/release filtering)
@@ -991,18 +1066,11 @@ export const CustomerAdoptionMutationResolvers = {
       if (existingTask) {
         // UPDATE existing task (preserve status fields)
         console.log(`  Updating task: ${productTask.name}`);
+        const taskData = getTaskDataForSync(productTask);
         await prisma.customerTask.update({
           where: { id: existingTask.id },
           data: {
-            name: productTask.name,
-            description: productTask.description,
-            estMinutes: productTask.estMinutes,
-            weight: productTask.weight,
-            sequenceNumber: productTask.sequenceNumber,
-            howToDoc: productTask.howToDoc,
-            howToVideo: productTask.howToVideo,
-            notes: productTask.notes,
-            licenseLevel: productTask.licenseLevel,
+            ...taskData,
             // Status fields are NOT updated - they are preserved
           },
         });
@@ -1050,23 +1118,31 @@ export const CustomerAdoptionMutationResolvers = {
           await prisma.customerTaskRelease.create({ data: { customerTaskId: existingTask.id, releaseId: tr.releaseId } });
         }
 
+        // Sync Tags
+        await prisma.customerTaskTag.deleteMany({ where: { customerTaskId: existingTask.id } });
+        if (productTask.taskTags && productTask.taskTags.length > 0) {
+          console.log(`    Syncing ${productTask.taskTags.length} tags for task ${productTask.name}`);
+          for (const tt of productTask.taskTags) {
+            const newTagId = tagMap.get(tt.tagId);
+            console.log(`      Tag ${tt.tagId} -> ${newTagId || 'NOT FOUND IN MAP'}`);
+            if (newTagId) {
+              await prisma.customerTaskTag.create({
+                data: { customerTaskId: existingTask.id, tagId: newTagId }
+              });
+            }
+          }
+        }
+
         tasksUpdated++;
       } else {
         // ADD new task
         console.log(`  Adding task: ${productTask.name}`);
+        const taskData = getTaskDataForSync(productTask);
         const newTask = await prisma.customerTask.create({
           data: {
+            ...taskData,
             adoptionPlanId: plan.id,
             originalTaskId: productTask.id,
-            name: productTask.name,
-            description: productTask.description,
-            estMinutes: productTask.estMinutes,
-            weight: productTask.weight,
-            sequenceNumber: productTask.sequenceNumber,
-            howToDoc: productTask.howToDoc,
-            howToVideo: productTask.howToVideo,
-            notes: productTask.notes,
-            licenseLevel: productTask.licenseLevel,
             status: 'NOT_STARTED',
             statusUpdateSource: 'SYSTEM',
           },
@@ -1092,6 +1168,20 @@ export const CustomerAdoptionMutationResolvers = {
         // Copy releases
         for (const tr of productTask.releases) {
           await prisma.customerTaskRelease.create({ data: { customerTaskId: newTask.id, releaseId: tr.releaseId } });
+        }
+
+        // Copy Tags
+        if (productTask.taskTags && productTask.taskTags.length > 0) {
+          console.log(`    Copying ${productTask.taskTags.length} tags for new task ${productTask.name}`);
+          for (const tt of productTask.taskTags) {
+            const newTagId = tagMap.get(tt.tagId);
+            console.log(`      Tag ${tt.tagId} -> ${newTagId || 'NOT FOUND IN MAP'}`);
+            if (newTagId) {
+              await prisma.customerTaskTag.create({
+                data: { customerTaskId: newTask.id, tagId: newTagId }
+              });
+            }
+          }
         }
 
         tasksAdded++;
@@ -2120,6 +2210,20 @@ export const CustomerTaskResolvers = {
       completionPercentage: Math.round(completionPercentage * 100) / 100,
       allRequiredMet,
     };
+  },
+
+  tags: async (parent: any) => {
+    try {
+      const taskTags = await prisma.customerTaskTag.findMany({
+        where: { customerTaskId: parent.id },
+        include: { tag: true },
+        orderBy: { tag: { displayOrder: 'asc' } }
+      });
+      return taskTags.map((tt: any) => tt.tag) || [];
+    } catch (error) {
+      console.log('[CustomerTask.tags] Error, returning empty array:', (error as any).message);
+      return [];
+    }
   },
 };
 

@@ -1,22 +1,22 @@
 # Task Tag Implementation Plan
 
 **Created:** December 18, 2025  
-**Status:** Ready for Implementation  
-**Version:** 2.7.1 (target)
+**Status:** Completed  
+**Version:** 2.8.0 (Solution Tags extension)
 
 ---
 
 ## Overview
 
-Add a tagging system for tasks within products. Tags are product-scoped, meaning each product has its own set of tags. Tags are copied to customer adoption plans during sync.
+Add a tagging system for tasks within products AND solutions. Tags are scoped to their respective product or solution. Tags are copied to customer adoption plans during sync.
 
 ### Key Requirements
-- **Product-scoped tags** - Each product manages its own tag set
-- **Tags copied to adoption plans** - Customer products get copies of tags during sync
-- **Full sync** - When syncing, customer tags are completely replaced with product tags
-- **Multi-tag filtering** - OR logic (show tasks with ANY selected tag) - only in adoption plans
+- **Product & Solution scoped tags** - Manage tags per product and per solution
+- **Tags copied to adoption plans** - Customer products/solutions get copies of tags during sync
+- **Full sync** - When syncing, customer tags are completely replaced with source tags
+- **Multi-tag filtering** - OR logic (show tasks with ANY selected tag) in adoption plans
 - **Theme-based colors** - Predefined color palette from MUI theme
-- **Export/Import support** - Tags included in product Excel export/import
+- **Export/Import support** - Tags included in export/import (Product tags prioritized, solution tags next)
 
 ---
 
@@ -28,7 +28,7 @@ Add to `backend/prisma/schema.prisma`:
 
 ```prisma
 // ===================
-// PRODUCT TAGS
+// PRODUCT TAGS (Existing)
 // ===================
 
 model ProductTag {
@@ -55,6 +55,40 @@ model TaskTag {
   
   task      Task       @relation(fields: [taskId], references: [id], onDelete: Cascade)
   tag       ProductTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@unique([taskId, tagId])
+  @@index([taskId])
+  @@index([tagId])
+}
+
+// ===================
+// SOLUTION TAGS (New)
+// ===================
+
+model SolutionTag {
+  id           String            @id @default(cuid())
+  solutionId   String
+  name         String
+  color        String?
+  displayOrder Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  
+  solution     Solution          @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+  taskTags     SolutionTaskTag[]
+  
+  @@unique([solutionId, name])
+  @@index([solutionId])
+}
+
+model SolutionTaskTag {
+  id        String       @id @default(cuid())
+  taskId    String
+  tagId     String
+  createdAt DateTime     @default(now())
+  
+  task      Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag       SolutionTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
   
   @@unique([taskId, tagId])
   @@index([taskId])
@@ -95,6 +129,41 @@ model CustomerTaskTag {
   @@index([customerProductTaskId])
   @@index([tagId])
 }
+
+// ===================
+// CUSTOMER SOLUTION TAGS (New)
+// ===================
+
+model CustomerSolutionTag {
+  id                  String           @id @default(cuid())
+  customerSolutionId  String
+  sourceTagId         String?
+  name                String
+  color               String?
+  displayOrder        Int              @default(0)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  
+  customerSolution    CustomerSolution @relation(fields: [customerSolutionId], references: [id], onDelete: Cascade)
+  taskTags            CustomerSolutionTaskTag[]
+  
+  @@unique([customerSolutionId, name])
+  @@index([customerSolutionId])
+}
+
+model CustomerSolutionTaskTag {
+  id                     String               @id @default(cuid())
+  customerSolutionTaskId String
+  tagId                  String
+  createdAt              DateTime             @default(now())
+  
+  customerSolutionTask   CustomerSolutionTask @relation(fields: [customerSolutionTaskId], references: [id], onDelete: Cascade)
+  tag                    CustomerSolutionTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@unique([customerSolutionTaskId, tagId])
+  @@index([customerSolutionTaskId])
+  @@index([tagId])
+}
 ```
 
 ### Step 2: Update Existing Models
@@ -110,6 +179,7 @@ model Product {
 model Task {
   // ... existing fields
   taskTags  TaskTag[]
+  solutionTaskTags SolutionTaskTag[]
 }
 
 model CustomerProduct {
@@ -121,13 +191,28 @@ model CustomerProductTask {
   // ... existing fields
   taskTags  CustomerTaskTag[]
 }
+
+model Solution {
+  // ... existing fields
+  tags  SolutionTag[]
+}
+
+model CustomerSolution {
+  // ... existing fields
+  tags  CustomerSolutionTag[]
+}
+
+model CustomerSolutionTask {
+  // ... existing fields
+  taskTags  CustomerSolutionTaskTag[]
+}
 ```
 
 ### Step 3: Run Migration
 
 ```bash
 cd backend
-npx prisma migrate dev --name add_task_tags
+npx prisma migrate dev --name add_solution_tags
 npx prisma generate
 ```
 
@@ -159,12 +244,34 @@ type CustomerProductTag {
   displayOrder: Int!
 }
 
+type SolutionTag {
+  id: ID!
+  solutionId: ID!
+  name: String!
+  color: String
+  displayOrder: Int!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type CustomerSolutionTag {
+  id: ID!
+  customerSolutionId: ID!
+  sourceTagId: ID
+  name: String!
+  color: String
+  displayOrder: Int!
+}
+
 extend type Product {
   tags: [ProductTag!]!
 }
 
 extend type Task {
+  # Existing
   tags: [ProductTag!]!
+  # New
+  solutionTags: [SolutionTag!]!
 }
 
 extend type CustomerProduct {
@@ -175,9 +282,23 @@ extend type CustomerProductTask {
   tags: [CustomerProductTag!]!
 }
 
+extend type Solution {
+  tags: [SolutionTag!]!
+}
+
+extend type CustomerSolution {
+  tags: [CustomerSolutionTag!]!
+}
+
+extend type CustomerSolutionTask {
+  tags: [CustomerSolutionTag!]!
+}
+
 extend type Query {
   productTags(productId: ID!): [ProductTag!]!
   customerProductTags(customerProductId: ID!): [CustomerProductTag!]!
+  solutionTags(solutionId: ID!): [SolutionTag!]!
+  customerSolutionTags(customerSolutionId: ID!): [CustomerSolutionTag!]!
 }
 
 extend type Mutation {
@@ -190,32 +311,30 @@ extend type Mutation {
   setTaskTags(taskId: ID!, tagIds: [ID!]!): Task!
   addTagToTask(taskId: ID!, tagId: ID!): Task!
   removeTagFromTask(taskId: ID!, tagId: ID!): Task!
+
+  # Solution Tag Management
+  createSolutionTag(solutionId: ID!, name: String!, color: String): SolutionTag!
+  updateSolutionTag(id: ID!, name: String, color: String, displayOrder: Int): SolutionTag!
+  deleteSolutionTag(id: ID!): Boolean!
+  
+  # Task Tag Assignment (Generalized or Specific)
+  setSolutionTaskTags(taskId: ID!, tagIds: [ID!]!): Task!
+  addSolutionTagToTask(taskId: ID!, tagId: ID!): Task!
+  removeSolutionTagFromTask(taskId: ID!, tagId: ID!): Task!
 }
 ```
 
-### Step 5: Create Tag Resolvers
+### Step 5: Update Tag Resolvers
 
-Create `backend/src/schema/resolvers/tags.ts`:
+Update `backend/src/schema/resolvers/tags.ts`:
+- Add resolvers for `SolutionTag` CRUD.
+- Add resolvers for `CustomerSolutionTag` query.
+- Add mutations for linking `SolutionTag` to `Task`.
+- Update `Task.tags` to possibly aggregate? No, keep separate fields `tags` (product) and `solutionTags` (solution) for clarity, or update frontend to query both. Best to keep separate.
 
-```typescript
-// Resolvers for:
-// - Query.productTags
-// - Query.customerProductTags
-// - Mutation.createProductTag
-// - Mutation.updateProductTag
-// - Mutation.deleteProductTag
-// - Mutation.setTaskTags
-// - Mutation.addTagToTask
-// - Mutation.removeTagFromTask
-// - Product.tags (field resolver)
-// - Task.tags (field resolver)
-// - CustomerProduct.tags (field resolver)
-// - CustomerProductTask.tags (field resolver)
-```
+### Step 6: Update Solution Resolvers
 
-### Step 6: Update Product Resolvers
-
-Add tag relations to existing product queries.
+Add tag relations to `backend/src/schema/resolvers/solutions.ts`.
 
 ### Step 7: Update Sync Logic
 
@@ -226,11 +345,16 @@ In `syncCustomerProduct` mutation:
 2. Copy all ProductTags from source product as CustomerProductTags
 3. For each CustomerProductTask, copy TaskTags as CustomerTaskTags
 
+Sync logic for Customer Solutions is likely in `backend/src/schema/resolvers/customerSolution.ts` (or wherever `syncCustomerSolution` is).
+1. Delete existing `CustomerSolutionTags`.
+2. Copy `SolutionTags`.
+3. Copy `SolutionTaskTags` to `CustomerSolutionTaskTags`.
+
 ---
 
 ## Frontend Implementation
 
-### Step 8: Create Tag Types
+### Step 8: Update Tag Types
 
 Add to `frontend/src/types/` or inline:
 
@@ -251,9 +375,26 @@ interface CustomerProductTag {
   color?: string;
   displayOrder: number;
 }
+
+interface SolutionTag {
+  id: string;
+  solutionId: string;
+  name: string;
+  color?: string;
+  displayOrder: number;
+}
+
+interface CustomerSolutionTag {
+  id: string;
+  customerSolutionId: string;
+  sourceTagId?: string;
+  name: string;
+  color?: string;
+  displayOrder: number;
+}
 ```
 
-### Step 9: Create GraphQL Operations
+### Step 9: Create GraphQL Operations for Solutions
 
 Add to frontend GraphQL:
 
@@ -297,6 +438,46 @@ mutation SetTaskTags($taskId: ID!, $tagIds: [ID!]!) {
     }
   }
 }
+
+query GetSolutionTags($solutionId: ID!) {
+  solutionTags(solutionId: $solutionId) {
+    id
+    name
+    color
+    displayOrder
+  }
+}
+
+mutation CreateSolutionTag($solutionId: ID!, $name: String!, $color: String) {
+  createSolutionTag(solutionId: $solutionId, name: $name, color: $color) {
+    id
+    name
+    color
+  }
+}
+
+mutation UpdateSolutionTag($id: ID!, $name: String, $color: String) {
+  updateSolutionTag(id: $id, name: $name, color: $color) {
+    id
+    name
+    color
+  }
+}
+
+mutation DeleteSolutionTag($id: ID!) {
+  deleteSolutionTag(id: $id)
+}
+
+mutation SetSolutionTaskTags($taskId: ID!, $tagIds: [ID!]!) {
+  setSolutionTaskTags(taskId: $taskId, tagIds: $tagIds) {
+    id
+    solutionTags {
+      id
+      name
+      color
+    }
+  }
+}
 ```
 
 ### Step 10: Products Page - Tags Tab
@@ -312,26 +493,43 @@ Modify `frontend/src/pages/ProductsPage.tsx`:
    - Delete tag with confirmation
 4. Theme color palette selector component
 
+### Step 10: Solutions Page - Tags Tab
+
+Modify `frontend/src/pages/SolutionsPage.tsx`:
+- Similar implementation to Products Page.
+- "Tags" tab for managing solution-level tags.
+- List with filtering component (reusable?).
+
 ### Step 11: Task List - Tag Display
 
 Modify task list component:
 - Add tag chips after task name
 - Tags displayed as small colored chips
 
-### Step 12: Task Dialog - Tag Assignment
+### Step 11: Task Dialog - Handling Solution Tags
 
 Modify `TaskDialog.tsx`:
+- If `solutionId` is present (meaning it's a solution task), load available tags from `solutionTags`.
+- If `productId` is present, load from `productTags`.
+- Handle saving appropriate tag relations.
 - Add multi-select autocomplete for tags
 - Show current tags as chips
 - Allow adding/removing tags
 
-### Step 13: Customer Products - Tag Filter
+### Step 12: Customer Products - Tag Filter
 
 Modify customer adoption panel:
 - Add filter bar above task list
 - Multi-select dropdown for tags
 - "Show untagged" checkbox
 - Filter tasks client-side based on selection
+
+### Step 12: Customer Adoption - Tag Filter
+
+Modify `CustomerAdoptionPanelV4.tsx`:
+- Fetch available tags (product or solution based on context).
+- Display filter dropdown.
+- Filter task list.
 
 ---
 
@@ -343,12 +541,18 @@ Modify product export to include:
 - New "Tags" sheet with all product tags
 - Add "Tags" column to Tasks sheet (comma-separated tag names)
 
+Modify product export to include:
+- New "Tags" sheet with all product tags
+- Add "Tags" column to Tasks sheet (comma-separated tag names)
+- Extend to include solution tags (e.g., separate sheet or clearly distinguished in task sheet)
+
 ### Step 15: Update Excel Import
 
 Modify product import to:
 - Read "Tags" sheet and create ProductTags
 - Parse "Tags" column in Tasks sheet
 - Create TaskTag associations
+- Extend to import solution tags and associations
 
 ---
 
@@ -369,51 +573,36 @@ Store color as theme key string, render with `theme.palette[color].main`.
 
 ---
 
-## Testing
+## Testing Plan
 
-### Step 17: Test Cases
+1. **Solution Tag CRUD**: Create/Edit/Delete tags on Solution.
+2. **Solution Task Assignment**: Assign tags to Solution Tasks.
+3. **Product vs Solution**: Ensure Product tags don't show for Solution tasks and vice versa.
+4. **Customer Sync**: Verify tags sync to Customer Solution.
+5. **Filtering**: Verify filtering works in Customer Adoption Plans (both Product and Solution types).
 
-1. **Tag CRUD**
-   - Create tag with name and color
-   - Update tag name/color
-   - Delete tag (verify cascade)
-   - Prevent duplicate names (case-insensitive)
+---
 
-2. **Task Tag Assignment**
-   - Assign single tag to task
-   - Assign multiple tags to task
-   - Remove tag from task
-   - Replace all tags on task
-
-3. **Customer Sync**
-   - Sync copies all tags
-   - Sync copies task-tag associations
-   - Re-sync replaces tags completely
-
-4. **Filtering (Customer)**
-   - Filter by single tag
-   - Filter by multiple tags (OR logic)
-   - Filter untagged tasks
-
-5. **Export/Import**
-   - Export includes tags
-   - Import creates tags
-   - Import associates tags to tasks
+## Future-Proof Sync Implementation
+To ensure that any new task fields added in the future are automatically synchronized from Product/Solution tasks to Customer tasks, a generic syncing mechanism was implemented in `customerAdoption.ts` and `solutionAdoption.ts`. This mechanism:
+1. Identifies all content-relevant fields from the source task.
+2. Excludes identity (ID), relational, and adoption-status fields.
+3. Automatically spreads the remaining fields into the customer task creation/update operations.
 
 ---
 
 ## Implementation Order
 
-1. ☐ Schema migration
-2. ☐ Backend resolvers
-3. ☐ Products page - Tags tab
-4. ☐ Task list - tag chips display
-5. ☐ Task dialog - tag assignment
-6. ☐ Customer sync logic
-7. ☐ Customer adoption - tag filter
-8. ☐ Export/Import support
-9. ☐ Testing
-10. ☐ Deploy to dev → stage → prod
+1. [x] Schema migration
+2. [x] Backend resolvers
+3. [x] Products page - Tags tab
+4. [x] Task list - tag chips display
+5. [x] Task dialog - tag assignment
+6. [x] Customer sync logic (Future-proof implementation)
+7. [x] Customer adoption - tag filter
+8. [x] Export/Import support
+9. [x] Testing
+10. [x] Deploy to dev → stage → prod
 
 ---
 
@@ -425,10 +614,13 @@ Store color as theme key string, render with `theme.palette[color].main`.
 - `backend/src/schema/resolvers/tags.ts` - New file
 - `backend/src/schema/resolvers/index.ts` - Export new resolvers
 - `backend/src/schema/resolvers/products.ts` - Add tag relations
+- `backend/src/schema/resolvers/solutions.ts` - Add tag relations
 - `backend/src/schema/resolvers/customerProduct.ts` - Sync logic
+- `backend/src/schema/resolvers/customerSolution.ts` - Sync logic
 
 ### Frontend
 - `frontend/src/pages/ProductsPage.tsx` - Tags tab, task tag display
+- `frontend/src/pages/SolutionsPage.tsx` - Tags tab, task tag display
 - `frontend/src/components/dialogs/TaskDialog.tsx` - Tag assignment
 - `frontend/src/components/CustomerAdoptionPanelV4.tsx` - Tag filter
 - `frontend/src/graphql/` - New queries/mutations

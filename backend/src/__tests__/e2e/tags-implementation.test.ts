@@ -717,6 +717,299 @@ async function testTelemetryEvaluation() {
 }
 
 // ============================================================================
+// CUSTOMER TAG SYNC TESTS
+// ============================================================================
+
+async function testCustomerTagSync() {
+    let productId: string;
+    let customerId: string;
+    let planId: string;
+
+    // 1. Setup Data using Prisma (Products, Tags, Tasks)
+    const product = await prisma.product.create({ data: { name: `Sync Tag Product ${Date.now()}` } });
+    productId = product.id;
+
+    const tag1 = await prisma.productTag.create({ data: { productId, name: 'Tag1', color: 'red', displayOrder: 1 } });
+    const tag2 = await prisma.productTag.create({ data: { productId, name: 'Tag2', color: 'blue', displayOrder: 2 } });
+
+    const task = await prisma.task.create({
+        data: {
+            name: 'Tagged Task',
+            estMinutes: 60,
+            weight: 1,
+            sequenceNumber: 1,
+            licenseLevel: LicenseLevel.ESSENTIAL,
+            productId
+        }
+    });
+
+    await prisma.taskTag.create({ data: { taskId: task.id, tagId: tag1.id } });
+
+    // 2. Setup Customer & Assignment
+    const customer = await prisma.customer.create({ data: { name: `Tag Sync Customer ${Date.now()}` } });
+    customerId = customer.id;
+
+    const cp = await prisma.customerProduct.create({
+        data: {
+            customerId: customer.id,
+            productId,
+            name: 'Tag Sync Assignment',
+            licenseLevel: LicenseLevel.ESSENTIAL
+        }
+    });
+
+    // 3. Call createAdoptionPlan Resolver
+    // Need to dynamically import to avoid top-level failures if files missing
+    const { CustomerAdoptionMutationResolvers } = require('../../schema/resolvers/customerAdoption');
+
+    // Mock Context - Resolvers check roles
+    const ctx = {
+        user: { id: 'test-admin', role: 'ADMIN' }
+    };
+
+    await runTest('Tag Sync: Create Adoption Plan with Tags', async () => {
+        const plan = await CustomerAdoptionMutationResolvers.createAdoptionPlan(
+            {},
+            { customerProductId: cp.id },
+            ctx
+        );
+        planId = plan.id;
+
+        // Verify CustomerProductTags created
+        const cpTags = await prisma.customerProductTag.findMany({ where: { customerProductId: cp.id } });
+        if (cpTags.length !== 2) throw new Error(`Expected 2 customer tags, found ${cpTags.length}`);
+
+        // Verify CustomerTaskTags created
+        const customerTask = await prisma.customerTask.findFirst({ where: { adoptionPlanId: plan.id } });
+        if (!customerTask) throw new Error('Customer Task not found');
+
+        const ctTags = await prisma.customerTaskTag.findMany({ where: { customerTaskId: customerTask.id } });
+        if (ctTags.length !== 1) throw new Error(`Expected 1 task tag, found ${ctTags.length}`);
+
+        // Check linkage
+        const linkedTag = cpTags.find(t => t.id === ctTags[0].tagId);
+        if (linkedTag?.name !== 'Tag1') throw new Error(`Task tag mismatch: expected Tag1, got ${linkedTag?.name}`);
+    });
+
+    // 4. Test Sync
+    // Add new tag/task to product
+    const task2 = await prisma.task.create({
+        data: {
+            name: 'New Task',
+            estMinutes: 30,
+            weight: 1,
+            sequenceNumber: 2,
+            licenseLevel: LicenseLevel.ESSENTIAL,
+            productId
+        }
+    });
+    await prisma.taskTag.create({ data: { taskId: task2.id, tagId: tag2.id } });
+
+    await runTest('Tag Sync: Sync Adoption Plan', async () => {
+        const updatedPlan = await CustomerAdoptionMutationResolvers.syncAdoptionPlan(
+            {},
+            { adoptionPlanId: planId },
+            ctx
+        );
+
+        // Verify new task has tag
+        const newTask = await prisma.customerTask.findFirst({
+            where: { adoptionPlanId: planId, originalTaskId: task2.id }
+        });
+        if (!newTask) throw new Error('New task not synced');
+
+        const ctTags = await prisma.customerTaskTag.findMany({ where: { customerTaskId: newTask.id } });
+        if (ctTags.length !== 1) throw new Error(`Expected 1 tag on new task, found ${ctTags.length}`);
+
+        const cpTags = await prisma.customerProductTag.findMany({ where: { customerProductId: cp.id } });
+        const linkedTag = cpTags.find(t => t.id === ctTags[0].tagId);
+        if (linkedTag?.name !== 'Tag2') throw new Error(`New task tag mismatch: expected Tag2, got ${linkedTag?.name}`);
+    });
+
+    // Cleanup
+    await prisma.customer.delete({ where: { id: customerId } });
+    await prisma.product.delete({ where: { id: productId } });
+}
+
+// ============================================================================
+// SOLUTION TAG CRUD & SYNC TESTS
+// ============================================================================
+
+async function testSolutionTagCRUD() {
+    // Create a solution for tagging
+    const solution = await prisma.solution.create({
+        data: { name: `Tag Test Solution ${Date.now()}` }
+    });
+    const solutionId = solution.id;
+
+    // Create a solution tag
+    const solutionTag = await prisma.solutionTag.create({
+        data: {
+            solutionId,
+            name: 'Strategic',
+            color: 'purple',
+            displayOrder: 1
+        }
+    });
+    const tagId = solutionTag.id;
+
+    await runTest('SolutionTag: Create', async () => {
+        const fetched = await prisma.solutionTag.findUnique({ where: { id: tagId } });
+        if (!fetched) throw new Error('SolutionTag not found');
+        if (fetched.name !== 'Strategic') throw new Error('SolutionTag name mismatch');
+    });
+
+    // Create a solution task (task with solutionId)
+    const task = await prisma.task.create({
+        data: {
+            name: 'Tag Test SolTask',
+            estMinutes: 15,
+            weight: 5,
+            sequenceNumber: 1,
+            licenseLevel: LicenseLevel.ESSENTIAL,
+            solutionId
+        }
+    });
+    const taskId = task.id;
+
+    // Assign tag to task
+    const taskTag = await prisma.solutionTaskTag.create({
+        data: {
+            taskId,
+            tagId
+        }
+    });
+    const taskTagId = taskTag.id;
+
+    await runTest('SolutionTag: SolutionTaskTag Create & Link', async () => {
+        const fetched = await prisma.solutionTaskTag.findUnique({ where: { id: taskTagId }, include: { tag: true, task: true } });
+        if (!fetched) throw new Error('SolutionTaskTag not found');
+        if (fetched.tag.id !== tagId) throw new Error('SolutionTaskTag linked to wrong tag');
+        if (fetched.task.id !== taskId) throw new Error('SolutionTaskTag linked to wrong task');
+    });
+
+    // Cleanup
+    await prisma.solutionTaskTag.delete({ where: { id: taskTagId } });
+    await prisma.task.delete({ where: { id: taskId } });
+    await prisma.solutionTag.delete({ where: { id: tagId } });
+    await prisma.solution.delete({ where: { id: solutionId } });
+}
+
+async function testSolutionTagSync() {
+    let solutionId: string;
+    let productId: string;
+    let customerId: string;
+    let customerSolutionId: string = '';
+    let planId: string;
+
+    // 1. Setup Data (Solution, Product, Tags, Tasks)
+    const solution = await prisma.solution.create({ data: { name: `Sync Tag Solution ${Date.now()}` } });
+    solutionId = solution.id;
+
+    const tag1 = await prisma.solutionTag.create({ data: { solutionId, name: 'SolTag1', color: 'orange', displayOrder: 1 } });
+    const tag2 = await prisma.solutionTag.create({ data: { solutionId, name: 'SolTag2', color: 'green', displayOrder: 2 } });
+
+    // Solution Task
+    const task = await prisma.task.create({
+        data: {
+            name: 'Solution Tagged Task',
+            estMinutes: 60,
+            weight: 1,
+            sequenceNumber: 1,
+            licenseLevel: LicenseLevel.ESSENTIAL,
+            solutionId
+        }
+    });
+    await prisma.solutionTaskTag.create({ data: { taskId: task.id, tagId: tag1.id } });
+
+    // Create dummy product for solution
+    const product = await prisma.product.create({ data: { name: `Sol Sync Product ${Date.now()}` } });
+    productId = product.id;
+    await prisma.solutionProduct.create({ data: { solutionId, productId, order: 1 } });
+
+    // 2. Setup Customer & Assignment
+    const customer = await prisma.customer.create({ data: { name: `Sol Tag Sync Customer ${Date.now()}` } });
+    customerId = customer.id;
+
+    // Use specific inputs for assignment
+    const { SolutionAdoptionMutationResolvers } = require('../../schema/resolvers/solutionAdoption');
+    const ctx = { user: { id: 'test-admin', role: 'ADMIN' } };
+
+    await runTest('Solution Tag Sync: Assign Solution', async () => {
+        const cs = await SolutionAdoptionMutationResolvers.assignSolutionToCustomer(
+            {},
+            { input: { customerId, solutionId, name: 'Sol Assignment', licenseLevel: 'ESSENTIAL' } },
+            ctx
+        );
+        customerSolutionId = cs.id;
+    });
+
+    // 3. Create Adoption Plan
+    await runTest('Solution Tag Sync: Create Adoption Plan', async () => {
+        const plan = await SolutionAdoptionMutationResolvers.createSolutionAdoptionPlan(
+            {},
+            { customerSolutionId },
+            ctx
+        );
+        planId = plan.id;
+
+        // Verify CustomerSolutionTags created
+        const csTags = await prisma.customerSolutionTag.findMany({ where: { customerSolutionId } });
+        if (csTags.length !== 2) throw new Error(`Expected 2 customer solution tags, found ${csTags.length}`);
+
+        // Verify CustomerSolutionTaskTags
+        const customerTask = await prisma.customerSolutionTask.findFirst({ where: { solutionAdoptionPlanId: plan.id } });
+        if (!customerTask) throw new Error('Customer Solution Task not found');
+
+        const cstTags = await prisma.customerSolutionTaskTag.findMany({ where: { customerSolutionTaskId: customerTask.id } });
+        if (cstTags.length !== 1) throw new Error(`Expected 1 task tag, found ${cstTags.length}`);
+
+        const linkedTag = csTags.find(t => t.id === cstTags[0].tagId);
+        if (linkedTag?.name !== 'SolTag1') throw new Error(`Task tag mismatch: expected SolTag1, got ${linkedTag?.name}`);
+    });
+
+    // 4. Test Sync
+    const task2 = await prisma.task.create({
+        data: {
+            name: 'New Sol Task',
+            estMinutes: 30,
+            weight: 1,
+            sequenceNumber: 2,
+            licenseLevel: LicenseLevel.ESSENTIAL,
+            solutionId
+        }
+    });
+    await prisma.solutionTaskTag.create({ data: { taskId: task2.id, tagId: tag2.id } });
+
+    await runTest('Solution Tag Sync: Sync Adoption Plan', async () => {
+        // We sync definition which includes re-syncing tags
+        await SolutionAdoptionMutationResolvers.syncSolutionAdoptionPlan(
+            {},
+            { solutionAdoptionPlanId: planId },
+            ctx
+        );
+
+        const newTask = await prisma.customerSolutionTask.findFirst({
+            where: { solutionAdoptionPlanId: planId, originalTaskId: task2.id }
+        });
+        if (!newTask) throw new Error('New task not synced');
+
+        const cstTags = await prisma.customerSolutionTaskTag.findMany({ where: { customerSolutionTaskId: newTask.id } });
+        if (cstTags.length !== 1) throw new Error(`Expected 1 tag on new task, found ${cstTags.length}`);
+
+        const csTags = await prisma.customerSolutionTag.findMany({ where: { customerSolutionId } });
+        const linkedTag = csTags.find(t => t.id === cstTags[0].tagId);
+        if (linkedTag?.name !== 'SolTag2') throw new Error(`New task tag mismatch: expected SolTag2, got ${linkedTag?.name}`);
+    });
+
+    // Cleanup
+    await prisma.customer.delete({ where: { id: customerId } });
+    await prisma.solutionProduct.deleteMany({ where: { solutionId } });
+    await prisma.solution.delete({ where: { id: solutionId } });
+    await prisma.product.delete({ where: { id: productId } });
+}
+
+// ============================================================================
 // RUN ALL TESTS
 // ============================================================================
 
@@ -730,6 +1023,24 @@ async function runAllTests() {
     try {
         console.log('\n📦 PRODUCT CRUD TESTS');
         console.log('─────────────────────────────────────────────────────────────────');
+
+        // Ensure test user exists for AuditLog
+        const testUserEmail = 'test-admin@example.com';
+        const existingUser = await prisma.user.findFirst({ where: { email: testUserEmail } });
+        if (!existingUser) {
+            await prisma.user.create({
+                data: {
+                    id: 'test-admin',
+                    email: testUserEmail,
+                    username: 'test-admin',
+                    name: 'Test Admin',
+                    role: 'ADMIN',
+                    password: 'placeholder',
+                    isAdmin: true
+                }
+            });
+        }
+
         await testProductCRUD();
 
         console.log('\n📋 TASK CRUD TESTS');
@@ -743,6 +1054,22 @@ async function runAllTests() {
         console.log('\n👥 CUSTOMER CRUD TESTS');
         console.log('─────────────────────────────────────────────────────────────────');
         await testCustomerCRUD();
+
+        console.log('\n🏷️ TAG CRUD TESTS');
+        console.log('─────────────────────────────────────────────────────────────────');
+        await testTagCRUD();
+
+        console.log('\n🔄 CUSTOMER TAG SYNC TESTS');
+        console.log('─────────────────────────────────────────────────────────────────');
+        await testCustomerTagSync();
+
+        console.log('\n🏷️ SOLUTION TAG CRUD TESTS');
+        console.log('─────────────────────────────────────────────────────────────────');
+        await testSolutionTagCRUD();
+
+        console.log('\n🔄 SOLUTION TAG SYNC TESTS');
+        console.log('─────────────────────────────────────────────────────────────────');
+        await testSolutionTagSync();
 
         console.log('\n📊 ADOPTION PLAN TESTS');
         console.log('─────────────────────────────────────────────────────────────────');

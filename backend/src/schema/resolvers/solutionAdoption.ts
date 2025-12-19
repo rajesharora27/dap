@@ -539,7 +539,8 @@ export const SolutionAdoptionMutationResolvers = {
                         releases: {
                           include: { release: true }
                         },
-                        telemetryAttributes: true
+                        telemetryAttributes: true,
+                        solutionTaskTags: true
                       }
                     }
                   }
@@ -557,7 +558,8 @@ export const SolutionAdoptionMutationResolvers = {
                 releases: {
                   include: { release: true }
                 },
-                telemetryAttributes: true
+                telemetryAttributes: true,
+                solutionTaskTags: true
               }
             }
           }
@@ -644,7 +646,8 @@ export const SolutionAdoptionMutationResolvers = {
         licenseLevel: task.licenseLevel,
         outcomes: task.outcomes,
         releases: task.releases,
-        telemetryAttributes: task.telemetryAttributes
+        telemetryAttributes: task.telemetryAttributes,
+        solutionTaskTags: task.solutionTaskTags
       });
     }
 
@@ -670,13 +673,29 @@ export const SolutionAdoptionMutationResolvers = {
         progressPercentage: 0,
         solutionTasksTotal: solutionTasksCount,
         solutionTasksComplete: 0,
-        lastSyncedAt: new Date()
       }
     });
 
+    // Create Customer Solution Tags
+    const solutionTags = await prisma.solutionTag.findMany({ where: { solutionId: customerSolution.solutionId } });
+    const tagMap = new Map<string, string>(); // sourceTagId -> newTagId
+
+    for (const tag of solutionTags) {
+      const newTag = await prisma.customerSolutionTag.create({
+        data: {
+          customerSolutionId,
+          sourceTagId: tag.id,
+          name: tag.name,
+          color: tag.color,
+          displayOrder: tag.displayOrder
+        }
+      });
+      tagMap.set(tag.id, newTag.id);
+    }
+
     // Create customer tasks
     for (const taskData of allTasksToAdd) {
-      const { outcomes, releases, telemetryAttributes, ...taskFields } = taskData;
+      const { outcomes, releases, telemetryAttributes, solutionTaskTags, ...taskFields } = taskData;
 
       const customerTask = await prisma.customerSolutionTask.create({
         data: {
@@ -722,6 +741,21 @@ export const SolutionAdoptionMutationResolvers = {
             isActive: attr.isActive
           }))
         });
+      }
+
+      // Create tags (SolutionTaskTags -> CustomerSolutionTaskTags)
+      if (solutionTaskTags && solutionTaskTags.length > 0) {
+        for (const stt of solutionTaskTags) {
+          const newTagId = tagMap.get(stt.tagId);
+          if (newTagId) {
+            await prisma.customerSolutionTaskTag.create({
+              data: {
+                customerSolutionTaskId: customerTask.id,
+                tagId: newTagId
+              }
+            });
+          }
+        }
       }
     }
 
@@ -1206,7 +1240,8 @@ export const SolutionAdoptionMutationResolvers = {
                     release: true
                   }
                 },
-                telemetryAttributes: true
+                telemetryAttributes: true,
+                solutionTaskTags: true
               },
               orderBy: { sequenceNumber: 'asc' }
             }
@@ -1214,6 +1249,30 @@ export const SolutionAdoptionMutationResolvers = {
         }
       }
     });
+
+    // Sync Customer Solution Tags
+    const customerSolutionId = plan.customerSolutionId;
+    let solutionTagMap: Map<string, string> | undefined;
+
+    if (customerSolutionId) {
+      await prisma.customerSolutionTag.deleteMany({ where: { customerSolutionId } });
+      const solutionTags = await prisma.solutionTag.findMany({ where: { solutionId: plan.solutionId } });
+      // Re-create map
+      const tagMap = new Map<string, string>();
+      for (const tag of solutionTags) {
+        const newTag = await prisma.customerSolutionTag.create({
+          data: {
+            customerSolutionId,
+            sourceTagId: tag.id,
+            name: tag.name,
+            color: tag.color,
+            displayOrder: tag.displayOrder
+          }
+        });
+        tagMap.set(tag.id, newTag.id);
+      }
+      solutionTagMap = tagMap;
+    }
 
     if (customerSolutionFull && customerSolutionFull.solution.tasks.length > 0) {
       const selectedOutcomes = (customerSolutionFull.selectedOutcomes as string[]) || [];
@@ -1298,6 +1357,27 @@ export const SolutionAdoptionMutationResolvers = {
           });
 
           // Create outcome associations
+          if (solutionTask.outcomes && solutionTask.outcomes.length > 0) {
+            await prisma.customerTaskOutcome.createMany({
+              data: solutionTask.outcomes.map((to: any) => ({
+                customerSolutionTaskId: customerTask.id,
+                outcomeId: to.outcome.id
+              })),
+              skipDuplicates: true
+            });
+          }
+
+          // Create tags
+          if (solutionTask.solutionTaskTags && solutionTask.solutionTaskTags.length > 0) {
+            for (const stt of solutionTask.solutionTaskTags) {
+              const newTagId = solutionTagMap?.get(stt.tagId);
+              if (newTagId) {
+                await prisma.customerSolutionTaskTag.create({
+                  data: { customerSolutionTaskId: customerTask.id, tagId: newTagId }
+                });
+              }
+            }
+          }
           if (solutionTask.outcomes && solutionTask.outcomes.length > 0) {
             await prisma.customerTaskOutcome.createMany({
               data: solutionTask.outcomes.map((to: any) => ({
@@ -1523,7 +1603,8 @@ export const SolutionAdoptionMutationResolvers = {
                     release: true
                   }
                 },
-                telemetryAttributes: true
+                telemetryAttributes: true,
+                solutionTaskTags: true
               },
               orderBy: { sequenceNumber: 'asc' }
             },
@@ -1535,6 +1616,25 @@ export const SolutionAdoptionMutationResolvers = {
     });
 
     if (customerSolutionFull) {
+      // Sync Customer Solution Tags
+      const solutionTags = await prisma.solutionTag.findMany({ where: { solutionId: plan.solutionId } });
+      const tagMap = new Map<string, string>();
+
+      await prisma.customerSolutionTag.deleteMany({ where: { customerSolutionId: plan.customerSolutionId } });
+
+      for (const tag of solutionTags) {
+        const newTag = await prisma.customerSolutionTag.create({
+          data: {
+            customerSolutionId: plan.customerSolutionId,
+            sourceTagId: tag.id,
+            name: tag.name,
+            color: tag.color,
+            displayOrder: tag.displayOrder
+          }
+        });
+        tagMap.set(tag.id, newTag.id);
+      }
+
       // Get valid solution outcomes and releases
       const validSolutionOutcomeIds = customerSolutionFull.solution.outcomes?.map((o: any) => o.id) || [];
       const validSolutionReleaseIds = customerSolutionFull.solution.releases?.map((r: any) => r.id) || [];
@@ -1687,6 +1787,19 @@ export const SolutionAdoptionMutationResolvers = {
                 }
               }
             }
+
+            // Sync Tags
+            await prisma.customerSolutionTaskTag.deleteMany({ where: { customerSolutionTaskId: existingTask.id } });
+            if (originalTask.solutionTaskTags) {
+              for (const stt of originalTask.solutionTaskTags) {
+                const newTagId = tagMap.get(stt.tagId);
+                if (newTagId) {
+                  await prisma.customerSolutionTaskTag.create({
+                    data: { customerSolutionTaskId: existingTask.id, tagId: newTagId }
+                  });
+                }
+              }
+            }
           }
         } else {
           // Original task was deleted - remove customer task
@@ -1759,6 +1872,21 @@ export const SolutionAdoptionMutationResolvers = {
                 isActive: attr.isActive
               }))
             });
+          }
+
+          // Create tags
+          if (solutionTask.solutionTaskTags && solutionTask.solutionTaskTags.length > 0) {
+            for (const stt of solutionTask.solutionTaskTags) {
+              const newTagId = tagMap.get(stt.tagId);
+              if (newTagId) {
+                await prisma.customerSolutionTaskTag.create({
+                  data: {
+                    customerSolutionTaskId: customerTask.id,
+                    tagId: newTagId
+                  }
+                });
+              }
+            }
           }
         }
       }

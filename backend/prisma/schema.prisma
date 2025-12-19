@@ -64,7 +64,9 @@ model Product {
   customers        CustomerProduct[]
   licenses         License[]
   solutions        SolutionProduct[]
-  tasks            Task[]
+  tags          ProductTag[]
+  tasks         Task[]
+  // existing fields remain
   outcomes         Outcome[]
   releases         Release[]
   customAttributes CustomAttribute[] // New structured custom attributes
@@ -85,6 +87,7 @@ model Solution {
   releases    Release[]
   outcomes    Outcome[]
   taskOrders  SolutionTaskOrder[]
+  tags        SolutionTag[]
 }
 
 model SolutionProduct {
@@ -131,6 +134,7 @@ model CustomerProduct {
   product           Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
   customerSolution  CustomerSolution?   @relation(fields: [customerSolutionId], references: [id], onDelete: Cascade)
   adoptionPlan      AdoptionPlan?       // One adoption plan per product assignment
+  tags              CustomerProductTag[]
   
   @@index([customerId])
   @@index([productId])
@@ -158,7 +162,8 @@ model CustomerSolution {
   solution          Solution              @relation(fields: [solutionId], references: [id], onDelete: Cascade)
   adoptionPlan      SolutionAdoptionPlan? // One adoption plan per solution assignment
   products          CustomerProduct[]     // Products created from this solution
-  
+  tags              CustomerSolutionTag[]
+
   @@unique([customerId, solutionId])
   @@index([customerId])
   @@index([solutionId])
@@ -230,6 +235,7 @@ model CustomerTask {
   // Relations
   adoptionPlan          AdoptionPlan              @relation(fields: [adoptionPlanId], references: [id], onDelete: Cascade)
   telemetryAttributes   CustomerTelemetryAttribute[]
+  taskTags              CustomerTaskTag[]
   outcomes              CustomerTaskOutcome[]
   releases              CustomerTaskRelease[]
   
@@ -351,6 +357,8 @@ model Task {
   telemetryAttributes TelemetryAttribute[]
   outcomes            TaskOutcome[]
   releases            TaskRelease[]
+  taskTags           TaskTag[]
+  solutionTaskTags    SolutionTaskTag[]
 
   @@unique([productId, sequenceNumber], name: "unique_product_sequence")
   @@unique([solutionId, sequenceNumber], name: "unique_solution_sequence")
@@ -373,6 +381,57 @@ model License {
   deletedAt   DateTime?
   product     Product?  @relation(fields: [productId], references: [id])
   solution    Solution? @relation(fields: [solutionId], references: [id])
+}
+
+model ProductTag {
+  id           String   @id @default(cuid())
+  productId    String
+  name         String
+  color        String?   // Theme color key
+  displayOrder Int       @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  taskTags     TaskTag[]
+  @@unique([productId, name])
+  @@index([productId])
+}
+
+model TaskTag {
+  id        String   @id @default(cuid())
+  taskId    String
+  tagId     String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag       ProductTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  @@unique([taskId, tagId])
+  @@index([taskId])
+  @@index([tagId])
+}
+
+model CustomerProductTag {
+  id                String   @id @default(cuid())
+  customerProductId String
+  sourceTagId       String?  // Reference to original ProductTag for sync
+  name              String
+  color             String?
+  displayOrder      Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  customerProduct   CustomerProduct @relation(fields: [customerProductId], references: [id], onDelete: Cascade)
+  taskTags          CustomerTaskTag[]
+  @@unique([customerProductId, name])
+  @@index([customerProductId])
+}
+
+model CustomerTaskTag {
+  id                    String   @id @default(cuid())
+  customerTaskId        String
+  tagId                 String
+  customerTask          CustomerTask @relation(fields: [customerTaskId], references: [id], onDelete: Cascade)
+  tag                   CustomerProductTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  @@unique([customerTaskId, tagId])
+  @@index([customerTaskId])
+  @@index([tagId])
 }
 
 model Telemetry {
@@ -706,6 +765,7 @@ model CustomerSolutionTask {
   telemetryAttributes     CustomerTelemetryAttribute[]
   outcomes                CustomerTaskOutcome[]
   releases                CustomerTaskRelease[]
+  taskTags                CustomerSolutionTaskTag[]
   
   @@index([solutionAdoptionPlanId])
   @@index([originalTaskId])
@@ -794,4 +854,73 @@ enum PermissionLevel {
   READ
   WRITE
   ADMIN
+}
+
+// ===================
+// SOLUTION TAGS
+// ===================
+
+model SolutionTag {
+  id           String            @id @default(cuid())
+  solutionId   String
+  name         String
+  color        String?
+  displayOrder Int               @default(0)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  
+  solution     Solution          @relation(fields: [solutionId], references: [id], onDelete: Cascade)
+  taskTags     SolutionTaskTag[]
+  
+  @@unique([solutionId, name])
+  @@index([solutionId])
+}
+
+model SolutionTaskTag {
+  id        String       @id @default(cuid())
+  taskId    String
+  tagId     String
+  createdAt DateTime     @default(now())
+  
+  task      Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag       SolutionTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@unique([taskId, tagId])
+  @@index([taskId])
+  @@index([tagId])
+}
+
+// ===================
+// CUSTOMER SOLUTION TAGS
+// ===================
+
+model CustomerSolutionTag {
+  id                  String           @id @default(cuid())
+  customerSolutionId  String
+  sourceTagId         String?
+  name                String
+  color               String?
+  displayOrder        Int              @default(0)
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  
+  customerSolution    CustomerSolution @relation(fields: [customerSolutionId], references: [id], onDelete: Cascade)
+  taskTags            CustomerSolutionTaskTag[]
+  
+  @@unique([customerSolutionId, name])
+  @@index([customerSolutionId])
+}
+
+model CustomerSolutionTaskTag {
+  id                     String               @id @default(cuid())
+  customerSolutionTaskId String
+  tagId                  String
+  createdAt              DateTime             @default(now())
+  
+  customerSolutionTask   CustomerSolutionTask @relation(fields: [customerSolutionTaskId], references: [id], onDelete: Cascade)
+  tag                    CustomerSolutionTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  
+  @@unique([customerSolutionTaskId, tagId])
+  @@index([customerSolutionTaskId])
+  @@index([tagId])
 }

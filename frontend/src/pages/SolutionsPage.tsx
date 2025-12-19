@@ -2,26 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { EntitySummary } from '../components/EntitySummary';
 import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button,
-    IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, List, ListItem, ListItemText, CircularProgress, Card, CardContent
+    IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, List, ListItem, ListItemText, CircularProgress, Card, CardContent, Checkbox, OutlinedInput
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2 } from '@mui/icons-material';
+import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2, Label } from '@mui/icons-material';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { DragIndicator } from '@mui/icons-material';
 
-import { SOLUTIONS, TASKS_FOR_SOLUTION, PRODUCTS, SOLUTION } from '../graphql/queries';
-import { DELETE_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, UPDATE_SOLUTION } from '../graphql/mutations';
+import { SOLUTIONS, TASKS_FOR_SOLUTION, PRODUCTS, SOLUTION, SOLUTION_TAGS } from '../graphql/queries';
+import { DELETE_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, UPDATE_SOLUTION, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS } from '../graphql/mutations';
 import { SortableTaskItem } from '../components/SortableTaskItem';
 import { SolutionDialog } from '../components/dialogs/SolutionDialog';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
 
+import { TagDialog } from '../components/dialogs/TagDialog';
+
 export const SolutionsPage: React.FC = () => {
     // State
     const [selectedSolution, setSelectedSolution] = useState<string | null>(localStorage.getItem('lastSelectedSolutionId'));
-    const [selectedSubSection, setSelectedSubSection] = useState<'dashboard' | 'tasks' | 'products' | 'outcomes' | 'releases' | 'customAttributes'>('dashboard');
+    const [selectedSubSection, setSelectedSubSection] = useState<'dashboard' | 'tasks' | 'products' | 'outcomes' | 'releases' | 'customAttributes' | 'tags'>('dashboard');
+    const [taskTagFilter, setTaskTagFilter] = useState<string[]>([]);
 
     // Dialog States
     const [solutionDialog, setSolutionDialog] = useState(false);
@@ -30,6 +33,9 @@ export const SolutionsPage: React.FC = () => {
 
     const [taskDialog, setTaskDialog] = useState(false);
     const [editingTask, setEditingTask] = useState<any>(null);
+
+    const [tagDialog, setTagDialog] = useState(false);
+    const [editingTag, setEditingTag] = useState<any>(null);
 
     // Queries
     const { data: solutionsData, loading: solutionsLoading, error: solutionsError } = useQuery(SOLUTIONS);
@@ -51,6 +57,21 @@ export const SolutionsPage: React.FC = () => {
     });
     const fetchedSolution = solutionData?.solution;
     const displaySolution = solutions.find((s: any) => s.id === selectedSolution) || fetchedSolution;
+
+    const { data: tagsData, refetch: refetchTags } = useQuery(SOLUTION_TAGS, {
+        variables: { solutionId: selectedSolution },
+        skip: !selectedSolution
+    });
+    const solutionTags = tagsData?.solutionTags || [];
+
+    // Filter tasks based on tag filter
+    const filteredTasks = tasks.filter((task: any) => {
+        if (taskTagFilter.length === 0) return true;
+
+        // Use solutionTags for updated tasks, or fallback to older tag field if needed, but solutionTags is the standard now
+        const taskTagIds = task.solutionTags?.map((t: any) => t.id) || [];
+        return taskTagFilter.some(filterId => taskTagIds.includes(filterId));
+    });
 
     const client = useApolloClient();
     const sensors = useSensors(
@@ -167,6 +188,8 @@ export const SolutionsPage: React.FC = () => {
                 }));
             }
 
+            let savedTaskId = taskId;
+
             if (isEdit) {
                 await client.mutate({
                     mutation: UPDATE_TASK,
@@ -175,13 +198,24 @@ export const SolutionsPage: React.FC = () => {
                     awaitRefetchQueries: true
                 });
             } else {
-                await client.mutate({
+                const res = await client.mutate({
                     mutation: CREATE_TASK,
                     variables: { input },
                     refetchQueries: ['TasksForSolution'],
                     awaitRefetchQueries: true
                 });
+                savedTaskId = res.data?.createTask?.id;
             }
+
+            // Sync tags
+            if (taskData.tags && savedTaskId) {
+                await client.mutate({
+                    mutation: SET_SOLUTION_TASK_TAGS,
+                    variables: { taskId: savedTaskId, tagIds: taskData.tags },
+                    refetchQueries: ['TasksForSolution']
+                });
+            }
+
             setTaskDialog(false);
             setEditingTask(null);
         } catch (error) {
@@ -249,6 +283,59 @@ export const SolutionsPage: React.FC = () => {
         } catch (error) {
             console.error('Error reordering tasks:', error);
             alert('Failed to update sequence');
+        }
+    };
+
+    const handleSaveTag = async (tagData: any, existingId?: string) => {
+        try {
+            if (existingId) {
+                await client.mutate({
+                    mutation: UPDATE_SOLUTION_TAG,
+                    variables: {
+                        id: existingId,
+                        input: {
+                            name: tagData.name,
+                            color: tagData.color,
+                            displayOrder: tagData.displayOrder
+                        }
+                    },
+                    refetchQueries: [{ query: SOLUTION_TAGS, variables: { solutionId: selectedSolution } }]
+                });
+            } else {
+                await client.mutate({
+                    mutation: CREATE_SOLUTION_TAG,
+                    variables: {
+                        input: {
+                            solutionId: selectedSolution,
+                            name: tagData.name,
+                            color: tagData.color,
+                            displayOrder: tagData.displayOrder
+                        }
+                    },
+                    refetchQueries: [{ query: SOLUTION_TAGS, variables: { solutionId: selectedSolution } }]
+                });
+            }
+            // Also refetch tasks to update tag display
+            refetchTasks && refetchTasks();
+        } catch (error: any) {
+            console.error('Error saving tag:', error);
+            alert('Failed to save tag: ' + error.message);
+        }
+    };
+
+    const handleDeleteTag = async (id: string) => {
+        if (window.confirm('Are you sure you want to delete this tag? If it is used by tasks, it will be removed from them.')) {
+            try {
+                await client.mutate({
+                    mutation: DELETE_SOLUTION_TAG,
+                    variables: { id },
+                    refetchQueries: [{ query: SOLUTION_TAGS, variables: { solutionId: selectedSolution } }]
+                });
+                refetchTasks && refetchTasks();
+            } catch (error: any) {
+                console.error('Error deleting tag:', error);
+                alert('Failed to delete tag: ' + error.message);
+            }
         }
     };
 
@@ -364,7 +451,9 @@ export const SolutionsPage: React.FC = () => {
                                 <Tab label="Products" value="products" />
                                 <Tab label="Outcomes" value="outcomes" />
                                 <Tab label="Releases" value="releases" />
+                                <Tab label="Releases" value="releases" />
                                 <Tab label="Custom Attributes" value="customAttributes" />
+                                <Tab label="Tags" value="tags" />
                             </Tabs>
 
                             {selectedSubSection !== 'dashboard' && (
@@ -377,6 +466,9 @@ export const SolutionsPage: React.FC = () => {
                                         if (selectedSubSection === 'tasks') {
                                             setEditingTask(null);
                                             setTaskDialog(true);
+                                        } else if (selectedSubSection === 'tags') {
+                                            setEditingTag(null);
+                                            setTagDialog(true);
                                         } else {
                                             setEditingSolution(currentSolution);
                                             setSolutionDialog(true);
@@ -391,10 +483,46 @@ export const SolutionsPage: React.FC = () => {
                                         selectedSubSection === 'products' ? 'Manage Products' :
                                             selectedSubSection === 'outcomes' ? 'Manage Outcomes' :
                                                 selectedSubSection === 'releases' ? 'Manage Releases' :
-                                                    selectedSubSection === 'customAttributes' ? 'Manage Attributes' : 'Manage'}
+                                                    selectedSubSection === 'customAttributes' ? 'Manage Attributes' :
+                                                        selectedSubSection === 'tags' ? 'Add Tag' : 'Manage'}
                                 </Button>
                             )}
                         </Box>
+
+                        {/* Tag Filter for Tasks */}
+                        {selectedSubSection === 'tasks' && solutionTags.length > 0 && (
+                            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
+                                <FormControl size="small" sx={{ minWidth: 200, maxWidth: 400 }}>
+                                    <InputLabel>Filter by Tags</InputLabel>
+                                    <Select
+                                        multiple
+                                        value={taskTagFilter}
+                                        onChange={(e) => setTaskTagFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                                        input={<OutlinedInput label="Filter by Tags" />}
+                                        renderValue={(selected) => (
+                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                {selected.map((value) => {
+                                                    const tag = solutionTags.find((t: any) => t.id === value);
+                                                    return (
+                                                        <Chip key={value} label={tag?.name} size="small" style={{ backgroundColor: tag?.color, color: '#fff' }} />
+                                                    );
+                                                })}
+                                            </Box>
+                                        )}
+                                    >
+                                        {solutionTags.map((tag: any) => (
+                                            <MenuItem key={tag.id} value={tag.id}>
+                                                <Checkbox checked={taskTagFilter.indexOf(tag.id) > -1} />
+                                                <ListItemText primary={tag.name} />
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                                {taskTagFilter.length > 0 && (
+                                    <Button size="small" onClick={() => setTaskTagFilter([])} sx={{ ml: 1 }}>Clear</Button>
+                                )}
+                            </Box>
+                        )}
 
                         {selectedSubSection === 'dashboard' && (
                             <Box sx={{ mt: 2 }}>
@@ -685,6 +813,54 @@ export const SolutionsPage: React.FC = () => {
                             </Grid>
                         )}
 
+                        {selectedSubSection === 'tags' && (
+                            <Grid container spacing={3}>
+                                <Grid size={{ xs: 12 }}>
+                                    <Paper sx={{ p: 2 }}>
+                                        <List>
+                                            {solutionTags.map((tag: any, idx: number) => (
+                                                <ListItem
+                                                    key={tag.id}
+                                                    secondaryAction={
+                                                        <Box>
+                                                            <IconButton edge="end" aria-label="edit" onClick={() => { setEditingTag(tag); setTagDialog(true); }}>
+                                                                <Edit />
+                                                            </IconButton>
+                                                            <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteTag(tag.id)}>
+                                                                <Delete />
+                                                            </IconButton>
+                                                        </Box>
+                                                    }
+                                                    sx={{
+                                                        borderBottom: `1px solid ${theme.palette.divider}`,
+                                                        bgcolor: idx % 2 === 0 ? alpha(theme.palette.primary.main, 0.02) : 'transparent'
+                                                    }}
+                                                >
+                                                    <Box sx={{ mr: 2, display: 'flex', alignItems: 'center' }}>
+                                                        <Label sx={{ color: tag.color, mr: 1 }} />
+                                                        <Chip
+                                                            label={tag.name}
+                                                            size="small"
+                                                            sx={{
+                                                                bgcolor: tag.color,
+                                                                color: '#fff',
+                                                                fontWeight: 500
+                                                            }}
+                                                        />
+                                                    </Box>
+                                                </ListItem>
+                                            ))}
+                                            {solutionTags.length === 0 && (
+                                                <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                                                    No tags defined. Click "Add Tag" to create one.
+                                                </Typography>
+                                            )}
+                                        </List>
+                                    </Paper>
+                                </Grid>
+                            </Grid>
+                        )}
+
                         {selectedSubSection === 'tasks' && (
                             <Box>
                                 {/* Tasks View */}
@@ -710,8 +886,8 @@ export const SolutionsPage: React.FC = () => {
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
-                                                <SortableContext items={tasks.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
-                                                    {tasks.map((task: any) => (
+                                                <SortableContext items={filteredTasks.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
+                                                    {filteredTasks.map((task: any) => (
                                                         <SortableTaskItem
                                                             key={task.id}
                                                             task={task}
@@ -753,6 +929,14 @@ export const SolutionsPage: React.FC = () => {
                 initialTab={solutionDialogInitialTab}
             />
 
+            <TagDialog
+                open={tagDialog || (selectedSubSection === 'tags' && tagDialog)}
+                onClose={() => setTagDialog(false)}
+                onSave={handleSaveTag}
+                tag={editingTag}
+                existingNames={solutionTags.map((t: any) => t.name)}
+            />
+
             <TaskDialog
                 open={taskDialog}
                 onClose={() => setTaskDialog(false)}
@@ -764,6 +948,7 @@ export const SolutionsPage: React.FC = () => {
                 outcomes={aggregatedOutcomes}
                 availableLicenses={aggregatedLicenses}
                 availableReleases={aggregatedReleases}
+                availableTags={solutionTags}
             />
         </Box >
     );

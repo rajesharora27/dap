@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import { Release } from '../../types/shared';
 import TelemetryConfiguration from '../telemetry/TelemetryConfiguration';
+import { ProductTag } from './TagDialog';
 
 // Special marker IDs for "All" selections
 export const ALL_OUTCOMES_ID = '__ALL_OUTCOMES__';
@@ -46,6 +47,7 @@ interface Task {
   releases?: Array<{ id: string; name: string; level: number }>;
   releaseIds?: string[];
   telemetryAttributes?: TelemetryAttribute[];
+  tags?: { id: string; name: string; color: string }[];
 }
 
 interface TelemetryAttribute {
@@ -90,6 +92,7 @@ interface Props {
     howToDoc?: string[];
     howToVideo?: string[];
     telemetryAttributes?: TelemetryAttribute[];
+    tags?: string[];
   }) => Promise<void>;
   task?: Task | null;
   title: string;
@@ -99,6 +102,7 @@ interface Props {
   outcomes?: Outcome[];
   availableLicenses?: License[];
   availableReleases?: Release[];
+  availableTags?: ProductTag[];
 }
 
 export const TaskDialog: React.FC<Props> = ({
@@ -112,7 +116,9 @@ export const TaskDialog: React.FC<Props> = ({
   existingTasks,
   outcomes = [],
   availableLicenses = [],
-  availableReleases = []
+
+  availableReleases = [],
+  availableTags = []
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -124,6 +130,7 @@ export const TaskDialog: React.FC<Props> = ({
   const [selectedLicense, setSelectedLicense] = useState<string>('');
   const [selectedOutcomes, setSelectedOutcomes] = useState<string[]>([]);
   const [selectedReleases, setSelectedReleases] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [telemetryAttributes, setTelemetryAttributes] = useState<TelemetryAttribute[]>([]);
   const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -157,6 +164,7 @@ export const TaskDialog: React.FC<Props> = ({
       setSelectedReleases(taskReleases.length > 0 ? taskReleases : [ALL_RELEASES_ID]);
 
       setTelemetryAttributes(task.telemetryAttributes || []);
+      setSelectedTags(task.tags?.map(t => t.id) || []);
     } else {
       setName('');
       setDescription('');
@@ -171,6 +179,7 @@ export const TaskDialog: React.FC<Props> = ({
       setSelectedOutcomes([]);
       setSelectedReleases([]);
       setTelemetryAttributes([]);
+      setSelectedTags([]);
     }
     setError('');
     setActiveTab(0);
@@ -216,7 +225,8 @@ export const TaskDialog: React.FC<Props> = ({
         licenseId: selectedLicense || undefined,
         outcomeIds: filteredOutcomes,  // Send empty array [] if "All" selected, or array of IDs
         releaseIds: filteredReleases,   // Send empty array [] if "All" selected, or array of IDs
-        telemetryAttributes: telemetryAttributes
+        telemetryAttributes: telemetryAttributes,
+        tags: selectedTags
       };
       await onSave(taskData);
       onClose();
@@ -251,7 +261,7 @@ export const TaskDialog: React.FC<Props> = ({
         fontWeight: 600,
         fontSize: '1.25rem'
       }}>
-        Product Task: {title}
+        {solutionId ? 'Solution Task' : 'Product Task'}: {title}
       </DialogTitle>
       <DialogContent sx={{ pt: 2 }}>
         <Box>
@@ -361,6 +371,53 @@ export const TaskDialog: React.FC<Props> = ({
                         {license.name} (Level {license.level})
                       </MenuItem>
                     ))}
+                  </Select>
+                </FormControl>
+              </Box>
+
+              <Box sx={{ mt: 2 }}>
+                <FormControl fullWidth margin="normal">
+                  <InputLabel>Tags</InputLabel>
+                  <Select
+                    multiple
+                    value={selectedTags}
+                    onChange={(e) => {
+                      const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                      setSelectedTags(value);
+                    }}
+                    input={<OutlinedInput label="Tags" />}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const tag = availableTags.find(t => t.id === value);
+                          if (!tag) return null;
+                          return (
+                            <Chip
+                              key={value}
+                              label={tag.name}
+                              size="small"
+                              sx={{
+                                backgroundColor: tag.color,
+                                color: '#fff',
+                                fontWeight: 500
+                              }}
+                            />
+                          );
+                        })}
+                      </Box>
+                    )}
+                  >
+                    {availableTags.length === 0 ? (
+                      <MenuItem disabled>No tags available</MenuItem>
+                    ) : (
+                      availableTags.map((tag) => (
+                        <MenuItem key={tag.id} value={tag.id}>
+                          <Checkbox checked={selectedTags.indexOf(tag.id) > -1} />
+                          <ListItemText primary={tag.name} />
+                          <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: tag.color, mr: 1 }} />
+                        </MenuItem>
+                      ))
+                    )}
                   </Select>
                 </FormControl>
               </Box>

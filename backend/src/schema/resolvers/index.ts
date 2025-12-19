@@ -33,6 +33,7 @@ import {
   SolutionAdoptionProductResolvers,
   CustomerSolutionTaskResolvers
 } from './solutionAdoption';
+import { TagResolvers } from './tags';
 import { solutionReportingService } from '../../services/solutionReportingService';
 import { BackupQueryResolvers, BackupMutationResolvers } from './backup';
 import { AuthQueryResolvers, AuthMutationResolvers } from './auth';
@@ -130,6 +131,7 @@ export const resolvers = {
     }
   },
   Product: {
+    tags: TagResolvers.Product.tags,
     tasks: async (parent: any, args: any) => {
       if (fallbackActive) {
         return fallbackConnections.tasksForProduct(parent.id);
@@ -238,6 +240,7 @@ export const resolvers = {
     }
   },
   Solution: {
+    tags: TagResolvers.Solution.tags,
     products: async (parent: any, args: any, ctx: any) => {
       if (fallbackActive) {
         const { products } = require('../../lib/fallbackStore');
@@ -326,6 +329,8 @@ export const resolvers = {
     }
   },
   Task: {
+    tags: TagResolvers.Task.tags,
+    solutionTags: TagResolvers.Task.solutionTags,
     weight: (parent: any) => {
       // Convert Prisma Decimal to Float
       if (parent.weight && typeof parent.weight === 'object' && 'toNumber' in parent.weight) {
@@ -581,6 +586,7 @@ export const resolvers = {
     }
   },
   Query: {
+    ...TagResolvers.Query,
     node: async (_: any, { id }: any) => {
       return prisma.product.findUnique({ where: { id } }) || prisma.task.findUnique({ where: { id } });
     },
@@ -837,6 +843,7 @@ export const resolvers = {
     }
   },
   Mutation: {
+    ...TagResolvers.Mutation,
     signup: async (_: any, { email, username, password, role, name }: any) => {
       const hashed = await bcrypt.hash(password, 10);
       const user = await prisma.user.create({ data: { email, username: username || email.split('@')[0], password: hashed, role, name } });
@@ -1504,7 +1511,7 @@ export const resolvers = {
       }
 
       // Extract fields that need special handling
-      const { outcomeIds, dependencies, licenseId, releaseIds, telemetryAttributes, ...taskData } = input;
+      const { outcomeIds, dependencies, licenseId, releaseIds, telemetryAttributes, tagIds, ...taskData } = input;
 
       // Handle licenseId by converting it to licenseLevel
       let effectiveLicenseLevel = input.licenseLevel;
@@ -1690,6 +1697,16 @@ export const resolvers = {
           }))
         });
       }
+      // Handle tags if provided
+      if (input.tagIds && input.tagIds.length > 0) {
+        await prisma.taskTag.createMany({
+          data: input.tagIds.map((tagId: string) => ({
+            taskId: task.id,
+            tagId: tagId
+          }))
+        });
+      }
+
       await logAudit('CREATE_TASK', 'Task', task.id, { input }, ctx.user?.id);
       return task;
     },
@@ -1839,7 +1856,7 @@ export const resolvers = {
       }
 
       // Extract fields that need special handling
-      const { outcomeIds, licenseId, releaseIds, telemetryAttributes, ...inputData } = input;
+      const { outcomeIds, licenseId, releaseIds, telemetryAttributes, tagIds, ...inputData } = input;
 
       // Handle licenseId by converting it to licenseLevel
       let effectiveLicenseLevel = inputData.licenseLevel;
@@ -1988,6 +2005,24 @@ export const resolvers = {
               successCriteria: attr.successCriteria ?? null,
               order: attr.order !== undefined ? attr.order : index,
               isActive: true
+            }))
+          });
+        }
+      }
+
+      // Handle tags if provided
+      if (input.tagIds !== undefined) {
+        // First, remove all existing tags
+        await prisma.taskTag.deleteMany({
+          where: { taskId: id }
+        });
+
+        // Then, create new tags if provided
+        if (input.tagIds.length > 0) {
+          await prisma.taskTag.createMany({
+            data: input.tagIds.map((tagId: string) => ({
+              taskId: id,
+              tagId: tagId
             }))
           });
         }
