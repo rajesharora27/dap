@@ -16,27 +16,29 @@ PROD_PATH="/data/dap/app"
 
 # Step 0: Verify we're ready to deploy
 echo "📋 Step 0: Preparing deployment..."
-cd /data/dap
-echo "✅ Using existing local environment for build"
+# Ensure we are in the project root
+cd "$(dirname "$0")"
+PROJECT_ROOT=$(pwd)
+echo "✅ Using local environment: $PROJECT_ROOT"
 echo ""
 
 # Step 1: Build frontend
 echo "📦 Step 1: Building frontend..."
-cd /data/dap/frontend
+cd "$PROJECT_ROOT/frontend"
 npm run build -- --base=/dap/
 echo "✅ Frontend built"
 echo ""
 
 # Step 1.5: Build backend
 echo "📦 Step 1.5: Building backend..."
-cd /data/dap/backend
+cd "$PROJECT_ROOT/backend"
 npm run build
 echo "✅ Backend built"
 echo ""
 
 # Step 2: Prepare files for transfer
 echo "📦 Step 2: Preparing files..."
-cd /data/dap
+cd "$PROJECT_ROOT"
 rm -rf /tmp/dap-deploy-prod
 mkdir -p /tmp/dap-deploy-prod
 
