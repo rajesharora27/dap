@@ -1429,38 +1429,18 @@ Previously only Tasks opened a preview dialog. Now all entities have preview dia
 - **Fix**: Updated `./dap rebuild` command to automatically run `npx prisma generate` and `npx prisma db push` during backend rebuild.
 - **Files Changed**: `dap` (CLI script)
 
-#### Standard Release Process Created
+**Issue 7: AI Agent Tag Support**
+- **Type**: Feature/Enhancement
+- **Problem**: AI Agent could not filter Tasks, Products, or Solutions by tags (e.g., "tasks tagged AI Access") because the tag models and relationships were missing from the Schema Context.
+- **Fix**: Added `ProductTag`, `TaskTag`, `SolutionTag`, and their customer-specific variants to `SchemaContextManager.ts`. Added specific business rules to guide the LLM on how to query these many-to-many relationships.
+- **Files Changed**: `backend/src/services/ai/SchemaContextManager.ts`
 
-**New Documentation:**
-- `deploy/RELEASE_PROCESS.md` - Complete release workflow
-- `deploy/QUICK_DEPLOY_GUIDE.md` - Quick reference
-- `deploy/testing-checklist.md` - Pre-deployment testing
-- `DEPLOYMENT_INDEX.md` - Master deployment navigation
+### Version 2.9.1 (December 20, 2025)
 
-**New Scripts:**
-- `deploy/create-release.sh` - Create versioned release packages
-- `deploy/release-to-prod.sh` - Deploy releases to production
-- `APPLY_RBAC_PATCH.sh` - Quick patch deployment
-
-**Process Benefits:**
-- Versioned releases with audit trail
-- Automated deployment to production
-- Pre-deployment testing checklist
-- Automatic backup before deployment
-- Rollback capability
-
-### Version 2.1.0 (November 30, 2025)
-
-#### Auto-Backup Feature
-- Daily automated backups at 1:00 AM
-- Change detection (only backup if changed)
-- Configurable retention period
-- **Passwords excluded from backups**
-- **Existing passwords preserved on restore**
-
-#### Telemetry Deletion Fix
-- Fixed telemetry attribute deletion not persisting
-- Verified atomic "delete all + create new" pattern
+#### AI Agent Tag Integration
+- Enabled AI Agent to understand and query tags on Products, Solutions, and Tasks.
+- Updated Schema Context with full tag model definitions and relationships.
+- Deployed schema updates to Dev (centos1), Staging (centos2), and Production (dapoc).
 
 ---
 
@@ -1543,7 +1523,8 @@ Previously only Tasks opened a preview dialog. Now all entities have preview dia
 │   ├── release-to-prod.sh     # Deploy to production
 │   ├── RELEASE_PROCESS.md     # Complete workflow
 │   ├── QUICK_DEPLOY_GUIDE.md  # Quick reference
-│   └── testing-checklist.md   # Pre-deploy tests
+│   ├── testing-checklist.md   # Pre-deploy tests
+│   └── scripts/               # Helper scripts
 │
 ├── docs/                       # Technical documentation
 │   ├── ARCHITECTURE.md        # System architecture
@@ -1727,8 +1708,8 @@ sudo tail -f /var/log/httpd/error_log
 
 ---
 
-**Last Updated:** December 19, 2025  
-**Version:** 2.8.0  
+**Last Updated:** December 20, 2025  
+**Version:** 2.9.1  
 **Status:** Production Ready (SSL Enabled)
 
 *This document should be updated whenever significant changes are made to the application.*

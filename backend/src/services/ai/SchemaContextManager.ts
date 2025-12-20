@@ -96,6 +96,7 @@ export class SchemaContextManager {
           { name: 'releases', relatedTable: 'Release', type: 'oneToMany' },
           { name: 'solutions', relatedTable: 'Solution', type: 'manyToMany' },
           { name: 'customers', relatedTable: 'CustomerProduct', type: 'oneToMany', description: 'Product assignments/adoption plans - customers using this product' },
+          { name: 'tags', relatedTable: 'ProductTag', type: 'oneToMany' },
         ],
       },
       {
@@ -117,6 +118,7 @@ export class SchemaContextManager {
           { name: 'outcomes', relatedTable: 'Outcome', type: 'oneToMany' },
           { name: 'releases', relatedTable: 'Release', type: 'oneToMany' },
           { name: 'customers', relatedTable: 'CustomerSolution', type: 'oneToMany', description: 'Solution assignments/adoption plans - customers using this solution' },
+          { name: 'tags', relatedTable: 'SolutionTag', type: 'oneToMany' },
         ],
       },
       {
@@ -160,6 +162,7 @@ export class SchemaContextManager {
           { name: 'telemetryAttributes', relatedTable: 'TelemetryAttribute', type: 'oneToMany' },
           { name: 'outcomes', relatedTable: 'Outcome', type: 'manyToMany' },
           { name: 'releases', relatedTable: 'Release', type: 'manyToMany' },
+          { name: 'taskTags', relatedTable: 'TaskTag', type: 'oneToMany' },
         ],
       },
       {
@@ -250,6 +253,7 @@ export class SchemaContextManager {
           { name: 'customer', relatedTable: 'Customer', type: 'manyToOne', foreignKey: 'customerId' },
           { name: 'product', relatedTable: 'Product', type: 'manyToOne', foreignKey: 'productId' },
           { name: 'adoptionPlan', relatedTable: 'AdoptionPlan', type: 'oneToOne' },
+          { name: 'tags', relatedTable: 'CustomerProductTag', type: 'oneToMany' },
         ],
       },
       {
@@ -296,6 +300,75 @@ export class SchemaContextManager {
         relationships: [
           { name: 'adoptionPlan', relatedTable: 'AdoptionPlan', type: 'manyToOne', foreignKey: 'adoptionPlanId' },
           { name: 'telemetryAttributes', relatedTable: 'CustomerTelemetryAttribute', type: 'oneToMany' },
+          { name: 'taskTags', relatedTable: 'CustomerTaskTag', type: 'oneToMany' },
+        ],
+      },
+      // Tag Tables
+      {
+        name: 'ProductTag',
+        description: 'Tags for categorizing products and their tasks. Tasks link to these tags via TaskTag.',
+        columns: [
+          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
+          { name: 'productId', type: 'String', nullable: false, isPrimaryKey: false },
+          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, description: 'Tag name' },
+          { name: 'color', type: 'String', nullable: true, isPrimaryKey: false },
+        ],
+        relationships: [
+          { name: 'product', relatedTable: 'Product', type: 'manyToOne', foreignKey: 'productId' },
+          { name: 'taskTags', relatedTable: 'TaskTag', type: 'oneToMany' },
+        ],
+      },
+      {
+        name: 'TaskTag',
+        description: 'Link table connecting Tasks to ProductTags.',
+        columns: [
+          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
+          { name: 'taskId', type: 'String', nullable: false, isPrimaryKey: false },
+          { name: 'tagId', type: 'String', nullable: false, isPrimaryKey: false },
+        ],
+        relationships: [
+          { name: 'task', relatedTable: 'Task', type: 'manyToOne', foreignKey: 'taskId' },
+          { name: 'tag', relatedTable: 'ProductTag', type: 'manyToOne', foreignKey: 'tagId' },
+        ],
+      },
+      {
+        name: 'SolutionTag',
+        description: 'Tags for categorizing solutions.',
+        columns: [
+          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
+          { name: 'solutionId', type: 'String', nullable: false, isPrimaryKey: false },
+          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false },
+          { name: 'color', type: 'String', nullable: true, isPrimaryKey: false },
+        ],
+        relationships: [
+          { name: 'solution', relatedTable: 'Solution', type: 'manyToOne', foreignKey: 'solutionId' },
+        ],
+      },
+      {
+        name: 'CustomerProductTag',
+        description: 'Customer-specific copy of a ProductTag.',
+        columns: [
+          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
+          { name: 'customerProductId', type: 'String', nullable: false, isPrimaryKey: false },
+          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false },
+          { name: 'color', type: 'String', nullable: true, isPrimaryKey: false },
+        ],
+        relationships: [
+          { name: 'customerProduct', relatedTable: 'CustomerProduct', type: 'manyToOne', foreignKey: 'customerProductId' },
+          { name: 'taskTags', relatedTable: 'CustomerTaskTag', type: 'oneToMany' },
+        ],
+      },
+      {
+        name: 'CustomerTaskTag',
+        description: 'Link table connecting CustomerTasks to CustomerProductTags.',
+        columns: [
+          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
+          { name: 'customerTaskId', type: 'String', nullable: false, isPrimaryKey: false },
+          { name: 'tagId', type: 'String', nullable: false, isPrimaryKey: false },
+        ],
+        relationships: [
+          { name: 'customerTask', relatedTable: 'CustomerTask', type: 'manyToOne', foreignKey: 'customerTaskId' },
+          { name: 'tag', relatedTable: 'CustomerProductTag', type: 'manyToOne', foreignKey: 'tagId' },
         ],
       },
     ];
@@ -369,6 +442,12 @@ export class SchemaContextManager {
       'To also filter by product name, add: { adoptionPlan: { customerProduct: { product: { name: { contains: "ProductName" } } } } }',
       'Query CustomerTask when you want individual task rows as results (e.g., "show me tasks that are done for ACME").',
       'Query Customer when you want customer records with nested task data.',
+
+      // Tagging Logic
+      'Tags are implemented as associative entities (many-to-many).',
+      'To filter Tasks by Tag, go through taskTags relation: { taskTags: { some: { tag: { name: { contains: "TagName", mode: "insensitive" } } } } }',
+      'The same logic applies to ProductTag and SolutionTag filtering.',
+      'CustomerTaskTag and CustomerProductTag work similarly for customer-specific instances.',
     ];
   }
 
