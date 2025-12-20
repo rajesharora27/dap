@@ -113,7 +113,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 </TableCell>
 
                 {/* Task name */}
-                <TableCell sx={{ maxWidth: 400 }}>
+                <TableCell sx={{ maxWidth: 300 }}>
                     <Typography variant="body2" sx={{
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -121,14 +121,16 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                     }}>
                         {task.name}
                     </Typography>
-                    {/* Display tags - combine both 'tags' (for product tasks) and 'solutionTags' (for solution tasks) */}
+                </TableCell>
+
+                {/* Tags Column */}
+                <TableCell sx={{ minWidth: 120 }}>
                     {(() => {
                         const allTags = [...(task.tags || []), ...(task.solutionTags || [])];
-                        if (allTags.length === 0) return null;
+                        if (allTags.length === 0) return <Typography variant="caption" color="text.secondary">-</Typography>;
                         return (
-                            <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                                 {allTags.map((tagRef: any) => {
-                                    // Handle both direct tag objects and tag references (with .tag property)
                                     const tag = tagRef.tag || tagRef;
                                     return (
                                         <Chip

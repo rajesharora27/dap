@@ -1110,6 +1110,18 @@ export const SolutionAdoptionMutationResolvers = {
         }
       }
 
+      // Sync the solution's own definition (tasks, tags, etc.)
+      try {
+        await syncSolutionDefinitionFn(
+          _,
+          { solutionAdoptionPlanId },
+          ctx
+        );
+      } catch (error: any) {
+        console.error(`Failed to sync solution definition:`, error.message);
+        // We continue even if this fails, as products might have synced fine
+      }
+
       // Recalculate overall progress
       // Re-fetch tasks after updates
       const updatedPlanWithTasks = await prisma.solutionAdoptionPlan.findUnique({
@@ -1317,17 +1329,91 @@ export const SolutionAdoptionMutationResolvers = {
         const originalTask = customerSolutionFull.solution.tasks.find((t: any) => t.id === existingTask.originalTaskId);
         if (originalTask) {
           const isEligible = eligibleSolutionTasks.some((t: any) => t.id === existingTask.originalTaskId);
+
           if (!isEligible && existingTask.status !== 'NOT_APPLICABLE') {
             await prisma.customerSolutionTask.update({
               where: { id: existingTask.id },
               data: { status: 'NOT_APPLICABLE' }
             });
-          } else if (isEligible && existingTask.status === 'NOT_APPLICABLE') {
-            // Re-enable task if it now matches criteria
+          } else if (isEligible) {
+            // Re-enable if needed
+            if (existingTask.status === 'NOT_APPLICABLE') {
+              await prisma.customerSolutionTask.update({
+                where: { id: existingTask.id },
+                data: { status: 'NOT_STARTED' }
+              });
+            }
+
+            // Update content fields
             await prisma.customerSolutionTask.update({
               where: { id: existingTask.id },
-              data: { status: 'NOT_STARTED' }
+              data: {
+                name: originalTask.name,
+                description: originalTask.description,
+                notes: originalTask.notes,
+                estMinutes: originalTask.estMinutes || 0,
+                weight: originalTask.weight,
+                licenseLevel: originalTask.licenseLevel,
+                howToDoc: originalTask.howToDoc || [],
+                howToVideo: originalTask.howToVideo || []
+              }
             });
+
+            // Sync Tags
+            await prisma.customerSolutionTaskTag.deleteMany({ where: { customerSolutionTaskId: existingTask.id } });
+            if (originalTask.solutionTaskTags && originalTask.solutionTaskTags.length > 0) {
+              for (const stt of originalTask.solutionTaskTags) {
+                const newTagId = solutionTagMap?.get(stt.tagId);
+                if (newTagId) {
+                  await prisma.customerSolutionTaskTag.create({
+                    data: { customerSolutionTaskId: existingTask.id, tagId: newTagId }
+                  });
+                }
+              }
+            }
+
+            // Sync Outcomes
+            await prisma.customerTaskOutcome.deleteMany({ where: { customerSolutionTaskId: existingTask.id } });
+            if (originalTask.outcomes && originalTask.outcomes.length > 0) {
+              await prisma.customerTaskOutcome.createMany({
+                data: originalTask.outcomes.map((to: any) => ({
+                  customerSolutionTaskId: existingTask.id,
+                  outcomeId: to.outcome.id
+                })),
+                skipDuplicates: true
+              });
+            }
+
+            // Sync Releases
+            await prisma.customerTaskRelease.deleteMany({ where: { customerSolutionTaskId: existingTask.id } });
+            if (originalTask.releases && originalTask.releases.length > 0) {
+              await prisma.customerTaskRelease.createMany({
+                data: originalTask.releases.map((tr: any) => ({
+                  customerSolutionTaskId: existingTask.id,
+                  releaseId: tr.release.id
+                })),
+                skipDuplicates: true
+              });
+            }
+
+            // Sync Telemetry
+            // Simplification: delete all and recreate (easiest for full sync)
+            await prisma.customerTelemetryAttribute.deleteMany({ where: { customerSolutionTaskId: existingTask.id } });
+            if (originalTask.telemetryAttributes && originalTask.telemetryAttributes.length > 0) {
+              await prisma.customerTelemetryAttribute.createMany({
+                data: originalTask.telemetryAttributes.map((attr: any) => ({
+                  customerSolutionTaskId: existingTask.id,
+                  originalAttributeId: attr.id,
+                  name: attr.name,
+                  description: attr.description,
+                  dataType: attr.dataType,
+                  isRequired: attr.isRequired,
+                  successCriteria: attr.successCriteria,
+                  order: attr.order,
+                  isActive: attr.isActive
+                }))
+              });
+            }
           }
         }
       }
@@ -2481,6 +2567,13 @@ export const CustomerSolutionWithPlanResolvers = {
     return parent.adoptionPlan || prisma.solutionAdoptionPlan.findUnique({
       where: { customerSolutionId: parent.id }
     });
+  },
+  tags: async (parent: any) => {
+    const tags = await prisma.customerSolutionTag.findMany({
+      where: { customerSolutionId: parent.id },
+      orderBy: { displayOrder: 'asc' }
+    });
+    return tags || [];
   }
 };
 
@@ -2725,8 +2818,392 @@ export const CustomerSolutionTaskResolvers = {
       completionPercentage: Math.round(completionPercentage * 100) / 100,
       allRequiredMet: requiredAttributes > 0 && metRequiredAttributes === requiredAttributes
     };
+  },
+  tags: async (parent: any) => {
+    try {
+      const taskTags = await prisma.customerSolutionTaskTag.findMany({
+        where: { customerSolutionTaskId: parent.id },
+        include: { tag: true },
+        orderBy: { tag: { displayOrder: 'asc' } }
+      });
+      return taskTags.map((tt: any) => tt.tag) || [];
+    } catch (error) {
+      console.log('[CustomerSolutionTask.tags] Error, returning empty array:', (error as any).message);
+      return [];
+    }
   }
 };
+
+async function syncSolutionDefinitionFn(_: any, { solutionAdoptionPlanId }: any, ctx: any) {
+  requireUser(ctx);
+
+  const plan = await prisma.solutionAdoptionPlan.findUnique({
+    where: { id: solutionAdoptionPlanId },
+    include: {
+      tasks: true,
+      products: true,
+      customerSolution: true
+    }
+  });
+
+  if (!plan) {
+    throw new Error('Solution adoption plan not found');
+  }
+
+  // Re-filter solution tasks based on current license level, outcomes, and releases
+  const customerSolutionFull = await prisma.customerSolution.findUnique({
+    where: { id: plan.customerSolutionId },
+    include: {
+      solution: {
+        include: {
+          tasks: {
+            where: { deletedAt: null },
+            include: {
+              outcomes: {
+                include: {
+                  outcome: true
+                }
+              },
+              releases: {
+                include: {
+                  release: true
+                }
+              },
+              telemetryAttributes: true,
+              solutionTaskTags: true
+            },
+            orderBy: { sequenceNumber: 'asc' }
+          }
+        }
+      }
+    }
+  });
+
+  // Sync Customer Solution Tags
+  const customerSolutionId = plan.customerSolutionId;
+  let solutionTagMap: Map<string, string> | undefined;
+
+  if (customerSolutionId) {
+    await prisma.customerSolutionTag.deleteMany({ where: { customerSolutionId } });
+    const solutionTags = await prisma.solutionTag.findMany({ where: { solutionId: plan.solutionId } });
+    // Re-create map
+    const tagMap = new Map<string, string>();
+    for (const tag of solutionTags) {
+      const newTag = await prisma.customerSolutionTag.create({
+        data: {
+          customerSolutionId,
+          sourceTagId: tag.id,
+          name: tag.name,
+          color: tag.color,
+          displayOrder: tag.displayOrder
+        }
+      });
+      tagMap.set(tag.id, newTag.id);
+    }
+    solutionTagMap = tagMap;
+  }
+
+  if (customerSolutionFull && customerSolutionFull.solution.tasks.length > 0) {
+    const selectedOutcomes = (customerSolutionFull.selectedOutcomes as string[]) || [];
+    const selectedReleases = (customerSolutionFull.selectedReleases as string[]) || [];
+
+    // Filter tasks based on license level, outcomes, and releases
+    const filterTasks = (tasks: any[]) => {
+      return tasks.filter(task => {
+        // Filter by license level (hierarchical)
+        const licenseMap: { [key: string]: number } = {
+          'ESSENTIAL': 1,
+          'ADVANTAGE': 2,
+          'SIGNATURE': 3
+        };
+        const customerLevel = licenseMap[customerSolutionFull.licenseLevel];
+        const taskLevel = licenseMap[task.licenseLevel];
+        if (taskLevel > customerLevel) return false;
+
+        // Filter by outcomes (if any selected)
+        if (selectedOutcomes.length > 0) {
+          const taskOutcomeIds = task.outcomes.map((to: any) => to.outcome.id);
+          const hasMatchingOutcome = taskOutcomeIds.some((id: string) => selectedOutcomes.includes(id));
+          if (!hasMatchingOutcome) return false;
+        }
+
+        // Filter by releases (if any selected)
+        if (selectedReleases.length > 0) {
+          const taskReleaseIds = task.releases.map((tr: any) => tr.release.id);
+          const hasMatchingRelease = taskReleaseIds.some((id: string) => selectedReleases.includes(id));
+          if (!hasMatchingRelease) return false;
+        }
+
+        return true;
+      });
+    };
+
+    const eligibleSolutionTasks = filterTasks(customerSolutionFull.solution.tasks);
+    const existingTaskMap = new Map(plan.tasks.map((t: any) => [t.originalTaskId, t]));
+
+    // Mark tasks as NOT_APPLICABLE if they no longer match criteria
+    for (const existingTask of plan.tasks.filter((t: any) => t.sourceType === 'SOLUTION')) {
+      const originalTask = customerSolutionFull.solution.tasks.find((t: any) => t.id === existingTask.originalTaskId);
+      if (originalTask) {
+        const isEligible = eligibleSolutionTasks.some((t: any) => t.id === existingTask.originalTaskId);
+
+        if (!isEligible && existingTask.status !== 'NOT_APPLICABLE') {
+          await prisma.customerSolutionTask.update({
+            where: { id: existingTask.id },
+            data: { status: 'NOT_APPLICABLE' }
+          });
+        } else if (isEligible) {
+          // Re-enable if needed
+          if (existingTask.status === 'NOT_APPLICABLE') {
+            await prisma.customerSolutionTask.update({
+              where: { id: existingTask.id },
+              data: { status: 'NOT_STARTED' }
+            });
+          }
+
+          // Update content fields
+          await prisma.customerSolutionTask.update({
+            where: { id: existingTask.id },
+            data: {
+              name: originalTask.name,
+              description: originalTask.description,
+              notes: originalTask.notes,
+              estMinutes: originalTask.estMinutes || 0,
+              weight: originalTask.weight,
+              licenseLevel: originalTask.licenseLevel,
+              howToDoc: originalTask.howToDoc || [],
+              howToVideo: originalTask.howToVideo || []
+            }
+          });
+
+          // Sync Tags
+          await prisma.customerSolutionTaskTag.deleteMany({ where: { customerSolutionTaskId: existingTask.id } });
+          if (originalTask.solutionTaskTags && originalTask.solutionTaskTags.length > 0) {
+            for (const stt of originalTask.solutionTaskTags) {
+              const newTagId = solutionTagMap?.get(stt.tagId);
+              if (newTagId) {
+                await prisma.customerSolutionTaskTag.create({
+                  data: { customerSolutionTaskId: existingTask.id, tagId: newTagId }
+                });
+              }
+            }
+          }
+
+          // Sync Outcomes
+          await prisma.customerTaskOutcome.deleteMany({ where: { customerSolutionTaskId: existingTask.id } });
+          if (originalTask.outcomes && originalTask.outcomes.length > 0) {
+            await prisma.customerTaskOutcome.createMany({
+              data: originalTask.outcomes.map((to: any) => ({
+                customerSolutionTaskId: existingTask.id,
+                outcomeId: to.outcome.id
+              })),
+              skipDuplicates: true
+            });
+          }
+
+          // Sync Releases
+          await prisma.customerTaskRelease.deleteMany({ where: { customerSolutionTaskId: existingTask.id } });
+          if (originalTask.releases && originalTask.releases.length > 0) {
+            await prisma.customerTaskRelease.createMany({
+              data: originalTask.releases.map((tr: any) => ({
+                customerSolutionTaskId: existingTask.id,
+                releaseId: tr.release.id
+              })),
+              skipDuplicates: true
+            });
+          }
+
+          // Sync Telemetry
+          // Simplification: delete all and recreate (easiest for full sync)
+          await prisma.customerTelemetryAttribute.deleteMany({ where: { customerSolutionTaskId: existingTask.id } });
+          if (originalTask.telemetryAttributes && originalTask.telemetryAttributes.length > 0) {
+            await prisma.customerTelemetryAttribute.createMany({
+              data: originalTask.telemetryAttributes.map((attr: any) => ({
+                customerSolutionTaskId: existingTask.id,
+                originalAttributeId: attr.id,
+                name: attr.name,
+                description: attr.description,
+                dataType: attr.dataType,
+                isRequired: attr.isRequired,
+                successCriteria: attr.successCriteria,
+                order: attr.order,
+                isActive: attr.isActive
+              }))
+            });
+          }
+        }
+      }
+    }
+
+    // Add new tasks that are now eligible
+    let maxSequence = Math.max(...plan.tasks.map((t: any) => t.sequenceNumber), 0);
+    for (const solutionTask of eligibleSolutionTasks) {
+      if (!existingTaskMap.has(solutionTask.id)) {
+        maxSequence++;
+        const customerTask = await prisma.customerSolutionTask.create({
+          data: {
+            solutionAdoptionPlanId: plan.id,
+            originalTaskId: solutionTask.id,
+            sourceType: 'SOLUTION',
+            sourceProductId: null,
+            name: solutionTask.name,
+            description: solutionTask.description,
+            notes: solutionTask.notes,
+            sequenceNumber: maxSequence,
+            estMinutes: solutionTask.estMinutes || 0,
+            weight: solutionTask.weight,
+            licenseLevel: solutionTask.licenseLevel,
+            status: 'NOT_STARTED',
+            howToDoc: solutionTask.howToDoc || [],
+            howToVideo: solutionTask.howToVideo || []
+          }
+        });
+
+        // Create outcome associations
+        if (solutionTask.outcomes && solutionTask.outcomes.length > 0) {
+          await prisma.customerTaskOutcome.createMany({
+            data: solutionTask.outcomes.map((to: any) => ({
+              customerSolutionTaskId: customerTask.id,
+              outcomeId: to.outcome.id
+            })),
+            skipDuplicates: true
+          });
+        }
+
+        // Create tags
+        if (solutionTask.solutionTaskTags && solutionTask.solutionTaskTags.length > 0) {
+          for (const stt of solutionTask.solutionTaskTags) {
+            const newTagId = solutionTagMap?.get(stt.tagId);
+            if (newTagId) {
+              await prisma.customerSolutionTaskTag.create({
+                data: { customerSolutionTaskId: customerTask.id, tagId: newTagId }
+              });
+            }
+          }
+        }
+        if (solutionTask.outcomes && solutionTask.outcomes.length > 0) {
+          await prisma.customerTaskOutcome.createMany({
+            data: solutionTask.outcomes.map((to: any) => ({
+              customerSolutionTaskId: customerTask.id,
+              outcomeId: to.outcome.id
+            })),
+            skipDuplicates: true
+          });
+        }
+
+        // Create release associations
+        if (solutionTask.releases && solutionTask.releases.length > 0) {
+          await prisma.customerTaskRelease.createMany({
+            data: solutionTask.releases.map((tr: any) => ({
+              customerSolutionTaskId: customerTask.id,
+              releaseId: tr.release.id
+            })),
+            skipDuplicates: true
+          });
+        }
+
+        // Create telemetry attributes
+        if (solutionTask.telemetryAttributes && solutionTask.telemetryAttributes.length > 0) {
+          await prisma.customerTelemetryAttribute.createMany({
+            data: solutionTask.telemetryAttributes.map((attr: any) => ({
+              customerSolutionTaskId: customerTask.id,
+              originalAttributeId: attr.id,
+              name: attr.name,
+              description: attr.description,
+              dataType: attr.dataType,
+              isRequired: attr.isRequired,
+              successCriteria: attr.successCriteria,
+              order: attr.order,
+              isActive: attr.isActive
+            }))
+          });
+        }
+      }
+    }
+  }
+
+  // Recalculate overall progress
+  // Re-fetch tasks after updates
+  const updatedPlanWithTasks = await prisma.solutionAdoptionPlan.findUnique({
+    where: { id: solutionAdoptionPlanId },
+    include: {
+      tasks: true,
+      products: true
+    }
+  });
+
+  if (updatedPlanWithTasks) {
+    const solutionSpecificTasks = updatedPlanWithTasks.tasks.filter((t: any) => t.sourceType === 'SOLUTION');
+    const progress = calculateSolutionProgress(solutionSpecificTasks);
+    const solutionTasksComplete = solutionSpecificTasks.filter(
+      (t: any) => (t.status === 'COMPLETED' || t.status === 'DONE')
+    ).length;
+
+    // Calculate aggregated progress: solution tasks + product adoption plans
+    let totalTasksWithProducts = progress.totalTasks;
+    let completedTasksWithProducts = progress.completedTasks;
+    let totalWeightWithProducts = Number(progress.totalWeight);
+    let completedWeightWithProducts = Number(progress.completedWeight);
+
+    // Fetch customer products to get product adoption plan progress
+    const customerProducts = await prisma.customerProduct.findMany({
+      where: {
+        customerId: plan.customerSolution.customerId,
+        name: {
+          startsWith: `${plan.customerSolution.name} - `
+        }
+      },
+      include: {
+        adoptionPlan: true
+      }
+    });
+
+    for (const cp of customerProducts) {
+      if (cp.adoptionPlan) {
+        totalTasksWithProducts += cp.adoptionPlan.totalTasks;
+        completedTasksWithProducts += cp.adoptionPlan.completedTasks;
+        totalWeightWithProducts += Number(cp.adoptionPlan.totalWeight);
+        completedWeightWithProducts += Number(cp.adoptionPlan.completedWeight);
+      }
+    }
+
+    const overallProgressPercentage = totalWeightWithProducts > 0
+      ? (completedWeightWithProducts / totalWeightWithProducts) * 100
+      : 0;
+
+    // Update plan progress
+    await prisma.solutionAdoptionPlan.update({
+      where: { id: solutionAdoptionPlanId },
+      data: {
+        totalTasks: totalTasksWithProducts,
+        completedTasks: completedTasksWithProducts,
+        totalWeight: totalWeightWithProducts,
+        completedWeight: completedWeightWithProducts,
+        progressPercentage: overallProgressPercentage,
+        solutionTasksTotal: solutionSpecificTasks.length,
+        solutionTasksComplete,
+        lastSyncedAt: new Date()
+      }
+    });
+  }
+
+  // Fetch final updated plan
+  const finalPlan = await prisma.solutionAdoptionPlan.findUnique({
+    where: { id: solutionAdoptionPlanId },
+    include: {
+      tasks: true,
+      products: true,
+      customerSolution: {
+        include: {
+          customer: true,
+          solution: true
+        }
+      }
+    }
+  });
+
+  return finalPlan!;
+}
 
 
 

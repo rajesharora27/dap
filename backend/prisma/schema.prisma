@@ -195,9 +195,25 @@ model AdoptionPlan {
   // Relations
   customerProduct     CustomerProduct     @relation(fields: [customerProductId], references: [id], onDelete: Cascade)
   tasks               CustomerTask[]
+  filterPreference    AdoptionPlanFilterPreference?
   
   @@index([customerProductId])
   @@index([productId])
+}
+
+// Filter preferences for adoption plans - persisted across sessions
+model AdoptionPlanFilterPreference {
+  id                  String       @id @default(cuid())
+  adoptionPlanId      String       @unique
+  
+  filterReleases      String[]     // Array of release IDs to filter by
+  filterOutcomes      String[]     // Array of outcome IDs to filter by
+  filterTags          String[]     // Array of tag IDs to filter by
+  
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  
+  adoptionPlan        AdoptionPlan @relation(fields: [adoptionPlanId], references: [id], onDelete: Cascade)
 }
 
 model CustomerTask {
@@ -376,6 +392,7 @@ model License {
   isActive    Boolean   @default(true)   // Whether this license is currently active
   productId   String?
   solutionId  String?
+  customAttrs Json?          // For storing productLicenseMapping etc.
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   deletedAt   DateTime?
@@ -632,6 +649,7 @@ model Release {
   isActive      Boolean               @default(true)   // Whether this release is currently active
   productId     String?
   solutionId    String?
+  customAttrs   Json?                 // For storing productReleaseMapping etc.
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
   deletedAt     DateTime?

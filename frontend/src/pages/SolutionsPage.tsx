@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { EntitySummary } from '../components/EntitySummary';
 import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button,
-    IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, List, ListItem, ListItemText, CircularProgress, Card, CardContent, Checkbox, OutlinedInput
+    IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, List, ListItem, ListItemText, CircularProgress, Card, CardContent, Checkbox, OutlinedInput, Collapse, Alert
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2, Label } from '@mui/icons-material';
+import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2, Label, FilterList, ExpandMore, ExpandLess, VerifiedUser, NewReleases } from '@mui/icons-material';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -13,23 +13,39 @@ import { CSS } from '@dnd-kit/utilities';
 import { DragIndicator } from '@mui/icons-material';
 
 import { SOLUTIONS, TASKS_FOR_SOLUTION, PRODUCTS, SOLUTION, SOLUTION_TAGS } from '../graphql/queries';
-import { DELETE_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, UPDATE_SOLUTION, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS } from '../graphql/mutations';
+import { DELETE_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, UPDATE_SOLUTION, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '../graphql/mutations';
 import { SortableTaskItem } from '../components/SortableTaskItem';
 import { SolutionDialog } from '../components/dialogs/SolutionDialog';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
+import { LicenseDialog } from '../components/dialogs/LicenseDialog';
+import { SolutionReleaseDialog } from '../components/dialogs/SolutionReleaseDialog';
 
+import { useAuth } from '../components/AuthContext';
 import { TagDialog } from '../components/dialogs/TagDialog';
 
 export const SolutionsPage: React.FC = () => {
     // State
+    const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [selectedSolution, setSelectedSolution] = useState<string | null>(localStorage.getItem('lastSelectedSolutionId'));
-    const [selectedSubSection, setSelectedSubSection] = useState<'dashboard' | 'tasks' | 'products' | 'outcomes' | 'releases' | 'customAttributes' | 'tags'>('dashboard');
+    const [selectedSubSection, setSelectedSubSection] = useState<'dashboard' | 'tasks' | 'products' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('dashboard');
     const [taskTagFilter, setTaskTagFilter] = useState<string[]>([]);
+    const [taskOutcomeFilter, setTaskOutcomeFilter] = useState<string[]>([]);
+    const [taskReleaseFilter, setTaskReleaseFilter] = useState<string[]>([]);
+    const [taskLicenseFilter, setTaskLicenseFilter] = useState<string[]>([]);
+    const [showFilters, setShowFilters] = useState(false);
+
+    if (authLoading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
     // Dialog States
     const [solutionDialog, setSolutionDialog] = useState(false);
     const [editingSolution, setEditingSolution] = useState<any>(null);
-    const [solutionDialogInitialTab, setSolutionDialogInitialTab] = useState<'general' | 'products' | 'outcomes' | 'releases' | 'customAttributes'>('general');
+    const [solutionDialogInitialTab, setSolutionDialogInitialTab] = useState<'general' | 'products' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes'>('general');
 
     const [taskDialog, setTaskDialog] = useState(false);
     const [editingTask, setEditingTask] = useState<any>(null);
@@ -37,41 +53,139 @@ export const SolutionsPage: React.FC = () => {
     const [tagDialog, setTagDialog] = useState(false);
     const [editingTag, setEditingTag] = useState<any>(null);
 
+    const [licenseDialog, setLicenseDialog] = useState(false);
+    const [editingLicense, setEditingLicense] = useState<any>(null);
+
+    const [releaseDialog, setReleaseDialog] = useState(false);
+    const [editingRelease, setEditingRelease] = useState<any>(null);
+
     // Queries
-    const { data: solutionsData, loading: solutionsLoading, error: solutionsError } = useQuery(SOLUTIONS);
+    const { data: solutionsData, loading: solutionsLoading, error: solutionsError } = useQuery(SOLUTIONS, {
+        fetchPolicy: 'cache-and-network',
+        skip: !isAuthenticated
+    });
     const solutions = solutionsData?.solutions?.edges?.map((e: any) => e.node) || [];
 
-    const { data: productsData } = useQuery(PRODUCTS);
+    const { data: productsData } = useQuery(PRODUCTS, {
+        fetchPolicy: 'cache-and-network',
+        skip: !isAuthenticated
+    });
     const allProducts = productsData?.products?.edges?.map((e: any) => e.node) || [];
+
+    const availableProductReleases = allProducts.flatMap((p: any) =>
+        (p.releases || []).map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            level: r.level,
+            productId: p.id,
+            productName: p.name,
+            description: r.description
+        }))
+    );
 
     const { data: tasksData, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useQuery(TASKS_FOR_SOLUTION, {
         variables: { solutionId: selectedSolution },
-        skip: !selectedSolution
+        skip: !selectedSolution || !isAuthenticated
     });
     const tasks = tasksData?.tasks?.edges?.map((e: any) => e.node) || [];
 
     // Fetch single solution details if selected
     const { data: solutionData } = useQuery(SOLUTION, {
         variables: { id: selectedSolution },
-        skip: !selectedSolution
+        skip: !selectedSolution || !isAuthenticated
     });
     const fetchedSolution = solutionData?.solution;
     const displaySolution = solutions.find((s: any) => s.id === selectedSolution) || fetchedSolution;
 
     const { data: tagsData, refetch: refetchTags } = useQuery(SOLUTION_TAGS, {
         variables: { solutionId: selectedSolution },
-        skip: !selectedSolution
+        skip: !selectedSolution || !isAuthenticated
     });
     const solutionTags = tagsData?.solutionTags || [];
 
-    // Filter tasks based on tag filter
-    const filteredTasks = tasks.filter((task: any) => {
-        if (taskTagFilter.length === 0) return true;
+    // Helper to get solution-level resources for filters (not aggregated from products)
+    const getSolutionResources = (solutionId: string | null) => {
+        if (!solutionId) return { outcomes: [], releases: [], licenses: [] };
+        const solution = displaySolution?.id === solutionId ? displaySolution : solutions.find((s: any) => s.id === solutionId);
+        if (!solution) return { outcomes: [], releases: [], licenses: [] };
 
-        // Use solutionTags for updated tasks, or fallback to older tag field if needed, but solutionTags is the standard now
-        const taskTagIds = task.solutionTags?.map((t: any) => t.id) || [];
-        return taskTagFilter.some(filterId => taskTagIds.includes(filterId));
+        // For filtering, we ONLY want solution-level outcomes as per user request
+        const outcomes = solution.outcomes || [];
+
+        // Use only solution-level releases and licenses (which now include "picked" ones from products)
+        const releases = solution.releases || [];
+        const licenses = solution.licenses || [];
+
+        return { outcomes, releases, licenses };
+    };
+
+    const { outcomes: aggregatedOutcomes, releases: aggregatedReleases, licenses: aggregatedLicenses } = getSolutionResources(selectedSolution);
+
+    // Filter tasks based on selected filters (AND logic between filter types)
+    const filteredTasks = tasks.filter((task: any) => {
+        // Tag filter (OR within tags) - use solutionTags for solutions
+        if (taskTagFilter.length > 0) {
+            const taskTagIds = task.solutionTags?.map((t: any) => t.id) || [];
+            if (!taskTagFilter.some(filterId => taskTagIds.includes(filterId))) {
+                return false;
+            }
+        }
+        // Outcome filter (OR within outcomes)
+        if (taskOutcomeFilter.length > 0) {
+            // If task has NO specific outcomes, it implies it applies to ALL outcomes
+            const hasSpecificOutcomes = task.outcomes && task.outcomes.length > 0;
+            if (hasSpecificOutcomes) {
+                if (!task.outcomes.some((o: any) => taskOutcomeFilter.includes(o.id))) {
+                    return false;
+                }
+            }
+            // If !hasSpecificOutcomes, we keep it (matches all)
+        }
+        // Release filter (OR within releases)
+        if (taskReleaseFilter.length > 0) {
+            // If task has NO specific releases, it implies it applies to ALL releases
+            const hasSpecificReleases = task.releases && task.releases.length > 0;
+            if (hasSpecificReleases) {
+                if (!task.releases.some((r: any) => taskReleaseFilter.includes(r.id))) {
+                    return false;
+                }
+            }
+            // If !hasSpecificReleases, we keep it (matches all)
+        }
+        // License filter (hierarchical - higher level includes lower levels)
+        if (taskLicenseFilter.length > 0) {
+            // For licenses, "Empty" usually means "No License Required" which is different from "All".
+            // But if the user selects a license, they usually want tasks that require that license OR tasks that require a LOWER level.
+            // OR checks generic "compliance".
+            // The existing logic checks: if task.license.level > maxSelectedLevel, exclude.
+            // If task has NO license, it requires nothing. Should it be hidden?
+            // "License Filter" usually means "Show me tasks for License X".
+            // Tasks with NO license are usually basic tasks.
+            // Existing logic: if (!task.license) return false; -> This hides basic tasks.
+            // Let's keep existing logic for License for now unless user complained about it specifically.
+            if (!task.license) {
+                return false;
+            }
+            // Get the maximum level from selected licenses
+            const selectedLicenses = aggregatedLicenses.filter((l: any) => taskLicenseFilter.includes(l.id));
+            const maxSelectedLevel = Math.max(...selectedLicenses.map((l: any) => l.level || 0));
+            if ((task.license.level || 0) > maxSelectedLevel) {
+                return false;
+            }
+        }
+        return true;
     });
+
+    // Check if any filter is active
+    const hasActiveFilters = taskTagFilter.length > 0 || taskOutcomeFilter.length > 0 || taskReleaseFilter.length > 0 || taskLicenseFilter.length > 0;
+
+    // Clear all filters handler
+    const handleClearFilters = () => {
+        setTaskTagFilter([]);
+        setTaskOutcomeFilter([]);
+        setTaskReleaseFilter([]);
+        setTaskLicenseFilter([]);
+    };
 
     const client = useApolloClient();
     const sensors = useSensors(
@@ -339,39 +453,140 @@ export const SolutionsPage: React.FC = () => {
         }
     };
 
-    // Helper to get aggregated resources for TaskDialog
-    const getAggregatedResources = (solutionId: string) => {
-        const solution = displaySolution?.id === solutionId ? displaySolution : solutions.find((s: any) => s.id === solutionId);
-        if (!solution) return { outcomes: [], releases: [], licenses: [] };
 
-        const solutionProductIds = solution.products?.edges?.map((e: any) => e.node.id) || [];
-        const solutionProducts = allProducts.filter((p: any) => solutionProductIds.includes(p.id));
-
-        const outcomes = [
-            ...(solution.outcomes || []),
-            ...solutionProducts.flatMap((p: any) => p.outcomes || [])
-        ];
-
-        const releases = [
-            ...(solution.releases || []),
-            ...solutionProducts.flatMap((p: any) => p.releases || [])
-        ];
-
-        const licenses = solutionProducts.flatMap((p: any) => p.licenses || []);
-
-        return { outcomes, releases, licenses };
+    const handleSaveRelease = async (input: any) => {
+        try {
+            if (editingRelease) {
+                await client.mutate({
+                    mutation: UPDATE_RELEASE,
+                    variables: { id: editingRelease.id, input },
+                    refetchQueries: ['Solutions', 'SolutionDetail']
+                });
+            } else {
+                await client.mutate({
+                    mutation: CREATE_RELEASE,
+                    variables: { input: { ...input, solutionId: selectedSolution } },
+                    refetchQueries: ['Solutions', 'SolutionDetail']
+                });
+            }
+            setReleaseDialog(false);
+            setEditingRelease(null);
+        } catch (error: any) {
+            alert('Error saving release: ' + error.message);
+        }
     };
 
-    const { outcomes: aggregatedOutcomes, releases: aggregatedReleases, licenses: aggregatedLicenses } = selectedSolution ? getAggregatedResources(selectedSolution) : { outcomes: [], releases: [], licenses: [] };
+    const handleDeleteRelease = async (id: string) => {
+        if (window.confirm('Are you sure you want to delete this release?')) {
+            try {
+                await client.mutate({
+                    mutation: DELETE_RELEASE,
+                    variables: { id },
+                    refetchQueries: ['Solutions', 'SolutionDetail']
+                });
+            } catch (error: any) {
+                alert('Error deleting release: ' + error.message);
+            }
+        }
+    };
+
+    const handleSaveLicense = async (input: any) => {
+        try {
+            if (editingLicense) {
+                await client.mutate({
+                    mutation: UPDATE_LICENSE,
+                    variables: { id: editingLicense.id, input },
+                    refetchQueries: ['Solutions', 'SolutionDetail']
+                });
+            } else {
+                await client.mutate({
+                    mutation: CREATE_LICENSE,
+                    variables: { input: { ...input, solutionId: selectedSolution } },
+                    refetchQueries: ['Solutions', 'SolutionDetail']
+                });
+            }
+            setLicenseDialog(false);
+            setEditingLicense(null);
+        } catch (error: any) {
+            alert('Error saving license: ' + error.message);
+        }
+    };
+
+    const handleDeleteLicense = async (id: string) => {
+        if (window.confirm('Are you sure you want to delete this license?')) {
+            try {
+                await client.mutate({
+                    mutation: DELETE_LICENSE,
+                    variables: { id },
+                    refetchQueries: ['Solutions', 'SolutionDetail']
+                });
+            } catch (error: any) {
+                alert('Error deleting license: ' + error.message);
+            }
+        }
+    };
+
+
+
+    // Note: getSolutionResources and aggregated* variables are defined earlier in the component
 
     const currentSolution = displaySolution;
     const NAME_DISPLAY_LIMIT = 12;
 
+    // Flatten all licenses from all products in the solution for the dialog
+    const availableProductLicenses = React.useMemo(() => {
+        if (!selectedSolution || !currentSolution?.products?.edges) return [];
+        const licenses: any[] = [];
+        currentSolution.products.edges.forEach((edge: any) => {
+            const product = edge.node;
+            // Use allProducts which has detailed info including licenses
+            const fullProduct = allProducts.find((p: any) => p.id === product.id);
+            if (fullProduct && fullProduct.licenses) {
+                fullProduct.licenses.forEach((l: any) => {
+                    licenses.push({
+                        ...l,
+                        productId: fullProduct.id,
+                        productName: fullProduct.name
+                    });
+                });
+            }
+        });
+        return licenses;
+    }, [selectedSolution, currentSolution, allProducts]);
+
     const theme = useTheme();
+
+    const renderMappingInfo = (item: any, type: 'licenses' | 'releases') => {
+        const mappingKey = type === 'licenses' ? 'productLicenseMapping' : 'productReleaseMapping';
+        const mapping = item.customAttrs?.[mappingKey];
+
+        if (!mapping || Object.keys(mapping).length === 0) return null;
+
+        const productCount = Object.keys(mapping).length;
+        const totalItems = Object.values(mapping).flat().length;
+        const isAll = Object.values(mapping).flat().includes('__ALL__') || Object.values(mapping).flat().includes('ALL');
+
+        return (
+            <Box sx={{ mt: 0.5, display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Chip
+                    label={isAll ? `Mapped to All Product ${type === 'licenses' ? 'Licenses' : 'Releases'}` : `Mapped to ${totalItems} ${type === 'licenses' ? 'Licenses' : 'Releases'} across ${productCount} Product(s)`}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                    sx={{ height: 20, fontSize: '0.7rem' }}
+                />
+            </Box>
+        );
+    };
 
     return (
         <Box>
             {/* Solution Selection Header */}
+            {solutionsError && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    Error loading solutions: {solutionsError.message}
+                </Alert>
+            )}
             {solutionsLoading && <LinearProgress sx={{ mb: 2 }} />}
             {!solutionsLoading && !solutionsError && (
                 <Paper sx={{ p: 1.5, mb: 2 }}>
@@ -447,13 +662,13 @@ export const SolutionsPage: React.FC = () => {
                                 sx={{ borderBottom: 1, borderColor: 'divider', flex: 1 }}
                             >
                                 <Tab label="Dashboard" value="dashboard" />
-                                <Tab label="Tasks" value="tasks" />
+                                <Tab label={`Tasks${tasks.length > 0 ? ` (${hasActiveFilters ? `${filteredTasks.length}/${tasks.length}` : tasks.length})` : ''}`} value="tasks" />
+                                <Tab label="Tags" value="tags" />
                                 <Tab label="Products" value="products" />
                                 <Tab label="Outcomes" value="outcomes" />
                                 <Tab label="Releases" value="releases" />
-                                <Tab label="Releases" value="releases" />
+                                <Tab label="Licenses" value="licenses" />
                                 <Tab label="Custom Attributes" value="customAttributes" />
-                                <Tab label="Tags" value="tags" />
                             </Tabs>
 
                             {selectedSubSection !== 'dashboard' && (
@@ -469,12 +684,17 @@ export const SolutionsPage: React.FC = () => {
                                         } else if (selectedSubSection === 'tags') {
                                             setEditingTag(null);
                                             setTagDialog(true);
+                                        } else if (selectedSubSection === 'licenses') {
+                                            setEditingLicense(null);
+                                            setLicenseDialog(true);
+                                        } else if (selectedSubSection === 'releases') {
+                                            setEditingRelease(null);
+                                            setReleaseDialog(true);
                                         } else {
                                             setEditingSolution(currentSolution);
                                             setSolutionDialog(true);
                                             if (selectedSubSection === 'products') setSolutionDialogInitialTab('products');
                                             else if (selectedSubSection === 'outcomes') setSolutionDialogInitialTab('outcomes');
-                                            else if (selectedSubSection === 'releases') setSolutionDialogInitialTab('releases');
                                             else if (selectedSubSection === 'customAttributes') setSolutionDialogInitialTab('customAttributes');
                                         }
                                     }}
@@ -484,44 +704,187 @@ export const SolutionsPage: React.FC = () => {
                                             selectedSubSection === 'outcomes' ? 'Manage Outcomes' :
                                                 selectedSubSection === 'releases' ? 'Manage Releases' :
                                                     selectedSubSection === 'customAttributes' ? 'Manage Attributes' :
-                                                        selectedSubSection === 'tags' ? 'Add Tag' : 'Manage'}
+                                                        selectedSubSection === 'tags' ? 'Add Tag' :
+                                                            selectedSubSection === 'licenses' ? 'Add License' :
+                                                                selectedSubSection === 'releases' ? 'Add Release' : 'Manage'}
                                 </Button>
                             )}
                         </Box>
 
-                        {/* Tag Filter for Tasks */}
-                        {selectedSubSection === 'tasks' && solutionTags.length > 0 && (
-                            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center' }}>
-                                <FormControl size="small" sx={{ minWidth: 200, maxWidth: 400 }}>
-                                    <InputLabel>Filter by Tags</InputLabel>
-                                    <Select
-                                        multiple
-                                        value={taskTagFilter}
-                                        onChange={(e) => setTaskTagFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
-                                        input={<OutlinedInput label="Filter by Tags" />}
-                                        renderValue={(selected) => (
-                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                {selected.map((value) => {
-                                                    const tag = solutionTags.find((t: any) => t.id === value);
-                                                    return (
-                                                        <Chip key={value} label={tag?.name} size="small" style={{ backgroundColor: tag?.color, color: '#fff' }} />
-                                                    );
-                                                })}
-                                            </Box>
+                        {/* Filters for Tasks */}
+                        {selectedSubSection === 'tasks' && (
+                            <>
+                                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Button
+                                            size="small"
+                                            startIcon={<FilterList />}
+                                            endIcon={showFilters ? <ExpandLess /> : <ExpandMore />}
+                                            onClick={() => setShowFilters(!showFilters)}
+                                            color={hasActiveFilters ? "primary" : "inherit"}
+                                            variant={hasActiveFilters ? "contained" : "text"}
+                                            sx={{ borderRadius: 2 }}
+                                        >
+                                            Filters {hasActiveFilters && `(${[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length})`}
+                                        </Button>
+                                        {hasActiveFilters && (
+                                            <Chip
+                                                label="Active"
+                                                size="small"
+                                                color="primary"
+                                                variant="outlined"
+                                                onDelete={() => {
+                                                    setTaskTagFilter([]);
+                                                    setTaskOutcomeFilter([]);
+                                                    setTaskReleaseFilter([]);
+                                                    setTaskLicenseFilter([]);
+                                                }}
+                                                sx={{ height: 24, fontSize: '0.75rem' }}
+                                            />
                                         )}
-                                    >
-                                        {solutionTags.map((tag: any) => (
-                                            <MenuItem key={tag.id} value={tag.id}>
-                                                <Checkbox checked={taskTagFilter.indexOf(tag.id) > -1} />
-                                                <ListItemText primary={tag.name} />
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                                {taskTagFilter.length > 0 && (
-                                    <Button size="small" onClick={() => setTaskTagFilter([])} sx={{ ml: 1 }}>Clear</Button>
-                                )}
-                            </Box>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        {tasksLoading && <CircularProgress size={20} />}
+                                        {tasksError && <Typography color="error" variant="caption">{tasksError.message}</Typography>}
+                                    </Box>
+                                </Box>
+
+                                <Collapse in={showFilters}>
+                                    <Box sx={{ mb: 3, p: 2, bgcolor: alpha(theme.palette.primary.main, 0.04), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                                        {/* Tags Filter */}
+                                        {solutionTags.length > 0 && (
+                                            <FormControl size="small" sx={{ minWidth: 160 }}>
+                                                <InputLabel>Tags</InputLabel>
+                                                <Select
+                                                    multiple
+                                                    value={taskTagFilter}
+                                                    onChange={(e) => setTaskTagFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                                                    input={<OutlinedInput label="Tags" />}
+                                                    renderValue={(selected) => (
+                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                            {selected.map((value) => {
+                                                                const tag = solutionTags.find((t: any) => t.id === value);
+                                                                return (
+                                                                    <Chip key={value} label={tag?.name} size="small" sx={{ bgcolor: tag?.color, color: '#fff', height: 20 }} />
+                                                                );
+                                                            })}
+                                                        </Box>
+                                                    )}
+                                                >
+                                                    {solutionTags.map((tag: any) => (
+                                                        <MenuItem key={tag.id} value={tag.id}>
+                                                            <Checkbox checked={taskTagFilter.indexOf(tag.id) > -1} size="small" />
+                                                            <ListItemText primary={tag.name} />
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        )}
+
+                                        {/* Outcomes Filter */}
+                                        {aggregatedOutcomes.length > 0 && (
+                                            <FormControl size="small" sx={{ minWidth: 160 }}>
+                                                <InputLabel>Outcomes</InputLabel>
+                                                <Select
+                                                    multiple
+                                                    value={taskOutcomeFilter}
+                                                    onChange={(e) => setTaskOutcomeFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                                                    input={<OutlinedInput label="Outcomes" />}
+                                                    renderValue={(selected) => (
+                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                            {selected.map((value) => {
+                                                                const outcome = aggregatedOutcomes.find((o: any) => o.id === value);
+                                                                return (
+                                                                    <Chip key={value} label={outcome?.name || value} size="small" color="success" sx={{ height: 20 }} />
+                                                                );
+                                                            })}
+                                                        </Box>
+                                                    )}
+                                                >
+                                                    {aggregatedOutcomes.map((outcome: any) => (
+                                                        <MenuItem key={outcome.id} value={outcome.id}>
+                                                            <Checkbox checked={taskOutcomeFilter.indexOf(outcome.id) > -1} size="small" />
+                                                            <ListItemText primary={outcome.name} />
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        )}
+
+                                        {/* Releases Filter */}
+                                        {aggregatedReleases.length > 0 && (
+                                            <FormControl size="small" sx={{ minWidth: 160 }}>
+                                                <InputLabel>Releases</InputLabel>
+                                                <Select
+                                                    multiple
+                                                    value={taskReleaseFilter}
+                                                    onChange={(e) => setTaskReleaseFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                                                    input={<OutlinedInput label="Releases" />}
+                                                    renderValue={(selected) => (
+                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                            {selected.map((value) => {
+                                                                const release = aggregatedReleases.find((r: any) => r.id === value);
+                                                                return (
+                                                                    <Chip key={value} label={release?.name || value} size="small" color="info" sx={{ height: 20 }} />
+                                                                );
+                                                            })}
+                                                        </Box>
+                                                    )}
+                                                >
+                                                    {aggregatedReleases.map((release: any) => (
+                                                        <MenuItem key={release.id} value={release.id}>
+                                                            <Checkbox checked={taskReleaseFilter.indexOf(release.id) > -1} size="small" />
+                                                            <ListItemText primary={release.name} />
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        )}
+
+                                        {/* Licenses Filter */}
+                                        {aggregatedLicenses.length > 0 && (
+                                            <FormControl size="small" sx={{ minWidth: 160 }}>
+                                                <InputLabel>Licenses</InputLabel>
+                                                <Select
+                                                    multiple
+                                                    value={taskLicenseFilter}
+                                                    onChange={(e) => setTaskLicenseFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                                                    input={<OutlinedInput label="Licenses" />}
+                                                    renderValue={(selected) => (
+                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                            {selected.map((value) => {
+                                                                const license = aggregatedLicenses.find((l: any) => l.id === value);
+                                                                return (
+                                                                    <Chip key={value} label={license?.name || value} size="small" color="warning" sx={{ height: 20 }} />
+                                                                );
+                                                            })}
+                                                        </Box>
+                                                    )}
+                                                >
+                                                    {aggregatedLicenses.map((license: any) => (
+                                                        <MenuItem key={license.id} value={license.id}>
+                                                            <Checkbox checked={taskLicenseFilter.indexOf(license.id) > -1} size="small" />
+                                                            <ListItemText primary={license.name} />
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        )}
+
+                                        {/* Clear Filters Button */}
+                                        {hasActiveFilters && (
+                                            <Button size="small" onClick={() => {
+                                                setTaskTagFilter([]);
+                                                setTaskOutcomeFilter([]);
+                                                setTaskReleaseFilter([]);
+                                                setTaskLicenseFilter([]);
+                                            }} variant="outlined" color="secondary">
+                                                Clear All
+                                            </Button>
+                                        )}
+                                    </Box>
+                                </Collapse>
+                            </>
                         )}
 
                         {selectedSubSection === 'dashboard' && (
@@ -750,6 +1113,16 @@ export const SolutionsPage: React.FC = () => {
                                             {(currentSolution.releases || []).map((release: any, idx: number) => (
                                                 <ListItem
                                                     key={release.id}
+                                                    secondaryAction={
+                                                        <Box>
+                                                            <IconButton edge="end" aria-label="edit" onClick={() => { setEditingRelease(release); setReleaseDialog(true); }}>
+                                                                <Edit />
+                                                            </IconButton>
+                                                            <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteRelease(release.id)}>
+                                                                <Delete />
+                                                            </IconButton>
+                                                        </Box>
+                                                    }
                                                     sx={{
                                                         borderBottom: `1px solid ${theme.palette.divider}`,
                                                         bgcolor: idx % 2 === 0 ? alpha(theme.palette.warning.main, 0.02) : 'transparent'
@@ -757,13 +1130,72 @@ export const SolutionsPage: React.FC = () => {
                                                 >
                                                     <ListItemText
                                                         primary={<Typography fontWeight={500}>{release.name}</Typography>}
-                                                        secondary={release.description}
+                                                        secondary={
+                                                            <>
+                                                                <Typography variant="body2" component="span" display="block">{release.description}</Typography>
+                                                                {renderMappingInfo(release, 'releases')}
+                                                            </>
+                                                        }
                                                     />
                                                 </ListItem>
                                             ))}
                                             {(currentSolution.releases || []).length === 0 && (
                                                 <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
                                                     No releases defined
+                                                </Typography>
+                                            )}
+                                        </List>
+                                    </Paper>
+                                </Grid>
+                            </Grid>
+                        )}
+
+                        {selectedSubSection === 'licenses' && (
+                            <Grid container spacing={3}>
+                                <Grid size={{ xs: 12 }}>
+                                    <Paper sx={{ p: 2 }}>
+                                        <List>
+                                            {(currentSolution.licenses || []).map((license: any, idx: number) => (
+                                                <ListItem
+                                                    key={license.id}
+                                                    secondaryAction={
+                                                        <Box>
+                                                            <IconButton edge="end" aria-label="edit" onClick={() => { setEditingLicense(license); setLicenseDialog(true); }}>
+                                                                <Edit />
+                                                            </IconButton>
+                                                            <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteLicense(license.id)}>
+                                                                <Delete />
+                                                            </IconButton>
+                                                        </Box>
+                                                    }
+                                                    sx={{
+                                                        borderBottom: `1px solid ${theme.palette.divider}`,
+                                                        bgcolor: idx % 2 === 0 ? alpha(theme.palette.info.main, 0.02) : 'transparent'
+                                                    }}
+                                                >
+                                                    <Box sx={{ mr: 2 }}>
+                                                        <VerifiedUser sx={{ color: license.isActive ? theme.palette.success.main : theme.palette.text.disabled }} />
+                                                    </Box>
+                                                    <ListItemText
+                                                        primary={
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <Typography fontWeight={500}>{license.name}</Typography>
+                                                                <Chip label={`Level ${license.level}`} size="small" variant="outlined" />
+                                                                {!license.isActive && <Chip label="Inactive" size="small" color="default" />}
+                                                            </Box>
+                                                        }
+                                                        secondary={
+                                                            <>
+                                                                <Typography variant="body2" component="span" display="block">{license.description}</Typography>
+                                                                {renderMappingInfo(license, 'licenses')}
+                                                            </>
+                                                        }
+                                                    />
+                                                </ListItem>
+                                            ))}
+                                            {(currentSolution.licenses || []).length === 0 && (
+                                                <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                                                    No licenses defined
                                                 </Typography>
                                             )}
                                         </List>
@@ -879,6 +1311,7 @@ export const SolutionsPage: React.FC = () => {
                                                     <TableCell width={40}></TableCell>
                                                     <TableCell width={80}>Seq</TableCell>
                                                     <TableCell>Name</TableCell>
+                                                    <TableCell>Tags</TableCell>
                                                     <TableCell>Resources</TableCell>
                                                     <TableCell width={100}>Weight</TableCell>
                                                     <TableCell>Telemetry</TableCell>
@@ -896,12 +1329,15 @@ export const SolutionsPage: React.FC = () => {
                                                             onDelete={handleDeleteTask}
                                                             onWeightChange={handleWeightChange}
                                                             onSequenceChange={handleSequenceChange}
+                                                            disableDrag={hasActiveFilters}
                                                         />
                                                     ))}
-                                                    {tasks.length === 0 && !tasksLoading && (
+                                                    {filteredTasks.length === 0 && !tasksLoading && (
                                                         <TableRow>
-                                                            <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
-                                                                <Typography color="text.secondary">No tasks found for this solution</Typography>
+                                                            <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
+                                                                <Typography color="text.secondary">
+                                                                    {hasActiveFilters ? 'No tasks match the selected filters' : 'No tasks found for this solution'}
+                                                                </Typography>
                                                             </TableCell>
                                                         </TableRow>
                                                     )}
@@ -927,6 +1363,24 @@ export const SolutionsPage: React.FC = () => {
                 solution={editingSolution}
                 allProducts={allProducts}
                 initialTab={solutionDialogInitialTab}
+            />
+
+            <LicenseDialog
+                open={licenseDialog}
+                onClose={() => { setLicenseDialog(false); setEditingLicense(null); }}
+                onSave={handleSaveLicense}
+                license={editingLicense}
+                availableProductLicenses={availableProductLicenses}
+                title={editingLicense ? 'Edit Solution License' : 'Add Solution License'}
+            />
+
+            <SolutionReleaseDialog
+                open={releaseDialog}
+                onClose={() => setReleaseDialog(false)}
+                onSave={handleSaveRelease}
+                release={editingRelease}
+                title={editingRelease ? "Edit Solution Release" : "Add Solution Release"}
+                availableProductReleases={availableProductReleases}
             />
 
             <TagDialog

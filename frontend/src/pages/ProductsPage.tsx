@@ -4,10 +4,10 @@ import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button,
     IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, CircularProgress, Card, CardContent,
-    Checkbox, OutlinedInput
+    Checkbox, OutlinedInput, Collapse
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension } from '@mui/icons-material';
+import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension, FilterList, ExpandMore, ExpandLess } from '@mui/icons-material';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -23,6 +23,7 @@ import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { LicenseDialog } from '../components/dialogs/LicenseDialog';
 import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
 import { TagDialog, ProductTag } from '../components/dialogs/TagDialog';
+import { useAuth } from '../components/AuthContext';
 import { useProductImportExport } from '../hooks/useProductImportExport';
 
 interface ProductsPageProps {
@@ -31,9 +32,18 @@ interface ProductsPageProps {
 
 export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => {
     // State
+    const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [selectedProduct, setSelectedProduct] = useState<string | null>(localStorage.getItem('lastSelectedProductId'));
     const [selectedSubSection, setSelectedSubSection] = useState<'dashboard' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('dashboard');
     const importFileRef = useRef<HTMLInputElement>(null);
+
+    if (authLoading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
     // Dialog States
     const [taskDialog, setTaskDialog] = useState(false);
@@ -51,10 +61,15 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const [tagDialog, setTagDialog] = useState(false);
     const [editingTag, setEditingTag] = useState<ProductTag | null>(null);
     const [taskTagFilter, setTaskTagFilter] = useState<string[]>([]);
+    const [taskOutcomeFilter, setTaskOutcomeFilter] = useState<string[]>([]);
+    const [taskReleaseFilter, setTaskReleaseFilter] = useState<string[]>([]);
+    const [taskLicenseFilter, setTaskLicenseFilter] = useState<string[]>([]);
+    const [showFilters, setShowFilters] = useState(false);
 
     // Queries
     const { data: productsData, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PRODUCTS, {
-        fetchPolicy: 'cache-and-network'
+        fetchPolicy: 'cache-and-network',
+        skip: !isAuthenticated
     });
     const products = productsData?.products?.edges?.map((e: any) => e.node) || [];
 
@@ -85,11 +100,62 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     });
     const tasks = tasksData?.tasks?.edges?.map((e: any) => e.node) || [];
 
-    // Filter tasks based on selected tags
+    // Filter tasks based on selected filters (AND logic between filter types)
     const filteredTasks = tasks.filter((task: any) => {
-        if (taskTagFilter.length === 0) return true;
-        return task.tags?.some((t: any) => taskTagFilter.includes(t.id));
+        // Tag filter (OR within tags)
+        if (taskTagFilter.length > 0) {
+            if (!task.tags?.some((t: any) => taskTagFilter.includes(t.id))) {
+                return false;
+            }
+        }
+        // Outcome filter (OR within outcomes)
+        if (taskOutcomeFilter.length > 0) {
+            // If task has NO specific outcomes, it implies it applies to ALL outcomes
+            const hasSpecificOutcomes = task.outcomes && task.outcomes.length > 0;
+            if (hasSpecificOutcomes) {
+                if (!task.outcomes.some((o: any) => taskOutcomeFilter.includes(o.id))) {
+                    return false;
+                }
+            }
+            // If !hasSpecificOutcomes, we keep it (matches all)
+        }
+        // Release filter (OR within releases)
+        if (taskReleaseFilter.length > 0) {
+            // If task has NO specific releases, it implies it applies to ALL releases
+            const hasSpecificReleases = task.releases && task.releases.length > 0;
+            if (hasSpecificReleases) {
+                if (!task.releases.some((r: any) => taskReleaseFilter.includes(r.id))) {
+                    return false;
+                }
+            }
+            // If !hasSpecificReleases, we keep it (matches all)
+        }
+        // License filter (hierarchical - higher level includes lower levels)
+        if (taskLicenseFilter.length > 0) {
+            if (!task.license) {
+                return false;
+            }
+            // Get the maximum level from selected licenses (higher level = includes more)
+            const selectedLicenses = displayProduct?.licenses?.filter((l: any) => taskLicenseFilter.includes(l.id)) || [];
+            const maxSelectedLevel = Math.max(...selectedLicenses.map((l: any) => l.level || 0));
+            // Task's license level must be <= max selected level
+            if ((task.license.level || 0) > maxSelectedLevel) {
+                return false;
+            }
+        }
+        return true;
     });
+
+    // Check if any filter is active
+    const hasActiveFilters = taskTagFilter.length > 0 || taskOutcomeFilter.length > 0 || taskReleaseFilter.length > 0 || taskLicenseFilter.length > 0;
+
+    // Clear all filters handler
+    const handleClearFilters = () => {
+        setTaskTagFilter([]);
+        setTaskOutcomeFilter([]);
+        setTaskReleaseFilter([]);
+        setTaskLicenseFilter([]);
+    };
 
     const client = useApolloClient();
 
@@ -637,12 +703,12 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                             sx={{ borderBottom: 1, borderColor: 'divider', flex: 1 }}
                         >
                             <Tab label="Dashboard" value="dashboard" />
-                            <Tab label="Tasks" value="tasks" />
+                            <Tab label={`Tasks${tasks.length > 0 ? ` (${hasActiveFilters ? `${filteredTasks.length}/${tasks.length}` : tasks.length})` : ''}`} value="tasks" />
+                            <Tab label="Tags" value="tags" />
                             <Tab label="Outcomes" value="outcomes" />
                             <Tab label="Releases" value="releases" />
                             <Tab label="Licenses" value="licenses" />
                             <Tab label="Custom Attributes" value="customAttributes" />
-                            <Tab label="Tags" value="tags" />
                         </Tabs>
 
                         {selectedSubSection !== 'dashboard' && (
@@ -799,39 +865,164 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                             )}
 
                             {/* Filter Section */}
-                            <Box sx={{ mb: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
-                                <FormControl size="small" sx={{ minWidth: 250 }}>
-                                    <InputLabel>Filter by Tags</InputLabel>
-                                    <Select
-                                        multiple
-                                        value={taskTagFilter}
-                                        onChange={(e) => setTaskTagFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
-                                        input={<OutlinedInput label="Filter by Tags" />}
-                                        renderValue={(selected) => (
-                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                {selected.map((value) => {
-                                                    const tag = displayProduct?.tags?.find((t: any) => t.id === value);
-                                                    return (
-                                                        <Chip key={value} label={tag?.name || value} size="small" sx={{ bgcolor: tag?.color, color: '#fff', height: 24 }} />
-                                                    );
-                                                })}
-                                            </Box>
-                                        )}
+                            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Button
+                                        size="small"
+                                        startIcon={<FilterList />}
+                                        endIcon={showFilters ? <ExpandLess /> : <ExpandMore />}
+                                        onClick={() => setShowFilters(!showFilters)}
+                                        color={hasActiveFilters ? "primary" : "inherit"}
+                                        variant={hasActiveFilters ? "contained" : "text"}
+                                        sx={{ borderRadius: 2 }}
                                     >
-                                        {displayProduct?.tags?.map((tag: any) => (
-                                            <MenuItem key={tag.id} value={tag.id}>
-                                                <Checkbox checked={taskTagFilter.indexOf(tag.id) > -1} />
-                                                <Typography sx={{ color: tag.color, fontWeight: 'bold' }}>{tag.name}</Typography>
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                                {taskTagFilter.length > 0 && (
-                                    <Button size="small" onClick={() => setTaskTagFilter([])} variant="outlined">
-                                        Clear Filter
+                                        Filters {hasActiveFilters && `(${[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length})`}
                                     </Button>
-                                )}
+                                    {hasActiveFilters && (
+                                        <Chip
+                                            label="Active"
+                                            size="small"
+                                            color="primary"
+                                            variant="outlined"
+                                            onDelete={handleClearFilters}
+                                            sx={{ height: 24, fontSize: '0.75rem' }}
+                                        />
+                                    )}
+                                </Box>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    {tasksLoading && <CircularProgress size={20} />}
+                                    {tasksError && <Typography color="error" variant="caption">{tasksError.message}</Typography>}
+                                </Box>
                             </Box>
+
+                            <Collapse in={showFilters}>
+                                <Box sx={{ mb: 3, p: 2, bgcolor: alpha(theme.palette.primary.main, 0.04), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                                    {/* Tag Filter */}
+                                    <FormControl size="small" sx={{ minWidth: 160 }}>
+                                        <InputLabel>Tags</InputLabel>
+                                        <Select
+                                            multiple
+                                            value={taskTagFilter}
+                                            onChange={(e) => setTaskTagFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                                            input={<OutlinedInput label="Tags" />}
+                                            renderValue={(selected) => (
+                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                    {selected.map((value) => {
+                                                        const tag = displayProduct?.tags?.find((t: any) => t.id === value);
+                                                        return (
+                                                            <Chip key={value} label={tag?.name || value} size="small" style={{ backgroundColor: tag?.color || '#ccc', color: '#fff' }} sx={{ height: 20 }} />
+                                                        );
+                                                    })}
+                                                </Box>
+                                            )}
+                                        >
+                                            {displayProduct?.tags?.map((tag: any) => (
+                                                <MenuItem key={tag.id} value={tag.id}>
+                                                    <Checkbox checked={taskTagFilter.indexOf(tag.id) > -1} size="small" />
+                                                    <Typography>{tag.name}</Typography>
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+
+                                    {/* Outcomes Filter */}
+                                    {displayProduct?.outcomes?.length > 0 && (
+                                        <FormControl size="small" sx={{ minWidth: 160 }}>
+                                            <InputLabel>Outcomes</InputLabel>
+                                            <Select
+                                                multiple
+                                                value={taskOutcomeFilter}
+                                                onChange={(e) => setTaskOutcomeFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                                                input={<OutlinedInput label="Outcomes" />}
+                                                renderValue={(selected) => (
+                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                        {selected.map((value) => {
+                                                            const outcome = displayProduct?.outcomes?.find((o: any) => o.id === value);
+                                                            return (
+                                                                <Chip key={value} label={outcome?.name || value} size="small" color="success" sx={{ height: 20 }} />
+                                                            );
+                                                        })}
+                                                    </Box>
+                                                )}
+                                            >
+                                                {displayProduct?.outcomes?.map((outcome: any) => (
+                                                    <MenuItem key={outcome.id} value={outcome.id}>
+                                                        <Checkbox checked={taskOutcomeFilter.indexOf(outcome.id) > -1} size="small" />
+                                                        <Typography>{outcome.name}</Typography>
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    )}
+
+                                    {/* Releases Filter */}
+                                    {displayProduct?.releases?.length > 0 && (
+                                        <FormControl size="small" sx={{ minWidth: 160 }}>
+                                            <InputLabel>Releases</InputLabel>
+                                            <Select
+                                                multiple
+                                                value={taskReleaseFilter}
+                                                onChange={(e) => setTaskReleaseFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                                                input={<OutlinedInput label="Releases" />}
+                                                renderValue={(selected) => (
+                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                        {selected.map((value) => {
+                                                            const release = displayProduct?.releases?.find((r: any) => r.id === value);
+                                                            return (
+                                                                <Chip key={value} label={release?.name || value} size="small" color="info" sx={{ height: 20 }} />
+                                                            );
+                                                        })}
+                                                    </Box>
+                                                )}
+                                            >
+                                                {displayProduct?.releases?.map((release: any) => (
+                                                    <MenuItem key={release.id} value={release.id}>
+                                                        <Checkbox checked={taskReleaseFilter.indexOf(release.id) > -1} size="small" />
+                                                        <Typography>{release.name}</Typography>
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    )}
+
+                                    {/* Licenses Filter */}
+                                    {displayProduct?.licenses?.length > 0 && (
+                                        <FormControl size="small" sx={{ minWidth: 160 }}>
+                                            <InputLabel>Licenses</InputLabel>
+                                            <Select
+                                                multiple
+                                                value={taskLicenseFilter}
+                                                onChange={(e) => setTaskLicenseFilter(typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value)}
+                                                input={<OutlinedInput label="Licenses" />}
+                                                renderValue={(selected) => (
+                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                        {selected.map((value) => {
+                                                            const license = displayProduct?.licenses?.find((l: any) => l.id === value);
+                                                            return (
+                                                                <Chip key={value} label={license?.name || value} size="small" color="warning" sx={{ height: 20 }} />
+                                                            );
+                                                        })}
+                                                    </Box>
+                                                )}
+                                            >
+                                                {displayProduct?.licenses?.map((license: any) => (
+                                                    <MenuItem key={license.id} value={license.id}>
+                                                        <Checkbox checked={taskLicenseFilter.indexOf(license.id) > -1} size="small" />
+                                                        <Typography>{license.name}</Typography>
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                        </FormControl>
+                                    )}
+
+                                    {/* Clear Filters Button */}
+                                    {hasActiveFilters && (
+                                        <Button size="small" onClick={handleClearFilters} variant="outlined" color="secondary">
+                                            Clear All
+                                        </Button>
+                                    )}
+                                </Box>
+                            </Collapse>
 
                             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                                 <TableContainer component={Paper} sx={{ maxHeight: '70vh' }}>
@@ -841,6 +1032,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                 <TableCell width={40}></TableCell>
                                                 <TableCell width={80}>Seq</TableCell>
                                                 <TableCell>Name</TableCell>
+                                                <TableCell>Tags</TableCell>
                                                 <TableCell>Resources</TableCell>
                                                 <TableCell width={100}>Weight</TableCell>
                                                 <TableCell>Telemetry</TableCell>
@@ -859,14 +1051,14 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         onDoubleClick={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
                                                         onWeightChange={handleWeightChange}
                                                         onSequenceChange={handleSequenceChange}
-                                                        disableDrag={taskTagFilter.length > 0}
+                                                        disableDrag={hasActiveFilters}
                                                     />
                                                 ))}
                                                 {filteredTasks.length === 0 && !tasksLoading && (
                                                     <TableRow>
-                                                        <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                                                        <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
                                                             <Typography color="text.secondary">
-                                                                {taskTagFilter.length > 0 ? 'No tasks match the selected content filters' : 'No tasks found for this product'}
+                                                                {hasActiveFilters ? 'No tasks match the selected filters' : 'No tasks found for this product'}
                                                             </Typography>
                                                         </TableCell>
                                                     </TableRow>

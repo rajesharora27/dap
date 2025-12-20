@@ -4,7 +4,7 @@
 # - Builds backend/frontend in production mode
 # - Uses local PostgreSQL (via Homebrew) - NO Docker required
 # - Starts backend on port 4000 and serves built frontend via Vite preview on 5173
-# - Uses .env.macbook as the environment file (synced to backend/.env)
+# - Uses .env.macdev as the environment file (synced to backend/.env)
 
 set -euo pipefail
 
@@ -16,7 +16,7 @@ LOG_DIR="${ROOT_DIR}/tmp"
 mkdir -p "${LOG_DIR}"
 
 # Environment file location
-MAC_ENV_FILE="${ROOT_DIR}/.env.macbook"
+MAC_ENV_FILE="${ROOT_DIR}/.env.macdev"
 
 BACKEND_PORT="${BACKEND_PORT:-4000}"
 FRONTEND_PORT="${FRONTEND_PORT:-5173}"
@@ -253,12 +253,12 @@ sync_env_file() {
   local current_user=$(whoami)
   
   if [ -f "${MAC_ENV_FILE}" ]; then
-    echo "[INFO] Syncing .env.macbook to backend/.env"
+    echo "[INFO] Syncing .env.macdev to backend/.env"
     # Copy and replace __MACUSER__ placeholder with actual username
     sed "s/__MACUSER__/${current_user}/g" "${MAC_ENV_FILE}" > "${BACKEND_DIR}/.env"
     echo "[INFO] DATABASE_URL configured for user '${current_user}'"
   else
-    echo "[WARN] .env.macbook not found, using existing backend/.env if available"
+    echo "[WARN] .env.macdev not found, using existing backend/.env if available"
   fi
 }
 

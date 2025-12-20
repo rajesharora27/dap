@@ -36,12 +36,13 @@ interface Props {
     name: string;
     level: number;
     description?: string;
-    productReleaseMapping: { [productId: string]: string[] }; // productId -> release IDs (or ['ALL'])
+    customAttrs: { productReleaseMapping: { [productId: string]: string[] } };
   }) => void;
   release?: {
     name: string;
     level: number;
     description?: string;
+    customAttrs?: { productReleaseMapping?: { [productId: string]: string[] } };
     productReleaseMapping?: { [productId: string]: string[] };
   } | null;
   title: string;
@@ -81,7 +82,8 @@ export const SolutionReleaseDialog: React.FC<Props> = ({
       setName(release.name || '');
       setLevel(release.level || 1.0);
       setDescription(release.description || '');
-      setProductReleaseMapping(release.productReleaseMapping || {});
+      const mapping = release.customAttrs?.productReleaseMapping || release.productReleaseMapping || {};
+      setProductReleaseMapping(mapping);
     } else {
       setName('');
       setLevel(1.0);
@@ -112,7 +114,7 @@ export const SolutionReleaseDialog: React.FC<Props> = ({
       name: name.trim(),
       level: level,
       description: description.trim() || undefined,
-      productReleaseMapping
+      customAttrs: { productReleaseMapping }
     });
     onClose();
   };

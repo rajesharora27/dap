@@ -178,6 +178,8 @@ export const CREATE_LICENSE = gql`
       description
       level
       isActive
+      customAttrs
+      customAttrs
     }
   }
 `;
@@ -189,7 +191,9 @@ export const UPDATE_LICENSE = gql`
       name
       description
       level
+      level
       isActive
+      customAttrs
     }
   }
 `;
@@ -207,7 +211,9 @@ export const CREATE_RELEASE = gql`
       name
       description
       level
+      level
       isActive
+      customAttrs
     }
   }
 `;
@@ -219,7 +225,9 @@ export const UPDATE_RELEASE = gql`
       name
       description
       level
+      level
       isActive
+      customAttrs
     }
   }
 `;

@@ -22,7 +22,9 @@ export const PRODUCTS = gql`
             name
             description
             level
+            level
             isActive
+            customAttrs
           }
           outcomes {
             id
@@ -54,6 +56,16 @@ export const SOLUTIONS = gql`
             name
             description
             level
+            isActive
+            customAttrs
+          }
+          licenses {
+            id
+            name
+            description
+            level
+            isActive
+            customAttrs
           }
           products {
             edges {
@@ -253,6 +265,7 @@ export const PRODUCT = gql`
         description
         level
         isActive
+        customAttrs
       }
       releases {
         id
@@ -260,6 +273,7 @@ export const PRODUCT = gql`
         description
         level
         isActive
+        customAttrs
       }
       outcomes {
         id
@@ -293,6 +307,16 @@ export const SOLUTION = gql`
         name
         description
         level
+        isActive
+        customAttrs
+      }
+      licenses {
+        id
+        name
+        description
+        level
+        isActive
+        customAttrs
       }
       products {
         edges {

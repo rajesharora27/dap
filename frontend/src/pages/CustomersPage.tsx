@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { EntitySummary } from '../components/EntitySummary';
 import {
-    Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button
+    Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button, CircularProgress
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import { Edit, Delete, Add } from '@mui/icons-material';
@@ -9,6 +9,8 @@ import { useQuery } from '@apollo/client';
 import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
 import { gql } from '@apollo/client';
 
+
+import { useAuth } from '../components/AuthContext';
 
 const CUSTOMERS = gql`
   query Customers {
@@ -44,12 +46,23 @@ const CUSTOMERS = gql`
 
 export const CustomersPage: React.FC = () => {
     const theme = useTheme();
+    const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(() => {
         return localStorage.getItem('lastSelectedCustomerId');
     });
 
+    if (authLoading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
     const { data: customersData, loading: customersLoading, error: customersError } = useQuery(CUSTOMERS, {
-        errorPolicy: 'all'
+        errorPolicy: 'all',
+        fetchPolicy: 'cache-and-network',
+        skip: !isAuthenticated
     });
 
     const customers = customersData?.customers || [];

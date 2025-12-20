@@ -56,7 +56,7 @@ cp -r frontend/dist /tmp/dap-deploy-prod/frontend-dist
 cp -r docs /tmp/dap-deploy-prod/docs 2>/dev/null || true
 
 # Copy environment files
-cp .env.production /tmp/dap-deploy-prod/.env
+cp .env.prod /tmp/dap-deploy-prod/.env
 
 # Copy config files
 mkdir -p /tmp/dap-deploy-prod/config

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Deploy Latest Changes to Stage (centos2) - Version 5
 # Matches production directory structure and permissions
-# NOTE: Does NOT modify local .env files - only production server gets .env.production
+# NOTE: Does NOT modify local .env files - only stage server gets .env.stage
 
 set -e
 
@@ -45,9 +45,9 @@ cp -r docs /tmp/dap-deploy/docs 2>/dev/null || true
 
 # Copy environment files
 # Copy environment files (from root)
-cp .env.production /tmp/dap-deploy/.env
+cp .env.stage /tmp/dap-deploy/.env
 cp .env.development /tmp/dap-deploy/.env.development 2>/dev/null || true
-cp .env.production /tmp/dap-deploy/.env.production 2>/dev/null || true
+cp .env.stage /tmp/dap-deploy/.env.stage 2>/dev/null || true
 
 # Copy config files (including LLM config)
 mkdir -p /tmp/dap-deploy/config
@@ -106,7 +106,7 @@ mkdir -p "/data/dap/scripts"
 # Copy environment files to root
 cp /tmp/dap-deploy-prod/.env "$DAP_ROOT/.env"
 cp /tmp/dap-deploy-prod/.env.development "$DAP_ROOT/.env.development" 2>/dev/null || true
-cp /tmp/dap-deploy-prod/.env.production "$DAP_ROOT/.env.production" 2>/dev/null || true
+cp /tmp/dap-deploy-prod/.env.stage "$DAP_ROOT/.env.stage" 2>/dev/null || true
 echo "✅ Environment files updated in root"
 
 # Copy scripts if provided (Early copy to ensure sync-env is available)

@@ -280,6 +280,14 @@ export const resolvers = {
       }, 0);
       return Math.round((completed / totalWeight) * 100);
     },
+    licenses: async (parent: any) => {
+      if (fallbackActive) {
+        return [];
+      }
+      return prisma.license.findMany({
+        where: { solutionId: parent.id, deletedAt: null }
+      });
+    },
     releases: async (parent: any) => {
       if (fallbackActive) {
         // Fallback logic for releases would go here if needed
@@ -745,7 +753,13 @@ export const resolvers = {
 
       return prisma.customer.findMany({ where }).catch(() => []);
     },
-    licenses: async () => { if (fallbackActive) return listLicenses(); return prisma.license.findMany({ where: { deletedAt: null } }); },
+    licenses: async (_: any, { productId, solutionId }: any) => {
+      if (fallbackActive) return listLicenses();
+      const where: any = { deletedAt: null };
+      if (productId) where.productId = productId;
+      if (solutionId) where.solutionId = solutionId;
+      return prisma.license.findMany({ where });
+    },
     releases: async (_: any, { productId }: any) => {
       if (fallbackActive) return [];
       const where: any = { deletedAt: null };
@@ -1132,7 +1146,9 @@ export const resolvers = {
           description: input.description,
           level: input.level,
           isActive: input.isActive,
-          productId: input.productId
+          productId: input.productId || null,
+          solutionId: input.solutionId || null,
+          customAttrs: input.customAttrs
         }
       });
       await logAudit('CREATE_LICENSE', 'License', l.id, { input }, ctx.user?.id);
@@ -1154,7 +1170,9 @@ export const resolvers = {
           description: input.description,
           level: input.level,
           isActive: input.isActive,
-          productId: input.productId
+          productId: input.productId || null,
+          solutionId: input.solutionId || null,
+          customAttrs: input.customAttrs
         }
       });
       await logAudit('UPDATE_LICENSE', 'License', id, { before, after: l }, ctx.user?.id);
@@ -1202,7 +1220,8 @@ export const resolvers = {
             level: input.level,
             isActive: input.isActive ?? true,
             productId: input.productId || null,
-            solutionId: input.solutionId || null
+            solutionId: input.solutionId || null,
+            customAttrs: input.customAttrs
           }
         });
         await logAudit('CREATE_RELEASE', 'Release', r.id, { input }, ctx.user?.id);
@@ -1232,7 +1251,8 @@ export const resolvers = {
           name: input.name,
           description: input.description,
           level: input.level,
-          isActive: input.isActive
+          isActive: input.isActive,
+          customAttrs: input.customAttrs
         };
 
         // Only update productId/solutionId if explicitly provided
@@ -2573,7 +2593,7 @@ export const resolvers = {
     addCustomerTelemetryValue: CustomerAdoptionMutationResolvers.addCustomerTelemetryValue,
     bulkAddCustomerTelemetryValues: CustomerAdoptionMutationResolvers.bulkAddCustomerTelemetryValues,
     evaluateTaskTelemetry: CustomerAdoptionMutationResolvers.evaluateTaskTelemetry,
-
+    updateAdoptionPlanFilterPreference: CustomerAdoptionMutationResolvers.updateAdoptionPlanFilterPreference,
     exportCustomerAdoptionToExcel: CustomerAdoptionMutationResolvers.exportCustomerAdoptionToExcel,
     importCustomerAdoptionFromExcel: CustomerAdoptionMutationResolvers.importCustomerAdoptionFromExcel,
     exportAdoptionPlanTelemetryTemplate: CustomerAdoptionMutationResolvers.exportAdoptionPlanTelemetryTemplate,

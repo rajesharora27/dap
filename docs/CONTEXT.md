@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.7.0
-**Last Updated:** December 18, 2025  
+**Version:** 2.8.0
+**Last Updated:** December 19, 2025  
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -9,17 +9,18 @@
 ## Table of Contents
 
 1. [Application Overview](#application-overview)
-2. [System Architecture](#system-architecture)
-3. [Core Domain Model](#core-domain-model)
-4. [Key Features](#key-features)
-5. [Technology Stack](#technology-stack)
-6. [Authentication & Authorization (RBAC)](#authentication--authorization-rbac)
-7. [Deployment & Release Process](#deployment--release-process)
-8. [Database Schema](#database-schema)
-9. [Development Workflow](#development-workflow)
-10. [Production Environment](#production-environment)
-11. [Recent Changes & Fixes](#recent-changes--fixes)
-12. [Known Issues & Limitations](#known-issues--limitations)
+2. [Component Naming Convention](#component-naming-convention)
+3. [System Architecture](#system-architecture)
+4. [Core Domain Model](#core-domain-model)
+5. [Key Features](#key-features)
+6. [Technology Stack](#technology-stack)
+7. [Authentication & Authorization (RBAC)](#authentication--authorization-rbac)
+8. [Deployment & Release Process](#deployment--release-process)
+9. [Database Schema](#database-schema)
+10. [Development Workflow](#development-workflow)
+11. [Production Environment](#production-environment)
+12. [Recent Changes & Fixes](#recent-changes--fixes)
+13. [Known Issues & Limitations](#known-issues--limitations)
 
 ---
 
@@ -43,6 +44,34 @@
 
 ### One-Paragraph Summary
 DAP is a customer adoption tracking system where an **Executive Dashboard** provides high-level strategy and product readiness visibility; **Products** are defined with custom attributes, license levels (Essential, Advantage, Signature), outcomes (business goals), and releases; products are bundled into **Solutions**; and **Customers** are assigned adoption plans. The system emphasizes a product-first approach, where structured implementation plans are defined centrally and then instantiated for customers, tracking progress via manual updates or automated telemetry.
+
+---
+
+## Component Naming Convention
+
+> **Full Documentation:** See `docs/NAMING_CONVENTION.md` for complete details.
+
+### Quick Reference
+
+| Term | Definition | When Created |
+|------|-----------|--------------|
+| **Product** | A standalone product with tasks, licenses, outcomes | Defined by SME |
+| **Solution** | A bundle of Products | Defined by SME |
+| **Task** | Implementation step (template) | Defined in Product/Solution |
+| **Customer** | Organization adopting products | Created by CSS |
+| **AdoptionPlan** | Customer's copy of Product tasks | When Product assigned to Customer |
+| **SolutionAdoptionPlan** | Customer's copy of Solution tasks | When Solution assigned to Customer |
+| **CustomerTask** | Customer-specific task instance | Part of AdoptionPlan |
+| **CustomerSolutionTask** | Customer-specific task in solution | Part of SolutionAdoptionPlan |
+
+### Prompt Usage Tips
+
+| ❌ Ambiguous | ✅ Clear |
+|-------------|---------|
+| "the task" | "Product task" or "CustomerTask" |
+| "adoption plan" | "AdoptionPlan" or "SolutionAdoptionPlan" |
+| "the tags" | "ProductTag", "TaskTag", or "CustomerTaskTag" |
+| "solution task" | "Task in Solution" (template) vs "CustomerSolutionTask" (copy) |
 
 ---
 
@@ -737,17 +766,18 @@ npx prisma db push
 
 ### Cross-Platform Development
 
-DAP supports three deployment environments with unified CLI:
+DAP supports four deployment environments with unified CLI:
 
 | Environment | Platform | Mode | ./dap Behavior | Environment File |
 |------------|----------|------|----------------|------------------|
-| **MacBook** | macOS | `mac-demo` | Light production for demos | `.env.macbook` |
-| **centos1** | Linux | `linux-dev` | Full development toolkit | `.env.development` |
-| **centos2** | Linux | `production` | Production (delegates to `dap-prod`) | `.env.production` |
+| **MacBook** | macOS | `mac-demo` | Light production for demos | `.env.macdev` |
+| **centos1** | Linux | `linux-dev` | Full development toolkit | `.env.linuxdev` |
+| **centos2** | Linux | `production` | Staging (delegates to `dap-prod`) | `.env.stage` |
+| **dapoc** | RHEL 9 | `production` | Production (delegates to `dap-prod`) | `.env.prod` |
 
 The `./dap` script automatically detects the environment based on OS and hostname.
 
-**For detailed cross-platform documentation, see:** `docs/DEV_CONTEXT_LOCAL.md`
+**For detailed cross-platform documentation, see:** `docs/DEV_QUICKSTART.md`
 
 ### Mac Demo Setup (No Docker Required)
 
@@ -937,6 +967,52 @@ All DAP data is stored on `/data` partition (not root):
 ---
 
 ## Recent Changes & Fixes
+
+### Version 2.8.0 (December 19, 2025)
+
+#### Filter Persistence & Environment Architecture
+
+**Feature 1: Adoption Plan Filter Persistence**
+- **Issue**: Filter selections (releases, outcomes, tags) were lost on page refresh or navigation.
+- **Fix**: Implemented database persistence for user filter preferences:
+  - Added `FilterPreference` table to database schema
+  - Created GraphQL mutations: `saveFilterPreference`, queries: `getFilterPreference`
+  - Updated `SolutionAdoptionPlanView` to save/restore filters automatically
+  - Updated `CustomerAdoptionPanelV4` (Product Adoption) to save/restore filters
+  - Filters now persist across sessions for each user/entity combination
+- **Files Changed**: 
+  - `backend/prisma/schema.prisma` - Added FilterPreference model
+  - `backend/src/schema/typeDefs.ts` - Added GraphQL types and operations
+  - `backend/src/schema/resolvers/customerAdoption.ts` - Added filter preference resolvers
+  - `backend/src/schema/resolvers/solutionAdoption.ts` - Added filter preference resolvers
+  - `frontend/src/graphql/queries.ts` - Added GET_FILTER_PREFERENCE query
+  - `frontend/src/graphql/mutations.ts` - Added SAVE_FILTER_PREFERENCE mutation
+  - `frontend/src/components/CustomerAdoptionPanelV4.tsx` - Filter persistence hooks
+  - `frontend/src/components/solution-adoption/SolutionAdoptionPlanView.tsx` - Filter persistence hooks
+
+**Feature 2: Environment Architecture Cleanup**
+- **Issue**: Environment file naming was inconsistent and confusing across platforms.
+- **Fix**: Standardized environment file naming:
+  - Renamed `.env.macbook` → `.env.macdev`
+  - Renamed `.env.development` → `.env.linuxdev`
+  - Renamed `.env.production` → `.env.prod`
+  - Created `.env.stage` for staging environment
+  - Updated `./dap`, `dap-prod`, `mac-light-deploy.sh` scripts
+  - Updated `deploy-to-stage.sh`, `deploy-to-production.sh`
+  - Deleted old environment files from repository
+- **Files Changed**: `dap`, `dap-prod`, `scripts/mac-light-deploy.sh`, `deploy-to-*.sh`
+
+**Feature 3: Drag-and-Drop Sorting for Custom Attributes**
+- **Improvement**: Implemented drag-and-drop reordering for custom attributes in Product and Solution edit dialogs.
+- **Files Changed**: `SolutionDialog.tsx`, `frontend/src/components/dialogs/*`
+
+**Known Issue: First Login Authentication Race Condition**
+- **Status**: Parked for future investigation
+- **Symptom**: Products, Solutions, Customers pages may show "No token found" on first load after restart
+- **Workaround**: Refresh the page after login
+- **Tracked In**: `docs/TODO.md`
+
+---
 
 ### Version 2.6.2 (December 18, 2025)
 
@@ -1341,6 +1417,13 @@ Previously only Tasks opened a preview dialog. Now all entities have preview dia
 
 ## Known Issues & Limitations
 
+### Active Issues
+
+1. **First Login Authentication Race Condition** (Parked)
+   - Products, Solutions, Customers pages may show "No token found" on first load after restart
+   - Workaround: Refresh the page after login
+   - Tracked in: `docs/TODO.md` (P2 priority)
+
 ### Current Limitations
 
 1. **Single Tenant**
@@ -1595,8 +1678,8 @@ sudo tail -f /var/log/httpd/error_log
 
 ---
 
-**Last Updated:** December 18, 2025  
-**Version:** 2.7.0  
+**Last Updated:** December 19, 2025  
+**Version:** 2.8.0  
 **Status:** Production Ready (SSL Enabled)
 
 *This document should be updated whenever significant changes are made to the application.*

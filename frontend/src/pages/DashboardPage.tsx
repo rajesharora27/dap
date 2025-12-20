@@ -16,9 +16,11 @@ import {
     LinearProgress,
     Chip,
     useTheme,
-    alpha
+    alpha,
+    CircularProgress
 } from '@mui/material';
 import { useQuery, gql } from '@apollo/client';
+import { useAuth } from '../components/AuthContext';
 import {
     People as CustomerIcon,
     Inventory2 as ProductIcon,
@@ -63,7 +65,19 @@ const DASHBOARD_DATA = gql`
 
 export const DashboardPage = () => {
     const theme = useTheme();
-    const { loading, error, data } = useQuery(DASHBOARD_DATA);
+    const { isAuthenticated, isLoading: authLoading } = useAuth();
+    const { loading, error, data } = useQuery(DASHBOARD_DATA, {
+        skip: !isAuthenticated,
+        fetchPolicy: 'cache-and-network'
+    });
+
+    if (authLoading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
     if (loading) return <LinearProgress />;
     if (error) return <Typography color="error">Error loading dashboard: {error.message}</Typography>;

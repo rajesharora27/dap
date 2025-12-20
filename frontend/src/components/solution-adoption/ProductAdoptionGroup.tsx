@@ -1,9 +1,10 @@
 /**
  * Product Adoption Group Component
  * Displays a product with its adoption tasks using the shared AdoptionTaskTable
+ * Includes filtering by outcomes, releases, and tags
  */
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -12,15 +13,30 @@ import {
   IconButton,
   LinearProgress,
   Tooltip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  OutlinedInput,
+  Checkbox,
+  ListItemText,
+  Chip,
+  Button,
 } from '@mui/material';
 import {
   ExpandMore,
   ExpandLess,
   Download,
   Upload,
+  FilterList,
+  Clear,
 } from '@mui/icons-material';
 import { AdoptionTaskTable, TaskData } from '../shared/AdoptionTaskTable';
 import { adoptionPlanColors } from '../../utils/tabStyles';
+
+const ALL_RELEASES_ID = '__ALL_RELEASES__';
+const ALL_OUTCOMES_ID = '__ALL_OUTCOMES__';
+const ALL_TAGS_ID = '__ALL_TAGS__';
 
 interface ProductAdoptionGroupProps {
   product: {
@@ -49,6 +65,7 @@ interface ProductAdoptionGroupProps {
     howToVideo?: string[];
     releases?: Array<{ id: string; name: string; version?: string; level?: string }>;
     outcomes?: Array<{ id: string; name: string }>;
+    tags?: Array<{ id: string; name: string; color?: string }>;
     telemetryAttributes?: Array<{
       id: string;
       name: string;
@@ -81,15 +98,93 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
   filterInfo,
 }) => {
   const [expanded, setExpanded] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterReleases, setFilterReleases] = useState<string[]>([]);
+  const [filterOutcomes, setFilterOutcomes] = useState<string[]>([]);
+  const [filterTags, setFilterTags] = useState<string[]>([]);
+
   const colors = adoptionPlanColors.product;
 
-  // Calculate status
-  const applicableTasks = tasks.filter(t => t.status !== 'NOT_APPLICABLE');
+  // Extract available filter options from tasks
+  const availableReleases = useMemo(() => {
+    const releaseMap = new Map<string, { id: string; name: string }>();
+    tasks.forEach(task => {
+      task.releases?.forEach(release => {
+        if (!releaseMap.has(release.id)) {
+          releaseMap.set(release.id, release);
+        }
+      });
+    });
+    return Array.from(releaseMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasks]);
+
+  const availableOutcomes = useMemo(() => {
+    const outcomeMap = new Map<string, { id: string; name: string }>();
+    tasks.forEach(task => {
+      task.outcomes?.forEach(outcome => {
+        if (!outcomeMap.has(outcome.id)) {
+          outcomeMap.set(outcome.id, outcome);
+        }
+      });
+    });
+    return Array.from(outcomeMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasks]);
+
+  const availableTags = useMemo(() => {
+    const tagMap = new Map<string, { id: string; name: string; color?: string }>();
+    tasks.forEach(task => {
+      task.tags?.forEach(tag => {
+        if (tag && !tagMap.has(tag.id)) {
+          tagMap.set(tag.id, tag);
+        }
+      });
+    });
+    return Array.from(tagMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasks]);
+
+  // Filter tasks based on selected filters
+  const filteredTasks = useMemo(() => {
+    let result = [...tasks];
+
+    // Filter by releases
+    if (filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) {
+      result = result.filter(task =>
+        task.releases?.some(release => filterReleases.includes(release.id))
+      );
+    }
+
+    // Filter by outcomes
+    if (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID)) {
+      result = result.filter(task =>
+        task.outcomes?.some(outcome => filterOutcomes.includes(outcome.id))
+      );
+    }
+
+    // Filter by tags
+    if (filterTags.length > 0 && !filterTags.includes(ALL_TAGS_ID)) {
+      result = result.filter(task =>
+        task.tags?.some(tag => tag && filterTags.includes(tag.id))
+      );
+    }
+
+    return result;
+  }, [tasks, filterReleases, filterOutcomes, filterTags]);
+
+  // Calculate status based on filtered tasks
+  const applicableTasks = filteredTasks.filter(t => t.status !== 'NOT_APPLICABLE');
   const completedTasks = applicableTasks.filter(t => t.status === 'DONE' || t.status === 'COMPLETED').length;
   const progress = applicableTasks.length > 0 ? Math.round((completedTasks / applicableTasks.length) * 100) : 0;
 
+  const hasActiveFilters = filterReleases.length > 0 || filterOutcomes.length > 0 || filterTags.length > 0;
+
+  const clearFilters = () => {
+    setFilterReleases([]);
+    setFilterOutcomes([]);
+    setFilterTags([]);
+  };
+
   // Map tasks to TaskData format (include all fields for TaskDetailsDialog)
-  const taskData: TaskData[] = tasks.map(t => ({
+  const taskData: TaskData[] = filteredTasks.map(t => ({
     id: t.id,
     name: t.name,
     description: t.description,
@@ -148,7 +243,7 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
               <Typography variant="h6" sx={{ color: colors.titleColor, fontWeight: 600 }}>
                 {product.productName}
               </Typography>
-              
+
               {/* Progress bar with stats */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, maxWidth: 300 }}>
                 <LinearProgress
@@ -169,11 +264,29 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
                   {progress}%
                 </Typography>
               </Box>
-              
+
               <Typography variant="body2" sx={{ color: colors.titleColor, opacity: 0.8 }}>
                 {completedTasks} of {applicableTasks.length} tasks
+                {hasActiveFilters && ` (filtered from ${tasks.length})`}
               </Typography>
-              
+
+              {/* Filter toggle button */}
+              <Tooltip title={showFilters ? "Hide Filters" : "Show Filters"}>
+                <IconButton
+                  size="small"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowFilters(!showFilters);
+                  }}
+                  sx={{
+                    color: hasActiveFilters ? colors.borderColor : colors.titleColor,
+                    bgcolor: hasActiveFilters ? 'rgba(46, 125, 50, 0.1)' : 'transparent'
+                  }}
+                >
+                  <FilterList fontSize="small" />
+                </IconButton>
+              </Tooltip>
+
               {/* Telemetry buttons */}
               {product.productAdoptionPlanId && (
                 <Box sx={{ display: 'flex', gap: 0.5, ml: 'auto' }} onClick={(e) => e.stopPropagation()}>
@@ -218,6 +331,171 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
           </Box>
         </Box>
       </Box>
+
+      {/* Filter Section */}
+      <Collapse in={showFilters}>
+        <Box
+          sx={{
+            p: 2,
+            bgcolor: 'grey.50',
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            display: 'flex',
+            gap: 2,
+            flexWrap: 'wrap',
+            alignItems: 'center'
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Release Filter */}
+          {availableReleases.length > 0 && (
+            <FormControl sx={{ minWidth: 180 }} size="small">
+              <InputLabel>Filter by Release</InputLabel>
+              <Select
+                multiple
+                value={filterReleases}
+                onChange={(e) => {
+                  const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                  if (value.includes(ALL_RELEASES_ID)) {
+                    setFilterReleases([]);
+                  } else {
+                    setFilterReleases(value);
+                  }
+                }}
+                input={<OutlinedInput label="Filter by Release" />}
+                renderValue={(selected) => {
+                  if (selected.length === 0) return 'All Releases';
+                  const names = selected.map(id => availableReleases.find(r => r.id === id)?.name || '').filter(Boolean);
+                  return names.join(', ');
+                }}
+              >
+                <MenuItem value={ALL_RELEASES_ID}>
+                  <Checkbox checked={filterReleases.length === 0} />
+                  <ListItemText primary="All Releases" />
+                </MenuItem>
+                {availableReleases.map((release) => (
+                  <MenuItem key={release.id} value={release.id}>
+                    <Checkbox checked={filterReleases.includes(release.id)} />
+                    <ListItemText primary={release.name} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+
+          {/* Outcome Filter */}
+          {availableOutcomes.length > 0 && (
+            <FormControl sx={{ minWidth: 180 }} size="small">
+              <InputLabel>Filter by Outcome</InputLabel>
+              <Select
+                multiple
+                value={filterOutcomes}
+                onChange={(e) => {
+                  const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                  if (value.includes(ALL_OUTCOMES_ID)) {
+                    setFilterOutcomes([]);
+                  } else {
+                    setFilterOutcomes(value);
+                  }
+                }}
+                input={<OutlinedInput label="Filter by Outcome" />}
+                renderValue={(selected) => {
+                  if (selected.length === 0) return 'All Outcomes';
+                  const names = selected.map(id => availableOutcomes.find(o => o.id === id)?.name || '').filter(Boolean);
+                  return names.join(', ');
+                }}
+              >
+                <MenuItem value={ALL_OUTCOMES_ID}>
+                  <Checkbox checked={filterOutcomes.length === 0} />
+                  <ListItemText primary="All Outcomes" />
+                </MenuItem>
+                {availableOutcomes.map((outcome) => (
+                  <MenuItem key={outcome.id} value={outcome.id}>
+                    <Checkbox checked={filterOutcomes.includes(outcome.id)} />
+                    <ListItemText primary={outcome.name} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+
+          {/* Tag Filter */}
+          {availableTags.length > 0 && (
+            <FormControl sx={{ minWidth: 180 }} size="small">
+              <InputLabel>Filter by Tag</InputLabel>
+              <Select
+                multiple
+                value={filterTags}
+                onChange={(e) => {
+                  const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                  if (value.includes(ALL_TAGS_ID)) {
+                    setFilterTags([]);
+                  } else {
+                    setFilterTags(value);
+                  }
+                }}
+                input={<OutlinedInput label="Filter by Tag" />}
+                renderValue={(selected) => {
+                  if (selected.length === 0) return 'All Tags';
+                  return (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                      {selected.map((value) => {
+                        const tag = availableTags.find(t => t.id === value);
+                        return tag ? (
+                          <Chip
+                            key={value}
+                            label={tag.name}
+                            size="small"
+                            sx={{
+                              bgcolor: tag.color,
+                              color: '#fff',
+                              height: 20,
+                              '& .MuiChip-label': { px: 1, fontSize: '0.75rem' }
+                            }}
+                          />
+                        ) : null;
+                      })}
+                    </Box>
+                  );
+                }}
+              >
+                <MenuItem value={ALL_TAGS_ID}>
+                  <Checkbox checked={filterTags.length === 0} />
+                  <ListItemText primary="All Tags" />
+                </MenuItem>
+                {availableTags.map((tag) => (
+                  <MenuItem key={tag.id} value={tag.id}>
+                    <Checkbox checked={filterTags.includes(tag.id)} />
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box
+                        sx={{
+                          width: 12,
+                          height: 12,
+                          borderRadius: '50%',
+                          bgcolor: tag.color
+                        }}
+                      />
+                      <ListItemText primary={tag.name} />
+                    </Box>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          )}
+
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <Button
+              size="small"
+              startIcon={<Clear />}
+              onClick={clearFilters}
+              sx={{ color: 'text.secondary' }}
+            >
+              Clear Filters
+            </Button>
+          )}
+        </Box>
+      </Collapse>
 
       {/* Task Table */}
       <Collapse in={expanded}>

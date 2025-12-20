@@ -137,6 +137,12 @@ const GET_ADOPTION_PLAN = gql`
       needsSync
       lastSyncedAt
       licenseLevel
+      filterPreference {
+        id
+        filterReleases
+        filterOutcomes
+        filterTags
+      }
       selectedOutcomes {
         id
         name
@@ -145,6 +151,13 @@ const GET_ADOPTION_PLAN = gql`
         id
         name
         level
+      }
+      customerProduct {
+        tags {
+          id
+          name
+          color
+        }
       }
       tasks {
         id
@@ -234,6 +247,23 @@ const UPDATE_TASK_STATUS = gql`
         completedTasks
         progressPercentage
       }
+      tags {
+        id
+        name
+        color
+      }
+    }
+  }
+`;
+
+const UPDATE_FILTER_PREFERENCE = gql`
+  mutation UpdateAdoptionPlanFilterPreference($input: UpdateFilterPreferenceInput!) {
+    updateAdoptionPlanFilterPreference(input: $input) {
+      id
+      adoptionPlanId
+      filterReleases
+      filterOutcomes
+      filterTags
     }
   }
 `;
@@ -293,6 +323,11 @@ const SYNC_ADOPTION_PLAN = gql`
           id
           name
           level
+        }
+        tags {
+          id
+          name
+          color
         }
       }
     }
@@ -366,6 +401,11 @@ const UPDATE_CUSTOMER_PRODUCT = gql`
             name
             level
           }
+          tags {
+            id
+            name
+            color
+          }
         }
       }
     }
@@ -399,6 +439,35 @@ const SYNC_SOLUTION_ADOPTION_PLAN = gql`
       completedTasks
       needsSync
       lastSyncedAt
+      tasks {
+        id
+        tags {
+          id
+          name
+          color
+        }
+      }
+      products {
+        id
+        productAdoptionPlan {
+          id
+          customerProduct {
+            tags {
+              id
+              name
+              color
+            }
+          }
+          tasks {
+            id
+            tags {
+              id
+              name
+              color
+            }
+          }
+        }
+      }
     }
   }
 `;
@@ -646,6 +715,61 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
     fetchPolicy: 'cache-and-network',
   });
 
+  // Mutation for saving filter preferences
+  const [saveFilterPreference] = useMutation(UPDATE_FILTER_PREFERENCE);
+
+  // Track if we've initialized filters from loaded preference
+  const [filtersInitialized, setFiltersInitialized] = React.useState(false);
+
+  // Initialize filters from persisted preference when plan data loads
+  useEffect(() => {
+    if (planData?.adoptionPlan?.filterPreference && !filtersInitialized) {
+      const pref = planData.adoptionPlan.filterPreference;
+      setFilterReleases(pref.filterReleases || []);
+      setFilterOutcomes(pref.filterOutcomes || []);
+      setFilterTags(pref.filterTags || []);
+      setFiltersInitialized(true);
+    }
+  }, [planData?.adoptionPlan?.filterPreference, filtersInitialized]);
+
+  // Reset initialization flag when adoption plan changes
+  useEffect(() => {
+    setFiltersInitialized(false);
+  }, [adoptionPlanId]);
+
+  // Save filter preference when filters change (debounced)
+  const saveFiltersTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    // Don't save if we haven't initialized yet or if no plan ID
+    if (!filtersInitialized || !adoptionPlanId) return;
+
+    // Debounce saves to avoid too many requests
+    if (saveFiltersTimeoutRef.current) {
+      clearTimeout(saveFiltersTimeoutRef.current);
+    }
+
+    saveFiltersTimeoutRef.current = setTimeout(() => {
+      saveFilterPreference({
+        variables: {
+          input: {
+            adoptionPlanId,
+            filterReleases,
+            filterOutcomes,
+            filterTags,
+          },
+        },
+      }).catch((err: any) => {
+        console.error('Failed to save filter preference:', err);
+      });
+    }, 500); // 500ms debounce
+
+    return () => {
+      if (saveFiltersTimeoutRef.current) {
+        clearTimeout(saveFiltersTimeoutRef.current);
+      }
+    };
+  }, [filterReleases, filterOutcomes, filterTags, adoptionPlanId, filtersInitialized, saveFilterPreference]);
+
   // Auto-select first product when customer is selected or products change
   useEffect(() => {
     if (sortedProducts.length > 0 && !selectedCustomerProductId) {
@@ -680,9 +804,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
       // Filter by tags
       if (filterTags.length > 0) {
         // Check if task has any of the selected tags
-        // task.tags is array of CustomerTaskTag { tag: { id, ... } }
-        const hasSelectedTag = task.tags?.some((tt: any) =>
-          filterTags.includes(tt.tag.id)
+        // task.tags is array of Tag { id, name, color }
+        const hasSelectedTag = task.tags?.some((tag: any) =>
+          tag && filterTags.includes(tag.id)
         );
         if (!hasSelectedTag) return false;
       }
@@ -698,7 +822,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
     });
 
     return tasks;
-  }, [planData?.adoptionPlan?.tasks, filterReleases, filterOutcomes]);
+  }, [planData?.adoptionPlan?.tasks, filterReleases, filterOutcomes, filterTags]);
 
   // Get releases and outcomes for filter dropdowns - always from entitlements (synced from product)
   const availableReleases = React.useMemo(() => {
@@ -714,19 +838,12 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
   }, [planData?.adoptionPlan?.selectedOutcomes]);
 
   const availableTags = React.useMemo(() => {
-    if (!planData?.adoptionPlan?.tasks) return [];
+    // Use synced tags from customer product (similar to outcomes)
+    if (!planData?.adoptionPlan?.customerProduct?.tags) return [];
 
-    const tagsMap = new Map();
-    planData.adoptionPlan.tasks.forEach((task: any) => {
-      task.tags?.forEach((tt: any) => {
-        if (tt.tag && !tagsMap.has(tt.tag.id)) {
-          tagsMap.set(tt.tag.id, tt.tag);
-        }
-      });
-    });
-
-    return Array.from(tagsMap.values()).sort((a: any, b: any) => a.name.localeCompare(b.name));
-  }, [planData?.adoptionPlan?.tasks]);
+    // Sort tags by name
+    return [...planData.adoptionPlan.customerProduct.tags].sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }, [planData?.adoptionPlan?.customerProduct?.tags]);
 
   // Calculate progress based on filtered tasks using WEIGHTS (excluding NOT_APPLICABLE)
   const filteredProgress = React.useMemo(() => {
@@ -857,7 +974,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
   });
 
   const [syncSolutionPlan, { loading: syncSolutionLoading }] = useMutation(SYNC_SOLUTION_ADOPTION_PLAN, {
-    refetchQueries: ['GetCustomers'],
+    refetchQueries: ['GetCustomers', 'GetAdoptionPlan'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       setSyncingSolutionId(null);

@@ -73,6 +73,10 @@ function getTaskDataForSync(task: any) {
     status, // From existing customer task if present
     adoptionPlanId,
     originalTaskId,
+    rawTelemetryMapping,
+    completedReason, // Exclude this
+    completedAt,     // Exclude this (should be managed by status updates)
+    softDeleteQueued,
     ...baseFields
   } = task;
 
@@ -255,6 +259,7 @@ export const CustomerAdoptionQueryResolvers = {
           include: {
             customer: true,
             product: true,
+            tags: true,
           },
         },
         tasks: {
@@ -275,6 +280,11 @@ export const CustomerAdoptionQueryResolvers = {
             releases: {
               include: {
                 release: true,
+              },
+            },
+            taskTags: {
+              include: {
+                tag: true,
               },
             },
           },
@@ -580,6 +590,7 @@ export const CustomerAdoptionMutationResolvers = {
       data: updateData,
       include: {
         customer: true,
+        tags: true,
         product: {
           include: {
             tasks: {
@@ -1026,6 +1037,7 @@ export const CustomerAdoptionMutationResolvers = {
       tagMap.set(tag.id, newTag.id);
       console.log(`  Created CustomerProductTag: ${tag.name} (source: ${tag.id} -> new: ${newTag.id})`);
     }
+    console.log(`STEP 1.5 DONE: Tag Map size: ${tagMap.size}`);
 
     // ============================================
     // STEP 2: SYNC TASKS (match by license level only)
@@ -1067,6 +1079,9 @@ export const CustomerAdoptionMutationResolvers = {
         // UPDATE existing task (preserve status fields)
         console.log(`  Updating task: ${productTask.name}`);
         const taskData = getTaskDataForSync(productTask);
+        // Explicitly remove rawTelemetryMapping if it somehow slipped through
+        delete (taskData as any).rawTelemetryMapping;
+
         await prisma.customerTask.update({
           where: { id: existingTask.id },
           data: {
@@ -1123,8 +1138,9 @@ export const CustomerAdoptionMutationResolvers = {
         if (productTask.taskTags && productTask.taskTags.length > 0) {
           console.log(`    Syncing ${productTask.taskTags.length} tags for task ${productTask.name}`);
           for (const tt of productTask.taskTags) {
+            console.log(`      Processing tag sourceId: ${tt.tagId}`);
             const newTagId = tagMap.get(tt.tagId);
-            console.log(`      Tag ${tt.tagId} -> ${newTagId || 'NOT FOUND IN MAP'}`);
+            console.log(`      Tag lookup result: ${newTagId || 'NOT FOUND'}`);
             if (newTagId) {
               await prisma.customerTaskTag.create({
                 data: { customerTaskId: existingTask.id, tagId: newTagId }
@@ -1205,7 +1221,7 @@ export const CustomerAdoptionMutationResolvers = {
         lastSyncedAt: new Date(),
       },
       include: {
-        customerProduct: { include: { customer: true, product: true } },
+        customerProduct: { include: { customer: true, product: true, tags: true } },
         tasks: {
           include: {
             telemetryAttributes: true,
@@ -1612,6 +1628,39 @@ export const CustomerAdoptionMutationResolvers = {
     }
     // Status not updated - either no change or manual status takes precedence
     return task;
+  },
+
+  updateAdoptionPlanFilterPreference: async (_: any, { input }: any, ctx: any) => {
+    ensureRole(ctx, ['ADMIN', 'CSS', 'USER']);
+
+    const { adoptionPlanId, filterReleases, filterOutcomes, filterTags } = input;
+
+    // Verify the adoption plan exists
+    const adoptionPlan = await prisma.adoptionPlan.findUnique({
+      where: { id: adoptionPlanId },
+    });
+
+    if (!adoptionPlan) {
+      throw new Error('Adoption plan not found');
+    }
+
+    // Upsert the filter preference
+    const filterPreference = await prisma.adoptionPlanFilterPreference.upsert({
+      where: { adoptionPlanId },
+      update: {
+        filterReleases,
+        filterOutcomes,
+        filterTags,
+      },
+      create: {
+        adoptionPlanId,
+        filterReleases,
+        filterOutcomes,
+        filterTags,
+      },
+    });
+
+    return filterPreference;
   },
 
   exportCustomerAdoptionToExcel: async (_: any, { customerId, customerProductId }: any, ctx: any) => {
@@ -2155,6 +2204,13 @@ export const AdoptionPlanResolvers = {
 
     return product.updatedAt > parent.lastSyncedAt;
   },
+
+  filterPreference: async (parent: any) => {
+    // Return filter preference for this adoption plan, or null if none exists
+    return await prisma.adoptionPlanFilterPreference.findUnique({
+      where: { adoptionPlanId: parent.id },
+    });
+  },
 };
 
 export const CustomerTaskResolvers = {
@@ -2214,12 +2270,23 @@ export const CustomerTaskResolvers = {
 
   tags: async (parent: any) => {
     try {
+      // Optimization: If taskTags are already included in the parent (from findMany include), use them
+      if (parent.taskTags) {
+        // console.log('[DEBUG] Using pre-fetched tags for task:', parent.id);
+        return parent.taskTags
+          .map((tt: any) => tt.tag)
+          .filter((t: any) => t != null); // Allow empty array but filter out nulls
+      }
+
+      // console.log('[DEBUG] CustomerTask.tags resolver fetching from DB for task:', parent.id);
       const taskTags = await prisma.customerTaskTag.findMany({
         where: { customerTaskId: parent.id },
         include: { tag: true },
         orderBy: { tag: { displayOrder: 'asc' } }
       });
-      return taskTags.map((tt: any) => tt.tag) || [];
+      return taskTags
+        .map((tt: any) => tt.tag)
+        .filter((t: any) => t != null) || [];
     } catch (error) {
       console.log('[CustomerTask.tags] Error, returning empty array:', (error as any).message);
       return [];

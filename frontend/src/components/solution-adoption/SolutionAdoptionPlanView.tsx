@@ -32,6 +32,7 @@ import {
 
 const ALL_RELEASES_ID = '__ALL_RELEASES__';
 const ALL_OUTCOMES_ID = '__ALL_OUTCOMES__';
+const ALL_TAGS_ID = '__ALL_TAGS__';
 
 const GET_SOLUTION_ADOPTION_PLAN = gql`
   query GetSolutionAdoptionPlan($id: ID!) {
@@ -61,6 +62,11 @@ const GET_SOLUTION_ADOPTION_PLAN = gql`
       customerSolution {
         id
         name
+        tags {
+          id
+          name
+          color
+        }
         solution {
           id
           name
@@ -129,6 +135,11 @@ const GET_SOLUTION_ADOPTION_PLAN = gql`
               name
               level
             }
+            tags {
+              id
+              name
+              color
+            }
           }
         }
       }
@@ -164,6 +175,11 @@ const GET_SOLUTION_ADOPTION_PLAN = gql`
             notes
             criteriaMet
           }
+        }
+        tags {
+          id
+          name
+          color
         }
         outcomes {
           id
@@ -250,9 +266,11 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     success: false,
   });
 
+
   // Filter states for UI display filtering
   const [filterReleases, setFilterReleases] = useState<string[]>([]);
   const [filterOutcomes, setFilterOutcomes] = useState<string[]>([]);
+  const [filterTags, setFilterTags] = useState<string[]>([]);
 
   const { data, loading, error: queryError, refetch } = useQuery(GET_SOLUTION_ADOPTION_PLAN, {
     variables: { id: solutionAdoptionPlanId },
@@ -340,6 +358,13 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
       .sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [data]);
 
+  // Get available tags for filter dropdown - from customerSolution.tags
+  const availableTags = useMemo(() => {
+    if (!data?.solutionAdoptionPlan?.customerSolution?.tags) return [];
+    return [...data.solutionAdoptionPlan.customerSolution.tags]
+      .sort((a: any, b: any) => a.name.localeCompare(b.name));
+  }, [data]);
+
   // Apply UI filters to solution tasks
   const solutionTasks = useMemo(() => {
     let tasks = [...allSolutionTasks];
@@ -364,8 +389,18 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
       });
     }
 
+    // Filter by tags (multiple selection - task must have at least one selected tag)
+    if (filterTags.length > 0 && !filterTags.includes(ALL_TAGS_ID)) {
+      tasks = tasks.filter((task: any) => {
+        const hasSelectedTag = task.tags?.some((tag: any) =>
+          tag && filterTags.includes(tag.id)
+        );
+        return hasSelectedTag;
+      });
+    }
+
     return tasks;
-  }, [allSolutionTasks, filterReleases, filterOutcomes]);
+  }, [allSolutionTasks, filterReleases, filterOutcomes, filterTags]);
 
   if (!solutionAdoptionPlanId) {
     return (
@@ -620,7 +655,8 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
               Filter Solution Tasks
             </Typography>
             {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) ||
-              (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
+              (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID)) ||
+              (filterTags.length > 0 && !filterTags.includes(ALL_TAGS_ID))) && (
                 <Chip
                   label={`Showing ${solutionTasks.length} of ${allSolutionTasks.length} tasks`}
                   size="small"
@@ -694,6 +730,81 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
               </Alert>
             )}
 
+            {/* Tags Filter */}
+            {availableTags.length > 0 ? (
+              <FormControl sx={{ minWidth: 250 }} size="small">
+                <InputLabel>Filter by Tag</InputLabel>
+                <Select
+                  multiple
+                  value={filterTags}
+                  onChange={(e) => {
+                    const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                    if (value.includes(ALL_TAGS_ID)) {
+                      if (filterTags.includes(ALL_TAGS_ID)) {
+                        setFilterTags([]);
+                      } else {
+                        setFilterTags([ALL_TAGS_ID]);
+                      }
+                    } else {
+                      setFilterTags(value);
+                    }
+                  }}
+                  input={<OutlinedInput label="Filter by Tag" />}
+                  renderValue={(selected) => {
+                    if (selected.includes(ALL_TAGS_ID)) return 'All Tags';
+                    if (selected.length === 0) return 'All Tags';
+                    return (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const tag = availableTags.find((t: any) => t.id === value);
+                          return (
+                            <Chip
+                              key={value}
+                              label={tag?.name || 'Unknown'}
+                              size="small"
+                              sx={{
+                                bgcolor: tag?.color,
+                                color: '#fff',
+                                height: 20,
+                                '& .MuiChip-label': { px: 1, fontSize: '0.75rem', fontWeight: 600 }
+                              }}
+                            />
+                          );
+                        })}
+                      </Box>
+                    );
+                  }}
+                >
+                  <MenuItem value={ALL_TAGS_ID}>
+                    <Checkbox checked={filterTags.includes(ALL_TAGS_ID) || filterTags.length === 0} />
+                    <ListItemText primary="All Tags" />
+                  </MenuItem>
+                  {availableTags.map((tag: any) => (
+                    <MenuItem key={tag.id} value={tag.id}>
+                      <Checkbox checked={filterTags.includes(tag.id)} disabled={filterTags.includes(ALL_TAGS_ID)} />
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box
+                          sx={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: '50%',
+                            bgcolor: tag.color
+                          }}
+                        />
+                        <ListItemText primary={tag.name} />
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
+              <Alert severity="info" sx={{ flex: 1 }}>
+                <Typography variant="caption">
+                  No tags available.
+                </Typography>
+              </Alert>
+            )}
+
             {/* Outcomes Filter */}
             {availableOutcomes.length > 0 ? (
               <FormControl sx={{ minWidth: 250 }} size="small">
@@ -742,13 +853,15 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
 
             {/* Clear Filters Button */}
             {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) ||
-              (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
+              (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID)) ||
+              (filterTags.length > 0 && !filterTags.includes(ALL_TAGS_ID))) && (
                 <Button
                   variant="text"
                   size="small"
                   onClick={() => {
                     setFilterReleases([]);
                     setFilterOutcomes([]);
+                    setFilterTags([]);
                   }}
                   sx={{ alignSelf: 'center' }}
                 >

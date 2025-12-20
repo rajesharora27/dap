@@ -1,0 +1,165 @@
+# DAP To-Do Tracker
+
+Master list of feature requests, improvements, and technical debt items.
+
+---
+
+## 🔥 Priority: High
+
+### ✅ P1: Environment Architecture Fix
+**Status:** 🟢 Complete  
+**Completed:** 2025-12-19  
+**Description:** Cleaned up environment architecture with clear, consistent naming.
+
+**Changes Made:**
+- [x] Renamed `.env.macbook` → `.env.macdev`
+- [x] Renamed `.env.development` → `.env.linuxdev`
+- [x] Renamed `.env.production` → `.env.prod`
+- [x] Created `.env.stage` for staging environment
+- [x] Updated `./dap`, `dap-prod`, `mac-light-deploy.sh`
+- [x] Updated `deploy-to-stage.sh`, `deploy-to-production.sh`
+- [x] Updated documentation
+
+---
+
+### P2: Solution Management Refinements & UI Fixes
+**Status:** 🟡 In Progress  
+**Created:** 2025-12-19  
+**Description:** Address regressions on Solutions page and enhance solution-level license/release management.
+
+**Tasks:**
+- [ ] Fix missing Solution select dropdown and buttons on `SolutionsPage.tsx`
+- [ ] Restore missing Licenses tab in `SolutionDialog.tsx`
+- [ ] Add solution-level license selection during solution creation
+- [ ] Implement mapping/picking of product licenses/releases for solutions
+- [ ] Ensure persistence of all solution-level associations
+
+---
+
+### P2: First Login Authentication Issue
+**Status:** 🟡 In Progress (Parked)  
+**Created:** 2025-12-19  
+**Description:** First login after application restart sometimes fails to load data on Products, Solutions, and Customers pages. Subsequent refresh resolves the issue.
+
+**Symptoms:**
+- "No token found" error on first navigation
+- Empty data in components on initial load
+- Works correctly after page refresh
+
+**Root Cause (Suspected):**
+- Authentication race condition during initial load
+- Token validation timing with Apollo Client hydration
+- Context initialization order
+
+**Workaround:**
+- Refresh the page after login if data does not load
+
+---
+
+### P3: Persist Adoption Plan Filters
+**Status:** 🟢 Complete  
+**Completed:** 2025-12-19  
+**Description:** Filter selections now persist to the database and are restored on page load.
+
+**Implementation:**
+- [x] Added `FilterPreference` table to database schema
+- [x] Created GraphQL mutations/queries for filter preferences
+- [x] Updated Solution Adoption Plan view to save/restore filters
+- [x] Updated Product Adoption Plan view to save/restore filters
+- [x] Filters persist across sessions and page reloads
+
+---
+
+### P4: Adoption Plan Tab in Products/Solutions
+**Status:** 🔴 Not Started  
+**Created:** 2025-12-19  
+**Description:** Add a new "Adoption Plan" tab in Products and Solutions that shows all tasks with filtering capabilities for SME users.
+
+**Requirements:**
+- New tab in Product detail view
+- New tab in Solution detail view
+- Show all adoption tasks
+- Filtering by: release, outcome, tag, status
+- SME-focused view with bulk actions
+
+---
+
+## 🎨 Priority: Medium (UI/UX)
+
+### P5: Replace 3D Icons with Flat Icons (Font Awesome)
+**Status:** 🔴 Not Started  
+**Created:** 2025-12-19  
+**Description:** Replace all 3D style icons with flat Font Awesome icons for a cleaner, more consistent look.
+
+**Tasks:**
+- [ ] Audit current icon usage
+- [ ] Install/configure Font Awesome
+- [ ] Replace icons in navigation
+- [ ] Replace icons in cards/buttons
+- [ ] Replace icons in dialogs
+- [ ] Test all pages for icon consistency
+
+---
+
+### P6: Use Cisco/MacBook Fonts
+**Status:** 🔴 Not Started  
+**Created:** 2025-12-19  
+**Description:** Update typography to use Cisco brand fonts or MacBook system fonts.
+
+**Options:**
+- **Cisco Fonts:** CiscoSans, CiscoSansTT
+- **Apple System Fonts:** -apple-system, BlinkMacSystemFont, SF Pro
+- **Fallback:** Inter, Roboto
+
+**Tasks:**
+- [ ] Research Cisco font licensing
+- [ ] Configure font stack in CSS
+- [ ] Update typography styles
+- [ ] Test across browsers
+
+---
+
+### P7: Color Consistency with Themes
+**Status:** 🔴 Not Started  
+**Created:** 2025-12-19  
+**Description:** Ensure all colors are consistent with the theme system. No hardcoded colors.
+
+**Tasks:**
+- [ ] Audit hardcoded colors in components
+- [ ] Define complete color palette in theme
+- [ ] Replace hardcoded colors with theme references
+- [ ] Ensure dark mode compatibility
+- [ ] Test across all pages
+
+---
+
+## 📋 Backlog
+
+_Items to be prioritized later_
+
+---
+
+## ✅ Completed
+
+### Frontend Loading Fix
+**Completed:** 2025-12-19  
+**Description:** Fixed frontend not loading on Mac due to VITE_BASE_PATH conflict.
+
+### Development Process Documentation
+**Completed:** 2025-12-19  
+**Description:** Created DEV_QUICKSTART.md and implementation plan for development workflow.
+
+---
+
+## Notes
+
+### How to Add Items
+1. Add new items under appropriate priority section
+2. Use status indicators: 🔴 Not Started, 🟡 In Progress, 🟢 Complete
+3. Include created date
+4. Break down into specific tasks when starting work
+
+### Priority Definitions
+- **High:** Blocking issues, frequently requested features
+- **Medium:** Important but not urgent, UX improvements
+- **Backlog:** Nice to have, future considerations

@@ -40,6 +40,7 @@ export const typeDefs = gql`
     productId: ID                   # Product this release belongs to
     tasks: [Task!]!                 # Tasks directly assigned to this release
     inheritedTasks: [Task!]!        # Tasks available through inheritance from lower releases
+    customAttrs: JSON
   }
 
   type Product implements Node {
@@ -117,6 +118,9 @@ export const typeDefs = gql`
     isActive: Boolean!              # Whether this license is currently active
     product: Product                # Product this license belongs to
     productId: ID                   # Product this license belongs to
+    solution: Solution              # Solution this license belongs to
+    solutionId: ID                  # Solution this license belongs to
+    customAttrs: JSON
   }
 
   type AuditLog implements Node { id: ID! action: String! entity: String entityId: String details: JSON createdAt: String! }
@@ -367,7 +371,7 @@ type CustomerSolutionTaskTag {
     task(id: ID!): Task
     tasks(first: Int, after: String, last: Int, before: String, productId: ID, solutionId: ID): TaskConnection!
     customers: [Customer!]!
-    licenses: [License!]!
+    licenses(productId: ID, solutionId: ID): [License!]!
     releases(productId: ID): [Release!]!
     taskStatuses: [TaskStatus!]!
     outcomes(productId: ID, solutionId: ID): [Outcome!]!
@@ -510,7 +514,9 @@ type CustomerSolutionTaskTag {
     description: String 
     level: Int
     isActive: Boolean
-    productId: ID!              # Product this license belongs to
+    productId: ID               # Product this license belongs to (optional)
+    solutionId: ID              # Solution this license belongs to (optional)
+    customAttrs: JSON
   }
   input ReleaseInput {
     name: String!
@@ -519,6 +525,7 @@ type CustomerSolutionTaskTag {
     isActive: Boolean
     productId: ID               # Product this release belongs to (optional - either productId or solutionId)
     solutionId: ID              # Solution this release belongs to (optional - either productId or solutionId)
+    customAttrs: JSON
   }
   input TaskStatusInput { code: String! label: String! }
   input OutcomeInput { name: String! description: String productId: ID solutionId: ID }
@@ -710,7 +717,7 @@ type CustomerSolutionTaskTag {
   addCustomerTelemetryValue(input: AddCustomerTelemetryValueInput!): CustomerTelemetryValue!
   bulkAddCustomerTelemetryValues(inputs: [AddCustomerTelemetryValueInput!]!): [CustomerTelemetryValue!]!
   evaluateTaskTelemetry(customerTaskId: ID!): CustomerTask!
-
+  updateAdoptionPlanFilterPreference(input: UpdateFilterPreferenceInput!): AdoptionPlanFilterPreference!
   
   # Telemetry Import/Export
   exportAdoptionPlanTelemetryTemplate(adoptionPlanId: ID!): TelemetryTemplateExport!
@@ -832,6 +839,17 @@ type CustomerSolutionTaskTag {
     updatedAt: String!
     lastSyncedAt: String
     needsSync: Boolean!
+    filterPreference: AdoptionPlanFilterPreference
+  }
+
+  type AdoptionPlanFilterPreference {
+    id: ID!
+    adoptionPlanId: ID!
+    filterReleases: [ID!]!
+    filterOutcomes: [ID!]!
+    filterTags: [ID!]!
+    createdAt: String!
+    updatedAt: String!
   }
 
   type CustomerTask {
@@ -929,6 +947,7 @@ type CustomerSolutionTaskTag {
     purchasedAt: String!
     createdAt: String!
     updatedAt: String!
+    tags: [CustomerSolutionTag!]!
   }
 
   type SolutionAdoptionPlan {
@@ -1002,6 +1021,7 @@ type CustomerSolutionTaskTag {
     telemetryProgress: TelemetryProgress!
     createdAt: String!
     updatedAt: String!
+    tags: [CustomerSolutionTag!]!
   }
 
   # Customer Adoption Input Types
@@ -1036,6 +1056,12 @@ type CustomerSolutionTaskTag {
     notes: String
   }
 
+  input UpdateFilterPreferenceInput {
+    adoptionPlanId: ID!
+    filterReleases: [ID!]!
+    filterOutcomes: [ID!]!
+    filterTags: [ID!]!
+  }
   # Solution Adoption Input Types
   input AssignSolutionToCustomerInput {
     customerId: ID!

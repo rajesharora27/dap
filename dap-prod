@@ -101,16 +101,16 @@ log_header() { echo -e "${PURPLE}=== $1 ===${NC}"; }
 # ENVIRONMENT SYNC - Ensure correct .env is applied
 # =============================================================================
 
-# Sync environment from .env.production to backend/.env
+# Sync environment from .env.prod to backend/.env
 # This ensures the backend uses production database credentials
 sync_env() {
     log_info "Syncing production environment..."
     
-    if [ -f "${APP_DIR}/.env.production" ]; then
-        # Use .env.production as the source of truth
-        run_as_dap cp "${APP_DIR}/.env.production" "${APP_DIR}/.env"
-        run_as_dap cp "${APP_DIR}/.env.production" "${APP_DIR}/backend/.env"
-        log_success "Environment synced from .env.production"
+    if [ -f "${APP_DIR}/.env.prod" ]; then
+        # Use .env.prod as the source of truth
+        run_as_dap cp "${APP_DIR}/.env.prod" "${APP_DIR}/.env"
+        run_as_dap cp "${APP_DIR}/.env.prod" "${APP_DIR}/backend/.env"
+        log_success "Environment synced from .env.prod"
     elif [ -f "${APP_DIR}/.env" ]; then
         # Fallback: sync .env to backend
         run_as_dap cp "${APP_DIR}/.env" "${APP_DIR}/backend/.env"

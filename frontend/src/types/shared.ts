@@ -7,6 +7,7 @@ export interface License {
     level: number; // Always number, 1-5
     isActive: boolean;
     productId?: string;
+    customAttrs?: Record<string, any>;
     // Tracking flags for product dialog
     isNew?: boolean;
     delete?: boolean;

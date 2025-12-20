@@ -150,6 +150,14 @@ export class TestFactory {
         // User credentials and auth data must be preserved even in tests
         // Tests should create their own test users and not affect existing users
         const tablenames = [
+            'CustomerSolutionTaskTag',
+            'CustomerSolutionTag',
+            'CustomerTaskTag',
+            'CustomerProductTag',
+            'SolutionTaskTag',
+            'TaskTag',
+            'SolutionTag',
+            'ProductTag',
             'CustomerTask',
             'AdoptionPlan',
             'CustomerProduct',
@@ -172,6 +180,36 @@ export class TestFactory {
                 console.error(`Error truncating ${tablename}:`, error);
             }
         }
+    }
+
+    /**
+     * Create a test product tag
+     */
+    static async createProductTag(productId: string, overrides: any = {}) {
+        return prisma.productTag.create({
+            data: {
+                productId,
+                name: overrides.name || faker.commerce.productMaterial(),
+                color: overrides.color || faker.internet.color(),
+                displayOrder: overrides.displayOrder || faker.number.int({ min: 0, max: 100 }),
+                ...overrides
+            }
+        });
+    }
+
+    /**
+     * Create a test solution tag
+     */
+    static async createSolutionTag(solutionId: string, overrides: any = {}) {
+        return prisma.solutionTag.create({
+            data: {
+                solutionId,
+                name: overrides.name || faker.commerce.productMaterial(),
+                color: overrides.color || faker.internet.color(),
+                displayOrder: overrides.displayOrder || faker.number.int({ min: 0, max: 100 }),
+                ...overrides
+            }
+        });
     }
 }
 
