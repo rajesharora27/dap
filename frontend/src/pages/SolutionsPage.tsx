@@ -1515,8 +1515,8 @@ export const SolutionsPage: React.FC = () => {
                                                     <TableCell align="left">Name</TableCell>
                                                     <TableCell align="left">Tags</TableCell>
                                                     <TableCell align="left">Resources</TableCell>
-                                                    <TableCell width={100} align="left">Implementation %</TableCell>
-                                                    <TableCell align="left">Validation Criteria</TableCell>
+                                                    <TableCell width={80} align="center">Impl %</TableCell>
+                                                    <TableCell align="center">Validation Criteria</TableCell>
                                                     <TableCell width={100} align="left">Actions</TableCell>
                                                 </TableRow>
                                             </TableHead>

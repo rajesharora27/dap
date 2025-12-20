@@ -3,9 +3,10 @@
 # Creates a versioned release from current dev state (centos1)
 
 set -e
+PROJECT_ROOT=$(pwd)
 
 RELEASE_DATE=$(date +%Y%m%d-%H%M%S)
-RELEASE_DIR="/data/dap/releases"
+RELEASE_DIR="$(pwd)/releases"
 RELEASE_NAME="release-${RELEASE_DATE}"
 RELEASE_PATH="${RELEASE_DIR}/${RELEASE_NAME}"
 
@@ -20,20 +21,29 @@ echo -e "${BLUE}📦 Creating Release Package${NC}"
 echo -e "${BLUE}=========================================${NC}"
 echo ""
 
-# Get version from user or auto-increment
-echo -e "${YELLOW}Enter release version (e.g., 2.1.1) or press Enter for auto:${NC}"
-read VERSION
+# Get version from user or env or auto-increment
+if [ -z "$VERSION" ]; then
+  echo -e "${YELLOW}Enter release version (e.g., 2.1.1) or press Enter for auto:${NC}"
+  # For non-interactive use, we skip read if VERSION is already set
+  read VERSION || true
+fi
 
 if [ -z "$VERSION" ]; then
   # Auto-generate version from date
-  VERSION="2.1.${RELEASE_DATE:6:2}"  # Use day as patch version
+  VERSION="2.9.${RELEASE_DATE:6:2}"  # Updated to 2.9 baseline
   echo "Auto-generated version: $VERSION"
 fi
 
 # Get release notes
-echo ""
-echo -e "${YELLOW}Enter brief description of changes:${NC}"
-read DESCRIPTION
+if [ -z "$DESCRIPTION" ]; then
+  echo ""
+  echo -e "${YELLOW}Enter brief description of changes:${NC}"
+  read DESCRIPTION || true
+fi
+
+if [ -z "$DESCRIPTION" ]; then
+  DESCRIPTION="DAP v${VERSION} - UI/UX Refinements and AI Agent update"
+fi
 
 # Create release directory
 mkdir -p "$RELEASE_DIR"
@@ -59,7 +69,7 @@ mkdir -p "${RELEASE_PATH}/frontend"
 cp -r dist "${RELEASE_PATH}/frontend/"
 
 echo -e "${GREEN}[5/8]${NC} Copying scripts and configs..."
-cd /data/dap
+cd "$PROJECT_ROOT"
 mkdir -p "${RELEASE_PATH}/scripts"
 cp scripts/*.js "${RELEASE_PATH}/scripts/" 2>/dev/null || true
 cp scripts/*.sh "${RELEASE_PATH}/scripts/" 2>/dev/null || true

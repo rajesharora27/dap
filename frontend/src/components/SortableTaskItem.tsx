@@ -154,7 +154,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
 
                 {/* Resources */}
                 <TableCell sx={{ minWidth: 100, textAlign: 'left' }}>
-                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'center' }}>
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'flex-start' }}>
                         {task.howToDoc && task.howToDoc.length > 0 && (
                             <Chip
                                 size="small"
@@ -214,8 +214,8 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                     </Box>
                 </TableCell>
 
-                {/* Implementation % */}
-                <TableCell sx={{ width: 100, minWidth: 100, whiteSpace: 'nowrap', textAlign: 'left' }}>
+                {/* Impl % */}
+                <TableCell sx={{ width: 80, minWidth: 80, whiteSpace: 'nowrap', textAlign: 'center' }}>
                     <input
                         key={`weight-${task.id}-${task.weight}`}
                         type="number"
@@ -278,7 +278,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 </TableCell>
 
                 {/* Validation Criteria */}
-                <TableCell sx={{ minWidth: 80, textAlign: 'left' }}>
+                <TableCell sx={{ minWidth: 80, textAlign: 'center' }}>
                     {(() => {
                         const totalAttributes = task.telemetryAttributes?.length || 0;
                         const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) =>
@@ -303,8 +303,22 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                                 <Chip
                                     label={`${attributesWithCriteria}/${totalAttributes}`}
                                     size="small"
-                                    color={attributesWithCriteria === totalAttributes ? 'success' : attributesWithCriteria > 0 ? 'warning' : 'default'}
-                                    sx={{ fontSize: '0.7rem', height: 20 }}
+                                    sx={{
+                                        fontSize: '0.7rem',
+                                        height: 20,
+                                        borderRadius: '6px',
+                                        fontWeight: 600,
+                                        backgroundColor:
+                                            attributesWithCriteria === totalAttributes ? '#e8f5e9' : // Success light green
+                                                attributesWithCriteria > 0 ? '#fff3e0' : // Warning light amber
+                                                    '#f5f5f5', // Default light gray
+                                        color:
+                                            attributesWithCriteria === totalAttributes ? '#2e7d32' : // Dark green
+                                                attributesWithCriteria > 0 ? '#ef6c00' : // Dark amber
+                                                    '#757575', // Dark gray
+                                        border: '1px solid currentColor',
+                                        '& .MuiChip-label': { px: 1 }
+                                    }}
                                 />
                             </Tooltip>
                         );
