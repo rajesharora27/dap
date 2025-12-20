@@ -64,16 +64,7 @@ export const SolutionsPage: React.FC = () => {
     });
     const allProducts = productsData?.products?.edges?.map((e: any) => e.node) || [];
 
-    const availableProductReleases = allProducts.flatMap((p: any) =>
-        (p.releases || []).map((r: any) => ({
-            id: r.id,
-            name: r.name,
-            level: r.level,
-            productId: p.id,
-            productName: p.name,
-            description: r.description
-        }))
-    );
+
 
     const { data: tasksData, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useQuery(TASKS_FOR_SOLUTION, {
         variables: { solutionId: selectedSolution },
@@ -88,6 +79,32 @@ export const SolutionsPage: React.FC = () => {
     });
     const fetchedSolution = solutionData?.solution;
     const displaySolution = solutions.find((s: any) => s.id === selectedSolution) || fetchedSolution;
+
+    // Filter available releases to only those from products that are part of the solution
+    const availableProductReleases = React.useMemo(() => {
+        if (!selectedSolution || !displaySolution?.products?.edges) return [];
+        const releases: any[] = [];
+
+        displaySolution.products.edges.forEach((edge: any) => {
+            const product = edge.node;
+            // Use allProducts which has detailed info including releases
+            const fullProduct = allProducts.find((p: any) => p.id === product?.id || p.id === product?.product?.id);
+
+            if (fullProduct && fullProduct.releases) {
+                fullProduct.releases.forEach((r: any) => {
+                    releases.push({
+                        id: r.id,
+                        name: r.name,
+                        level: r.level,
+                        productId: fullProduct.id,
+                        productName: fullProduct.name,
+                        description: r.description
+                    });
+                });
+            }
+        });
+        return releases;
+    }, [selectedSolution, displaySolution, allProducts]);
 
     const { data: tagsData, refetch: refetchTags } = useQuery(SOLUTION_TAGS, {
         variables: { solutionId: selectedSolution },
