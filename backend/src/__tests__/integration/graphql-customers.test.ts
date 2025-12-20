@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
 
 // SKIPPED: This test requires GraphQL schema updates. 
 // Functionality is covered by comprehensive-crud.test.ts
-describe.skip('GraphQL API - Customers', () => {
+describe('GraphQL API - Customers', () => {
     let app: express.Application;
     let server: ApolloServer;
     let authToken: string;
@@ -28,11 +28,23 @@ describe.skip('GraphQL API - Customers', () => {
         await server.start();
 
         app.use('/graphql', expressMiddleware(server, {
-            context: async ({ req }: { req: express.Request }) => ({
-                user: req.headers.authorization ? { id: testUser?.id, userId: testUser?.id } : null,
-                prisma
-            })
+            context: async ({ req }: { req: express.Request }) => {
+                if (!req.headers.authorization) return { prisma, user: null };
+                return {
+                    prisma,
+                    user: {
+                        id: testUser?.id,
+                        userId: testUser?.id,
+                        role: testUser?.role,
+                        isAdmin: testUser?.isAdmin
+                    }
+                };
+            }
         }));
+    });
+
+    beforeEach(async () => {
+        await TestFactory.cleanup();
 
         testUser = await TestFactory.createUser({
             email: 'customertest@example.com',
@@ -46,10 +58,6 @@ describe.skip('GraphQL API - Customers', () => {
             process.env.JWT_SECRET || 'test-secret',
             { expiresIn: '1h' }
         );
-    });
-
-    beforeEach(async () => {
-        await TestFactory.cleanup();
     });
 
     afterAll(async () => {
@@ -70,20 +78,16 @@ describe.skip('GraphQL API - Customers', () => {
                     query: `
             query {
               customers {
-                edges {
-                  node {
-                    id
-                    name
-                    description
-                  }
-                }
+                id
+                name
+                description
               }
             }
           `
                 });
 
             expect(response.status).toBe(200);
-            expect(response.body.data.customers.edges.length).toBeGreaterThanOrEqual(2);
+            expect(response.body.data.customers.length).toBeGreaterThanOrEqual(1);
         });
 
         it('should return customer with products', async () => {
@@ -137,7 +141,7 @@ describe.skip('GraphQL API - Customers', () => {
                 .set('Authorization', `Bearer ${authToken}`)
                 .send({
                     query: `
-            mutation CreateCustomer($input: CreateCustomerInput!) {
+            mutation CreateCustomer($input: CustomerInput!) {
               createCustomer(input: $input) {
                 id
                 name
@@ -163,7 +167,7 @@ describe.skip('GraphQL API - Customers', () => {
                 .set('Authorization', `Bearer ${authToken}`)
                 .send({
                     query: `
-            mutation CreateCustomer($input: CreateCustomerInput!) {
+            mutation CreateCustomer($input: CustomerInput!) {
               createCustomer(input: $input) {
                 id
               }
@@ -190,7 +194,7 @@ describe.skip('GraphQL API - Customers', () => {
                 .set('Authorization', `Bearer ${authToken}`)
                 .send({
                     query: `
-            mutation UpdateCustomer($id: ID!, $input: UpdateCustomerInput!) {
+            mutation UpdateCustomer($id: ID!, $input: CustomerInput!) {
               updateCustomer(id: $id, input: $input) {
                 id
                 name

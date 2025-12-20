@@ -29,13 +29,25 @@ describe('GraphQL API - Tags', () => {
 
         // Add GraphQL middleware
         app.use('/graphql', expressMiddleware(server, {
-            context: async ({ req }: { req: express.Request }) => ({
-                user: req.headers.authorization ? { id: testUser?.id, userId: testUser?.id } : null,
-                prisma
-            })
+            context: async ({ req }: { req: express.Request }) => {
+                if (!req.headers.authorization) return { prisma, user: null };
+                return {
+                    prisma,
+                    user: {
+                        id: testUser?.id,
+                        userId: testUser?.id,
+                        role: testUser?.role,
+                        isAdmin: testUser?.isAdmin
+                    }
+                };
+            }
         }));
+    });
 
-        // Create test user with unique email for this test file
+    beforeEach(async () => {
+        await TestFactory.cleanup();
+
+        // Create test user fresh after each cleanup
         testUser = await TestFactory.createUser({
             email: 'tagtest@example.com',
             username: 'tagtest',
@@ -48,10 +60,6 @@ describe('GraphQL API - Tags', () => {
             process.env.JWT_SECRET || 'test-secret',
             { expiresIn: '1h' }
         );
-    });
-
-    beforeEach(async () => {
-        await TestFactory.cleanup();
     });
 
     afterAll(async () => {

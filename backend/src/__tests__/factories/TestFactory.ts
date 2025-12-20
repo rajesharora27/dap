@@ -148,7 +148,7 @@ export class TestFactory {
 
         // IMPORTANT: Do NOT include User, Session, UserRole, Permission tables
         // User credentials and auth data must be preserved even in tests
-        // Tests should create their own test users and not affect existing users
+        // In a cloned test database, we should also clean up auth tables to avoid conflicts
         const tablenames = [
             'CustomerSolutionTaskTag',
             'CustomerSolutionTag',
@@ -167,11 +167,13 @@ export class TestFactory {
             'Task',
             'License',
             'Product',
-            'Solution'
-            // REMOVED: 'Session', 'UserRole', 'Permission', 'User' - DO NOT DELETE USER DATA
+            'Solution',
+            'Session',
+            'UserRole',
+            'User'
         ];
 
-        console.log('⚠️  TestFactory.cleanup(): Cleaning business data only (Users preserved)');
+        console.log('⚠️  TestFactory.cleanup(): Cleaning all data including Users and Sessions');
 
         for (const tablename of tablenames) {
             try {

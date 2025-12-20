@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
 
 // SKIPPED: This test requires GraphQL schema updates. 
 // Functionality is covered by comprehensive-crud.test.ts
-describe.skip('GraphQL API - Solutions', () => {
+describe('GraphQL API - Solutions', () => {
   let app: express.Application;
   let server: ApolloServer;
   let authToken: string;
@@ -28,11 +28,23 @@ describe.skip('GraphQL API - Solutions', () => {
     await server.start();
 
     app.use('/graphql', expressMiddleware(server, {
-      context: async ({ req }: { req: express.Request }) => ({
-        user: req.headers.authorization ? { id: testUser?.id, userId: testUser?.id } : null,
-        prisma
-      })
+      context: async ({ req }: { req: express.Request }) => {
+        if (!req.headers.authorization) return { prisma, user: null };
+        return {
+          prisma,
+          user: {
+            id: testUser?.id,
+            userId: testUser?.id,
+            role: testUser?.role,
+            isAdmin: testUser?.isAdmin
+          }
+        };
+      }
     }));
+  });
+
+  beforeEach(async () => {
+    await TestFactory.cleanup();
 
     testUser = await TestFactory.createUser({
       email: 'solutiontest@example.com',
@@ -46,10 +58,6 @@ describe.skip('GraphQL API - Solutions', () => {
       process.env.JWT_SECRET || 'test-secret',
       { expiresIn: '1h' }
     );
-  });
-
-  beforeEach(async () => {
-    await TestFactory.cleanup();
   });
 
   afterAll(async () => {
@@ -109,9 +117,11 @@ describe.skip('GraphQL API - Solutions', () => {
                 id
                 name
                 products {
-                  product {
-                    id
-                    name
+                  edges {
+                    node {
+                      id
+                      name
+                    }
                   }
                 }
               }
@@ -122,7 +132,7 @@ describe.skip('GraphQL API - Solutions', () => {
 
       expect(response.status).toBe(200);
       const solutionData = response.body.data.solution;
-      expect(solutionData.products.length).toBe(2);
+      expect(solutionData.products.edges.length).toBe(2);
     });
   });
 
@@ -133,7 +143,7 @@ describe.skip('GraphQL API - Solutions', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .send({
           query: `
-            mutation CreateSolution($input: CreateSolutionInput!) {
+            mutation CreateSolution($input: SolutionInput!) {
               createSolution(input: $input) {
                 id
                 name
@@ -163,7 +173,7 @@ describe.skip('GraphQL API - Solutions', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .send({
           query: `
-            mutation UpdateSolution($id: ID!, $input: UpdateSolutionInput!) {
+            mutation UpdateSolution($id: ID!, $input: SolutionInput!) {
               updateSolution(id: $id, input: $input) {
                 id
                 name
@@ -192,14 +202,7 @@ describe.skip('GraphQL API - Solutions', () => {
         .send({
           query: `
             mutation AddProductToSolution($solutionId: ID!, $productId: ID!) {
-              addProductToSolution(solutionId: $solutionId, productId: $productId) {
-                id
-                products {
-                  product {
-                    id
-                  }
-                }
-              }
+              addProductToSolution(solutionId: $solutionId, productId: $productId)
             }
           `,
           variables: {
@@ -209,8 +212,7 @@ describe.skip('GraphQL API - Solutions', () => {
         });
 
       expect(response.status).toBe(200);
-      const updatedSolution = response.body.data.addProductToSolution;
-      expect(updatedSolution.products.length).toBeGreaterThan(0);
+      expect(response.body.data.addProductToSolution).toBe(true);
     });
 
     it('should remove product from solution', async () => {
@@ -228,14 +230,7 @@ describe.skip('GraphQL API - Solutions', () => {
         .send({
           query: `
             mutation RemoveProductFromSolution($solutionId: ID!, $productId: ID!) {
-              removeProductFromSolution(solutionId: $solutionId, productId: $productId) {
-                id
-                products {
-                  product {
-                    id
-                  }
-                }
-              }
+              removeProductFromSolution(solutionId: $solutionId, productId: $productId)
             }
           `,
           variables: {
@@ -245,8 +240,7 @@ describe.skip('GraphQL API - Solutions', () => {
         });
 
       expect(response.status).toBe(200);
-      const updatedSolution = response.body.data.removeProductFromSolution;
-      expect(updatedSolution.products.length).toBe(0);
+      expect(response.body.data.removeProductFromSolution).toBe(true);
     });
   });
 
@@ -274,9 +268,13 @@ describe.skip('GraphQL API - Solutions', () => {
               solution(id: $id) {
                 id
                 tasks {
-                  id
-                  name
-                  weight
+                  edges {
+                    node {
+                      id
+                      name
+                      weight
+                    }
+                  }
                 }
               }
             }
@@ -286,7 +284,7 @@ describe.skip('GraphQL API - Solutions', () => {
 
       expect(response.status).toBe(200);
       const solutionData = response.body.data.solution;
-      expect(solutionData.tasks.length).toBeGreaterThan(0);
+      expect(solutionData.tasks.edges.length).toBeGreaterThan(0);
     });
   });
 });

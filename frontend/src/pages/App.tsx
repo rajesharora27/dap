@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState, useEffect, lazy, Suspense } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   CssBaseline,
@@ -48,11 +48,11 @@ import { SolutionPreviewDialog } from '../components/dialogs/SolutionPreviewDial
 import { CustomerPreviewDialog } from '../components/dialogs/CustomerPreviewDialog';
 import { AdoptionPlanDialog } from '../components/dialogs/AdoptionPlanDialog';
 
-// Code splitting: Lazy load heavy page components
-const DashboardPage = lazy(() => import('./DashboardPage').then(m => ({ default: m.DashboardPage })));
-const ProductsPage = lazy(() => import('./ProductsPage').then(m => ({ default: m.ProductsPage })));
-const SolutionsPage = lazy(() => import('./SolutionsPage').then(m => ({ default: m.SolutionsPage })));
-const CustomersPage = lazy(() => import('./CustomersPage').then(m => ({ default: m.CustomersPage })));
+import { DashboardPage } from './DashboardPage';
+import { ProductsPage } from './ProductsPage';
+import { SolutionsPage } from './SolutionsPage';
+import { CustomersPage } from './CustomersPage';
+
 import { ProductDialog } from '../components/dialogs/ProductDialog';
 import { SolutionDialog } from '../components/dialogs/SolutionDialog';
 import { LicenseDialog } from '../components/dialogs/LicenseDialog';
@@ -2553,50 +2553,30 @@ export function App() {
             <>
               {/* Dashboard Section */}
               {selectedSection === 'dashboard' && (
-                <Suspense fallback={<LinearProgress />}>
-                  <DashboardPage />
-                </Suspense>
+                <DashboardPage />
               )}
 
               {/* Products Section */}
               {
                 selectedSection === 'products' && (
-                  <Suspense fallback={
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                      <CircularProgress size={60} />
-                    </Box>
-                  }>
-                    <ProductsPage
-                      key={selectedProduct}
-                      onEditProduct={(product) => {
-                        setEditingProduct({ ...product });
-                        setEditProductDialog(true);
-                      }}
-                    />
-                  </Suspense>
+                  <ProductsPage
+                    key={selectedProduct}
+                    onEditProduct={(product) => {
+                      setEditingProduct({ ...product });
+                      setEditProductDialog(true);
+                    }}
+                  />
                 )
               }
 
               {/* Solutions Section */}
               {selectedSection === 'solutions' && (
-                <Suspense fallback={
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                    <CircularProgress size={60} />
-                  </Box>
-                }>
-                  <SolutionsPage key={selectedSolution} />
-                </Suspense>
+                <SolutionsPage key={selectedSolution} />
               )}
 
               {/* Customers Section */}
               {selectedSection === 'customers' && (
-                <Suspense fallback={
-                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                    <CircularProgress size={60} />
-                  </Box>
-                }>
-                  <CustomersPage key={selectedCustomer || selectedCustomerId} />
-                </Suspense>
+                <CustomersPage key={selectedCustomer || selectedCustomerId} />
               )}
 
               {/* Admin Section (Admin Only) */}

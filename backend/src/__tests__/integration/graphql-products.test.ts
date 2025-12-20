@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
 
 // SKIPPED: This test requires GraphQL schema updates. 
 // Functionality is covered by comprehensive-crud.test.ts
-describe.skip('GraphQL API - Products', () => {
+describe('GraphQL API - Products', () => {
   let app: express.Application;
   let server: ApolloServer;
   let authToken: string;
@@ -31,13 +31,25 @@ describe.skip('GraphQL API - Products', () => {
 
     // Add GraphQL middleware
     app.use('/graphql', expressMiddleware(server, {
-      context: async ({ req }: { req: express.Request }) => ({
-        user: req.headers.authorization ? { id: testUser?.id, userId: testUser?.id } : null,
-        prisma
-      })
+      context: async ({ req }: { req: express.Request }) => {
+        if (!req.headers.authorization) return { prisma, user: null };
+        return {
+          prisma,
+          user: {
+            id: testUser?.id,
+            userId: testUser?.id,
+            role: testUser?.role,
+            isAdmin: testUser?.isAdmin
+          }
+        };
+      }
     }));
+  });
 
-    // Create test user with unique email for this test file
+  beforeEach(async () => {
+    await TestFactory.cleanup();
+
+    // Create test user fresh after each cleanup
     testUser = await TestFactory.createUser({
       email: 'producttest@example.com',
       username: 'producttest',
@@ -50,10 +62,6 @@ describe.skip('GraphQL API - Products', () => {
       process.env.JWT_SECRET || 'test-secret',
       { expiresIn: '1h' }
     );
-  });
-
-  beforeEach(async () => {
-    await TestFactory.cleanup();
   });
 
   afterAll(async () => {
@@ -105,8 +113,12 @@ describe.skip('GraphQL API - Products', () => {
                     id
                     name
                     tasks {
-                      id
-                      name
+                      edges {
+                        node {
+                          id
+                          name
+                        }
+                      }
                     }
                   }
                 }
@@ -117,8 +129,8 @@ describe.skip('GraphQL API - Products', () => {
 
       expect(response.status).toBe(200);
       const productData = response.body.data.products.edges[0].node;
-      expect(productData.tasks).toHaveLength(1);
-      expect(productData.tasks[0].name).toBe('Task 1');
+      expect(productData.tasks.edges).toHaveLength(1);
+      expect(productData.tasks.edges[0].node.name).toBe('Task 1');
     });
 
     it('should require authentication', async () => {

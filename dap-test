@@ -8,6 +8,7 @@
 # ╚═════════════════════════════════════════════════════════════════════════════╝
 
 set -e
+set -o pipefail
 
 # ================================
 # Configuration
@@ -72,33 +73,57 @@ get_current_user() {
 # Database Helpers
 # ================================
 ensure_test_database() {
-    log_info "⏳ Ensuring test database exists..."
+    log_info "⏳ Ensuring test database exists as an exact copy of 'dap'..."
     
     if use_mac_mode; then
         local current_user=$(get_current_user)
-        if ! psql -h localhost -p 5432 -lqt 2>/dev/null | cut -d \| -f 1 | grep -qw 'dap_test'; then
-            log_info "📝 Creating test database..."
-            createdb -h localhost -p 5432 dap_test 2>/dev/null || true
+        log_info "📥 Cloning 'dap' to 'dap_test'..."
+        
+        # Try finding the correct pg_dump to avoid version mismatch
+        local pg_dump_bin="pg_dump"
+        if [ -d "/opt/homebrew/opt/postgresql@16/bin" ]; then
+            pg_dump_bin="/opt/homebrew/opt/postgresql@16/bin/pg_dump"
+        elif [ -d "/opt/homebrew/opt/postgresql@15/bin" ]; then
+            pg_dump_bin="/opt/homebrew/opt/postgresql@15/bin/pg_dump"
         fi
+
+        # Terminate connections to dap_test to avoid "being accessed by other users" error
+        psql -h localhost -p 5432 -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'dap_test' AND pid <> pg_backend_pid();" >/dev/null 2>&1 || true
+        dropdb -h localhost -p 5432 dap_test --if-exists 2>/dev/null || true
+        
+        # Try template-based clone first (fastest)
+        if createdb -h localhost -p 5432 -T dap dap_test 2>/dev/null; then
+            log_success "✅ Created test database via template clone"
+        else
+            log_warning "⚠️  Template clone failed (likely 'dap' is in use), falling back to pg_dump..."
+            createdb -h localhost -p 5432 dap_test 2>/dev/null
+            $pg_dump_bin -h localhost -p 5432 -d dap --no-owner --no-privileges | psql -h localhost -p 5432 -d dap_test -q > /dev/null
+        fi
+        
         export DATABASE_URL="postgresql://${current_user}@localhost:5432/dap_test?schema=public"
     else
         if [ -n "$DB_CONTAINER" ]; then
-            if ! docker exec $DB_CONTAINER psql -U postgres -c '\l' 2>/dev/null | grep -q 'dap_test'; then
-                log_info "📝 Creating test database..."
-                docker exec $DB_CONTAINER psql -U postgres -c "CREATE DATABASE dap_test;" 2>/dev/null || true
+            log_info "📥 Cloning 'dap' to 'dap_test' (Docker)..."
+            docker exec $DB_CONTAINER dropdb -U postgres dap_test --if-exists 2>/dev/null || true
+            if docker exec $DB_CONTAINER createdb -U postgres -T dap dap_test 2>/dev/null; then
+                 log_success "✅ Created test database via template clone (Docker)"
+            else
+                docker exec $DB_CONTAINER createdb -U postgres dap_test 2>/dev/null || true
+                docker exec $DB_CONTAINER pg_dump -U postgres -d dap --no-owner --no-privileges | docker exec -i $DB_CONTAINER psql -U postgres -d dap_test -q > /dev/null
             fi
         fi
         export DATABASE_URL="postgres://postgres:postgres@localhost:5432/dap_test?schema=public"
     fi
     
-    log_success "✅ Test database ready"
+    log_success "✅ Test database cloned and ready"
 }
 
 run_migrations_on_test_db() {
-    log_info "🔄 Running migrations on test database..."
+    log_info "🔄 Syncing test database schema..."
     cd "$BACKEND_DIR"
-    npx prisma migrate deploy --skip-generate 2>/dev/null || npx prisma db push --skip-generate 2>/dev/null || true
-    log_success "✅ Test database schema ready"
+    # Use db push for development speed, ensuring schema matches local prisma file
+    npx prisma db push --skip-generate --accept-data-loss > /dev/null 2>&1 || true
+    log_success "✅ Test database schema in sync"
 }
 
 # ================================
