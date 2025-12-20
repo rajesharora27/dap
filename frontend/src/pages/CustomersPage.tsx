@@ -51,23 +51,17 @@ export const CustomersPage: React.FC = () => {
         return localStorage.getItem('lastSelectedCustomerId');
     });
 
-    if (authLoading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
-
+    // Queries - must be before any conditional returns (skip handles auth)
     const { data: customersData, loading: customersLoading, error: customersError } = useQuery(CUSTOMERS, {
         errorPolicy: 'all',
         fetchPolicy: 'cache-and-network',
-        skip: !isAuthenticated
+        skip: !isAuthenticated || authLoading
     });
 
     const customers = customersData?.customers || [];
     const selectedCustomer = customers.find((c: any) => c.id === selectedCustomerId);
 
+    // Effects - must be before any conditional returns
     useEffect(() => {
         if (selectedCustomerId) {
             localStorage.setItem('lastSelectedCustomerId', selectedCustomerId);
@@ -76,13 +70,22 @@ export const CustomersPage: React.FC = () => {
 
     // Auto-select first customer if none selected
     useEffect(() => {
-        if (!customersLoading && customers.length > 0 && !selectedCustomerId) {
+        if (!customersLoading && customers.length > 0 && !selectedCustomerId && isAuthenticated) {
             const lastId = localStorage.getItem('lastSelectedCustomerId');
             if (lastId && customers.some((c: any) => c.id === lastId)) {
                 setSelectedCustomerId(lastId);
             }
         }
-    }, [customersLoading, customers, selectedCustomerId]);
+    }, [customersLoading, customers, selectedCustomerId, isAuthenticated]);
+
+    // Now we can have conditional returns after all hooks
+    if (authLoading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
     return (
         <Box>

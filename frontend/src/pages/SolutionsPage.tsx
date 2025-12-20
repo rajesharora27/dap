@@ -34,15 +34,7 @@ export const SolutionsPage: React.FC = () => {
     const [taskLicenseFilter, setTaskLicenseFilter] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
 
-    if (authLoading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
-
-    // Dialog States
+    // Dialog States - must be before any conditional returns
     const [solutionDialog, setSolutionDialog] = useState(false);
     const [editingSolution, setEditingSolution] = useState<any>(null);
     const [solutionDialogInitialTab, setSolutionDialogInitialTab] = useState<'general' | 'products' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes'>('general');
@@ -59,16 +51,16 @@ export const SolutionsPage: React.FC = () => {
     const [releaseDialog, setReleaseDialog] = useState(false);
     const [editingRelease, setEditingRelease] = useState<any>(null);
 
-    // Queries
+    // Queries - must be before any conditional returns (skip handles auth)
     const { data: solutionsData, loading: solutionsLoading, error: solutionsError } = useQuery(SOLUTIONS, {
         fetchPolicy: 'cache-and-network',
-        skip: !isAuthenticated
+        skip: !isAuthenticated || authLoading
     });
     const solutions = solutionsData?.solutions?.edges?.map((e: any) => e.node) || [];
 
     const { data: productsData } = useQuery(PRODUCTS, {
         fetchPolicy: 'cache-and-network',
-        skip: !isAuthenticated
+        skip: !isAuthenticated || authLoading
     });
     const allProducts = productsData?.products?.edges?.map((e: any) => e.node) || [];
 
@@ -85,23 +77,46 @@ export const SolutionsPage: React.FC = () => {
 
     const { data: tasksData, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useQuery(TASKS_FOR_SOLUTION, {
         variables: { solutionId: selectedSolution },
-        skip: !selectedSolution || !isAuthenticated
+        skip: !selectedSolution || !isAuthenticated || authLoading
     });
     const tasks = tasksData?.tasks?.edges?.map((e: any) => e.node) || [];
 
     // Fetch single solution details if selected
     const { data: solutionData } = useQuery(SOLUTION, {
         variables: { id: selectedSolution },
-        skip: !selectedSolution || !isAuthenticated
+        skip: !selectedSolution || !isAuthenticated || authLoading
     });
     const fetchedSolution = solutionData?.solution;
     const displaySolution = solutions.find((s: any) => s.id === selectedSolution) || fetchedSolution;
 
     const { data: tagsData, refetch: refetchTags } = useQuery(SOLUTION_TAGS, {
         variables: { solutionId: selectedSolution },
-        skip: !selectedSolution || !isAuthenticated
+        skip: !selectedSolution || !isAuthenticated || authLoading
     });
     const solutionTags = tagsData?.solutionTags || [];
+
+    const client = useApolloClient();
+    const theme = useTheme();
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    // Effect for refetching tasks
+    useEffect(() => {
+        if (selectedSubSection === 'tasks' && selectedSolution && refetchTasks && isAuthenticated) {
+            refetchTasks();
+        }
+    }, [selectedSubSection, selectedSolution, refetchTasks, isAuthenticated]);
+
+    // Now we can have conditional returns after all hooks
+    if (authLoading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
     // Helper to get solution-level resources for filters (not aggregated from products)
     const getSolutionResources = (solutionId: string | null) => {
@@ -187,12 +202,6 @@ export const SolutionsPage: React.FC = () => {
         setTaskLicenseFilter([]);
     };
 
-    const client = useApolloClient();
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-    );
-
     // Handlers
     const handleSolutionChange = (solutionId: string) => {
         setSelectedSolution(solutionId);
@@ -202,12 +211,6 @@ export const SolutionsPage: React.FC = () => {
         // Force refetch tasks when solution changes or tab is selected
         setTimeout(() => refetchTasks && refetchTasks(), 0);
     };
-
-    useEffect(() => {
-        if (selectedSubSection === 'tasks' && selectedSolution && refetchTasks) {
-            refetchTasks();
-        }
-    }, [selectedSubSection, selectedSolution, refetchTasks]);
 
     const handleDeleteSolution = async () => {
         if (!selectedSolution) return;
@@ -553,8 +556,6 @@ export const SolutionsPage: React.FC = () => {
         });
         return licenses;
     }, [selectedSolution, currentSolution, allProducts]);
-
-    const theme = useTheme();
 
     const renderMappingInfo = (item: any, type: 'licenses' | 'releases') => {
         const mappingKey = type === 'licenses' ? 'productLicenseMapping' : 'productReleaseMapping';

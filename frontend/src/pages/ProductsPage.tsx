@@ -37,15 +37,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const [selectedSubSection, setSelectedSubSection] = useState<'dashboard' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('dashboard');
     const importFileRef = useRef<HTMLInputElement>(null);
 
-    if (authLoading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
-
-    // Dialog States
+    // Dialog States - must be before any conditional returns
     const [taskDialog, setTaskDialog] = useState(false);
     const [editingTask, setEditingTask] = useState<any>(null);
     const [outcomeDialog, setOutcomeDialog] = useState(false);
@@ -66,19 +58,60 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const [taskLicenseFilter, setTaskLicenseFilter] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
 
-    // Queries
+    // Queries - must be before any conditional returns (skip handles auth)
     const { data: productsData, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PRODUCTS, {
         fetchPolicy: 'cache-and-network',
-        skip: !isAuthenticated
+        skip: !isAuthenticated || authLoading
     });
     const products = productsData?.products?.edges?.map((e: any) => e.node) || [];
 
     // Fetch single product details if selected
     const { data: productData, error: productError, refetch: refetchProductDetail } = useQuery(PRODUCT, {
         variables: { id: selectedProduct },
-        skip: !selectedProduct,
-        fetchPolicy: 'cache-and-network' // FORCE NETWORK REQUEST to ensure data
+        skip: !selectedProduct || !isAuthenticated || authLoading,
+        fetchPolicy: 'cache-and-network'
     });
+
+    const { data: tasksData, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useQuery(TASKS_FOR_PRODUCT, {
+        variables: { productId: selectedProduct },
+        skip: !selectedProduct || !isAuthenticated || authLoading
+    });
+    const tasks = tasksData?.tasks?.edges?.map((e: any) => e.node) || [];
+
+    const client = useApolloClient();
+    const theme = useTheme();
+
+    // Import/Export Hook
+    const { handleExport, handleImport, isImporting, importProgress } = useProductImportExport(
+        selectedProduct,
+        products,
+        tasks,
+        async () => {
+            await refetchProducts();
+            await refetchTasks();
+        }
+    );
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    // Effect for refetching tasks
+    useEffect(() => {
+        if (selectedSubSection === 'tasks' && selectedProduct && isAuthenticated) {
+            refetchTasks();
+        }
+    }, [selectedSubSection, selectedProduct, refetchTasks, isAuthenticated]);
+
+    // Now we can have conditional returns after all hooks
+    if (authLoading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
     if (selectedProduct) {
         console.log('[DEBUG ProductsPage] State:', {
@@ -93,12 +126,6 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const fetchedProduct = productData?.product;
     const listProduct = products.find((p: any) => p.id === selectedProduct);
     const displayProduct = (fetchedProduct?.id === selectedProduct) ? fetchedProduct : listProduct;
-
-    const { data: tasksData, loading: tasksLoading, error: tasksError, refetch: refetchTasks } = useQuery(TASKS_FOR_PRODUCT, {
-        variables: { productId: selectedProduct },
-        skip: !selectedProduct
-    });
-    const tasks = tasksData?.tasks?.edges?.map((e: any) => e.node) || [];
 
     // Filter tasks based on selected filters (AND logic between filter types)
     const filteredTasks = tasks.filter((task: any) => {
@@ -157,23 +184,6 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         setTaskLicenseFilter([]);
     };
 
-    const client = useApolloClient();
-
-    // Import/Export Hook
-    const { handleExport, handleImport, isImporting, importProgress } = useProductImportExport(
-        selectedProduct,
-        products,
-        tasks,
-        async () => {
-            await refetchProducts();
-            await refetchTasks();
-        }
-    );
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
-    );
-
     // Handlers
     const handleProductChange = (productId: string) => {
         setSelectedProduct(productId);
@@ -183,12 +193,6 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         // Force refetch tasks when product changes or tab is selected
         setTimeout(() => refetchTasks(), 0);
     };
-
-    useEffect(() => {
-        if (selectedSubSection === 'tasks' && selectedProduct) {
-            refetchTasks();
-        }
-    }, [selectedSubSection, selectedProduct, refetchTasks]);
 
     const handleDeleteProduct = async () => {
         if (!selectedProduct) return;
@@ -601,8 +605,6 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
             }
         }
     };
-
-    const theme = useTheme();
 
     return (
         <React.Fragment> {/* Wrapping just in case */}
