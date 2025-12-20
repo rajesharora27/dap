@@ -6,28 +6,31 @@ import {
     Typography,
     Card,
     CardContent,
-    CardHeader,
-    Avatar,
     Divider,
     List,
     ListItem,
     ListItemText,
-    ListItemButton,
+    ListItemIcon,
     LinearProgress,
     Chip,
     useTheme,
     alpha,
-    CircularProgress
+    CircularProgress,
+    Stack
 } from '@mui/material';
 import { useQuery, gql } from '@apollo/client';
 import { useAuth } from '../components/AuthContext';
+// Flat icons from Font Awesome
 import {
-    People as CustomerIcon,
     Inventory2 as ProductIcon,
     Lightbulb as SolutionIcon,
-    TrendingUp as TrendingUpIcon,
-    CheckCircle as checkIcon,
-    Warning as warningIcon
+    Business as CustomerIcon,
+    CheckCircle,
+    Schedule,
+    TrendingUp,
+    Assignment,
+    Folder,
+    Star
 } from '../components/common/FAIcon';
 
 // GraphQL Queries
@@ -63,6 +66,74 @@ const DASHBOARD_DATA = gql`
   }
 `;
 
+// Minimal stat card component
+interface StatCardProps {
+    label: string;
+    value: number | string;
+    icon: React.ReactNode;
+    color: string;
+}
+
+const StatCard: React.FC<StatCardProps> = ({ label, value, icon, color }) => {
+    const theme = useTheme();
+    return (
+        <Paper
+            elevation={0}
+            sx={{
+                p: 3,
+                borderRadius: 2,
+                border: `1px solid ${theme.palette.divider}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 2.5,
+                transition: 'box-shadow 0.2s',
+                '&:hover': {
+                    boxShadow: `0 4px 12px ${alpha(color, 0.15)}`
+                }
+            }}
+        >
+            <Box
+                sx={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 1.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: alpha(color, 0.1),
+                    color: color,
+                }}
+            >
+                {icon}
+            </Box>
+            <Box>
+                <Typography
+                    variant="caption"
+                    sx={{
+                        color: 'text.secondary',
+                        fontWeight: 500,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        fontSize: '0.7rem'
+                    }}
+                >
+                    {label}
+                </Typography>
+                <Typography
+                    variant="h4"
+                    sx={{
+                        fontWeight: 600,
+                        color: 'text.primary',
+                        lineHeight: 1.2
+                    }}
+                >
+                    {value}
+                </Typography>
+            </Box>
+        </Paper>
+    );
+};
+
 export const DashboardPage = () => {
     const theme = useTheme();
     const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -86,183 +157,236 @@ export const DashboardPage = () => {
     const customers = data?.customers || [];
     const solutions = data?.solutions?.edges?.map((e: any) => e.node) || [];
 
-    // Calculate Stats
     const totalCustomers = customers.length;
     const totalProducts = products.length;
     const totalSolutions = solutions.length;
-
-    // Calculate Average Adoption
-    const avgProductReadiness = products.reduce((acc: number, p: any) => acc + (p.statusPercent || 0), 0) / (totalProducts || 1);
+    const avgReadiness = Math.round(products.reduce((acc: number, p: any) => acc + (p.statusPercent || 0), 0) / (totalProducts || 1));
 
     return (
-        <Box sx={{ p: 4 }}>
-            <Typography variant="h4" gutterBottom sx={{ fontWeight: 'bold', color: theme.palette.primary.dark }}>
-                Executive Dashboard
-            </Typography>
-            <Typography variant="subtitle1" gutterBottom sx={{ mb: 4, color: theme.palette.text.secondary }}>
-                System Overview & Adoption Metrics
-            </Typography>
-
-            {/* Strategy & Value Cards */}
-            <Grid container spacing={3} sx={{ mb: 6 }}>
-                <Grid size={{ xs: 12, md: 6 }}>
-                    <Card elevation={8} sx={{
-                        height: '100%',
-                        borderRadius: 3,
-                        background: `linear-gradient(135deg, ${alpha(theme.palette.primary.light, 0.1)} 0%, ${theme.palette.background.paper} 100%)`,
-                        borderLeft: `8px solid ${theme.palette.primary.main}`,
-                        transition: 'transform 0.2s',
-                        '&:hover': { transform: 'translateY(-4px)' }
-                    }}>
-                        <CardContent sx={{ p: 4 }}>
-                            <Typography variant="h5" gutterBottom sx={{ color: theme.palette.primary.main, fontWeight: '800' }}>
-                                The Single Source of Truth for Adoption
-                            </Typography>
-                            <Typography variant="subtitle1" color="text.secondary" gutterBottom sx={{ fontWeight: 500 }}>
-                                DAP centrally defines all adoption components of a product and solution.
-                            </Typography>
-                            <Typography variant="body1" paragraph sx={{ mt: 2 }}>
-                                <strong>Problem it solves:</strong> Lack of clarity on necessary steps and inconsistent adoption of products.
-                            </Typography>
-                            <Typography variant="body1" sx={{ fontStyle: 'italic', color: theme.palette.primary.dark, bgcolor: alpha(theme.palette.primary.main, 0.05), p: 2, borderRadius: 1, borderLeft: `4px solid ${theme.palette.primary.light}` }}>
-                                Value: Provides a unified, authoritative reference for all stakeholders to ensure consistent, repeatable adoption success.
-                            </Typography>
-                        </CardContent>
-                    </Card>
+        <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, maxWidth: 1400, mx: 'auto' }}>
+            {/* Stats Row */}
+            <Grid container spacing={2.5} sx={{ mb: 4 }}>
+                <Grid size={{ xs: 6, sm: 3 }}>
+                    <StatCard
+                        label="Products"
+                        value={totalProducts}
+                        icon={<ProductIcon fontSize="medium" />}
+                        color={theme.palette.primary.main}
+                    />
                 </Grid>
-
-                <Grid size={{ xs: 12, md: 6 }}>
-                    <Card elevation={8} sx={{
-                        height: '100%',
-                        borderRadius: 3,
-                        background: `linear-gradient(135deg, ${alpha(theme.palette.secondary.light, 0.1)} 0%, ${theme.palette.background.paper} 100%)`,
-                        borderLeft: `8px solid ${theme.palette.secondary.main}`,
-                        transition: 'transform 0.2s',
-                        '&:hover': { transform: 'translateY(-4px)' }
-                    }}>
-                        <CardContent sx={{ p: 4 }}>
-                            <Typography variant="h5" gutterBottom sx={{ color: theme.palette.secondary.main, fontWeight: '800' }}>
-                                Accelerated Adoption
-                            </Typography>
-                            <Typography variant="subtitle1" color="text.secondary" gutterBottom sx={{ fontWeight: 500 }}>
-                                Purpose: Streamline the path to value for customers and delivery teams.
-                            </Typography>
-                            <Typography variant="body1" paragraph sx={{ mt: 2 }}>
-                                <strong>Solution:</strong> A dedicated platform for defining "How" to implement, not "What" to build.
-                            </Typography>
-                            <Typography variant="body1" sx={{ fontStyle: 'italic', color: theme.palette.secondary.dark, bgcolor: alpha(theme.palette.secondary.main, 0.05), p: 2, borderRadius: 1, borderLeft: `4px solid ${theme.palette.secondary.light}` }}>
-                                Value: Drives predictable outcomes and faster time-to-value by standardizing the implementation methodology for all delivery stakeholders.
-                            </Typography>
-                        </CardContent>
-                    </Card>
+                <Grid size={{ xs: 6, sm: 3 }}>
+                    <StatCard
+                        label="Solutions"
+                        value={totalSolutions}
+                        icon={<SolutionIcon fontSize="medium" />}
+                        color={theme.palette.warning.main}
+                    />
+                </Grid>
+                <Grid size={{ xs: 6, sm: 3 }}>
+                    <StatCard
+                        label="Customers"
+                        value={totalCustomers}
+                        icon={<CustomerIcon fontSize="medium" />}
+                        color={theme.palette.success.main}
+                    />
+                </Grid>
+                <Grid size={{ xs: 6, sm: 3 }}>
+                    <StatCard
+                        label="Avg Readiness"
+                        value={`${avgReadiness}%`}
+                        icon={<TrendingUp fontSize="medium" />}
+                        color={theme.palette.info.main}
+                    />
                 </Grid>
             </Grid>
 
-            {/* KPI Cards - Product Focus */}
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', color: theme.palette.text.primary, mb: 3 }}>
-                Portfolio Health
-            </Typography>
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                    <Card elevation={2} sx={{ height: '100%', borderRadius: 2 }}>
-                        <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Box>
-                                <Typography color="textSecondary" variant="overline" sx={{ fontSize: '0.85rem' }}>Active Products</Typography>
-                                <Typography variant="h3" sx={{ fontWeight: 'bold', color: theme.palette.success.main }}>{totalProducts}</Typography>
-                            </Box>
-                            <Avatar sx={{ bgcolor: alpha(theme.palette.success.main, 0.1), color: theme.palette.success.main, width: 64, height: 64 }}>
-                                <ProductIcon fontSize="large" />
-                            </Avatar>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                    <Card elevation={2} sx={{ height: '100%', borderRadius: 2 }}>
-                        <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Box>
-                                <Typography color="textSecondary" variant="overline" sx={{ fontSize: '0.85rem' }}>Solutions Deployed</Typography>
-                                <Typography variant="h3" sx={{ fontWeight: 'bold', color: theme.palette.secondary.main }}>{totalSolutions}</Typography>
-                            </Box>
-                            <Avatar sx={{ bgcolor: alpha(theme.palette.secondary.main, 0.1), color: theme.palette.secondary.main, width: 64, height: 64 }}>
-                                <SolutionIcon fontSize="large" />
-                            </Avatar>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-                    <Card elevation={2} sx={{ height: '100%', borderRadius: 2 }}>
-                        <CardContent sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <Box>
-                                <Typography color="textSecondary" variant="overline" sx={{ fontSize: '0.85rem' }}>Customers</Typography>
-                                <Typography variant="h3" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>{totalCustomers}</Typography>
-                            </Box>
-                            <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main, width: 64, height: 64 }}>
-                                <CustomerIcon fontSize="large" />
-                            </Avatar>
-                        </CardContent>
-                    </Card>
-                </Grid>
-            </Grid>
-
-            {/* Detail Section */}
+            {/* Main Content */}
             <Grid container spacing={3}>
-                <Grid size={{ xs: 12, md: 7 }}>
-                    <Card elevation={1} sx={{ borderRadius: 2, border: `1px solid ${theme.palette.divider}` }}>
-                        <CardHeader title="Recent Activity" subheader="Latest system updates" />
-                        <Divider />
-                        <CardContent>
-                            <List>
-                                <ListItem>
-                                    <ListItemText
-                                        primary="System Backup Completed"
-                                        secondary="Today at 1:00 AM"
-                                    />
-                                    <Chip label="System" size="small" />
-                                </ListItem>
-                                <Divider component="li" />
-                                <ListItem>
-                                    <ListItemText
-                                        primary="Product 'Cisco Secure Access' Updated"
-                                        secondary="Yesterday at 4:30 PM by admin"
-                                    />
-                                    <Chip label="Product" size="small" color="primary" />
-                                </ListItem>
-                                <Divider component="li" />
-                                <ListItem>
-                                    <ListItemText
-                                        primary="New Customer 'Acme Corp' Onboarded"
-                                        secondary="2 days ago by cssuser"
-                                    />
-                                    <Chip label="Customer" size="small" color="success" />
-                                </ListItem>
-                            </List>
-                        </CardContent>
-                    </Card>
+                {/* Value Proposition */}
+                <Grid size={{ xs: 12, lg: 8 }}>
+                    <Paper
+                        elevation={0}
+                        sx={{
+                            p: 3,
+                            borderRadius: 2,
+                            border: `1px solid ${theme.palette.divider}`,
+                            height: '100%'
+                        }}
+                    >
+                        <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 2, fontWeight: 600 }}>
+                            About DAP
+                        </Typography>
+
+                        <Stack spacing={2.5}>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Box sx={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 1,
+                                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                    <Assignment sx={{ color: theme.palette.primary.main, fontSize: 18 }} />
+                                </Box>
+                                <Box>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                        Single Source of Truth
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Centrally define all adoption components for products and solutions.
+                                    </Typography>
+                                </Box>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Box sx={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 1,
+                                    bgcolor: alpha(theme.palette.success.main, 0.1),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                    <CheckCircle sx={{ color: theme.palette.success.main, fontSize: 18 }} />
+                                </Box>
+                                <Box>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                        Consistent Adoption
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Provides a unified reference for all stakeholders to ensure repeatable success.
+                                    </Typography>
+                                </Box>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Box sx={{
+                                    width: 36,
+                                    height: 36,
+                                    borderRadius: 1,
+                                    bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                    <TrendingUp sx={{ color: theme.palette.warning.main, fontSize: 18 }} />
+                                </Box>
+                                <Box>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
+                                        Accelerated Time-to-Value
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Streamline implementation methodology for predictable outcomes.
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        </Stack>
+                    </Paper>
                 </Grid>
 
-                <Grid size={{ xs: 12, md: 5 }}>
-                    <Card elevation={1} sx={{ borderRadius: 2, border: `1px solid ${theme.palette.divider}` }}>
-                        <CardHeader title="Quick Actions" subheader="Common tasks" />
-                        <Divider />
-                        <CardContent>
-                            <Typography variant="body2" color="text.secondary" paragraph>
-                                Use the sidebar to navigate to specific modules.
-                            </Typography>
-                            <List>
-                                <ListItemButton component="a" href="/customers">
-                                    <ListItemText primary="View Customer Adoption" secondary="Go to Customers page" />
-                                </ListItemButton>
-                                <ListItemButton component="a" href="/products">
-                                    <ListItemText primary="Configure Products" secondary="Go to Products page" />
-                                </ListItemButton>
-                            </List>
-                        </CardContent>
-                    </Card>
+                {/* Quick Links */}
+                <Grid size={{ xs: 12, lg: 4 }}>
+                    <Paper
+                        elevation={0}
+                        sx={{
+                            p: 3,
+                            borderRadius: 2,
+                            border: `1px solid ${theme.palette.divider}`,
+                            height: '100%'
+                        }}
+                    >
+                        <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 2, fontWeight: 600 }}>
+                            Quick Access
+                        </Typography>
+
+                        <Stack spacing={1}>
+                            <Paper
+                                component="a"
+                                href="/products"
+                                elevation={0}
+                                sx={{
+                                    p: 2,
+                                    borderRadius: 1.5,
+                                    bgcolor: alpha(theme.palette.primary.main, 0.04),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1.5,
+                                    textDecoration: 'none',
+                                    color: 'inherit',
+                                    transition: 'background-color 0.15s',
+                                    '&:hover': {
+                                        bgcolor: alpha(theme.palette.primary.main, 0.08)
+                                    }
+                                }}
+                            >
+                                <ProductIcon sx={{ color: theme.palette.primary.main, fontSize: 20 }} />
+                                <Box>
+                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>Products</Typography>
+                                    <Typography variant="caption" color="text.secondary">Configure adoption tasks</Typography>
+                                </Box>
+                            </Paper>
+
+                            <Paper
+                                component="a"
+                                href="/solutions"
+                                elevation={0}
+                                sx={{
+                                    p: 2,
+                                    borderRadius: 1.5,
+                                    bgcolor: alpha(theme.palette.warning.main, 0.04),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1.5,
+                                    textDecoration: 'none',
+                                    color: 'inherit',
+                                    transition: 'background-color 0.15s',
+                                    '&:hover': {
+                                        bgcolor: alpha(theme.palette.warning.main, 0.08)
+                                    }
+                                }}
+                            >
+                                <SolutionIcon sx={{ color: theme.palette.warning.main, fontSize: 20 }} />
+                                <Box>
+                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>Solutions</Typography>
+                                    <Typography variant="caption" color="text.secondary">Manage solution bundles</Typography>
+                                </Box>
+                            </Paper>
+
+                            <Paper
+                                component="a"
+                                href="/customers"
+                                elevation={0}
+                                sx={{
+                                    p: 2,
+                                    borderRadius: 1.5,
+                                    bgcolor: alpha(theme.palette.success.main, 0.04),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 1.5,
+                                    textDecoration: 'none',
+                                    color: 'inherit',
+                                    transition: 'background-color 0.15s',
+                                    '&:hover': {
+                                        bgcolor: alpha(theme.palette.success.main, 0.08)
+                                    }
+                                }}
+                            >
+                                <CustomerIcon sx={{ color: theme.palette.success.main, fontSize: 20 }} />
+                                <Box>
+                                    <Typography variant="body2" sx={{ fontWeight: 600 }}>Customers</Typography>
+                                    <Typography variant="caption" color="text.secondary">View adoption plans</Typography>
+                                </Box>
+                            </Paper>
+                        </Stack>
+                    </Paper>
                 </Grid>
             </Grid>
         </Box>
     );
 };
-
