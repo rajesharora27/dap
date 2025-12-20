@@ -10,7 +10,8 @@
 # - Development environment management
 #
 # Usage: ./dap [command]
-# Commands: start, stop, restart, status, reset, clean-restart, rebuild, test, add-sample, reset-sample, help
+# Commands: start, stop, restart, status, reset, clean-restart, rebuild, add-sample, reset-sample, help
+# Testing: Use ./dap-test for all test commands (e2e, unit, tags, integration)
 #######################################################################################
 
 set -e
@@ -1529,11 +1530,17 @@ show_help() {
     echo -e "  ${CYAN}clean-restart${NC}  - ⚠️  FORCE KILL, WIPES ALL DATA, then loads fresh sample data"
     echo -e "  ${BLUE}add-sample${NC}     - ✅ Add sample data (preserves existing user data)"
     echo -e "  ${PURPLE}reset-sample${NC}   - ✅ Remove sample data only (preserves user data)"
-    echo -e "  ${PURPLE}test${NC}           - Run comprehensive end-user test suite"
-    echo -e "  ${CYAN}unit-test${NC}      - Run Jest unit/integration tests on shadow database"
     echo -e "  ${YELLOW}restart-db${NC}     - Restart database container (clears ALL connections)"
     echo -e "  ${BLUE}status${NC}         - Show status of all services and data"
     echo -e "  ${PURPLE}help${NC}           - Show this help message"
+    echo ""
+    echo "Testing:"
+    echo -e "  Use ${CYAN}./dap-test${NC} for all test commands:"
+    echo "    ./dap-test e2e        # Run comprehensive E2E tests"
+    echo "    ./dap-test unit       # Run unit tests"
+    echo "    ./dap-test tags       # Run tags tests"
+    echo "    ./dap-test all        # Run all tests"
+    echo "    ./dap-test help       # Show all test commands"
     echo ""
     echo "Mode detection:"
     echo "  • macOS => mac-demo (uses scripts/mac-light-deploy.sh for light prod demo)"
@@ -1545,15 +1552,12 @@ show_help() {
     echo "  $0 restart frontend     # Restart only frontend"
     echo "  $0 rebuild backend      # Rebuild and restart backend only"
     echo "  $0 migrate              # Run pending database migrations"
-    echo "  $0 add-sample      # ✅ Add sample data (preserves your data)"
-    echo "  $0 reset-sample    # ✅ Remove sample data (preserves your data)"
-    echo "  $0 full-rebuild    # ⚠️  Rebuild everything + fresh database"
-    echo "  $0 clean-restart   # ⚠️  DANGER: Wipes everything, fresh start"
-    echo "  $0 test            # Validate all functionality with comprehensive test"
-    echo "  $0 unit-test       # Run Jest tests on shadow database (dev data safe!)"
-    echo "  $0 unit-test auth  # Run only auth tests"
-    echo "  $0 status          # Check what's running"
-    echo "  $0 stop            # End development session"
+    echo "  $0 add-sample           # ✅ Add sample data (preserves your data)"
+    echo "  $0 reset-sample         # ✅ Remove sample data (preserves your data)"
+    echo "  $0 full-rebuild         # ⚠️  Rebuild everything + fresh database"
+    echo "  $0 clean-restart        # ⚠️  DANGER: Wipes everything, fresh start"
+    echo "  $0 status               # Check what's running"
+    echo "  $0 stop                 # End development session"
     echo ""
     echo "Components managed:"
     echo "  • PostgreSQL Database (Docker container)"
@@ -1579,13 +1583,6 @@ show_help() {
     echo ""
     echo "⚠️  IMPORTANT: clean-restart deletes ALL data including manually created products!"
     echo "   To preserve your 'Cisco Secure Access' or other custom data, use 'add-sample' instead."
-    echo ""
-    echo "The test command runs comprehensive validation:"
-    echo "  • Simulates complete end-user workflows"
-    echo "  • Tests all CRUD operations and business logic"
-    echo "  • Verifies database persistence and relationships"
-    echo "  • Validates mandatory attributes and constraints"
-    echo "  • Ensures frontend ↔ backend ↔ database integration"
 }
 
 # Main script logic
@@ -1720,12 +1717,22 @@ main() {
         reset-sample)
             reset_sample_data
             ;;
-        test)
-            run_comprehensive_test
-            ;;
-        unit-test)
-            shift
-            run_unit_tests "$@"
+        test|unit-test|e2e|tags|integration)
+            log_warning "Testing commands have moved to ./dap-test"
+            echo ""
+            log_info "Use one of the following:"
+            echo "  ./dap-test e2e         # Run comprehensive E2E tests"
+            echo "  ./dap-test unit        # Run unit tests"
+            echo "  ./dap-test tags        # Run tags tests"
+            echo "  ./dap-test integration # Run integration tests"
+            echo "  ./dap-test all         # Run all tests"
+            echo "  ./dap-test help        # Show all test options"
+            echo ""
+            # If dap-test exists and is executable, offer to run it
+            if [ -x "$PROJECT_DIR/dap-test" ]; then
+                log_info "Running: ./dap-test ${1:-e2e} ${@:2}"
+                exec "$PROJECT_DIR/dap-test" "${1:-e2e}" "${@:2}"
+            fi
             ;;
         restart-db)
             log_header "RESTARTING DATABASE"
