@@ -1423,6 +1423,12 @@ Previously only Tasks opened a preview dialog. Now all entities have preview dia
   - `frontend/src/components/solution-adoption/SolutionAdoptionPlanView.tsx`
   - `backend/src/seed-solutions.ts` (updated seed defaults)
 
+**Issue 6: Dev Environment Schema Sync**
+- **Type**: Tooling Improvement
+- **Problem**: Pulling code changes with schema updates (e.g., new columns) caused runtime errors on dev machines/VMs because `rebuild` didn't update the DB.
+- **Fix**: Updated `./dap rebuild` command to automatically run `npx prisma generate` and `npx prisma db push` during backend rebuild.
+- **Files Changed**: `dap` (CLI script)
+
 #### Standard Release Process Created
 
 **New Documentation:**

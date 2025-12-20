@@ -1645,6 +1645,23 @@ main() {
                 cd "$BACKEND_DIR"
                 if npm install --legacy-peer-deps && npm run build; then
                     log_success "Backend built successfully"
+                    
+                    log_info "🔄 Updating Database Schema (Prisma)..."
+                    # Generate Prisma Client
+                    if npx prisma generate; then
+                        log_success "Prisma Client generated"
+                    else
+                        log_error "Failed to generate Prisma Client"
+                        exit 1
+                    fi
+                    
+                    # Push schema to DB (handles schema changes)
+                    if npx prisma db push; then
+                        log_success "Database schema synced"
+                    else
+                        log_error "Failed to push database schema"
+                        exit 1
+                    fi
                 else
                     log_error "Failed to build backend"
                     exit 1
