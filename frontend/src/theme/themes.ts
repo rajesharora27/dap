@@ -258,18 +258,24 @@ export const createAppTheme = (themeKey: ThemeKey, customConfig?: CustomThemeCon
   const themeOptions: ThemeOptions = {
     ...themeConfig,
     typography: {
-      fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+      // Cisco/Apple font stack:
+      // CiscoSans (Cisco employees), SF Pro (Mac), Inter (Google fallback), Segoe UI (Windows)
+      fontFamily: '"CiscoSans", "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif',
       h1: {
         fontWeight: 600,
+        letterSpacing: '-0.025em',
       },
       h2: {
         fontWeight: 600,
+        letterSpacing: '-0.02em',
       },
       h3: {
         fontWeight: 600,
+        letterSpacing: '-0.015em',
       },
       h4: {
         fontWeight: 600,
+        letterSpacing: '-0.01em',
       },
       h5: {
         fontWeight: 600,
@@ -277,9 +283,16 @@ export const createAppTheme = (themeKey: ThemeKey, customConfig?: CustomThemeCon
       h6: {
         fontWeight: 600,
       },
+      body1: {
+        letterSpacing: '-0.01em',
+      },
+      body2: {
+        letterSpacing: '-0.005em',
+      },
       button: {
         textTransform: 'none',
         fontWeight: 500,
+        letterSpacing: '0.01em',
       },
     },
     shape: {

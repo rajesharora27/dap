@@ -155,7 +155,6 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
                 letterSpacing: '-0.3px',
                 lineHeight: 1.2,
                 color: '#FFFFFF',
-                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
               }}
             >
               Dynamic Adoption Plans
@@ -167,7 +166,6 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
                 letterSpacing: '0.3px',
                 fontWeight: 500,
                 color: 'rgba(255, 255, 255, 0.85)',
-                fontFamily: '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif'
               }}
             >
               Customer Success Platform
