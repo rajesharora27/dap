@@ -22,7 +22,8 @@ import {
     IdBadge,
     StarOutlined,
     CommentOutlined,
-    Compass
+    Compass,
+    AISparkle
 } from '../components/common/FAIcon';
 
 // GraphQL Queries
@@ -177,108 +178,124 @@ export const DashboardPage = () => {
                     border: `1px solid ${theme.palette.divider}`,
                 }}
             >
-                <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 3, fontWeight: 600 }}>
-                    About DAP
-                </Typography>
+                <Box sx={{ mb: 4 }}>
+                    <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                        Dynamic Adoption Platform
+                    </Typography>
+                    <Typography variant="subtitle1" color="text.secondary">
+                        Centralized logic for product and solution adoption.
+                    </Typography>
+                </Box>
 
                 <Grid container spacing={3}>
                     {/* Row 1 */}
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Box sx={{ color: theme.palette.primary.main, opacity: 0.8, flexShrink: 0, pt: 0.25 }}>
-                                <CheckCircleOutline fontSize="medium" />
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <Paper elevation={0} sx={{ p: 2.5, height: '100%', bgcolor: alpha(theme.palette.primary.main, 0.04), border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`, borderRadius: 2 }}>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Box sx={{ color: theme.palette.primary.main, flexShrink: 0, pt: 0.5 }}>
+                                    <CheckCircleOutline fontSize="medium" />
+                                </Box>
+                                <Box>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, color: theme.palette.text.primary }}>
+                                        Single Source of Truth
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Centrally define all adoption components for products and solutions.
+                                    </Typography>
+                                </Box>
                             </Box>
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                    Single Source of Truth
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    Centrally define all adoption components for products and solutions.
-                                </Typography>
-                            </Box>
-                        </Box>
+                        </Paper>
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Box sx={{ color: theme.palette.success.main, opacity: 0.8, flexShrink: 0, pt: 0.25 }}>
-                                <ClockOutlined fontSize="medium" />
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <Paper elevation={0} sx={{ p: 2.5, height: '100%', bgcolor: alpha(theme.palette.success.main, 0.04), border: `1px solid ${alpha(theme.palette.success.main, 0.1)}`, borderRadius: 2 }}>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Box sx={{ color: theme.palette.success.main, flexShrink: 0, pt: 0.5 }}>
+                                    <ClockOutlined fontSize="medium" />
+                                </Box>
+                                <Box>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, color: theme.palette.text.primary }}>
+                                        Accelerated Time-to-Value
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Streamline implementation methodology for predictable outcomes.
+                                    </Typography>
+                                </Box>
                             </Box>
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                    Accelerated Time-to-Value
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    Streamline implementation methodology for predictable outcomes.
-                                </Typography>
+                        </Paper>
+                    </Grid>
+
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <Paper elevation={0} sx={{ p: 2.5, height: '100%', bgcolor: alpha(theme.palette.warning.main, 0.04), border: `1px solid ${alpha(theme.palette.warning.main, 0.1)}`, borderRadius: 2 }}>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Box sx={{ color: theme.palette.warning.main, flexShrink: 0, pt: 0.5 }}>
+                                    <Compass fontSize="medium" />
+                                </Box>
+                                <Box>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, color: theme.palette.text.primary }}>
+                                        Dynamic Outcome-Based Plans
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Adoption plans dynamically adjust based on selected business outcomes.
+                                    </Typography>
+                                </Box>
                             </Box>
-                        </Box>
+                        </Paper>
                     </Grid>
 
                     {/* Row 2 */}
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Box sx={{ color: theme.palette.warning.main, opacity: 0.8, flexShrink: 0, pt: 0.25 }}>
-                                <Compass fontSize="medium" />
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <Paper elevation={0} sx={{ p: 2.5, height: '100%', bgcolor: alpha(theme.palette.info.main, 0.04), border: `1px solid ${alpha(theme.palette.info.main, 0.1)}`, borderRadius: 2 }}>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Box sx={{ color: theme.palette.info.main, flexShrink: 0, pt: 0.5 }}>
+                                    <IdBadge fontSize="medium" />
+                                </Box>
+                                <Box>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, color: theme.palette.text.primary }}>
+                                        Context-Aware
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Plans automatically adjust to current licenses, software versions, and deployment constraints.
+                                    </Typography>
+                                </Box>
                             </Box>
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                    Dynamic Outcome-Based Plans
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    Adoption plans dynamically adjust based on selected business outcomes.
-                                </Typography>
-                            </Box>
-                        </Box>
+                        </Paper>
                     </Grid>
 
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Box sx={{ color: theme.palette.info.main, opacity: 0.8, flexShrink: 0, pt: 0.25 }}>
-                                <IdBadge fontSize="medium" />
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <Paper elevation={0} sx={{ p: 2.5, height: '100%', bgcolor: alpha(theme.palette.secondary.main, 0.04), border: `1px solid ${alpha(theme.palette.secondary.main, 0.1)}`, borderRadius: 2 }}>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Box sx={{ color: theme.palette.secondary.main, flexShrink: 0, pt: 0.5 }}>
+                                    <StarOutlined fontSize="medium" />
+                                </Box>
+                                <Box>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, color: theme.palette.text.primary }}>
+                                        Environment Tags
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Customize adoption plans based on customer environment characteristics.
+                                    </Typography>
+                                </Box>
                             </Box>
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                    Entitlement-Aware
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    Plans respect customer licenses and release versions for accurate task visibility.
-                                </Typography>
-                            </Box>
-                        </Box>
+                        </Paper>
                     </Grid>
 
-                    {/* Row 3 */}
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Box sx={{ color: theme.palette.secondary.main, opacity: 0.8, flexShrink: 0, pt: 0.25 }}>
-                                <StarOutlined fontSize="medium" />
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <Paper elevation={0} sx={{ p: 2.5, height: '100%', bgcolor: alpha(theme.palette.primary.main, 0.04), border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`, borderRadius: 2 }}>
+                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                <Box sx={{ color: theme.palette.primary.main, flexShrink: 0, pt: 0.5 }}>
+                                    <AISparkle fontSize="medium" />
+                                </Box>
+                                <Box>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5, color: theme.palette.text.primary }}>
+                                        AI Agent
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Query and navigate adoption data using natural language.
+                                    </Typography>
+                                </Box>
                             </Box>
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                    Environment Tags
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    Customize adoption plans based on customer environment characteristics.
-                                </Typography>
-                            </Box>
-                        </Box>
-                    </Grid>
-
-                    <Grid size={{ xs: 12, md: 6 }}>
-                        <Box sx={{ display: 'flex', gap: 2 }}>
-                            <Box sx={{ color: theme.palette.primary.main, opacity: 0.8, flexShrink: 0, pt: 0.25 }}>
-                                <CommentOutlined fontSize="medium" />
-                            </Box>
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 0.5 }}>
-                                    AI Agent
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    Natural language interface to query and navigate adoption data.
-                                </Typography>
-                            </Box>
-                        </Box>
+                        </Paper>
                     </Grid>
                 </Grid>
             </Paper>

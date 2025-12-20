@@ -520,7 +520,7 @@ export const AuthMutationResolvers = {
     }
 
     // Find role by ID or name
-    let role;
+    let role: any;
     if (roleId) {
       role = await context.prisma.role.findUnique({
         where: { id: roleId }

@@ -107,6 +107,7 @@ import {
   PlaylistPlay as PlaylistPlayIcon,
   BugReport as BugReportIcon,
   DeveloperMode as DeveloperModeIcon,
+  Add,
 } from '../components/common/FAIcon';
 import { AuthBar } from '../components/AuthBar';
 import { useAuth } from '../components/AuthContext';
@@ -1218,7 +1219,7 @@ export function App() {
           <Dashboard sx={{ fontSize: 40, color: 'white' }} />
         </Box>
         <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
-          Dynamic Adoption Plans
+          Dynamic Adoption Platform
         </Typography>
         <LinearProgress sx={{ width: 200, mt: 2, bgcolor: 'rgba(255,255,255,0.2)', '& .MuiLinearProgress-bar': { bgcolor: 'white' } }} />
         <Typography variant="body2" sx={{ mt: 2, opacity: 0.9 }}>
@@ -2165,38 +2166,58 @@ export function App() {
               }}
             >
               <ListItemIcon><MainIcon /></ListItemIcon>
-              <ListItemText primary="Dashboard" />
+              <ListItemText primary="Getting Started" />
             </ListItemButton>
 
             {/* Products Section - Only show if user has access to at least one product */}
             {hasProducts && (
               <>
-                <ListItemButton
-                  selected={selectedSection === 'products'}
-                  onClick={() => {
-                    setSelectedSection('products');
-                  }}
-                  sx={{
-                    '&.Mui-selected': {
-                      backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                      '& .MuiListItemIcon-root': {
-                        color: '#049FD9'
-                      },
-                      '& .MuiListItemText-primary': {
-                        color: '#049FD9',
-                        fontWeight: 600
-                      }
-                    },
-                    '&.Mui-selected:hover': {
-                      backgroundColor: 'rgba(4, 159, 217, 0.12)'
-                    }
-                  }}
+                <ListItem
+                  disablePadding
+                  secondaryAction={
+                    (user?.isAdmin || isSME) ? (
+                      <IconButton
+                        edge="end"
+                        aria-label="add"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setNewProduct({ name: '', description: '' });
+                          setAddProductDialog(true);
+                        }}
+                        sx={{ mr: 1, color: selectedSection === 'products' ? '#049FD9' : 'text.secondary' }}
+                      >
+                        <Add fontSize="small" />
+                      </IconButton>
+                    ) : null
+                  }
                 >
-                  <ListItemIcon>
-                    <ProductIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Products" />
-                </ListItemButton>
+                  <ListItemButton
+                    selected={selectedSection === 'products'}
+                    onClick={() => {
+                      setSelectedSection('products');
+                    }}
+                    sx={{
+                      '&.Mui-selected': {
+                        backgroundColor: 'rgba(4, 159, 217, 0.08)',
+                        '& .MuiListItemIcon-root': {
+                          color: '#049FD9'
+                        },
+                        '& .MuiListItemText-primary': {
+                          color: '#049FD9',
+                          fontWeight: 600
+                        }
+                      },
+                      '&.Mui-selected:hover': {
+                        backgroundColor: 'rgba(4, 159, 217, 0.12)'
+                      }
+                    }}
+                  >
+                    <ListItemIcon>
+                      <ProductIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Products" />
+                  </ListItemButton>
+                </ListItem>
               </>
             )
             }
@@ -2205,32 +2226,51 @@ export function App() {
             {
               hasSolutions && (
                 <>
-                  <ListItemButton
-                    selected={selectedSection === 'solutions'}
-                    onClick={() => {
-                      setSelectedSection('solutions');
-                    }}
-                    sx={{
-                      '&.Mui-selected': {
-                        backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                        '& .MuiListItemIcon-root': {
-                          color: '#049FD9'
-                        },
-                        '& .MuiListItemText-primary': {
-                          color: '#049FD9',
-                          fontWeight: 600
-                        }
-                      },
-                      '&.Mui-selected:hover': {
-                        backgroundColor: 'rgba(4, 159, 217, 0.12)'
-                      }
-                    }}
+                  <ListItem
+                    disablePadding
+                    secondaryAction={
+                      (user?.isAdmin || isSME) ? (
+                        <IconButton
+                          edge="end"
+                          aria-label="add"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setAddSolutionDialog(true);
+                          }}
+                          sx={{ mr: 1, color: selectedSection === 'solutions' ? '#ed6c02' : 'text.secondary' }}
+                        >
+                          <Add fontSize="small" />
+                        </IconButton>
+                      ) : null
+                    }
                   >
-                    <ListItemIcon>
-                      <SolutionIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Solutions" />
-                  </ListItemButton>
+                    <ListItemButton
+                      selected={selectedSection === 'solutions'}
+                      onClick={() => {
+                        setSelectedSection('solutions');
+                      }}
+                      sx={{
+                        '&.Mui-selected': {
+                          backgroundColor: 'rgba(237, 108, 2, 0.08)',
+                          '& .MuiListItemIcon-root': {
+                            color: '#ed6c02'
+                          },
+                          '& .MuiListItemText-primary': {
+                            color: '#ed6c02',
+                            fontWeight: 600
+                          }
+                        },
+                        '&.Mui-selected:hover': {
+                          backgroundColor: 'rgba(237, 108, 2, 0.12)'
+                        }
+                      }}
+                    >
+                      <ListItemIcon>
+                        <SolutionIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Solutions" />
+                    </ListItemButton>
+                  </ListItem>
                 </>
               )
             }
@@ -2239,32 +2279,57 @@ export function App() {
             {
               hasCustomers && (
                 <>
-                  <ListItemButton
-                    selected={selectedSection === 'customers'}
-                    onClick={() => {
-                      setSelectedSection('customers');
-                    }}
-                    sx={{
-                      '&.Mui-selected': {
-                        backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                        '& .MuiListItemIcon-root': {
-                          color: '#049FD9'
-                        },
-                        '& .MuiListItemText-primary': {
-                          color: '#049FD9',
-                          fontWeight: 600
-                        }
-                      },
-                      '&.Mui-selected:hover': {
-                        backgroundColor: 'rgba(4, 159, 217, 0.12)'
-                      }
-                    }}
+                  <ListItem
+                    disablePadding
+                    secondaryAction={
+                      (user?.isAdmin || isCSS) ? (
+                        <IconButton
+                          edge="end"
+                          aria-label="add"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCustomerId(null);
+                            localStorage.removeItem('lastSelectedCustomerId');
+                            setSelectedSection('customers');
+                            // Force render of CustomersPage to clear selection and show "Add New" state 
+                            // NOTE: CustomersPage handles "Add" internally if no ID is selected, but specific logic might be needed
+                            // Checking CustomersPage logic: it uses `key={selectedCustomer || selectedCustomerId}`. 
+                            // If we clear selectedCustomerId, it should reset.
+                          }}
+                          sx={{ mr: 1, color: selectedSection === 'customers' ? '#2e7d32' : 'text.secondary' }}
+                        >
+                          <Add fontSize="small" />
+                        </IconButton>
+                      ) : null
+                    }
                   >
-                    <ListItemIcon>
-                      <CustomerIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Customers" />
-                  </ListItemButton>
+                    <ListItemButton
+                      selected={selectedSection === 'customers'}
+                      onClick={() => {
+                        setSelectedSection('customers');
+                      }}
+                      sx={{
+                        '&.Mui-selected': {
+                          backgroundColor: 'rgba(46, 125, 50, 0.08)',
+                          '& .MuiListItemIcon-root': {
+                            color: '#2e7d32'
+                          },
+                          '& .MuiListItemText-primary': {
+                            color: '#2e7d32',
+                            fontWeight: 600
+                          }
+                        },
+                        '&.Mui-selected:hover': {
+                          backgroundColor: 'rgba(46, 125, 50, 0.12)'
+                        }
+                      }}
+                    >
+                      <ListItemIcon>
+                        <CustomerIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Customers" />
+                    </ListItemButton>
+                  </ListItem>
                 </>
               )
             }

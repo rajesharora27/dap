@@ -378,7 +378,7 @@ export const ProductDialog: React.FC<Props> = ({
 
       for (const license of activeLicenses) {
         if (!license.name.trim()) {
-          setError('All license names must be specified');
+          setError('All entitlement names must be specified');
           return;
         }
       }
@@ -445,7 +445,7 @@ export const ProductDialog: React.FC<Props> = ({
             <Tabs value={tabValue} onChange={handleTabChange} aria-label="product tabs">
               <Tab label="General" />
               <Tab label={`Outcomes (${outcomes.filter(o => !o.delete).length})`} />
-              <Tab label={`Licenses (${licenses.filter(l => !l.delete).length})`} />
+              <Tab label={`Entitlements (${licenses.filter(l => !l.delete).length})`} />
               <Tab label={`Releases (${releases.filter(r => !r.delete).length})`} />
               <Tab label={`Attributes (${Object.keys(customAttrs).length})`} />
             </Tabs>
@@ -549,7 +549,7 @@ export const ProductDialog: React.FC<Props> = ({
           <TabPanel value={tabValue} index={2}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="body2" color="text.secondary">
-                Manage licenses for this product
+                Manage entitlements for this product
               </Typography>
               <Button
                 variant="contained"
@@ -557,7 +557,7 @@ export const ProductDialog: React.FC<Props> = ({
                 onClick={() => setAddLicenseDialog(true)}
                 size="small"
               >
-                Add License
+                Add Entitlement
               </Button>
             </Box>
 
@@ -623,7 +623,7 @@ export const ProductDialog: React.FC<Props> = ({
               </List>
             ) : (
               <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-                No licenses added yet. Click "Add License" to get started.
+                No entitlements added yet. Click "Add Entitlement" to get started.
               </Typography>
             )}
           </TabPanel>

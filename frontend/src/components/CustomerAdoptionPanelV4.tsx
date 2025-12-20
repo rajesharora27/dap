@@ -60,6 +60,7 @@ import {
   OndemandVideo,
   Assessment,
   Label,
+  KeyboardArrowDown,
 } from '../components/common/FAIcon';
 import { CustomerDialog } from './dialogs/CustomerDialog';
 import { AssignProductDialog } from './dialogs/AssignProductDialog';
@@ -1504,8 +1505,8 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                     }}
                   >
                     <Tab label="Overview" value="main" />
-                    <Tab label="Products" value="products" />
-                    <Tab label="Solutions" value="solutions" />
+                    <Tab label="Products Assigned" value="products" />
+                    <Tab label="Solutions Assigned" value="solutions" />
                   </Tabs>
                 </Box>
               </Box >
@@ -1517,7 +1518,92 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                 <Box sx={{ flex: 1, overflow: 'auto', p: { xs: 1.5, sm: 2, md: 3 } }}>
                   <Box sx={{ width: '100%', maxWidth: 1200 }}>
                     {/* Quick Stats Cards */}
+                    <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+                      {/* Total Products Assigned */}
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          flex: '1 1 200px',
+                          p: 2.5,
+                          border: '1.5px solid',
+                          borderColor: '#E0E0E0',
+                          borderRadius: 2,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          textAlign: 'center'
+                        }}
+                      >
+                        <Typography variant="h3" fontWeight="700" color="primary.main">
+                          {sortedProducts?.length || 0}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" fontWeight="600" sx={{ mt: 0.5 }}>
+                          Total Products Assigned
+                        </Typography>
+                      </Paper>
 
+                      {/* Direct vs Solution Breakdown */}
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          flex: '1 1 280px',
+                          p: 2.5,
+                          border: '1.5px solid',
+                          borderColor: '#E0E0E0',
+                          borderRadius: 2,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          textAlign: 'center'
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                          <Box>
+                            <Typography variant="h4" fontWeight="700" color="success.main">
+                              {sortedProducts?.filter((p: any) => !p.customerSolutionId).length || 0}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" fontWeight="600">
+                              Direct
+                            </Typography>
+                          </Box>
+                          <Typography variant="h5" color="text.disabled">vs</Typography>
+                          <Box>
+                            <Typography variant="h4" fontWeight="700" color="secondary.main">
+                              {sortedProducts?.filter((p: any) => p.customerSolutionId).length || 0}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" fontWeight="600">
+                              Via Solution
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" fontWeight="600" sx={{ mt: 1 }}>
+                          Product Assignment Type
+                        </Typography>
+                      </Paper>
+
+                      {/* Solutions Assigned */}
+                      <Paper
+                        elevation={0}
+                        sx={{
+                          flex: '1 1 200px',
+                          p: 2.5,
+                          border: '1.5px solid',
+                          borderColor: '#E0E0E0',
+                          borderRadius: 2,
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          textAlign: 'center'
+                        }}
+                      >
+                        <Typography variant="h3" fontWeight="700" color="warning.main">
+                          {selectedCustomer?.solutions?.length || 0}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" fontWeight="600" sx={{ mt: 0.5 }}>
+                          Solutions Assigned
+                        </Typography>
+                      </Paper>
+                    </Box>
 
                     {/* Products Assignment List - Compact */}
                     <Box sx={{ mb: 3 }}>
@@ -1536,7 +1622,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                             {productAssignmentsExpanded ? <ExpandLess /> : <ExpandMore />}
                           </IconButton>
                           <Typography variant="subtitle1" fontWeight="600" color="text.primary">
-                            Product Assignments
+                            Products Assigned
                           </Typography>
                           <Chip
                             label={sortedProducts?.length || 0}
@@ -1548,7 +1634,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                         </Box>
                         <Button
                           startIcon={<Add />}
-                          variant="outlined"
+                          variant="contained"
                           size="small"
                           color="success"
                           onClick={(e) => {
@@ -1583,18 +1669,18 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                       justifyContent: 'space-between',
                                       alignItems: { xs: 'stretch', sm: 'center' },
                                       p: 1.5,
-                                      border: '1.5px solid',
+                                      border: '1px solid',
                                       borderColor: '#E0E0E0',
-                                      borderLeft: '4px solid',
+                                      borderLeft: '5px solid',
                                       borderLeftColor: isFromSolution ? '#7B1FA2' : '#00897B',
-                                      backgroundColor: isFromSolution ? '#F3E5F5' : '#E0F2F1',
+                                      backgroundColor: 'background.paper',
                                       borderRadius: 2,
                                       transition: 'all 0.2s ease',
                                       gap: 1,
                                       cursor: 'pointer',
                                       '&:hover': {
                                         boxShadow: 2,
-                                        borderColor: isFromSolution ? '#7B1FA2' : '#00897B'
+                                        transform: 'translateY(-2px)'
                                       }
                                     }}
                                   >
@@ -1617,71 +1703,63 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                       </Box>
                                     </Box>
                                     <Box
-                                      sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}
+                                      sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center' }}
                                       onClick={(e) => e.stopPropagation()}
                                     >
                                       {cp.adoptionPlan && (
-                                        <Tooltip title="Sync with latest product tasks">
-                                          <Button
-                                            size="small"
-                                            variant="outlined"
-                                            startIcon={<Sync sx={{ display: { xs: 'none', sm: 'block' } }} />}
-                                            color={cp.adoptionPlan.needsSync ? 'warning' : 'primary'}
-                                            onClick={() => {
-                                              setSyncingProductId(cp.adoptionPlan.id);
-                                              syncAdoptionPlan({ variables: { adoptionPlanId: cp.adoptionPlan.id } });
-                                            }}
-                                            disabled={syncingProductId === cp.adoptionPlan.id}
-                                            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '80px' } }}
-                                          >
-                                            {syncingProductId === cp.adoptionPlan.id ? 'Syncing...' : cp.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
-                                          </Button>
+                                        <Tooltip title={cp.adoptionPlan.needsSync ? "Update available - Sync with latest product tasks" : "Sync with latest product tasks"}>
+                                          <span>
+                                            <IconButton
+                                              size="small"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSyncingProductId(cp.adoptionPlan.id);
+                                                syncAdoptionPlan({ variables: { adoptionPlanId: cp.adoptionPlan.id } });
+                                              }}
+                                              disabled={syncingProductId === cp.adoptionPlan.id}
+                                              color={cp.adoptionPlan.needsSync ? 'warning' : 'default'}
+                                            >
+                                              {syncingProductId === cp.adoptionPlan.id ? <CircularProgress size={20} /> : <Sync fontSize="small" />}
+                                            </IconButton>
+                                          </span>
                                         </Tooltip>
                                       )}
-                                      <Tooltip
-                                        title={isFromSolution ? "Cannot edit product assigned as part of solution. Edit the solution instead." : ""}
-                                        arrow
-                                      >
-                                        <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                                          <Button
+
+                                      <Tooltip title={isFromSolution ? "Cannot edit product assigned as part of solution. Edit the solution instead." : "Edit Assignment"}>
+                                        <span>
+                                          <IconButton
                                             size="small"
-                                            variant="outlined"
-                                            startIcon={<Edit sx={{ display: { xs: 'none', sm: 'block' } }} />}
                                             disabled={isFromSolution}
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                              e.stopPropagation();
                                               if (!isFromSolution) {
                                                 setSelectedCustomerProductId(cp.id);
                                                 handleEditProductEntitlements();
                                               }
                                             }}
-                                            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
                                           >
-                                            Edit
-                                          </Button>
-                                        </Box>
+                                            <Edit fontSize="small" />
+                                          </IconButton>
+                                        </span>
                                       </Tooltip>
-                                      <Tooltip
-                                        title={isFromSolution ? "Cannot remove product assigned as part of solution. Remove the solution instead." : ""}
-                                        arrow
-                                      >
-                                        <Box sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                                          <Button
+
+                                      <Tooltip title={isFromSolution ? "Cannot remove product assigned as part of solution. Remove the solution instead." : "Remove Assignment"}>
+                                        <span>
+                                          <IconButton
                                             size="small"
-                                            variant="outlined"
                                             color="error"
-                                            startIcon={<Delete sx={{ display: { xs: 'none', sm: 'block' } }} />}
                                             disabled={isFromSolution}
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                              e.stopPropagation();
                                               if (!isFromSolution) {
                                                 setSelectedCustomerProductId(cp.id);
                                                 setDeleteProductDialogOpen(true);
                                               }
                                             }}
-                                            sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
                                           >
-                                            Remove
-                                          </Button>
-                                        </Box>
+                                            <Delete fontSize="small" />
+                                          </IconButton>
+                                        </span>
                                       </Tooltip>
                                     </Box>
                                   </Box>
@@ -1724,7 +1802,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                             {solutionAssignmentsExpanded ? <ExpandLess /> : <ExpandMore />}
                           </IconButton>
                           <Typography variant="subtitle1" fontWeight="600" color="text.primary">
-                            Solution Assignments
+                            Solutions Assigned
                           </Typography>
                           <Chip
                             label={selectedCustomer.solutions?.length || 0}
@@ -1736,7 +1814,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                         </Box>
                         <Button
                           startIcon={<Add />}
-                          variant="outlined"
+                          variant="contained"
                           size="small"
                           color="secondary"
                           onClick={(e) => {
@@ -1769,18 +1847,18 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                     justifyContent: 'space-between',
                                     alignItems: { xs: 'stretch', sm: 'center' },
                                     p: 1.5,
-                                    border: '1.5px solid',
+                                    border: '1px solid',
                                     borderColor: '#E0E0E0',
-                                    borderLeft: '4px solid',
+                                    borderLeft: '5px solid',
                                     borderLeftColor: '#7B1FA2',
-                                    backgroundColor: '#F3E5F5',
+                                    backgroundColor: 'background.paper',
                                     borderRadius: 2,
                                     transition: 'all 0.2s ease',
                                     gap: 1,
                                     cursor: 'pointer',
                                     '&:hover': {
                                       boxShadow: 2,
-                                      borderColor: '#7B1FA2'
+                                      transform: 'translateY(-2px)'
                                     }
                                   }}
                                 >
@@ -1799,52 +1877,54 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                     </Box>
                                   </Box>
                                   <Box
-                                    sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, width: { xs: '100%', sm: 'auto' } }}
+                                    sx={{ display: 'flex', flexDirection: 'row', gap: 0.5, alignItems: 'center' }}
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     {cs.adoptionPlan && (
-                                      <Tooltip title="Sync solution and all underlying products with latest definitions">
-                                        <Button
-                                          size="small"
-                                          variant="outlined"
-                                          startIcon={<Sync sx={{ display: { xs: 'none', sm: 'block' } }} />}
-                                          color={cs.adoptionPlan.needsSync ? 'warning' : 'primary'}
-                                          onClick={() => {
-                                            setSyncingSolutionId(cs.adoptionPlan.id);
-                                            syncSolutionPlan({ variables: { solutionAdoptionPlanId: cs.adoptionPlan.id } });
-                                          }}
-                                          disabled={syncingSolutionId === cs.adoptionPlan.id}
-                                          sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '80px' } }}
-                                        >
-                                          {syncingSolutionId === cs.adoptionPlan.id ? 'Syncing...' : cs.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
-                                        </Button>
+                                      <Tooltip title={cs.adoptionPlan.needsSync ? "Update available - Sync solution and all underlying products" : "Sync solution and all underlying products"}>
+                                        <span>
+                                          <IconButton
+                                            size="small"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setSyncingSolutionId(cs.adoptionPlan.id);
+                                              syncSolutionPlan({ variables: { solutionAdoptionPlanId: cs.adoptionPlan.id } });
+                                            }}
+                                            disabled={syncingSolutionId === cs.adoptionPlan.id}
+                                            color={cs.adoptionPlan.needsSync ? 'warning' : 'default'}
+                                          >
+                                            {syncingSolutionId === cs.adoptionPlan.id ? <CircularProgress size={20} /> : <Sync fontSize="small" />}
+                                          </IconButton>
+                                        </span>
                                       </Tooltip>
                                     )}
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      startIcon={<Edit sx={{ display: { xs: 'none', sm: 'block' } }} />}
-                                      onClick={() => {
-                                        setSelectedCustomerSolutionId(cs.id);
-                                        setEditSolutionEntitlementsDialogOpen(true);
-                                      }}
-                                      sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
-                                    >
-                                      Edit
-                                    </Button>
-                                    <Button
-                                      size="small"
-                                      variant="outlined"
-                                      color="error"
-                                      startIcon={<Delete sx={{ display: { xs: 'none', sm: 'block' } }} />}
-                                      onClick={() => {
-                                        setSelectedCustomerSolutionId(cs.id);
-                                        setDeleteSolutionDialogOpen(true);
-                                      }}
-                                      sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: '64px' } }}
-                                    >
-                                      Remove
-                                    </Button>
+
+                                    <Tooltip title="Edit Solution Association">
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedCustomerSolutionId(cs.id);
+                                          setEditSolutionEntitlementsDialogOpen(true);
+                                        }}
+                                      >
+                                        <Edit fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
+
+                                    <Tooltip title="Remove Solution Association">
+                                      <IconButton
+                                        size="small"
+                                        color="error"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedCustomerSolutionId(cs.id);
+                                          setDeleteSolutionDialogOpen(true);
+                                        }}
+                                      >
+                                        <Delete fontSize="small" />
+                                      </IconButton>
+                                    </Tooltip>
                                   </Box>
                                 </Box>
                               </Tooltip>
@@ -1882,11 +1962,11 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                     >
                       <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                         <FormControl sx={{ minWidth: 300 }} size="small">
-                          <InputLabel>Select Product</InputLabel>
+                          <InputLabel>Select Deployment</InputLabel>
                           <Select
                             value={selectedCustomerProductId || ''}
                             onChange={(e) => handleProductChange(e.target.value)}
-                            label="Select Product"
+                            label="Select Deployment"
                           >
                             {sortedProducts?.map((cp: any) => {
                               const isFromSolution = !!cp.customerSolutionId;
@@ -1979,6 +2059,31 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                 />
                               </Button>
                             </Tooltip>
+                            <Tooltip title="Sync with latest product tasks">
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                startIcon={<Sync />}
+                                color={planData.adoptionPlan.needsSync ? 'warning' : 'primary'}
+                                onClick={handleSync}
+                                disabled={syncLoading}
+                              >
+                                {syncLoading ? 'Syncing...' : planData.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
+                              </Button>
+                            </Tooltip>
+                            <Chip
+                              label={selectedCustomerProduct?.licenseLevel}
+                              color="primary"
+                              size="small"
+                            />
+                            <Tooltip title="Edit license and outcomes">
+                              <IconButton
+                                size="small"
+                                onClick={() => setEditEntitlementsDialogOpen(true)}
+                              >
+                                <Edit fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
                           </>
                         )}
                       </Box>
@@ -2052,76 +2157,49 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                       {/* Adoption Plan Content */}
                       {selectedCustomerProductId && planData?.adoptionPlan && !planLoading ? (
                         <>
-                          {/* Progress Card */}
-                          <Card sx={{ mb: 2 }}>
-                            <CardContent>
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                <Typography variant="h6">
-                                  Adoption Progress for {selectedCustomerProduct.name || selectedCustomerProduct.product?.name || 'Product'}
-                                </Typography>
-                                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                  <Tooltip title="Sync with latest product tasks">
-                                    <Button
+                          {/* Overall Progress Card - Compact */}
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 2,
+                              mb: 2,
+                              border: '1.5px solid',
+                              borderColor: '#E0E0E0',
+                              borderRadius: 2,
+                              bgcolor: 'background.paper'
+                            }}
+                          >
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
+                              <Typography variant="subtitle1" fontWeight="600">Overall Progress</Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                <strong>{filteredProgress.completedTasks}</strong> of <strong>{filteredProgress.totalTasks}</strong> tasks completed
+                                {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) ||
+                                  (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
+                                    <Chip
+                                      label="Filtered"
                                       size="small"
-                                      variant="outlined"
-                                      startIcon={<Sync />}
-                                      color={planData.adoptionPlan.needsSync ? 'warning' : 'primary'}
-                                      onClick={handleSync}
-                                      disabled={syncLoading}
-                                    >
-                                      {syncLoading ? 'Syncing...' : planData.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
-                                    </Button>
-                                  </Tooltip>
-                                  <Chip
-                                    label={selectedCustomerProduct.licenseLevel}
-                                    color="primary"
-                                    size="small"
-                                  />
-                                  <Tooltip title="Edit license and outcomes">
-                                    <IconButton
-                                      size="small"
-                                      onClick={() => setEditEntitlementsDialogOpen(true)}
-                                      sx={{ ml: -0.5 }}
-                                    >
-                                      <Edit fontSize="small" />
-                                    </IconButton>
-                                  </Tooltip>
-                                </Box>
-                              </Box>
-
-                              <Box sx={{ mb: 2 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                  <Typography variant="body2" color="text.secondary">
-                                    {filteredProgress.completedTasks} / {filteredProgress.totalTasks} tasks completed
-                                    {/* Show "Filtered" chip only if actual filters are active (not "All") */}
-                                    {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) ||
-                                      (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID))) && (
-                                        <Chip
-                                          label="Filtered"
-                                          size="small"
-                                          sx={{ ml: 1, height: 18, fontSize: '0.65rem' }}
-                                          color="info"
-                                        />
-                                      )}
-                                  </Typography>
-                                  <Typography variant="body2" fontWeight="bold" color="primary">
-                                    {filteredProgress.percentage.toFixed(1)}%
-                                  </Typography>
-                                </Box>
-                                <LinearProgress
-                                  variant="determinate"
-                                  value={filteredProgress.percentage}
-                                  sx={{ height: 10, borderRadius: 5 }}
-                                />
-                              </Box>
-
-                              {planData.adoptionPlan.lastSyncedAt && (
-                                <Typography variant="caption" color="text.secondary">
-                                  Last synced: {new Date(planData.adoptionPlan.lastSyncedAt).toLocaleString()}
-                                </Typography>
-                              )}
-                            </CardContent>
-                          </Card>
+                                      sx={{ ml: 1, height: 18, fontSize: '0.65rem' }}
+                                      color="info"
+                                    />
+                                  )}
+                              </Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                              <LinearProgress
+                                variant="determinate"
+                                value={filteredProgress.percentage}
+                                sx={{ flex: 1, height: 10, borderRadius: 5 }}
+                              />
+                              <Typography variant="body1" fontWeight="700" color="primary" sx={{ minWidth: 50, textAlign: 'right' }}>
+                                {filteredProgress.percentage.toFixed(1)}%
+                              </Typography>
+                            </Box>
+                            {planData.adoptionPlan.lastSyncedAt && !isNaN(new Date(planData.adoptionPlan.lastSyncedAt).getTime()) && (
+                              <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                                Last synced: {new Date(planData.adoptionPlan.lastSyncedAt).toLocaleString()}
+                              </Typography>
+                            )}
+                          </Paper>
 
                           {/* Tasks Table */}
                           <Card>
@@ -2280,7 +2358,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
 
                                   {/* Tags - Multi-select */}
                                   <FormControl size="small" sx={{ minWidth: 200, maxWidth: 350 }}>
-                                    <InputLabel>Filter by Tags</InputLabel>
+                                    <InputLabel>Tags</InputLabel>
                                     <Select
                                       multiple
                                       value={filterTags}
@@ -2288,7 +2366,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                         const value = e.target.value;
                                         setFilterTags(typeof value === 'string' ? value.split(',') : value);
                                       }}
-                                      input={<OutlinedInput label="Filter by Tags" />}
+                                      input={<OutlinedInput label="Tags" />}
                                       renderValue={(selected) => (
                                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                                           {selected.map((value) => {
@@ -2358,17 +2436,20 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                         <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
                                       </TableCell>
                                       <TableCell width={80} sx={{ whiteSpace: 'nowrap' }}>
-                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Weight</Typography>
+                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Impl %</Typography>
                                       </TableCell>
 
                                       <TableCell width={160} sx={{ whiteSpace: 'nowrap' }}>
-                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Telemetry</Typography>
+                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Validation Criteria</Typography>
                                       </TableCell>
                                       <TableCell width={130} sx={{ whiteSpace: 'nowrap' }}>
                                         <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Updated Via</Typography>
                                       </TableCell>
                                       <TableCell width={160} sx={{ whiteSpace: 'nowrap' }}>
-                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Actions</Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                          <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Status</Typography>
+                                          <KeyboardArrowDown sx={{ fontSize: '0.9rem', color: 'text.secondary' }} />
+                                        </Box>
                                       </TableCell>
                                     </TableRow>
                                   </TableHead>
@@ -2393,13 +2474,12 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                           }}
                                           sx={{
                                             cursor: 'pointer',
-                                            backgroundColor: getStatusBackgroundColor(task.status),
+                                            backgroundColor: 'transparent',
                                             borderLeft: `4px solid ${getStatusColor(task.status)}`,
-                                            opacity: task.status === 'NOT_APPLICABLE' ? 0.5 : 1,
+                                            opacity: task.status === 'NOT_APPLICABLE' ? 0.6 : 1,
                                             textDecoration: task.status === 'NOT_APPLICABLE' ? 'line-through' : 'none',
                                             '&:hover': {
-                                              backgroundColor: getStatusBackgroundColor(task.status),
-                                              filter: 'brightness(0.97)',
+                                              backgroundColor: 'action.hover',
                                             },
                                             transition: 'all 0.2s ease-in-out',
                                           }}
@@ -2569,11 +2649,24 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                           <TableCell sx={{ whiteSpace: 'nowrap' }}>
                                             {task.statusUpdateSource ? (
                                               <Chip
-                                                label={task.statusUpdateSource}
+                                                label={task.statusUpdateSource === 'TELEMETRY' ? 'System' : task.statusUpdateSource === 'MANUAL' ? 'Manual' : task.statusUpdateSource}
                                                 size="small"
-                                                variant="outlined"
-                                                color={getUpdateSourceChipColor(task.statusUpdateSource)}
-                                                sx={{ fontSize: '0.7rem', height: '22px' }}
+                                                variant="filled"
+                                                sx={{
+                                                  fontSize: '0.7rem',
+                                                  height: '22px',
+                                                  fontWeight: 600,
+                                                  ...(task.statusUpdateSource === 'TELEMETRY' ? {
+                                                    backgroundColor: '#7c4dff',
+                                                    color: '#fff',
+                                                  } : task.statusUpdateSource === 'IMPORT' ? {
+                                                    backgroundColor: '#2196f3',
+                                                    color: '#fff',
+                                                  } : {
+                                                    backgroundColor: '#e0e0e0',
+                                                    color: '#616161',
+                                                  })
+                                                }}
                                               />
                                             ) : (
                                               <Typography variant="caption" color="text.secondary">-</Typography>

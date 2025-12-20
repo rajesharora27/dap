@@ -48,7 +48,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 sx={{
                     cursor: 'pointer',
                     transition: 'all 0.2s ease-in-out',
-                    '& td': { py: 0.75, px: 1.5 }, // Compact padding
+                    '& td': { py: 0.5, px: 1 }, // Ultra compact padding
                     bgcolor: task.telemetryAttributes?.length > 0 ? 'rgba(76, 175, 80, 0.02)' : 'inherit',
                     '&:hover': {
                         backgroundColor: 'rgba(25, 118, 210, 0.08)',
@@ -56,12 +56,12 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 }}
             >
                 {/* Drag handle */}
-                <TableCell sx={{ width: 40, minWidth: 40, padding: '8px 4px', cursor: disableDrag ? 'default' : 'grab' }} {...(!disableDrag ? attributes : {})} {...(!disableDrag ? listeners : {})}>
-                    {!disableDrag && <DragIndicator sx={{ color: 'text.secondary', fontSize: '1.2rem' }} />}
+                <TableCell sx={{ width: 30, minWidth: 30, padding: '4px 2px', cursor: disableDrag ? 'default' : 'grab' }} {...(!disableDrag ? attributes : {})} {...(!disableDrag ? listeners : {})}>
+                    {!disableDrag && <DragIndicator sx={{ color: 'text.secondary', fontSize: '1rem' }} />}
                 </TableCell>
 
                 {/* Sequence number - editable */}
-                <TableCell sx={{ width: 80, minWidth: 80, whiteSpace: 'nowrap' }}>
+                <TableCell sx={{ width: 80, minWidth: 80, whiteSpace: 'nowrap', textAlign: 'left' }}>
                     {task.sequenceNumber && (
                         <input
                             key={`seq-${task.id}-${task.sequenceNumber}`}
@@ -96,14 +96,14 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                             min="1"
                             className="sequence-input-spinner"
                             style={{
-                                width: '50px',
-                                padding: '4px 6px',
-                                border: '1px solid #9c27b0',
+                                width: '40px',
+                                padding: '2px 4px',
+                                border: '1px solid #e0e0e0',
                                 borderRadius: '4px',
                                 textAlign: 'center',
                                 fontSize: '0.875rem',
-                                fontWeight: 'bold',
-                                color: '#9c27b0',
+                                fontWeight: 500,
+                                color: '#333',
                                 backgroundColor: 'transparent',
                                 cursor: 'text'
                             }}
@@ -113,7 +113,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 </TableCell>
 
                 {/* Task name */}
-                <TableCell sx={{ maxWidth: 300 }}>
+                <TableCell sx={{ maxWidth: 300, textAlign: 'left' }}>
                     <Typography variant="body2" sx={{
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
@@ -124,7 +124,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 </TableCell>
 
                 {/* Tags Column */}
-                <TableCell sx={{ minWidth: 120 }}>
+                <TableCell sx={{ minWidth: 120, textAlign: 'left' }}>
                     {(() => {
                         const allTags = [...(task.tags || []), ...(task.solutionTags || [])];
                         if (allTags.length === 0) return <Typography variant="caption" color="text.secondary">-</Typography>;
@@ -153,7 +153,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 </TableCell>
 
                 {/* Resources */}
-                <TableCell sx={{ minWidth: 100 }}>
+                <TableCell sx={{ minWidth: 100, textAlign: 'left' }}>
                     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'center' }}>
                         {task.howToDoc && task.howToDoc.length > 0 && (
                             <Chip
@@ -214,8 +214,8 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                     </Box>
                 </TableCell>
 
-                {/* Weight - editable */}
-                <TableCell sx={{ width: 100, minWidth: 100, whiteSpace: 'nowrap' }}>
+                {/* Implementation % */}
+                <TableCell sx={{ width: 100, minWidth: 100, whiteSpace: 'nowrap', textAlign: 'left' }}>
                     <input
                         key={`weight-${task.id}-${task.weight}`}
                         type="number"
@@ -250,25 +250,35 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                         step="0.01"
                         min="0"
                         max="100"
-                        className="weight-input-spinner"
                         style={{
-                            width: '70px',
-                            padding: '4px 6px',
-                            border: '1px solid #1976d2',
+                            width: '60px',
+                            padding: '2px 4px',
+                            border: '1px solid #e0e0e0',
                             borderRadius: '4px',
                             textAlign: 'center',
                             fontSize: '0.875rem',
-                            fontWeight: 'bold',
-                            color: '#1976d2',
+                            fontWeight: 500,
+                            color: '#333',
                             backgroundColor: 'transparent',
-                            cursor: 'text'
-                        }}
+                            cursor: 'text',
+                            // Hide number input spinners
+                            MozAppearance: 'textfield',
+                            WebkitAppearance: 'none',
+                            appearance: 'textfield'
+                        } as React.CSSProperties}
                         title="Click to edit weight (0-100), press Enter to save"
                     />
+                    <style>{`
+                        input[type="number"]::-webkit-inner-spin-button,
+                        input[type="number"]::-webkit-outer-spin-button {
+                            -webkit-appearance: none;
+                            margin: 0;
+                        }
+                    `}</style>
                 </TableCell>
 
-                {/* Telemetry */}
-                <TableCell sx={{ minWidth: 80 }}>
+                {/* Validation Criteria */}
+                <TableCell sx={{ minWidth: 80, textAlign: 'left' }}>
                     {(() => {
                         const totalAttributes = task.telemetryAttributes?.length || 0;
                         const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) =>
@@ -283,7 +293,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                             <Tooltip
                                 title={
                                     <Box>
-                                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Telemetry Attributes</Typography>
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Validation Criteria</Typography>
                                         <Typography variant="caption" display="block">
                                             {attributesWithCriteria} of {totalAttributes} attributes have success criteria configured
                                         </Typography>
@@ -302,7 +312,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 </TableCell>
 
                 {/* Actions */}
-                <TableCell sx={{ width: 100, minWidth: 100, whiteSpace: 'nowrap' }}>
+                <TableCell sx={{ width: 100, minWidth: 100, whiteSpace: 'nowrap', textAlign: 'left' }}>
                     <IconButton size="small" onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
                         <Edit fontSize="small" />
                     </IconButton>

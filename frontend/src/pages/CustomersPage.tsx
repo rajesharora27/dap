@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { EntitySummary } from '../components/EntitySummary';
 import {
-    Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button, CircularProgress
+    Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button, CircularProgress, IconButton, Tooltip, Divider
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import { Edit, Delete, Add } from '../components/common/FAIcon';
@@ -112,7 +111,15 @@ export const CustomersPage: React.FC = () => {
                             <InputLabel>Select Customer</InputLabel>
                             <Select
                                 value={selectedCustomerId || ''}
-                                onChange={(e) => setSelectedCustomerId(e.target.value)}
+                                onChange={(e) => {
+                                    if (e.target.value === '__add_new__') {
+                                        if ((window as any).__openAddCustomerDialog) {
+                                            (window as any).__openAddCustomerDialog();
+                                        }
+                                    } else {
+                                        setSelectedCustomerId(e.target.value);
+                                    }
+                                }}
                                 label="Select Customer"
                             >
                                 {[...customers].sort((a: any, b: any) => a.name.localeCompare(b.name)).map((customer: any) => (
@@ -120,56 +127,43 @@ export const CustomersPage: React.FC = () => {
                                         {customer.name}
                                     </MenuItem>
                                 ))}
+                                <Divider />
+                                <MenuItem value="__add_new__" sx={{ color: 'success.main', fontWeight: 600 }}>
+                                    <Add sx={{ mr: 1, fontSize: '1rem' }} /> Add New Customer
+                                </MenuItem>
                             </Select>
                         </FormControl>
                         {selectedCustomerId && (
                             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                <Button
-                                    startIcon={<Edit />}
-                                    variant="contained"
-                                    size="medium"
-                                    onClick={() => {
-                                        if ((window as any).__openEditCustomerDialog) {
-                                            (window as any).__openEditCustomerDialog();
-                                        }
-                                    }}
-                                >
-                                    Edit
-                                </Button>
-                                <Button
-                                    startIcon={<Delete />}
-                                    variant="outlined"
-                                    size="medium"
-                                    color="error"
-                                    onClick={() => {
-                                        if ((window as any).__deleteCustomer) {
-                                            (window as any).__deleteCustomer();
-                                        }
-                                    }}
-                                >
-                                    Delete
-                                </Button>
+                                <Tooltip title="Edit Customer">
+                                    <IconButton
+                                        onClick={() => {
+                                            if ((window as any).__openEditCustomerDialog) {
+                                                (window as any).__openEditCustomerDialog();
+                                            }
+                                        }}
+                                        color="primary"
+                                    >
+                                        <Edit />
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Delete Customer">
+                                    <IconButton
+                                        onClick={() => {
+                                            if ((window as any).__deleteCustomer) {
+                                                (window as any).__deleteCustomer();
+                                            }
+                                        }}
+                                        color="error"
+                                    >
+                                        <Delete />
+                                    </IconButton>
+                                </Tooltip>
                             </Box>
                         )}
 
                         {/* Always visible Add button - positioned last */}
-                        <Button
-                            variant="contained"
-                            color="success"
-                            size="medium"
-                            startIcon={<Add />}
-                            onClick={() => {
-                                localStorage.removeItem('lastSelectedCustomerId');
-                                setSelectedCustomerId(null);
-                                setTimeout(() => {
-                                    if ((window as any).__openAddCustomerDialog) {
-                                        (window as any).__openAddCustomerDialog();
-                                    }
-                                }, 100);
-                            }}
-                        >
-                            Add Customer
-                        </Button>
+
                     </Box>
                 </Paper>
             )}
@@ -177,14 +171,6 @@ export const CustomersPage: React.FC = () => {
             {/* Customer Content */}
             {!customersLoading && !customersError && customers.find((c: any) => c.id === selectedCustomerId) && (
                 <>
-                    <EntitySummary
-                        title={customers.find((c: any) => c.id === selectedCustomerId).name}
-                        description={customers.find((c: any) => c.id === selectedCustomerId).description || 'No description.'}
-                        stats={[
-                            { label: 'Active Products', value: customers.find((c: any) => c.id === selectedCustomerId).products?.length || 0, color: theme.palette.primary.main },
-                            { label: 'Active Solutions', value: customers.find((c: any) => c.id === selectedCustomerId).solutions?.length || 0, color: theme.palette.warning.main }
-                        ]}
-                    />
                     <CustomerAdoptionPanelV4
                         selectedCustomerId={selectedCustomerId}
                         onRequestAddCustomer={() => {

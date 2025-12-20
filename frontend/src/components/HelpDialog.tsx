@@ -33,6 +33,7 @@ import {
     TrendingUp,
     Settings,
     Security,
+    AISparkle,
 } from '../components/common/FAIcon';
 
 interface HelpDialogProps {
@@ -54,7 +55,7 @@ const tocItems: TocItem[] = [
     { id: 'adoption', title: 'Adoption Plans', icon: <TrendingUp fontSize="small" /> },
     { id: 'telemetry', title: 'Telemetry & Tracking', icon: <TrendingUp fontSize="small" /> },
     { id: 'import-export', title: 'Import & Export', icon: <CloudUpload fontSize="small" /> },
-    { id: 'ai-assistant', title: 'AI Assistant', icon: <Psychology fontSize="small" /> },
+    { id: 'ai-assistant', title: 'AI Assistant', icon: <AISparkle fontSize="small" /> },
     { id: 'roles', title: 'User Roles', icon: <People fontSize="small" /> },
 ];
 
@@ -92,7 +93,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
             }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Dashboard />
-                    <Typography variant="h6">Dynamic Adoption Plans - Help Guide</Typography>
+                    <Typography variant="h6">Dynamic Adoption Platform - Help Guide</Typography>
                 </Box>
                 <IconButton onClick={onClose} sx={{ color: 'white' }}>
                     <Close />
@@ -161,7 +162,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                         </Typography>
                         <Paper elevation={0} sx={{ p: 3, bgcolor: 'primary.50', borderRadius: 2, mb: 3, border: '1px solid', borderColor: 'primary.100' }}>
                             <Typography variant="body1" paragraph>
-                                <strong>Dynamic Adoption Plans (DAP)</strong> is a Customer Success Platform designed to help organizations
+                                <strong>Dynamic Adoption Platform (DAP)</strong> is a Customer Success Platform designed to help organizations
                                 track and accelerate customer adoption of products and solutions. It provides a structured approach
                                 to measuring adoption progress through tasks, telemetry data, and configurable success criteria.
                             </Typography>
@@ -191,7 +192,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                                 { icon: <Business />, title: 'Customer Management', desc: 'Track customers and their product/solution assignments' },
                                 { icon: <TrendingUp />, title: 'Adoption Tracking', desc: 'Monitor progress through tasks and telemetry' },
                                 { icon: <CloudUpload />, title: 'Import/Export', desc: 'Bulk data management via Excel files' },
-                                { icon: <Psychology />, title: 'AI Assistant', desc: 'Natural language queries for quick insights' },
+                                { icon: <AISparkle />, title: 'AI Assistant', desc: 'Natural language queries for quick insights' },
                             ].map((item, i) => (
                                 <Paper key={i} elevation={0} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, color: 'primary.main' }}>
@@ -502,7 +503,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                     {/* AI Assistant */}
                     <Box id="help-section-ai-assistant">
                         <Typography variant="h4" gutterBottom sx={{ color: '#0D274D', fontWeight: 600 }}>
-                            <Psychology sx={{ mr: 1, verticalAlign: 'middle' }} />
+                            <AISparkle sx={{ mr: 1, verticalAlign: 'middle' }} />
                             AI Assistant
                         </Typography>
                         <Typography paragraph>
@@ -515,7 +516,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                             </AccordionSummary>
                             <AccordionDetails>
                                 <Typography paragraph>
-                                    Click the <Psychology sx={{ fontSize: 16, verticalAlign: 'middle' }} /> icon in the title bar to open the assistant.
+                                    Click the sparkle ✨ icon in the title bar to open the assistant.
                                 </Typography>
                                 <Typography variant="subtitle2" gutterBottom>Example queries:</Typography>
                                 <ul>
@@ -583,7 +584,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                     {/* Footer */}
                     <Box sx={{ mt: 6, pt: 3, borderTop: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
                         <Typography variant="body2" color="text.secondary">
-                            Dynamic Adoption Plans v{import.meta.env.__APP_VERSION__ || '2.4.0'}
+                            Dynamic Adoption Platform v{import.meta.env.__APP_VERSION__ || '2.4.0'}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                             Need more help? Contact your system administrator.

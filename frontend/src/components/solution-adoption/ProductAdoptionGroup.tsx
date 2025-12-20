@@ -350,7 +350,7 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
           {/* Release Filter */}
           {availableReleases.length > 0 && (
             <FormControl sx={{ minWidth: 180 }} size="small">
-              <InputLabel>Filter by Release</InputLabel>
+              <InputLabel>Releases</InputLabel>
               <Select
                 multiple
                 value={filterReleases}
@@ -362,7 +362,7 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
                     setFilterReleases(value);
                   }
                 }}
-                input={<OutlinedInput label="Filter by Release" />}
+                input={<OutlinedInput label="Releases" />}
                 renderValue={(selected) => {
                   if (selected.length === 0) return 'All Releases';
                   const names = selected.map(id => availableReleases.find(r => r.id === id)?.name || '').filter(Boolean);
@@ -386,7 +386,7 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
           {/* Outcome Filter */}
           {availableOutcomes.length > 0 && (
             <FormControl sx={{ minWidth: 180 }} size="small">
-              <InputLabel>Filter by Outcome</InputLabel>
+              <InputLabel>Outcomes</InputLabel>
               <Select
                 multiple
                 value={filterOutcomes}
@@ -398,7 +398,7 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
                     setFilterOutcomes(value);
                   }
                 }}
-                input={<OutlinedInput label="Filter by Outcome" />}
+                input={<OutlinedInput label="Outcomes" />}
                 renderValue={(selected) => {
                   if (selected.length === 0) return 'All Outcomes';
                   const names = selected.map(id => availableOutcomes.find(o => o.id === id)?.name || '').filter(Boolean);
@@ -422,7 +422,7 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
           {/* Tag Filter */}
           {availableTags.length > 0 && (
             <FormControl sx={{ minWidth: 180 }} size="small">
-              <InputLabel>Filter by Tag</InputLabel>
+              <InputLabel>Tags</InputLabel>
               <Select
                 multiple
                 value={filterTags}
@@ -434,7 +434,7 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
                     setFilterTags(value);
                   }
                 }}
-                input={<OutlinedInput label="Filter by Tag" />}
+                input={<OutlinedInput label="Tags" />}
                 renderValue={(selected) => {
                   if (selected.length === 0) return 'All Tags';
                   return (

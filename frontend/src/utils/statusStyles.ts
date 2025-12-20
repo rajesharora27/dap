@@ -73,17 +73,19 @@ export const getStatusChipColor = (status: string): 'success' | 'info' | 'error'
 
 /**
  * Get MUI color prop for update source chip
+ * Telemetry: Secondary (purple) - implies system/automated
+ * Manual: Default (gray) - implies user override
+ * Import: Info (blue) - implies bulk operation
  */
-export const getUpdateSourceChipColor = (source: string): 'primary' | 'success' | 'info' | 'default' => {
+export const getUpdateSourceChipColor = (source: string): 'secondary' | 'info' | 'default' => {
   switch (source) {
-    case 'MANUAL':
-      return 'primary';
     case 'TELEMETRY':
-      return 'success';
+      return 'secondary'; // Purple - system/automated
     case 'IMPORT':
-      return 'info';
+      return 'info'; // Blue - bulk import
+    case 'MANUAL':
     default:
-      return 'default';
+      return 'default'; // Gray - user action
   }
 };
 

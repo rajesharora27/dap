@@ -556,6 +556,85 @@ export const UserOutlined = createIcon(farUser, 'UserOutlined');
 export const ObjectGroupOutlined = createIcon(farObjectGroup, 'ObjectGroupOutlined');
 export const ImageOutlined = createIcon(farImage, 'ImageOutlined');
 
+// ==========================================
+// Custom SVG Icons
+// ==========================================
+
+/**
+ * AI Sparkle Icon - A modern icon with sparkles inside a chat bubble
+ * Designed for AI Assistant buttons and features
+ */
+interface AISparkleIconProps {
+    sx?: SxProps<Theme>;
+    fontSize?: 'inherit' | 'small' | 'medium' | 'large' | number;
+    className?: string;
+}
+
+export const AISparkle = React.forwardRef<SVGSVGElement, AISparkleIconProps>(
+    ({ sx, fontSize = 'medium', className }, ref) => {
+        const theme = useTheme();
+
+        // Determine the size based on fontSize prop
+        const getSize = () => {
+            if (typeof fontSize === 'number') return fontSize;
+            switch (fontSize) {
+                case 'small': return 20;
+                case 'large': return 35;
+                case 'inherit': return 'inherit';
+                case 'medium':
+                default: return 24;
+            }
+        };
+
+        const size = getSize();
+
+        return (
+            <Box
+                ref={ref as any}
+                component="span"
+                className={className}
+                sx={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: size === 'inherit' ? '1em' : size,
+                    height: size === 'inherit' ? '1em' : size,
+                    ...sx,
+                }}
+            >
+                <svg
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                    width="100%"
+                    height="100%"
+                    xmlns="http://www.w3.org/2000/svg"
+                >
+                    {/* Chat bubble outline */}
+                    <path
+                        d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2ZM20 16H5.17L4 17.17V4H20V16Z"
+                        fillOpacity="0.9"
+                    />
+                    {/* Large 4-point sparkle/star - center */}
+                    <path
+                        d="M12 6L13.09 9.26L16 10L13.09 10.74L12 14L10.91 10.74L8 10L10.91 9.26L12 6Z"
+                    />
+                    {/* Small 4-point sparkle - top right */}
+                    <path
+                        d="M17 5L17.5 6.5L19 7L17.5 7.5L17 9L16.5 7.5L15 7L16.5 6.5L17 5Z"
+                        fillOpacity="0.7"
+                    />
+                    {/* Small 4-point sparkle - bottom left */}
+                    <path
+                        d="M7 11L7.5 12.5L9 13L7.5 13.5L7 15L6.5 13.5L5 13L6.5 12.5L7 11Z"
+                        fillOpacity="0.7"
+                    />
+                </svg>
+            </Box>
+        );
+    }
+);
+AISparkle.displayName = 'AISparkle';
+
 // Export all as namespace for easy access
 export const Icons = {
     Add,
@@ -612,6 +691,7 @@ export const Icons = {
     Backup,
     AdminPanelSettings,
     Logout,
+    AISparkle,
 };
 
 export default Icons;

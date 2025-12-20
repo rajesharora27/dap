@@ -16,13 +16,15 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
-  Divider
+  Divider,
+  Chip
 } from '@mui/material';
-import { Add, Edit, Delete, Download, Upload, Assessment } from '../components/common/FAIcon';
+import { Add, Edit, Delete, Download, Upload, Assessment, Sync } from '../components/common/FAIcon';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { AssignSolutionDialog } from './dialogs/AssignSolutionDialog';
 import { EditSolutionEntitlementsDialog } from './dialogs/EditSolutionEntitlementsDialog';
 import { SolutionAdoptionPlanView } from './solution-adoption/SolutionAdoptionPlanView';
+
 
 const GET_CUSTOMER_SOLUTIONS = gql`
   query GetCustomerSolutions($customerId: ID!) {
@@ -116,7 +118,15 @@ const IMPORT_SOLUTION_TELEMETRY = gql`
   }
 `;
 
-
+const SYNC_SOLUTION_ADOPTION_PLAN = gql`
+  mutation SyncSolutionAdoptionPlan($id: ID!) {
+    syncSolutionAdoptionPlan(id: $id) {
+      id
+      progressPercentage
+      needsSync
+    }
+  }
+`;
 
 interface Props {
   customerId: string;
@@ -190,6 +200,18 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
     }
   });
 
+  const [syncPlan, { loading: syncLoading }] = useMutation(SYNC_SOLUTION_ADOPTION_PLAN, {
+    refetchQueries: ['GetCustomerSolutions'],
+    awaitRefetchQueries: true,
+    onCompleted: () => {
+      refetch();
+      refetchPlan();
+    },
+    onError: (err) => {
+      console.error('Error syncing adoption plan:', err);
+      alert('Failed to sync: ' + err.message);
+    }
+  });
 
 
   const [removeSolution, { loading: removeLoading }] = useMutation(REMOVE_SOLUTION_FROM_CUSTOMER, {
@@ -366,11 +388,11 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
       >
         <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1.5, sm: 2 }, alignItems: { xs: 'stretch', sm: 'center' }, flexWrap: 'wrap' }}>
           <FormControl sx={{ minWidth: 300, flex: '1 1 300px' }} size="small">
-            <InputLabel>Select Solution</InputLabel>
+            <InputLabel>Select Deployment</InputLabel>
             <Select
               value={selectedSolutionId || ''}
               onChange={(e) => setSelectedSolutionId(e.target.value)}
-              label="Select Solution"
+              label="Select Deployment"
             >
               {customerSolutions.map((cs: any) => (
                 <MenuItem key={cs.id} value={cs.id}>
@@ -382,6 +404,27 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
 
           {selectedSolutionId && (
             <>
+              {selectedCustomerSolution?.adoptionPlan && (
+                <>
+                  <Tooltip title="Sync with latest solution tasks">
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<Sync />}
+                      color={selectedCustomerSolution.adoptionPlan.needsSync ? 'warning' : 'primary'}
+                      onClick={() => syncPlan({ variables: { id: selectedCustomerSolution.adoptionPlan.id } })}
+                      disabled={syncLoading}
+                    >
+                      {syncLoading ? 'Syncing...' : selectedCustomerSolution.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
+                    </Button>
+                  </Tooltip>
+                  <Chip
+                    label={selectedCustomerSolution.licenseLevel}
+                    color="primary"
+                    size="small"
+                  />
+                </>
+              )}
               <Tooltip title="Edit solution entitlements">
                 <Button
                   variant="contained"

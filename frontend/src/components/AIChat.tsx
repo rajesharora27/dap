@@ -42,6 +42,7 @@ import {
   DeleteOutline,
   Refresh,
   Storage,
+  AISparkle,
 } from '../components/common/FAIcon';
 import { gql, useMutation, useQuery } from '@apollo/client';
 import { useAuth } from './AuthContext';
@@ -405,7 +406,7 @@ What would you like to know?`,
               bgcolor: 'rgba(255,255,255,0.15)',
             }}
           >
-            <Psychology sx={{ fontSize: 24 }} />
+            <AISparkle fontSize={24} />
           </Box>
           <Box>
             <Typography variant="h6" sx={{ fontWeight: 600, lineHeight: 1.2 }}>

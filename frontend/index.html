@@ -1,17 +1,20 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>DAP</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    
-    <!-- Google Fonts: Inter as fallback (similar to SF Pro) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    
-    <style>
-      /* 
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Dynamic Adoption Platform</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Google Fonts: Inter as fallback (similar to SF Pro) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+
+  <style>
+    /* 
        * Font Stack:
        * 1. CiscoSans (if installed locally - Cisco employees)
        * 2. SF Pro (macOS native - best on Mac)
@@ -20,44 +23,48 @@
        * 5. Segoe UI (Windows)
        * 6. System sans-serif
        */
-      :root {
-        --font-sans: "CiscoSans", "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-        --font-mono: "JetBrains Mono", "SF Mono", "Monaco", "Menlo", "Consolas", "Courier New", monospace;
-      }
-      
-      body {
-        font-family: var(--font-sans);
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-        text-rendering: optimizeLegibility;
-      }
-      
-      code, pre, .monospace {
-        font-family: var(--font-mono);
-      }
-      
-      /* Always show spinner controls on number inputs */
-      input[type="number"].weight-input-spinner::-webkit-inner-spin-button,
-      input[type="number"].weight-input-spinner::-webkit-outer-spin-button {
-        opacity: 1;
-        margin-left: 4px;
-      }
-      
-      /* For Firefox */
-      input[type="number"].weight-input-spinner {
-        -moz-appearance: textfield;
-        appearance: textfield;
-      }
-      
-      input[type="number"].weight-input-spinner:hover,
-      input[type="number"].weight-input-spinner:focus {
-        -moz-appearance: number-input;
-        appearance: auto;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    :root {
+      --font-sans: "CiscoSans", "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      --font-mono: "JetBrains Mono", "SF Mono", "Monaco", "Menlo", "Consolas", "Courier New", monospace;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      text-rendering: optimizeLegibility;
+    }
+
+    code,
+    pre,
+    .monospace {
+      font-family: var(--font-mono);
+    }
+
+    /* Always show spinner controls on number inputs */
+    input[type="number"].weight-input-spinner::-webkit-inner-spin-button,
+    input[type="number"].weight-input-spinner::-webkit-outer-spin-button {
+      opacity: 1;
+      margin-left: 4px;
+    }
+
+    /* For Firefox */
+    input[type="number"].weight-input-spinner {
+      -moz-appearance: textfield;
+      appearance: textfield;
+    }
+
+    input[type="number"].weight-input-spinner:hover,
+    input[type="number"].weight-input-spinner:focus {
+      -moz-appearance: number-input;
+      appearance: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

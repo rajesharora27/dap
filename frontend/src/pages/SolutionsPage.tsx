@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { EntitySummary } from '../components/EntitySummary';
 import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button,
-    IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, List, ListItem, ListItemText, CircularProgress, Card, CardContent, Checkbox, OutlinedInput, Collapse, Alert
+    IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, List, ListItem, ListItemText, CircularProgress, Card, CardContent, Checkbox, OutlinedInput, Collapse, Alert, Divider
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2, Label, FilterList, ExpandMore, ExpandLess, VerifiedUser, NewReleases } from '../components/common/FAIcon';
@@ -13,7 +13,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { DragIndicator } from '../components/common/FAIcon';
 
 import { SOLUTIONS, TASKS_FOR_SOLUTION, PRODUCTS, SOLUTION, SOLUTION_TAGS } from '../graphql/queries';
-import { DELETE_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, UPDATE_SOLUTION, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '../graphql/mutations';
+import { DELETE_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, UPDATE_SOLUTION, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE, UPDATE_OUTCOME, DELETE_OUTCOME } from '../graphql/mutations';
 import { SortableTaskItem } from '../components/SortableTaskItem';
 import { SolutionDialog } from '../components/dialogs/SolutionDialog';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
@@ -22,12 +22,13 @@ import { SolutionReleaseDialog } from '../components/dialogs/SolutionReleaseDial
 
 import { useAuth } from '../components/AuthContext';
 import { TagDialog } from '../components/dialogs/TagDialog';
+import { InlineEditableText } from '../components/common/InlineEditableText';
 
 export const SolutionsPage: React.FC = () => {
     // State
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [selectedSolution, setSelectedSolution] = useState<string | null>(localStorage.getItem('lastSelectedSolutionId'));
-    const [selectedSubSection, setSelectedSubSection] = useState<'dashboard' | 'tasks' | 'products' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('dashboard');
+    const [selectedSubSection, setSelectedSubSection] = useState<'summary' | 'tasks' | 'products' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('summary');
     const [taskTagFilter, setTaskTagFilter] = useState<string[]>([]);
     const [taskOutcomeFilter, setTaskOutcomeFilter] = useState<string[]>([]);
     const [taskReleaseFilter, setTaskReleaseFilter] = useState<string[]>([]);
@@ -50,6 +51,10 @@ export const SolutionsPage: React.FC = () => {
 
     const [releaseDialog, setReleaseDialog] = useState(false);
     const [editingRelease, setEditingRelease] = useState<any>(null);
+
+    // Inline editing state for outcomes
+    const [inlineEditingOutcome, setInlineEditingOutcome] = useState<string | null>(null);
+    const [inlineOutcomeName, setInlineOutcomeName] = useState('');
 
     // Queries - must be before any conditional returns (skip handles auth)
     const { data: solutionsData, loading: solutionsLoading, error: solutionsError } = useQuery(SOLUTIONS, {
@@ -287,6 +292,119 @@ export const SolutionsPage: React.FC = () => {
 
     // Attribute Drag End
 
+
+    const handleInlineSolutionUpdate = async (field: 'name' | 'description', value: string) => {
+        if (!displaySolution) return;
+        try {
+            await client.mutate({
+                mutation: UPDATE_SOLUTION,
+                variables: {
+                    id: displaySolution.id,
+                    input: {
+                        name: field === 'name' ? value : displaySolution.name,
+                        description: field === 'description' ? value : displaySolution.description
+                    }
+                },
+                refetchQueries: ['Solutions', 'Solution'],
+                awaitRefetchQueries: true
+            });
+        } catch (error: any) {
+            console.error('Error updating solution:', error);
+            alert('Failed to update solution');
+        }
+    };
+
+
+    const handleInlineSolutionReleaseUpdate = async (releaseId: string, field: 'name' | 'description', value: string) => {
+        try {
+            const release = displaySolution.releases.find((r: any) => r.id === releaseId);
+            if (!release) return;
+
+            await client.mutate({
+                mutation: UPDATE_RELEASE,
+                variables: {
+                    id: releaseId,
+                    input: {
+                        name: field === 'name' ? value : release.name,
+                        description: field === 'description' ? value : release.description,
+                        level: release.level,
+                        isActive: release.isActive,
+                        solutionId: selectedSolution,
+                        customAttrs: release.customAttrs
+                    }
+                },
+                refetchQueries: ['Solution', 'Solutions']
+            });
+        } catch (error) {
+            console.error('Error updating release:', error);
+        }
+    };
+
+    const handleInlineSolutionLicenseUpdate = async (licenseId: string, field: 'name' | 'description', value: string) => {
+        try {
+            const license = displaySolution.licenses.find((l: any) => l.id === licenseId);
+            if (!license) return;
+
+            await client.mutate({
+                mutation: UPDATE_LICENSE,
+                variables: {
+                    id: licenseId,
+                    input: {
+                        name: field === 'name' ? value : license.name,
+                        description: field === 'description' ? value : license.description,
+                        level: license.level,
+                        isActive: license.isActive,
+                        solutionId: selectedSolution,
+                        customAttrs: license.customAttrs
+                    }
+                },
+                refetchQueries: ['Solution', 'Solutions']
+            });
+        } catch (error) {
+            console.error('Error updating license:', error);
+        }
+    };
+
+    // Inline editing for outcomes
+    const handleSaveInlineOutcome = async (outcomeId: string) => {
+        if (!inlineOutcomeName.trim()) {
+            setInlineEditingOutcome(null);
+            return;
+        }
+        try {
+            const outcome = currentSolution?.outcomes?.find((o: any) => o.id === outcomeId);
+            await client.mutate({
+                mutation: UPDATE_OUTCOME,
+                variables: {
+                    id: outcomeId,
+                    input: {
+                        name: inlineOutcomeName.trim(),
+                        description: outcome?.description || '',
+                        solutionId: selectedSolution
+                    }
+                },
+                refetchQueries: ['Solution', 'Solutions']
+            });
+            setInlineEditingOutcome(null);
+        } catch (error: any) {
+            console.error('Error updating outcome:', error);
+            alert('Error updating outcome: ' + error.message);
+        }
+    };
+
+    const handleDeleteOutcome = async (outcomeId: string) => {
+        if (!window.confirm('Are you sure you want to delete this outcome?')) return;
+        try {
+            await client.mutate({
+                mutation: DELETE_OUTCOME,
+                variables: { id: outcomeId },
+                refetchQueries: ['Solution', 'Solutions']
+            });
+        } catch (error: any) {
+            console.error('Error deleting outcome:', error);
+            alert('Error deleting outcome: ' + error.message);
+        }
+    };
 
     const handleSaveTask = async (taskData: any) => {
         const isEdit = !!editingTask;
@@ -614,7 +732,14 @@ export const SolutionsPage: React.FC = () => {
                             <Select
                                 value={selectedSolution || ''}
                                 label="Select Solution"
-                                onChange={(e) => handleSolutionChange(e.target.value)}
+                                onChange={(e) => {
+                                    if (e.target.value === '__add_new__') {
+                                        setEditingSolution(null);
+                                        setSolutionDialog(true);
+                                    } else {
+                                        handleSolutionChange(e.target.value);
+                                    }
+                                }}
                             >
                                 {solutions.map((s: any) => (
                                     <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>
@@ -622,6 +747,10 @@ export const SolutionsPage: React.FC = () => {
                                 {displaySolution && !solutions.find((s: any) => s.id === displaySolution.id) && (
                                     <MenuItem key={displaySolution.id} value={displaySolution.id}>{displaySolution.name}</MenuItem>
                                 )}
+                                <Divider />
+                                <MenuItem value="__add_new__" sx={{ color: 'warning.main', fontWeight: 600 }}>
+                                    <Add sx={{ mr: 1, fontSize: '1rem' }} /> Add New Solution
+                                </MenuItem>
                             </Select>
                         </FormControl>
 
@@ -653,15 +782,7 @@ export const SolutionsPage: React.FC = () => {
                             )}
 
                             {/* Always visible Add button */}
-                            <Button
-                                variant="contained"
-                                color="success"
-                                startIcon={<Add />}
-                                size="small"
-                                onClick={() => { setEditingSolution(null); setSolutionDialog(true); }}
-                            >
-                                Add Solution
-                            </Button>
+
                         </Box>
                     </Box>
                 </Paper>
@@ -679,7 +800,7 @@ export const SolutionsPage: React.FC = () => {
                                 scrollButtons="auto"
                                 sx={{ borderBottom: 1, borderColor: 'divider', flex: 1 }}
                             >
-                                <Tab label="Dashboard" value="dashboard" />
+                                <Tab label="Summary" value="summary" />
                                 <Tab label={`Tasks${tasks.length > 0 ? ` (${hasActiveFilters ? `${filteredTasks.length}/${tasks.length}` : tasks.length})` : ''}`} value="tasks" />
                                 <Tab label="Tags" value="tags" />
                                 <Tab label="Products" value="products" />
@@ -689,83 +810,80 @@ export const SolutionsPage: React.FC = () => {
                                 <Tab label="Custom Attributes" value="customAttributes" />
                             </Tabs>
 
-                            {selectedSubSection !== 'dashboard' && (
-                                <Button
-                                    variant="contained"
-                                    startIcon={selectedSubSection === 'tasks' ? <Add /> : <Edit />}
-                                    size="small"
-                                    sx={{ ml: 2, flexShrink: 0 }}
-                                    onClick={() => {
-                                        if (selectedSubSection === 'tasks') {
-                                            setEditingTask(null);
-                                            setTaskDialog(true);
-                                        } else if (selectedSubSection === 'tags') {
-                                            setEditingTag(null);
-                                            setTagDialog(true);
-                                        } else if (selectedSubSection === 'licenses') {
-                                            setEditingLicense(null);
-                                            setLicenseDialog(true);
-                                        } else if (selectedSubSection === 'releases') {
-                                            setEditingRelease(null);
-                                            setReleaseDialog(true);
-                                        } else {
-                                            setEditingSolution(currentSolution);
-                                            setSolutionDialog(true);
-                                            if (selectedSubSection === 'products') setSolutionDialogInitialTab('products');
-                                            else if (selectedSubSection === 'outcomes') setSolutionDialogInitialTab('outcomes');
-                                            else if (selectedSubSection === 'customAttributes') setSolutionDialogInitialTab('customAttributes');
-                                        }
-                                    }}
-                                >
-                                    {selectedSubSection === 'tasks' ? 'Add Task' :
-                                        selectedSubSection === 'products' ? 'Manage Products' :
-                                            selectedSubSection === 'outcomes' ? 'Manage Outcomes' :
-                                                selectedSubSection === 'releases' ? 'Manage Releases' :
-                                                    selectedSubSection === 'customAttributes' ? 'Manage Attributes' :
-                                                        selectedSubSection === 'tags' ? 'Add Tag' :
-                                                            selectedSubSection === 'licenses' ? 'Add License' :
-                                                                selectedSubSection === 'releases' ? 'Add Release' : 'Manage'}
-                                </Button>
+                            {selectedSubSection !== 'summary' && (
+                                <Box sx={{ display: 'flex', gap: 1, ml: 2, flexShrink: 0, alignItems: 'center' }}>
+                                    {/* Filters Button - Only show for tasks tab */}
+                                    {selectedSubSection === 'tasks' && (
+                                        <>
+                                            <Button
+                                                size="small"
+                                                startIcon={<FilterList />}
+                                                endIcon={showFilters ? <ExpandLess /> : <ExpandMore />}
+                                                onClick={() => setShowFilters(!showFilters)}
+                                                color={hasActiveFilters ? "primary" : "inherit"}
+                                                variant={hasActiveFilters ? "contained" : "outlined"}
+                                                sx={{ borderRadius: 2 }}
+                                            >
+                                                Filters {hasActiveFilters && `(${[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length})`}
+                                            </Button>
+                                            {hasActiveFilters && (
+                                                <Chip
+                                                    label="Clear"
+                                                    size="small"
+                                                    color="secondary"
+                                                    variant="outlined"
+                                                    onDelete={() => {
+                                                        setTaskTagFilter([]);
+                                                        setTaskOutcomeFilter([]);
+                                                        setTaskReleaseFilter([]);
+                                                        setTaskLicenseFilter([]);
+                                                    }}
+                                                    sx={{ height: 24, fontSize: '0.75rem' }}
+                                                />
+                                            )}
+                                        </>
+                                    )}
+                                    <Button
+                                        variant="contained"
+                                        startIcon={selectedSubSection === 'tasks' || selectedSubSection === 'tags' || selectedSubSection === 'licenses' || selectedSubSection === 'releases' ? <Add /> : <Edit />}
+                                        size="small"
+                                        onClick={() => {
+                                            if (selectedSubSection === 'tasks') {
+                                                setEditingTask(null);
+                                                setTaskDialog(true);
+                                            } else if (selectedSubSection === 'tags') {
+                                                setEditingTag(null);
+                                                setTagDialog(true);
+                                            } else if (selectedSubSection === 'licenses') {
+                                                setEditingLicense(null);
+                                                setLicenseDialog(true);
+                                            } else if (selectedSubSection === 'releases') {
+                                                setEditingRelease(null);
+                                                setReleaseDialog(true);
+                                            } else {
+                                                setEditingSolution(currentSolution);
+                                                setSolutionDialog(true);
+                                                if (selectedSubSection === 'products') setSolutionDialogInitialTab('products');
+                                                else if (selectedSubSection === 'outcomes') setSolutionDialogInitialTab('outcomes');
+                                                else if (selectedSubSection === 'customAttributes') setSolutionDialogInitialTab('customAttributes');
+                                            }
+                                        }}
+                                    >
+                                        {selectedSubSection === 'tasks' ? 'Add Task' :
+                                            selectedSubSection === 'products' ? 'Manage Products' :
+                                                selectedSubSection === 'outcomes' ? 'Manage Outcomes' :
+                                                    selectedSubSection === 'releases' ? 'Add Release' :
+                                                        selectedSubSection === 'customAttributes' ? 'Manage Attributes' :
+                                                            selectedSubSection === 'tags' ? 'Add Tag' :
+                                                                selectedSubSection === 'licenses' ? 'Add License' : 'Manage'}
+                                    </Button>
+                                </Box>
                             )}
                         </Box>
 
                         {/* Filters for Tasks */}
                         {selectedSubSection === 'tasks' && (
                             <>
-                                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Button
-                                            size="small"
-                                            startIcon={<FilterList />}
-                                            endIcon={showFilters ? <ExpandLess /> : <ExpandMore />}
-                                            onClick={() => setShowFilters(!showFilters)}
-                                            color={hasActiveFilters ? "primary" : "inherit"}
-                                            variant={hasActiveFilters ? "contained" : "text"}
-                                            sx={{ borderRadius: 2 }}
-                                        >
-                                            Filters {hasActiveFilters && `(${[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length})`}
-                                        </Button>
-                                        {hasActiveFilters && (
-                                            <Chip
-                                                label="Active"
-                                                size="small"
-                                                color="primary"
-                                                variant="outlined"
-                                                onDelete={() => {
-                                                    setTaskTagFilter([]);
-                                                    setTaskOutcomeFilter([]);
-                                                    setTaskReleaseFilter([]);
-                                                    setTaskLicenseFilter([]);
-                                                }}
-                                                sx={{ height: 24, fontSize: '0.75rem' }}
-                                            />
-                                        )}
-                                    </Box>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                        {tasksLoading && <CircularProgress size={20} />}
-                                        {tasksError && <Typography color="error" variant="caption">{tasksError.message}</Typography>}
-                                    </Box>
-                                </Box>
 
                                 <Collapse in={showFilters}>
                                     <Box sx={{ mb: 3, p: 2, bgcolor: alpha(theme.palette.primary.main, 0.04), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -905,88 +1023,23 @@ export const SolutionsPage: React.FC = () => {
                             </>
                         )}
 
-                        {selectedSubSection === 'dashboard' && (
+                        {selectedSubSection === 'summary' && (
                             <Box sx={{ mt: 2 }}>
                                 {/* Read-only Dashboard Layout - Full Width */}
                                 <Grid container spacing={3}>
                                     <Grid size={{ xs: 12 }}>
-                                        {/* Solution Name Header */}
-                                        <Paper
-                                            elevation={3}
-                                            sx={{
-                                                p: 3,
-                                                mb: 3,
-                                                borderRadius: 2,
-                                                background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${theme.palette.background.paper} 100%)`,
-                                                borderLeft: `6px solid ${theme.palette.primary.main}`
-                                            }}
-                                        >
-                                            <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.primary.dark, mb: 2 }}>
-                                                {currentSolution.name}
-                                            </Typography>
-
-                                            {/* Products in this Solution */}
-                                            <Box sx={{ mt: 1 }}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                                                    <Inventory2 sx={{ color: theme.palette.info.main, fontSize: 20 }} />
-                                                    <Typography variant="subtitle2" sx={{ color: theme.palette.info.dark, fontWeight: 600 }}>
-                                                        Products ({currentSolution.products?.edges?.length || 0})
-                                                    </Typography>
-                                                </Box>
-                                                {currentSolution.products?.edges?.length > 0 ? (
-                                                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', pl: 3.5 }}>
-                                                        {currentSolution.products.edges.map((e: any) => (
-                                                            <Chip
-                                                                key={e.node.id}
-                                                                label={e.node.name}
-                                                                size="small"
-                                                                sx={{
-                                                                    bgcolor: alpha(theme.palette.info.main, 0.12),
-                                                                    color: theme.palette.info.dark,
-                                                                    fontWeight: 500,
-                                                                    border: `1px solid ${alpha(theme.palette.info.main, 0.3)}`
-                                                                }}
-                                                            />
-                                                        ))}
-                                                    </Box>
-                                                ) : (
-                                                    <Typography variant="body2" sx={{ color: theme.palette.text.secondary, pl: 3.5 }}>
-                                                        No products assigned to this solution.
-                                                    </Typography>
-                                                )}
-                                            </Box>
-                                        </Paper>
-
-                                        {/* Overview */}
-                                        <Card
-                                            elevation={2}
-                                            sx={{
-                                                mb: 3,
-                                                borderRadius: 2,
-                                                border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
-                                            }}
-                                        >
-                                            <CardContent>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                                    <Description sx={{ color: theme.palette.primary.main }} />
-                                                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
-                                                        Overview
-                                                    </Typography>
-                                                </Box>
-                                                <Typography
-                                                    variant="body1"
-                                                    sx={{
-                                                        lineHeight: 1.7,
-                                                        color: theme.palette.text.secondary,
-                                                        whiteSpace: 'pre-line',
-                                                        pl: 1,
-                                                        borderLeft: `3px solid ${alpha(theme.palette.primary.main, 0.3)}`
-                                                    }}
-                                                >
-                                                    {currentSolution.description || 'No detailed description provided for this solution.'}
-                                                </Typography>
-                                            </CardContent>
-                                        </Card>
+                                        {/* Description/Overview - Without title or banner */}
+                                        <Box sx={{ mb: 3, pl: 1, borderLeft: `3px solid ${alpha(theme.palette.primary.main, 0.3)}` }}>
+                                            <InlineEditableText
+                                                value={displaySolution.description || ''}
+                                                onSave={(val) => handleInlineSolutionUpdate('description', val)}
+                                                multiline
+                                                variant="body1"
+                                                color={theme.palette.text.secondary}
+                                                placeholder="No detailed description provided for this solution. Click to add one."
+                                                fullWidth
+                                            />
+                                        </Box>
 
                                         {/* Outcomes */}
                                         <Card
@@ -1019,25 +1072,78 @@ export const SolutionsPage: React.FC = () => {
                                                             <ListItem
                                                                 key={o.id}
                                                                 sx={{
-                                                                    py: 1.5,
+                                                                    py: 1,
                                                                     px: 2,
                                                                     bgcolor: idx % 2 === 0 ? alpha(theme.palette.success.main, 0.03) : 'transparent',
                                                                     borderRadius: 1,
-                                                                    mb: 0.5
+                                                                    mb: 0.5,
+                                                                    cursor: 'default',
+                                                                    '&:hover': { bgcolor: 'action.hover' }
                                                                 }}
+                                                                secondaryAction={
+                                                                    <Box>
+                                                                        {inlineEditingOutcome === o.id ? (
+                                                                            <IconButton
+                                                                                size="small"
+                                                                                color="success"
+                                                                                onClick={() => handleSaveInlineOutcome(o.id)}
+                                                                            >
+                                                                                <CheckCircle fontSize="small" />
+                                                                            </IconButton>
+                                                                        ) : (
+                                                                            <IconButton
+                                                                                size="small"
+                                                                                onClick={() => {
+                                                                                    setInlineEditingOutcome(o.id);
+                                                                                    setInlineOutcomeName(o.name);
+                                                                                }}
+                                                                            >
+                                                                                <Edit fontSize="small" />
+                                                                            </IconButton>
+                                                                        )}
+                                                                        <IconButton
+                                                                            size="small"
+                                                                            onClick={inlineEditingOutcome === o.id ? () => setInlineEditingOutcome(null) : () => handleDeleteOutcome(o.id)}
+                                                                            color="error"
+                                                                        >
+                                                                            <Delete fontSize="small" />
+                                                                        </IconButton>
+                                                                    </Box>
+                                                                }
                                                             >
-                                                                <ListItemText
-                                                                    primary={
-                                                                        <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                                                                            {o.name}
-                                                                        </Typography>
-                                                                    }
-                                                                    secondary={o.description && (
-                                                                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                                                            {o.description}
-                                                                        </Typography>
-                                                                    )}
-                                                                />
+                                                                {inlineEditingOutcome === o.id ? (
+                                                                    <OutlinedInput
+                                                                        fullWidth
+                                                                        size="small"
+                                                                        value={inlineOutcomeName}
+                                                                        onChange={(e) => setInlineOutcomeName(e.target.value)}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') handleSaveInlineOutcome(o.id);
+                                                                            if (e.key === 'Escape') setInlineEditingOutcome(null);
+                                                                        }}
+                                                                        autoFocus
+                                                                        sx={{ mr: 6 }}
+                                                                    />
+                                                                ) : (
+                                                                    <Tooltip title={o.description || 'Double-click to edit'} placement="top" arrow>
+                                                                        <ListItemText
+                                                                            primary={
+                                                                                <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                                                                                    {o.name}
+                                                                                </Typography>
+                                                                            }
+                                                                            secondary={o.description && (
+                                                                                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                                                    {o.description}
+                                                                                </Typography>
+                                                                            )}
+                                                                            onDoubleClick={() => {
+                                                                                setInlineEditingOutcome(o.id);
+                                                                                setInlineOutcomeName(o.name);
+                                                                            }}
+                                                                        />
+                                                                    </Tooltip>
+                                                                )}
                                                             </ListItem>
                                                         ))}
                                                     </List>
@@ -1098,17 +1204,69 @@ export const SolutionsPage: React.FC = () => {
                                                 <ListItem
                                                     key={outcome.id}
                                                     sx={{
+                                                        cursor: 'default',
+                                                        '&:hover': { bgcolor: 'action.hover' },
                                                         borderBottom: `1px solid ${theme.palette.divider}`,
                                                         bgcolor: idx % 2 === 0 ? alpha(theme.palette.success.main, 0.02) : 'transparent'
                                                     }}
+                                                    secondaryAction={
+                                                        <Box>
+                                                            {inlineEditingOutcome === outcome.id ? (
+                                                                <IconButton
+                                                                    size="small"
+                                                                    color="success"
+                                                                    onClick={() => handleSaveInlineOutcome(outcome.id)}
+                                                                >
+                                                                    <CheckCircle fontSize="small" />
+                                                                </IconButton>
+                                                            ) : (
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={() => {
+                                                                        setInlineEditingOutcome(outcome.id);
+                                                                        setInlineOutcomeName(outcome.name);
+                                                                    }}
+                                                                >
+                                                                    <Edit fontSize="small" />
+                                                                </IconButton>
+                                                            )}
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={inlineEditingOutcome === outcome.id ? () => setInlineEditingOutcome(null) : () => handleDeleteOutcome(outcome.id)}
+                                                                color="error"
+                                                            >
+                                                                <Delete fontSize="small" />
+                                                            </IconButton>
+                                                        </Box>
+                                                    }
                                                 >
                                                     <Box sx={{ mr: 2 }}>
                                                         <CheckCircle sx={{ color: theme.palette.success.main }} />
                                                     </Box>
-                                                    <ListItemText
-                                                        primary={<Typography fontWeight={500}>{outcome.name}</Typography>}
-                                                        secondary={outcome.description}
-                                                    />
+                                                    {inlineEditingOutcome === outcome.id ? (
+                                                        <OutlinedInput
+                                                            fullWidth
+                                                            size="small"
+                                                            value={inlineOutcomeName}
+                                                            onChange={(e) => setInlineOutcomeName(e.target.value)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') handleSaveInlineOutcome(outcome.id);
+                                                                if (e.key === 'Escape') setInlineEditingOutcome(null);
+                                                            }}
+                                                            autoFocus
+                                                        />
+                                                    ) : (
+                                                        <Tooltip title={outcome.description || ''} placement="top" arrow>
+                                                            <ListItemText
+                                                                primary={<Typography fontWeight={500}>{outcome.name}</Typography>}
+                                                                secondary={outcome.description}
+                                                                onDoubleClick={() => {
+                                                                    setInlineEditingOutcome(outcome.id);
+                                                                    setInlineOutcomeName(outcome.name);
+                                                                }}
+                                                            />
+                                                        </Tooltip>
+                                                    )}
                                                 </ListItem>
                                             ))}
                                             {(currentSolution.outcomes || []).length === 0 && (
@@ -1147,10 +1305,25 @@ export const SolutionsPage: React.FC = () => {
                                                     }}
                                                 >
                                                     <ListItemText
-                                                        primary={<Typography fontWeight={500}>{release.name}</Typography>}
+                                                        primary={
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <InlineEditableText
+                                                                    value={release.name}
+                                                                    onSave={(val) => handleInlineSolutionReleaseUpdate(release.id, 'name', val)}
+                                                                    variant="subtitle1"
+                                                                />
+                                                            </Box>
+                                                        }
                                                         secondary={
                                                             <>
-                                                                <Typography variant="body2" component="span" display="block">{release.description}</Typography>
+                                                                <InlineEditableText
+                                                                    value={release.description || ''}
+                                                                    onSave={(val) => handleInlineSolutionReleaseUpdate(release.id, 'description', val)}
+                                                                    variant="body2"
+                                                                    color="text.secondary"
+                                                                    placeholder="Add description..."
+                                                                    fullWidth
+                                                                />
                                                                 {renderMappingInfo(release, 'releases')}
                                                             </>
                                                         }
@@ -1197,14 +1370,25 @@ export const SolutionsPage: React.FC = () => {
                                                     <ListItemText
                                                         primary={
                                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                <Typography fontWeight={500}>{license.name}</Typography>
+                                                                <InlineEditableText
+                                                                    value={license.name}
+                                                                    onSave={(val) => handleInlineSolutionLicenseUpdate(license.id, 'name', val)}
+                                                                    variant="subtitle1"
+                                                                />
                                                                 <Chip label={`Level ${license.level}`} size="small" variant="outlined" />
                                                                 {!license.isActive && <Chip label="Inactive" size="small" color="default" />}
                                                             </Box>
                                                         }
                                                         secondary={
                                                             <>
-                                                                <Typography variant="body2" component="span" display="block">{license.description}</Typography>
+                                                                <InlineEditableText
+                                                                    value={license.description || ''}
+                                                                    onSave={(val) => handleInlineSolutionLicenseUpdate(license.id, 'description', val)}
+                                                                    variant="body2"
+                                                                    color="text.secondary"
+                                                                    placeholder="Add description..."
+                                                                    fullWidth
+                                                                />
                                                                 {renderMappingInfo(license, 'licenses')}
                                                             </>
                                                         }
@@ -1327,13 +1511,13 @@ export const SolutionsPage: React.FC = () => {
                                             <TableHead>
                                                 <TableRow>
                                                     <TableCell width={40}></TableCell>
-                                                    <TableCell width={80}>Seq</TableCell>
-                                                    <TableCell>Name</TableCell>
-                                                    <TableCell>Tags</TableCell>
-                                                    <TableCell>Resources</TableCell>
-                                                    <TableCell width={100}>Weight</TableCell>
-                                                    <TableCell>Telemetry</TableCell>
-                                                    <TableCell width={100}>Actions</TableCell>
+                                                    <TableCell width={80} align="left">Order</TableCell>
+                                                    <TableCell align="left">Name</TableCell>
+                                                    <TableCell align="left">Tags</TableCell>
+                                                    <TableCell align="left">Resources</TableCell>
+                                                    <TableCell width={100} align="left">Implementation %</TableCell>
+                                                    <TableCell align="left">Validation Criteria</TableCell>
+                                                    <TableCell width={100} align="left">Actions</TableCell>
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
@@ -1389,7 +1573,7 @@ export const SolutionsPage: React.FC = () => {
                 onSave={handleSaveLicense}
                 license={editingLicense}
                 availableProductLicenses={availableProductLicenses}
-                title={editingLicense ? 'Edit Solution License' : 'Add Solution License'}
+                title={editingLicense ? 'Edit Solution Entitlement' : 'Add Solution Entitlement'}
             />
 
             <SolutionReleaseDialog

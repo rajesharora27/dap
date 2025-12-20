@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { gql, useMutation } from '@apollo/client';
-import { 
-  Box, 
-  TextField, 
-  Button, 
-  Typography, 
+import {
+  Box,
+  TextField,
+  Button,
+  Typography,
   Alert,
   Container,
   Fade,
@@ -13,7 +13,7 @@ import {
   InputAdornment,
   IconButton
 } from '@mui/material';
-import { 
+import {
   Visibility,
   VisibilityOff,
   Person,
@@ -36,35 +36,35 @@ export const LoginPage: React.FC = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [showLogin, setShowLogin] = useState(false);
   const [login, { loading }] = useMutation(LOGIN);
-  
+
   useEffect(() => {
     const hasToken = localStorage.getItem('token');
     const hasUser = localStorage.getItem('user');
-    
+
     if (hasToken || hasUser) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       sessionStorage.clear();
     }
-    
+
     setTimeout(() => setShowLogin(true), 200);
   }, []);
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
-    
+
     if (!username.trim() || !password.trim()) {
       setErrorMsg('Please enter both username and password');
       return;
     }
-    
+
     try {
       const res = await login({ variables: { username: username.trim(), password } });
-      
+
       if (res.data?.login) {
         setToken(res.data.login);
-        
+
         try {
           const payload = JSON.parse(atob(res.data.login.split('.')[1]));
           setUser({
@@ -85,9 +85,9 @@ export const LoginPage: React.FC = () => {
       setErrorMsg(err.message || 'Invalid username or password');
     }
   };
-  
+
   return (
-    <Box sx={{ 
+    <Box sx={{
       minHeight: '100vh',
       display: 'flex',
       background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
@@ -115,7 +115,7 @@ export const LoginPage: React.FC = () => {
         background: 'radial-gradient(circle, rgba(139,92,246,0.12) 0%, transparent 70%)',
         filter: 'blur(60px)'
       }} />
-      
+
       {/* Left side - Branding */}
       <Box sx={{
         flex: 1,
@@ -145,8 +145,8 @@ export const LoginPage: React.FC = () => {
                 </Typography>
               </Box>
             </Box>
-            
-            <Typography sx={{ 
+
+            <Typography sx={{
               fontSize: '3.5rem',
               fontWeight: 800,
               color: 'white',
@@ -154,22 +154,22 @@ export const LoginPage: React.FC = () => {
               mb: 3,
               letterSpacing: '-0.02em'
             }}>
-              Dynamic<br />Adoption<br />Plans
+              Dynamic<br />Adoption<br />Platform
             </Typography>
-            
-            <Typography sx={{ 
+
+            <Typography sx={{
               fontSize: '1.25rem',
               color: 'rgba(255,255,255,0.7)',
               maxWidth: '400px',
               lineHeight: 1.7,
               mb: 4
             }}>
-              Streamline product adoption with intelligent planning, real-time tracking, and actionable insights.
+              Centralized logic for product and solution adoption.
             </Typography>
-            
+
             {/* Feature highlights */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {['Customer Success Management', 'Adoption Tracking & Analytics', 'Solution Lifecycle Planning'].map((feature, i) => (
+              {['Product & Task Management', 'Solution Bundling', 'Customer Management', 'Adoption Tracking'].map((feature, i) => (
                 <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                   <Box sx={{
                     width: 8,
@@ -186,7 +186,7 @@ export const LoginPage: React.FC = () => {
           </Box>
         </Fade>
       </Box>
-      
+
       {/* Right side - Login form */}
       <Box sx={{
         flex: { xs: 1, md: 0.6 },
@@ -200,10 +200,10 @@ export const LoginPage: React.FC = () => {
         <Fade in={showLogin} timeout={600}>
           <Container maxWidth="xs">
             {/* Mobile logo */}
-            <Box sx={{ 
-              display: { xs: 'flex', md: 'none' }, 
-              alignItems: 'center', 
-              gap: 2, 
+            <Box sx={{
+              display: { xs: 'flex', md: 'none' },
+              alignItems: 'center',
+              gap: 2,
               mb: 4,
               justifyContent: 'center'
             }}>
@@ -221,10 +221,10 @@ export const LoginPage: React.FC = () => {
                 </Typography>
               </Box>
               <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, color: 'white' }}>
-                Dynamic Adoption Plans
+                Dynamic Adoption Platform
               </Typography>
             </Box>
-            
+
             {/* Login Card */}
             <Box sx={{
               background: 'rgba(255,255,255,0.95)',
@@ -234,9 +234,9 @@ export const LoginPage: React.FC = () => {
               boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)',
             }}>
               <Box sx={{ textAlign: 'center', mb: 4 }}>
-                <Typography sx={{ 
-                  fontSize: '1.75rem', 
-                  fontWeight: 700, 
+                <Typography sx={{
+                  fontSize: '1.75rem',
+                  fontWeight: 700,
                   color: '#1e293b',
                   mb: 1
                 }}>
@@ -246,23 +246,23 @@ export const LoginPage: React.FC = () => {
                   Sign in to your account
                 </Typography>
               </Box>
-              
+
               {errorMsg && (
-                <Alert 
-                  severity="error" 
-                  sx={{ mb: 3, borderRadius: 2 }} 
+                <Alert
+                  severity="error"
+                  sx={{ mb: 3, borderRadius: 2 }}
                   onClose={() => setErrorMsg('')}
                 >
                   {errorMsg}
                 </Alert>
               )}
-              
+
               <form onSubmit={handleSubmit}>
-                <TextField 
-                  fullWidth 
+                <TextField
+                  fullWidth
                   placeholder="Username"
-                  value={username} 
-                  onChange={e => setUsername(e.target.value)} 
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
                   required
                   autoFocus
                   disabled={loading}
@@ -273,7 +273,7 @@ export const LoginPage: React.FC = () => {
                       </InputAdornment>
                     ),
                   }}
-                  sx={{ 
+                  sx={{
                     mb: 2.5,
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: '#f8fafc',
@@ -290,13 +290,13 @@ export const LoginPage: React.FC = () => {
                     }
                   }}
                 />
-                
-                <TextField 
-                  fullWidth 
+
+                <TextField
+                  fullWidth
                   placeholder="Password"
                   type={showPassword ? 'text' : 'password'}
-                  value={password} 
-                  onChange={e => setPassword(e.target.value)} 
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
                   required
                   disabled={loading}
                   InputProps={{
@@ -317,7 +317,7 @@ export const LoginPage: React.FC = () => {
                       </InputAdornment>
                     ),
                   }}
-                  sx={{ 
+                  sx={{
                     mb: 3,
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: '#f8fafc',
@@ -334,15 +334,15 @@ export const LoginPage: React.FC = () => {
                     }
                   }}
                 />
-                
-                <Button 
-                  fullWidth 
-                  variant="contained" 
-                  type="submit" 
+
+                <Button
+                  fullWidth
+                  variant="contained"
+                  type="submit"
                   disabled={loading}
                   size="large"
                   endIcon={!loading && <ArrowForward />}
-                  sx={{ 
+                  sx={{
                     py: 1.75,
                     fontSize: '1rem',
                     fontWeight: 600,
@@ -372,11 +372,11 @@ export const LoginPage: React.FC = () => {
                 </Button>
               </form>
             </Box>
-            
+
             {/* Footer */}
-            <Typography sx={{ 
-              textAlign: 'center', 
-              mt: 4, 
+            <Typography sx={{
+              textAlign: 'center',
+              mt: 4,
               color: 'rgba(255,255,255,0.5)',
               fontSize: '0.85rem'
             }}>

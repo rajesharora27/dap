@@ -12,27 +12,29 @@ echo ""
 
 # Step 0: Verify we're ready to deploy (no local env changes needed)
 echo "📋 Step 0: Preparing deployment..."
-cd /data/dap
-echo "✅ Using existing local environment for build"
+# Ensure we are in the project root
+cd "$(dirname "$0")"
+PROJECT_ROOT=$(pwd)
+echo "✅ Using local environment: $PROJECT_ROOT"
 echo ""
 
 # Step 1: Build frontend
 echo "📦 Step 1: Building frontend..."
-cd /data/dap/frontend
+cd "$PROJECT_ROOT/frontend"
 npm run build -- --base=/dap/
 echo "✅ Frontend built"
 echo ""
 
 # Step 1.5: Build backend
 echo "📦 Step 1.5: Building backend..."
-cd /data/dap/backend
+cd "$PROJECT_ROOT/backend"
 npm run build
 echo "✅ Backend built"
 echo ""
 
 # Step 2: Prepare files for transfer
 echo "📦 Step 2: Preparing files..."
-cd /data/dap
+cd "$PROJECT_ROOT"
 mkdir -p /tmp/dap-deploy
 cp -r backend/src /tmp/dap-deploy/backend-src
 cp backend/package.json /tmp/dap-deploy/
@@ -52,6 +54,9 @@ cp .env.stage /tmp/dap-deploy/.env.stage 2>/dev/null || true
 # Copy config files (including LLM config)
 mkdir -p /tmp/dap-deploy/config
 cp -r backend/config/* /tmp/dap-deploy/config/ 2>/dev/null || true
+
+# Copy Prisma schema
+cp -r backend/prisma /tmp/dap-deploy/backend-prisma 2>/dev/null || true
 
 # Copy ecosystem config for PM2
 cp backend/ecosystem.config.js /tmp/dap-deploy/ecosystem.config.js 2>/dev/null || true
@@ -151,6 +156,12 @@ cp /tmp/dap-deploy-prod/package.json "$DAP_ROOT/backend/"
 cp /tmp/dap-deploy-prod/tsconfig.json "$DAP_ROOT/backend/"
 [ -f /tmp/dap-deploy-prod/eslint.config.mjs ] && cp /tmp/dap-deploy-prod/eslint.config.mjs "$DAP_ROOT/backend/"
 
+echo "📝 Copying Prisma schema..."
+mkdir -p "$DAP_ROOT/backend/prisma"
+rm -rf "$DAP_ROOT/backend/prisma"/*
+cp -r /tmp/dap-deploy-prod/backend-prisma/* "$DAP_ROOT/backend/prisma/"
+
+
 echo "✅ Backend files copied"
 
 echo "📝 Copying backend dist..."
@@ -197,9 +208,19 @@ if [ ! -d "node_modules" ]; then
   echo "Installing dependencies (first time)..."
   npm install
 else
-  echo "Updating dependencies if needed..."
-  npm install --production --legacy-peer-deps 2>/dev/null || npm install --legacy-peer-deps
+  echo "Updating dependencies..."
+  # Full install to ensure we have prisma CLI
+  npm install --legacy-peer-deps
 fi
+
+echo "🔄 Generating Prisma Client..."
+npx prisma generate
+
+echo "🔄 Updating Database Schema..."
+# Use db push for staging to auto-reconcile schema/database differences
+# This handles cases where migrations might be desynchronized
+npx prisma db push --accept-data-loss
+
 
 echo "Building TypeScript..."
 # npm run build  <-- Skipped, using pre-built dist

@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.8.0
-**Last Updated:** December 19, 2025  
+**Version:** 2.9.0
+**Last Updated:** December 20, 2025  
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -967,6 +967,37 @@ All DAP data is stored on `/data` partition (not root):
 ---
 
 ## Recent Changes & Fixes
+
+### Version 2.9.0 (December 20, 2025)
+
+#### UI/UX Cleanup, Branding & AI Icon Redesign
+
+**Feature 1: Modern AI Assistant Icon**
+- **Improvement**: Redesigned the AI Assistant icon to be more modern and professional.
+- **Implementation**: Created a custom `AISparkle` SVG icon featuring three 4-pointed stars (sparkles) inside a chat bubble.
+- **Availability**: Replaced the previous `Psychology` (brain) icon in the Header, AI Chat dialog, Dashboard, and Help guide.
+- **Files Changed**: `FAIcon.tsx`, `AuthBar.tsx`, `AIChat.tsx`, `DashboardPage.tsx`, `HelpDialog.tsx`
+
+**Feature 2: Customer Detail View Streamlining**
+- **Improvement**: Centralized summary info and metrics to the "Overview" tab for a cleaner interface.
+- **Cleanup**: Removed the large `EntitySummary` customer banner from the top of the page.
+- **New Metrics**: Added interactive scorecard tiles ("Total Product Assigned", "Direct vs Solution", "Solutions Assigned") to the Overview tab.
+- **Compact Progress**: Re-introduced compact overall progress trackers to the "Products Assigned" and "Solutions Assigned" tabs to maintain visibility without vertical clutter.
+- **Files Changed**: `CustomersPage.tsx`, `CustomerAdoptionPanelV4.tsx`, `SolutionAdoptionPlanView.tsx`
+
+**Feature 3: App Branding & Visual Consistency**
+- **Update**: Rebranded the application to **"Dynamic Adoption Platform"** with the new subtitle **"Centralized logic for product and solution adoption."**
+- **Standardization**: 
+  - Renamed "Entitlements" tab to **"Licenses"** and "Add Entitlement" to **"Add License"**.
+  - Renamed "Filter by X" labels to just **"X"** across all selection controls.
+  - Made the Outcomes list inline editable on the Summary tab for both Products and Solutions.
+- **Files Changed**: `index.html`, `LoginPage.tsx`, `AuthBar.tsx`, `ProductsPage.tsx`, `SolutionsPage.tsx`, `CustomerAdoptionPanelV4.tsx`, `HelpDialog.tsx`
+
+**Feature 4: Minor UI Fixes**
+- **Input Refinement**: Hidden the up/down spinner arrows from the "Implementation %" (formerly Weight) number input for a cleaner look.
+- **Files Changed**: `SortableTaskItem.tsx`
+
+---
 
 ### Version 2.8.0 (December 19, 2025)
 

@@ -4,7 +4,7 @@ import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button,
     IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, CircularProgress, Card, CardContent,
-    Checkbox, OutlinedInput, Collapse
+    Checkbox, OutlinedInput, Collapse, Divider
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
 import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension, FilterList, ExpandMore, ExpandLess } from '../components/common/FAIcon';
@@ -25,6 +25,7 @@ import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDial
 import { TagDialog, ProductTag } from '../components/dialogs/TagDialog';
 import { useAuth } from '../components/AuthContext';
 import { useProductImportExport } from '../hooks/useProductImportExport';
+import { InlineEditableText } from '../components/common/InlineEditableText';
 
 interface ProductsPageProps {
     onEditProduct: (product: any) => void;
@@ -34,7 +35,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     // State
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [selectedProduct, setSelectedProduct] = useState<string | null>(localStorage.getItem('lastSelectedProductId'));
-    const [selectedSubSection, setSelectedSubSection] = useState<'dashboard' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('dashboard');
+    const [selectedSubSection, setSelectedSubSection] = useState<'summary' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('summary');
     const importFileRef = useRef<HTMLInputElement>(null);
 
     // Dialog States - must be before any conditional returns
@@ -57,6 +58,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const [taskReleaseFilter, setTaskReleaseFilter] = useState<string[]>([]);
     const [taskLicenseFilter, setTaskLicenseFilter] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
+    const [inlineEditingOutcome, setInlineEditingOutcome] = useState<string | null>(null);
+    const [inlineOutcomeName, setInlineOutcomeName] = useState('');
 
     // Queries - must be before any conditional returns (skip handles auth)
     const { data: productsData, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PRODUCTS, {
@@ -210,6 +213,80 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 console.error('Error deleting product:', error);
                 alert('Failed to delete product: ' + error.message);
             }
+        }
+    };
+
+
+
+    const handleInlineProductUpdate = async (field: 'name' | 'description', value: string) => {
+        if (!displayProduct) return;
+        try {
+            await client.mutate({
+                mutation: UPDATE_PRODUCT,
+                variables: {
+                    id: displayProduct.id,
+                    input: {
+                        name: field === 'name' ? value : displayProduct.name,
+                        description: field === 'description' ? value : displayProduct.description,
+                        customAttrs: displayProduct.customAttrs
+                    }
+                },
+                refetchQueries: ['Products', 'ProductDetail'],
+                awaitRefetchQueries: true
+            });
+            await refetchProducts();
+            if (selectedProduct) refetchProductDetail();
+        } catch (error: any) {
+            console.error('Error updating product:', error);
+            alert('Failed to update product');
+        }
+    };
+
+
+    const handleInlineReleaseUpdate = async (releaseId: string, field: 'name' | 'description', value: string) => {
+        try {
+            const release = displayProduct.releases.find((r: any) => r.id === releaseId);
+            if (!release) return;
+
+            await client.mutate({
+                mutation: UPDATE_RELEASE,
+                variables: {
+                    id: releaseId,
+                    input: {
+                        name: field === 'name' ? value : release.name,
+                        description: field === 'description' ? value : release.description,
+                        level: release.level,
+                        productId: selectedProduct
+                    }
+                },
+                refetchQueries: ['ProductDetail']
+            });
+        } catch (error) {
+            console.error('Error updating release:', error);
+        }
+    };
+
+    const handleInlineLicenseUpdate = async (licenseId: string, field: 'name' | 'description', value: string) => {
+        try {
+            const license = displayProduct.licenses.find((l: any) => l.id === licenseId);
+            if (!license) return;
+
+            await client.mutate({
+                mutation: UPDATE_LICENSE,
+                variables: {
+                    id: licenseId,
+                    input: {
+                        name: field === 'name' ? value : license.name,
+                        description: field === 'description' ? value : license.description,
+                        level: license.level,
+                        isActive: license.isActive,
+                        productId: selectedProduct
+                    }
+                },
+                refetchQueries: ['ProductDetail']
+            });
+        } catch (error) {
+            console.error('Error updating license:', error);
         }
     };
 
@@ -498,6 +575,21 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         }
     };
 
+    const handleSaveInlineOutcome = async (id: string) => {
+        if (!inlineOutcomeName.trim()) return;
+        try {
+            await client.mutate({
+                mutation: UPDATE_OUTCOME,
+                variables: { id, input: { name: inlineOutcomeName } },
+                refetchQueries: ['Products', 'Outcomes']
+            });
+            setInlineEditingOutcome(null);
+            setInlineOutcomeName('');
+        } catch (error: any) {
+            alert('Error saving outcome: ' + error.message);
+        }
+    };
+
     const handleSaveOutcome = async (input: any) => {
         try {
             if (editingOutcome) {
@@ -619,7 +711,14 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                             <InputLabel>Select Product</InputLabel>
                             <Select
                                 value={selectedProduct || ''}
-                                onChange={(e) => handleProductChange(e.target.value)}
+                                onChange={(e) => {
+                                    if (e.target.value === '__add_new__') {
+                                        setEditingProduct(null);
+                                        setProductDialog(true);
+                                    } else {
+                                        handleProductChange(e.target.value);
+                                    }
+                                }}
                                 label="Select Product"
                             >
                                 {[...products].sort((a: any, b: any) => a.name.localeCompare(b.name)).map((product: any) => (
@@ -627,6 +726,10 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                         {product.name}
                                     </MenuItem>
                                 ))}
+                                <Divider />
+                                <MenuItem value="__add_new__" sx={{ color: 'primary.main', fontWeight: 600 }}>
+                                    <Add sx={{ mr: 1, fontSize: '1rem' }} /> Add New Product
+                                </MenuItem>
                             </Select>
                         </FormControl>
 
@@ -679,15 +782,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                             )}
 
                             {/* Always visible Add button */}
-                            <Button
-                                variant="contained"
-                                color="success"
-                                startIcon={<Add />}
-                                size="small"
-                                onClick={() => { setEditingProduct(null); setProductDialog(true); }}
-                            >
-                                Add Product
-                            </Button>
+
                         </Box>
                     </Box>
                 </Paper>
@@ -704,7 +799,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                             scrollButtons="auto"
                             sx={{ borderBottom: 1, borderColor: 'divider', flex: 1 }}
                         >
-                            <Tab label="Dashboard" value="dashboard" />
+                            <Tab label="Summary" value="summary" />
                             <Tab label={`Tasks${tasks.length > 0 ? ` (${hasActiveFilters ? `${filteredTasks.length}/${tasks.length}` : tasks.length})` : ''}`} value="tasks" />
                             <Tab label="Tags" value="tags" />
                             <Tab label="Outcomes" value="outcomes" />
@@ -713,83 +808,76 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                             <Tab label="Custom Attributes" value="customAttributes" />
                         </Tabs>
 
-                        {selectedSubSection !== 'dashboard' && (
-                            <Button
-                                variant="contained"
-                                startIcon={<Add />}
-                                size="small"
-                                sx={{ ml: 2, flexShrink: 0 }}
-                                onClick={() => {
-                                    switch (selectedSubSection) {
-                                        case 'tasks': setEditingTask(null); setTaskDialog(true); break;
-                                        case 'outcomes': setEditingOutcome(null); setOutcomeDialog(true); break;
-                                        case 'releases': setEditingRelease(null); setReleaseDialog(true); break;
-                                        case 'licenses': setEditingLicense(null); setLicenseDialog(true); break;
-                                        case 'customAttributes': setEditingCustomAttr(null); setCustomAttrDialog(true); break;
-                                        case 'tags': setEditingTag(null); setTagDialog(true); break;
-                                    }
-                                }}
-                            >
-                                {selectedSubSection === 'tasks' ? 'Add Task' :
-                                    selectedSubSection === 'outcomes' ? 'Add Outcome' :
-                                        selectedSubSection === 'releases' ? 'Add Release' :
-                                            selectedSubSection === 'licenses' ? 'Add License' :
-                                                selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'}
-                            </Button>
+                        {selectedSubSection !== 'summary' && (
+                            <Box sx={{ display: 'flex', gap: 1, ml: 2, flexShrink: 0, alignItems: 'center' }}>
+                                {/* Filters Button - Only show for tasks tab */}
+                                {selectedSubSection === 'tasks' && (
+                                    <>
+                                        <Button
+                                            size="small"
+                                            startIcon={<FilterList />}
+                                            endIcon={showFilters ? <ExpandLess /> : <ExpandMore />}
+                                            onClick={() => setShowFilters(!showFilters)}
+                                            color={hasActiveFilters ? "primary" : "inherit"}
+                                            variant={hasActiveFilters ? "contained" : "outlined"}
+                                            sx={{ borderRadius: 2 }}
+                                        >
+                                            Filters {hasActiveFilters && `(${[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length})`}
+                                        </Button>
+                                        {hasActiveFilters && (
+                                            <Chip
+                                                label="Clear"
+                                                size="small"
+                                                color="secondary"
+                                                variant="outlined"
+                                                onDelete={handleClearFilters}
+                                                sx={{ height: 24, fontSize: '0.75rem' }}
+                                            />
+                                        )}
+                                    </>
+                                )}
+                                <Button
+                                    variant="contained"
+                                    startIcon={<Add />}
+                                    size="small"
+                                    onClick={() => {
+                                        switch (selectedSubSection) {
+                                            case 'tasks': setEditingTask(null); setTaskDialog(true); break;
+                                            case 'outcomes': setEditingOutcome(null); setOutcomeDialog(true); break;
+                                            case 'releases': setEditingRelease(null); setReleaseDialog(true); break;
+                                            case 'licenses': setEditingLicense(null); setLicenseDialog(true); break;
+                                            case 'customAttributes': setEditingCustomAttr(null); setCustomAttrDialog(true); break;
+                                            case 'tags': setEditingTag(null); setTagDialog(true); break;
+                                        }
+                                    }}
+                                >
+                                    {selectedSubSection === 'tasks' ? 'Add Task' :
+                                        selectedSubSection === 'outcomes' ? 'Add Outcome' :
+                                            selectedSubSection === 'releases' ? 'Add Release' :
+                                                selectedSubSection === 'licenses' ? 'Add License' :
+                                                    selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'}
+                                </Button>
+                            </Box>
                         )}
                     </Box>
 
-                    {selectedSubSection === 'dashboard' && (
+                    {selectedSubSection === 'summary' && (
                         <Box sx={{ mt: 2 }}>
                             {/* Read-only Dashboard Layout - Full Width */}
                             <Grid container spacing={3}>
                                 <Grid size={{ xs: 12 }}>
-                                    {/* Product Name Header */}
-                                    <Paper
-                                        elevation={3}
-                                        sx={{
-                                            p: 3,
-                                            mb: 3,
-                                            borderRadius: 2,
-                                            background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${theme.palette.background.paper} 100%)`,
-                                            borderLeft: `6px solid ${theme.palette.primary.main}`
-                                        }}
-                                    >
-                                        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.primary.dark }}>
-                                            {displayProduct.name}
-                                        </Typography>
-                                    </Paper>
-
-                                    {/* Overview */}
-                                    <Card
-                                        elevation={2}
-                                        sx={{
-                                            mb: 3,
-                                            borderRadius: 2,
-                                            border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
-                                        }}
-                                    >
-                                        <CardContent>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                                <Description sx={{ color: theme.palette.primary.main }} />
-                                                <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
-                                                    Overview
-                                                </Typography>
-                                            </Box>
-                                            <Typography
-                                                variant="body1"
-                                                sx={{
-                                                    lineHeight: 1.7,
-                                                    color: theme.palette.text.secondary,
-                                                    whiteSpace: 'pre-line',
-                                                    pl: 1,
-                                                    borderLeft: `3px solid ${alpha(theme.palette.primary.main, 0.3)}`
-                                                }}
-                                            >
-                                                {displayProduct.description || 'No detailed description provided for this product.'}
-                                            </Typography>
-                                        </CardContent>
-                                    </Card>
+                                    {/* Description/Overview - Without title or banner */}
+                                    <Box sx={{ mb: 3, pl: 1, borderLeft: `3px solid ${alpha(theme.palette.primary.main, 0.3)}` }}>
+                                        <InlineEditableText
+                                            value={displayProduct.description || ''}
+                                            onSave={(val) => handleInlineProductUpdate('description', val)}
+                                            multiline
+                                            variant="body1"
+                                            color={theme.palette.text.secondary}
+                                            placeholder="No detailed description provided for this product. Click to add one."
+                                            fullWidth
+                                        />
+                                    </Box>
 
                                     {/* Outcomes */}
                                     <Card
@@ -822,25 +910,78 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         <ListItem
                                                             key={o.id}
                                                             sx={{
-                                                                py: 1.5,
+                                                                py: 1,
                                                                 px: 2,
                                                                 bgcolor: idx % 2 === 0 ? alpha(theme.palette.success.main, 0.03) : 'transparent',
                                                                 borderRadius: 1,
-                                                                mb: 0.5
+                                                                mb: 0.5,
+                                                                cursor: 'default',
+                                                                '&:hover': { bgcolor: 'action.hover' }
                                                             }}
+                                                            secondaryAction={
+                                                                <Box>
+                                                                    {inlineEditingOutcome === o.id ? (
+                                                                        <IconButton
+                                                                            size="small"
+                                                                            color="success"
+                                                                            onClick={() => handleSaveInlineOutcome(o.id)}
+                                                                        >
+                                                                            <CheckCircle fontSize="small" />
+                                                                        </IconButton>
+                                                                    ) : (
+                                                                        <IconButton
+                                                                            size="small"
+                                                                            onClick={() => {
+                                                                                setInlineEditingOutcome(o.id);
+                                                                                setInlineOutcomeName(o.name);
+                                                                            }}
+                                                                        >
+                                                                            <Edit fontSize="small" />
+                                                                        </IconButton>
+                                                                    )}
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        onClick={inlineEditingOutcome === o.id ? () => setInlineEditingOutcome(null) : () => handleDeleteOutcome(o.id)}
+                                                                        color="error"
+                                                                    >
+                                                                        <Delete fontSize="small" />
+                                                                    </IconButton>
+                                                                </Box>
+                                                            }
                                                         >
-                                                            <ListItemText
-                                                                primary={
-                                                                    <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                                                                        {o.name}
-                                                                    </Typography>
-                                                                }
-                                                                secondary={o.description && (
-                                                                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                                                        {o.description}
-                                                                    </Typography>
-                                                                )}
-                                                            />
+                                                            {inlineEditingOutcome === o.id ? (
+                                                                <OutlinedInput
+                                                                    fullWidth
+                                                                    size="small"
+                                                                    value={inlineOutcomeName}
+                                                                    onChange={(e) => setInlineOutcomeName(e.target.value)}
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') handleSaveInlineOutcome(o.id);
+                                                                        if (e.key === 'Escape') setInlineEditingOutcome(null);
+                                                                    }}
+                                                                    autoFocus
+                                                                    sx={{ mr: 6 }}
+                                                                />
+                                                            ) : (
+                                                                <Tooltip title={o.description || 'Double-click to edit'} placement="top" arrow>
+                                                                    <ListItemText
+                                                                        primary={
+                                                                            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
+                                                                                {o.name}
+                                                                            </Typography>
+                                                                        }
+                                                                        secondary={o.description && (
+                                                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                                                {o.description}
+                                                                            </Typography>
+                                                                        )}
+                                                                        onDoubleClick={() => {
+                                                                            setInlineEditingOutcome(o.id);
+                                                                            setInlineOutcomeName(o.name);
+                                                                        }}
+                                                                    />
+                                                                </Tooltip>
+                                                            )}
                                                         </ListItem>
                                                     ))}
                                                 </List>
@@ -865,37 +1006,6 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                     {tasksError && <Typography color="error" variant="body2">{tasksError.message}</Typography>}
                                 </Box>
                             )}
-
-                            {/* Filter Section */}
-                            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Button
-                                        size="small"
-                                        startIcon={<FilterList />}
-                                        endIcon={showFilters ? <ExpandLess /> : <ExpandMore />}
-                                        onClick={() => setShowFilters(!showFilters)}
-                                        color={hasActiveFilters ? "primary" : "inherit"}
-                                        variant={hasActiveFilters ? "contained" : "text"}
-                                        sx={{ borderRadius: 2 }}
-                                    >
-                                        Filters {hasActiveFilters && `(${[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length})`}
-                                    </Button>
-                                    {hasActiveFilters && (
-                                        <Chip
-                                            label="Active"
-                                            size="small"
-                                            color="primary"
-                                            variant="outlined"
-                                            onDelete={handleClearFilters}
-                                            sx={{ height: 24, fontSize: '0.75rem' }}
-                                        />
-                                    )}
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    {tasksLoading && <CircularProgress size={20} />}
-                                    {tasksError && <Typography color="error" variant="caption">{tasksError.message}</Typography>}
-                                </Box>
-                            </Box>
 
                             <Collapse in={showFilters}>
                                 <Box sx={{ mb: 3, p: 2, bgcolor: alpha(theme.palette.primary.main, 0.04), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1032,13 +1142,13 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                         <TableHead>
                                             <TableRow>
                                                 <TableCell width={40}></TableCell>
-                                                <TableCell width={80}>Seq</TableCell>
-                                                <TableCell>Name</TableCell>
-                                                <TableCell>Tags</TableCell>
-                                                <TableCell>Resources</TableCell>
-                                                <TableCell width={100}>Weight</TableCell>
-                                                <TableCell>Telemetry</TableCell>
-                                                <TableCell width={100}>Actions</TableCell>
+                                                <TableCell width={80} align="left">Order</TableCell>
+                                                <TableCell align="left">Name</TableCell>
+                                                <TableCell align="left">Tags</TableCell>
+                                                <TableCell align="left">Resources</TableCell>
+                                                <TableCell width={100} align="left">Implementation %</TableCell>
+                                                <TableCell align="left">Validation Criteria</TableCell>
+                                                <TableCell width={100} align="left">Actions</TableCell>
                                             </TableRow>
                                         </TableHead>
 
@@ -1080,27 +1190,69 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
 
                                     <List>
                                         {displayProduct?.outcomes?.map((outcome: any) => (
-                                            <Tooltip key={outcome.id} title={outcome.description || ''} placement="top" arrow>
-                                                <ListItem
-                                                    sx={{
-                                                        cursor: 'pointer',
-                                                        '&:hover': { bgcolor: 'action.hover' },
-                                                        borderBottom: '1px solid #eee'
-                                                    }}
-                                                    onDoubleClick={() => { setEditingOutcome(outcome); setOutcomeDialog(true); }}
-                                                    secondaryAction={
-                                                        <Box>
-                                                            <IconButton size="small" onClick={() => { setEditingOutcome(outcome); setOutcomeDialog(true); }}><Edit fontSize="small" /></IconButton>
-                                                            <IconButton size="small" onClick={() => handleDeleteOutcome(outcome.id)} color="error"><Delete fontSize="small" /></IconButton>
-                                                        </Box>
-                                                    }
-                                                >
-                                                    <ListItemText
-                                                        primary={outcome.name}
-                                                        secondary={outcome.description}
+                                            <ListItem
+                                                key={outcome.id}
+                                                sx={{
+                                                    cursor: 'default',
+                                                    '&:hover': { bgcolor: 'action.hover' },
+                                                    borderBottom: '1px solid #eee'
+                                                }}
+                                                secondaryAction={
+                                                    <Box>
+                                                        {inlineEditingOutcome === outcome.id ? (
+                                                            <IconButton
+                                                                size="small"
+                                                                color="success"
+                                                                onClick={() => handleSaveInlineOutcome(outcome.id)}
+                                                            >
+                                                                <CheckCircle fontSize="small" />
+                                                            </IconButton>
+                                                        ) : (
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => {
+                                                                    setInlineEditingOutcome(outcome.id);
+                                                                    setInlineOutcomeName(outcome.name);
+                                                                }}
+                                                            >
+                                                                <Edit fontSize="small" />
+                                                            </IconButton>
+                                                        )}
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={inlineEditingOutcome === outcome.id ? () => setInlineEditingOutcome(null) : () => handleDeleteOutcome(outcome.id)}
+                                                            color="error"
+                                                        >
+                                                            <Delete fontSize="small" />
+                                                        </IconButton>
+                                                    </Box>
+                                                }
+                                            >
+                                                {inlineEditingOutcome === outcome.id ? (
+                                                    <OutlinedInput
+                                                        fullWidth
+                                                        size="small"
+                                                        value={inlineOutcomeName}
+                                                        onChange={(e) => setInlineOutcomeName(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') handleSaveInlineOutcome(outcome.id);
+                                                            if (e.key === 'Escape') setInlineEditingOutcome(null);
+                                                        }}
+                                                        autoFocus
                                                     />
-                                                </ListItem>
-                                            </Tooltip>
+                                                ) : (
+                                                    <Tooltip title={outcome.description || ''} placement="top" arrow>
+                                                        <ListItemText
+                                                            primary={outcome.name}
+                                                            secondary={outcome.description}
+                                                            onDoubleClick={() => {
+                                                                setInlineEditingOutcome(outcome.id);
+                                                                setInlineOutcomeName(outcome.name);
+                                                            }}
+                                                        />
+                                                    </Tooltip>
+                                                )}
+                                            </ListItem>
                                         ))}
                                         {(!displayProduct?.outcomes || displayProduct.outcomes.length === 0) && (
                                             <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
@@ -1120,27 +1272,44 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
 
                                     <List>
                                         {displayProduct?.releases?.map((release: any) => (
-                                            <Tooltip key={release.id} title={release.description || ''} placement="top" arrow>
-                                                <ListItem
-                                                    sx={{
-                                                        cursor: 'pointer',
-                                                        '&:hover': { bgcolor: 'action.hover' },
-                                                        borderBottom: '1px solid #eee'
-                                                    }}
-                                                    onDoubleClick={() => { setEditingRelease(release); setReleaseDialog(true); }}
-                                                    secondaryAction={
-                                                        <Box>
-                                                            <IconButton size="small" onClick={() => { setEditingRelease(release); setReleaseDialog(true); }}><Edit fontSize="small" /></IconButton>
-                                                            <IconButton size="small" onClick={() => handleDeleteRelease(release.id)} color="error"><Delete fontSize="small" /></IconButton>
+                                            <ListItem
+                                                key={release.id}
+                                                sx={{
+                                                    cursor: 'default',
+                                                    '&:hover': { bgcolor: 'action.hover' },
+                                                    borderBottom: '1px solid #eee'
+                                                }}
+                                                secondaryAction={
+                                                    <Box>
+                                                        <IconButton size="small" onClick={() => { setEditingRelease(release); setReleaseDialog(true); }}><Edit fontSize="small" /></IconButton>
+                                                        <IconButton size="small" onClick={() => handleDeleteRelease(release.id)} color="error"><Delete fontSize="small" /></IconButton>
+                                                    </Box>
+                                                }
+                                            >
+                                                <ListItemText
+                                                    primary={
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                            <InlineEditableText
+                                                                value={release.name}
+                                                                onSave={(val) => handleInlineReleaseUpdate(release.id, 'name', val)}
+                                                                variant="subtitle1"
+                                                                color="text.primary"
+                                                            />
+                                                            <Typography variant="body2" color="text.secondary">(v{release.level})</Typography>
                                                         </Box>
                                                     }
-                                                >
-                                                    <ListItemText
-                                                        primary={`${release.name} (v${release.level})`}
-                                                        secondary={release.description}
-                                                    />
-                                                </ListItem>
-                                            </Tooltip>
+                                                    secondary={
+                                                        <InlineEditableText
+                                                            value={release.description || ''}
+                                                            onSave={(val) => handleInlineReleaseUpdate(release.id, 'description', val)}
+                                                            variant="body2"
+                                                            color="text.secondary"
+                                                            placeholder="Add description..."
+                                                            fullWidth
+                                                        />
+                                                    }
+                                                />
+                                            </ListItem>
                                         ))}
                                         {(!displayProduct?.releases || displayProduct.releases.length === 0) && (
                                             <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
@@ -1160,27 +1329,44 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
 
                                     <List>
                                         {displayProduct?.licenses?.map((license: any) => (
-                                            <Tooltip key={license.id} title={license.description || ''} placement="top" arrow>
-                                                <ListItem
-                                                    sx={{
-                                                        cursor: 'pointer',
-                                                        '&:hover': { bgcolor: 'action.hover' },
-                                                        borderBottom: '1px solid #eee'
-                                                    }}
-                                                    onDoubleClick={() => { setEditingLicense(license); setLicenseDialog(true); }}
-                                                    secondaryAction={
-                                                        <Box>
-                                                            <IconButton size="small" onClick={() => { setEditingLicense(license); setLicenseDialog(true); }}><Edit fontSize="small" /></IconButton>
-                                                            <IconButton size="small" onClick={() => handleDeleteLicense(license.id)} color="error"><Delete fontSize="small" /></IconButton>
+                                            <ListItem
+                                                key={license.id}
+                                                sx={{
+                                                    cursor: 'default',
+                                                    '&:hover': { bgcolor: 'action.hover' },
+                                                    borderBottom: '1px solid #eee'
+                                                }}
+                                                secondaryAction={
+                                                    <Box>
+                                                        <IconButton size="small" onClick={() => { setEditingLicense(license); setLicenseDialog(true); }}><Edit fontSize="small" /></IconButton>
+                                                        <IconButton size="small" onClick={() => handleDeleteLicense(license.id)} color="error"><Delete fontSize="small" /></IconButton>
+                                                    </Box>
+                                                }
+                                            >
+                                                <ListItemText
+                                                    primary={
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                            <InlineEditableText
+                                                                value={license.name}
+                                                                onSave={(val) => handleInlineLicenseUpdate(license.id, 'name', val)}
+                                                                variant="subtitle1"
+                                                                color="text.primary"
+                                                            />
+                                                            <Typography variant="body2" color="text.secondary">(Level {license.level})</Typography>
                                                         </Box>
                                                     }
-                                                >
-                                                    <ListItemText
-                                                        primary={`${license.name} (Level ${license.level})`}
-                                                        secondary={license.description}
-                                                    />
-                                                </ListItem>
-                                            </Tooltip>
+                                                    secondary={
+                                                        <InlineEditableText
+                                                            value={license.description || ''}
+                                                            onSave={(val) => handleInlineLicenseUpdate(license.id, 'description', val)}
+                                                            variant="body2"
+                                                            color="text.secondary"
+                                                            placeholder="Add description..."
+                                                            fullWidth
+                                                        />
+                                                    }
+                                                />
+                                            </ListItem>
                                         ))}
                                         {(!displayProduct?.licenses || displayProduct.licenses.length === 0) && (
                                             <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>

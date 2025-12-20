@@ -554,104 +554,61 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
         </Alert>
       )}
 
-      {/* Header */}
+      {/* Overall Progress Card - Compact */}
       <Paper
-        elevation={1}
+        elevation={0}
         sx={{
-          p: { xs: 2, sm: 2.5, md: 3 },
-          mb: { xs: 2, md: 3 },
-          borderRadius: 2,
+          p: 2,
+          mb: 2,
           border: '1.5px solid',
-          borderColor: '#E0E0E0'
+          borderColor: '#E0E0E0',
+          borderRadius: 2,
+          bgcolor: 'background.paper'
         }}
       >
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: { xs: 2, md: 3 }, gap: { xs: 1.5, sm: 2 } }}>
-          <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" gutterBottom fontWeight="600" color="primary.main">
-              {plan.customerSolution.name} - {plan.customerSolution.solution.name}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
+          <Typography variant="subtitle1" fontWeight="600">Overall Progress</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              <strong>{plan.completedTasks}</strong> of <strong>{plan.totalTasks}</strong> tasks
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Customer: <strong>{customerName}</strong> • Solution Adoption Plan
-              {plan.lastSyncedAt && (
-                <span style={{ marginLeft: '8px' }}>
-                  • Last synced: {new Date(plan.lastSyncedAt).toLocaleDateString()}
-                </span>
-              )}
+              •
             </Typography>
-          </Box>
-
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-            <Tooltip title="Sync with latest solution tasks">
-              <Button
-                variant="outlined"
-                size="small"
-                startIcon={<Sync />}
-                color={plan.needsSync ? 'warning' : 'primary'}
-                onClick={handleSync}
-                disabled={syncLoading}
-                sx={{ whiteSpace: 'nowrap' }}
-              >
-                {syncLoading ? 'Syncing...' : plan.needsSync ? '⚠️ Sync' : 'Sync'}
-              </Button>
-            </Tooltip>
-            <Chip
-              label={plan.licenseLevel}
-              color="primary"
-              sx={{ fontWeight: 600, height: 32 }}
-            />
+            <Typography variant="body2" color="text.secondary">
+              <strong>{plan.products.length}</strong> products
+            </Typography>
           </Box>
         </Box>
-
-        {/* Overall Progress */}
-        <Box sx={{ mt: 3, p: 2.5, bgcolor: 'background.default', borderRadius: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-            <Typography variant="h6" fontWeight="600">Overall Progress</Typography>
-            <Typography variant="h6" color="primary" fontWeight="700">
-              {Math.round(plan.progressPercentage)}%
-            </Typography>
-          </Box>
-
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <LinearProgress
             variant="determinate"
             value={plan.progressPercentage}
-            sx={{ height: 12, borderRadius: 1, mb: 2 }}
+            sx={{ flex: 1, height: 10, borderRadius: 5 }}
           />
-
-          <Box sx={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="body2" fontWeight="600">📊</Typography>
-              <Typography variant="body2" color="text.secondary">
-                <strong>{plan.completedTasks}</strong> of <strong>{plan.totalTasks}</strong> tasks completed
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="body2" fontWeight="600">🔗</Typography>
-              <Typography variant="body2" color="text.secondary">
-                <strong>{plan.products.length}</strong> products included
-              </Typography>
-            </Box>
-          </Box>
+          <Typography variant="body1" fontWeight="700" color="primary" sx={{ minWidth: 50, textAlign: 'right' }}>
+            {Math.round(plan.progressPercentage)}%
+          </Typography>
         </Box>
       </Paper>
 
       {/* Interactive Filters for Solution Tasks */}
       {allSolutionTasks.length > 0 && (
         <Paper
-          elevation={1}
+          elevation={0}
           sx={{
-            p: 2.5,
-            mb: 2,
-            bgcolor: '#E0F7FA',
-            border: '1.5px solid',
-            borderColor: '#B2EBF2',
-            borderRadius: 2,
-            borderLeft: '4px solid',
-            borderLeftColor: '#00ACC1'
+            p: 2,
+            mb: 0,
+            bgcolor: 'background.paper',
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: '8px 8px 0 0',
+            borderBottom: 'none'
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <FilterList fontSize="small" sx={{ color: '#00838F' }} />
-            <Typography variant="subtitle2" fontWeight="700" sx={{ color: '#00838F' }}>
+            <FilterList fontSize="small" sx={{ color: 'text.secondary' }} />
+            <Typography variant="subtitle2" fontWeight="600" color="text.secondary">
               Filter Solution Tasks
             </Typography>
             {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) ||
@@ -660,10 +617,9 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
                 <Chip
                   label={`Showing ${solutionTasks.length} of ${allSolutionTasks.length} tasks`}
                   size="small"
+                  color="primary"
                   sx={{
                     ml: 1,
-                    bgcolor: '#00ACC1',
-                    color: 'white',
                     fontWeight: 600
                   }}
                 />
@@ -687,7 +643,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
             {/* Releases Filter */}
             {availableReleases.length > 0 ? (
               <FormControl sx={{ minWidth: 250 }} size="small">
-                <InputLabel>Filter by Release</InputLabel>
+                <InputLabel>Releases</InputLabel>
                 <Select
                   multiple
                   value={filterReleases}
@@ -703,7 +659,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
                       setFilterReleases(value);
                     }
                   }}
-                  input={<OutlinedInput label="Filter by Release" />}
+                  input={<OutlinedInput label="Releases" />}
                   renderValue={(selected) => {
                     if (selected.includes(ALL_RELEASES_ID)) return 'All Releases';
                     if (selected.length === 0) return 'All Releases';
@@ -733,7 +689,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
             {/* Tags Filter */}
             {availableTags.length > 0 ? (
               <FormControl sx={{ minWidth: 250 }} size="small">
-                <InputLabel>Filter by Tag</InputLabel>
+                <InputLabel>Tags</InputLabel>
                 <Select
                   multiple
                   value={filterTags}
@@ -749,7 +705,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
                       setFilterTags(value);
                     }
                   }}
-                  input={<OutlinedInput label="Filter by Tag" />}
+                  input={<OutlinedInput label="Tags" />}
                   renderValue={(selected) => {
                     if (selected.includes(ALL_TAGS_ID)) return 'All Tags';
                     if (selected.length === 0) return 'All Tags';
@@ -808,7 +764,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
             {/* Outcomes Filter */}
             {availableOutcomes.length > 0 ? (
               <FormControl sx={{ minWidth: 250 }} size="small">
-                <InputLabel>Filter by Outcome</InputLabel>
+                <InputLabel>Outcomes</InputLabel>
                 <Select
                   multiple
                   value={filterOutcomes}
@@ -824,7 +780,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
                       setFilterOutcomes(value);
                     }
                   }}
-                  input={<OutlinedInput label="Filter by Outcome" />}
+                  input={<OutlinedInput label="Outcomes" />}
                   renderValue={(selected) => {
                     if (selected.includes(ALL_OUTCOMES_ID)) return 'All Outcomes';
                     if (selected.length === 0) return 'All Outcomes';

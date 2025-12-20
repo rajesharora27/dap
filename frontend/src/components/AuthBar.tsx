@@ -22,6 +22,7 @@ import {
   Person,
   Psychology,
   HelpOutline,
+  AISparkle,
 } from '../components/common/FAIcon';
 import { useQuery } from '@apollo/client';
 import { useAuth } from './AuthContext';
@@ -157,7 +158,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
                 color: '#FFFFFF',
               }}
             >
-              Dynamic Adoption Plans
+              Dynamic Adoption Platform
             </Typography>
             <Typography
               variant="caption"
@@ -168,7 +169,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
                 color: 'rgba(255, 255, 255, 0.85)',
               }}
             >
-              Customer Success Platform
+              Centralized logic for product and solution adoption
             </Typography>
           </Box>
         </Box>
@@ -215,7 +216,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
                     },
                   }}
                 >
-                  <Psychology />
+                  <AISparkle />
                 </Badge>
               </IconButton>
             </Tooltip>

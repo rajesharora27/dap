@@ -717,7 +717,7 @@ export const SolutionDialog: React.FC<Props> = ({
               <Tab label={`Products (${selectedProductIds.length})`} />
               <Tab label={`Outcomes (${allOutcomes.length})`} />
               <Tab label={`Releases (${releases.filter(r => !r.delete).length})`} />
-              <Tab label={`Licenses (${licenses.filter(l => !l.delete).length})`} />
+              <Tab label={`Entitlements (${licenses.filter(l => !l.delete).length})`} />
               <Tab label={`Attributes (${Object.keys(customAttrs).length})`} />
             </Tabs>
           </Box>
@@ -833,10 +833,10 @@ export const SolutionDialog: React.FC<Props> = ({
 
           <TabPanel value={tabValue} index={4}>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddLicenseDialog(true)} size="small">Add Solution License</Button>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddLicenseDialog(true)} size="small">Add Solution Entitlement</Button>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Solution-Specific Licenses:</Typography>
+              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Solution-Specific Entitlements:</Typography>
               {licenses.filter(l => !l.delete).map((license, idx) => (
                 <Card key={idx} variant="outlined">
                   <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
@@ -859,7 +859,7 @@ export const SolutionDialog: React.FC<Props> = ({
                 </Card>
               ))}
               {licenses.filter(l => !l.delete).length === 0 && (
-                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', ml: 1 }}>No solution-specific licenses.</Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', ml: 1 }}>No solution-specific entitlements.</Typography>
               )}
 
 
@@ -928,7 +928,7 @@ export const SolutionDialog: React.FC<Props> = ({
         onSave={addLicenseDialog ? handleAddLicenseSave : handleEditLicenseSave}
         license={editingLicense}
         availableProductLicenses={allProductLicenses}
-        title={editingLicense ? 'Edit Solution License' : 'Add Solution License'}
+        title={editingLicense ? 'Edit Solution Entitlement' : 'Add Solution Entitlement'}
       />
     </>
   );

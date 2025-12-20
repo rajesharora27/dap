@@ -24,7 +24,7 @@ describe('Product Management App Validation', () => {
     test('CRUD buttons for all submenus', () => {
         const crudButtons = {
             main: ['Edit Product', 'Export All', 'Import'],
-            licenses: ['Add License', 'Export', 'Import'],
+            licenses: ['Add Entitlement', 'Export', 'Import'],
             outcomes: ['Add Outcome', 'Export', 'Import'],
             customAttributes: ['Add Attribute', 'Edit All', 'Export', 'Import'],
             tasks: ['Add Task', 'Export', 'Import']
@@ -44,7 +44,7 @@ describe('Product Management App Validation', () => {
         });
 
         // Specific Add buttons
-        expect(crudButtons.licenses).toContain('Add License');
+        expect(crudButtons.licenses).toContain('Add Entitlement');
         expect(crudButtons.outcomes).toContain('Add Outcome');
         expect(crudButtons.customAttributes).toContain('Add Attribute');
         expect(crudButtons.tasks).toContain('Add Task');
@@ -227,7 +227,7 @@ describe('Product Management App Validation', () => {
         ];
 
         expect(mainSubmenuSections).toContain('Product Details');
-        expect(mainSubmenuSections).toContain('Licenses Summary');
+        expect(mainSubmenuSections).toContain('Entitlements Summary');
         expect(mainSubmenuSections).toContain('Outcomes Summary');
         expect(mainSubmenuSections).toContain('Custom Attributes Summary');
 

@@ -1615,7 +1615,7 @@ export const resolvers = {
       }
 
       // Create task with retry logic for sequence number conflicts
-      let task;
+      let task: any;
       let attempts = 0;
       const maxAttempts = 3;
 

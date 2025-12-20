@@ -63,10 +63,13 @@ Task detail dialog fetches telemetry + relationships lazily when opened.
 4. Backend mutations persist changes; warnings surface in console for unknown references.
 5. Post-import, UI refetches product + task queries for confirmation.
 
-### 3.5 Telemetry Evaluation
-1. Telemetry attributes are defined alongside tasks (name, data type, success criteria, requirement flag).
-2. Backend telemetry service tracks current value states per attribute and evaluates completion rules.
-3. Task resolvers expose `isCompleteBasedOnTelemetry` and `telemetryCompletionPercentage`, enabling progress rings in the UI.
+### 3.6 AI Agent & Natural Language Queries
+1. **Query Orchestration**: `AIAgentService` receives natural language questions.
+2. **Hybrid Processing**:
+   - **Fast Path**: `QueryTemplates` uses regex patterns to match common queries (e.g., "show products") and executes direct Prisma queries.
+   - **LLM Fallback**: Unmatched queries are sent to an LLM (Gemini/OpenAI) with injected `SchemaContext` and real-time `DataContext`.
+3. **Safe Execution**: Generated queries are validated and executed with the `aiuser` role's permissions (read-only, row-limited).
+4. **Context Management**: `DataContextManager` maintains a summarized snapshot of the database for LLM efficiency, refreshable via Admin UI.
 
 ## 4. Data Model Snapshot
 

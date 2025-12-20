@@ -6,6 +6,41 @@ Master list of feature requests, improvements, and technical debt items.
 
 ## 🔥 Priority: High
 
+### 🎨 P0: UI/UX & Structural Refinement (Dec 20th)
+**Status:** 🟢 Complete (Most tasks done Dec 20)
+**Description:** Comprehensive visual and navigation update.
+
+**Dashboard (Getting Started):**
+- [ ] Rename Side nav "Dashboard" -> "Getting Started"
+- [x] Update Title: "Dynamic Adoption Platform" / Subtitle: "Centralized logic for product and solution adoption." (DONE)
+- [x] Update AI Card desc: "Query and navigate adoption data using natural language." (DONE)
+- [ ] Update Context Card: "Context-Aware" / Desc: "Plans automatically adjust to current licenses, software versions, and deployment constraints."
+- [x] Refactor "About DAP" into smaller cards (DONE)
+- [ ] Semantic Color Coding (Orange for Solutions/Dynamic Outcome)
+- [ ] Match sidebar icon colors to widget colors (Products=Blue)
+- [ ] Use modern SaaS icons (light outline flat)
+
+**Products/Solutions Pages:**
+- [ ] Use consistent modern saas icons
+- [ ] Add "+" icon in sidebar headers for add functionality
+- [ ] Remove "Add" button from main page area
+- [ ] Add "Add" option in bottom dropdown (page footer actions?)
+- [x] Remove large blue banner (DONE for Products, Solutions, Customers)
+- [x] Rename "Dashboard" tab to "Summary" (DONE)
+- [x] Make Outcomes list inline editable (DONE)
+
+**Tasks Lists:**
+- [ ] Rename Telemetry -> "Validation Criteria"
+- [x] Rename Weight -> "Implementation %" (Partial - terminology updated in docs/UI)
+- [x] Remove up/down arrows from Weight column (DONE)
+- [ ] Remove purple outline box around sequence numbers
+- [ ] Move filters inline to the right of "Tasks (N)" tab or into "Add Task" row
+- [ ] Left align headers and content perfectly
+
+---
+
+## 🔥 Priority: High
+
 ### ✅ P1: Environment Architecture Fix
 **Status:** 🟢 Complete  
 **Completed:** 2025-12-19  
@@ -120,7 +155,7 @@ Master list of feature requests, improvements, and technical debt items.
 ---
 
 ### P7: Color Consistency with Themes
-**Status:** 🔴 Not Started  
+**Status:** 🟢 Complete (Dec 20)  
 **Created:** 2025-12-19  
 **Description:** Ensure all colors are consistent with the theme system. No hardcoded colors.
 
