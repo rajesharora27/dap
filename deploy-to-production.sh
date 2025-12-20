@@ -67,6 +67,9 @@ cp -r backend/config/* /tmp/dap-deploy-prod/config/ 2>/dev/null || true
 # Copy ecosystem config for PM2
 cp backend/ecosystem.config.js /tmp/dap-deploy-prod/ecosystem.config.js 2>/dev/null || true
 
+# Copy maintenance page
+cp deploy/maintenance.html /tmp/dap-deploy-prod/maintenance.html 2>/dev/null || true
+
 # Copy scripts
 cp -r scripts /tmp/dap-deploy-prod/scripts-new 2>/dev/null || true
 
@@ -94,6 +97,11 @@ echo "📝 Deploying as dap user..."
 
 # Stop PM2 processes first
 sudo -u dap /usr/local/bin/pm2 stop all 2>/dev/null || true
+
+# Activate maintenance mode
+echo "🚧 Activating maintenance mode..."
+[ -f /tmp/dap-deploy-incoming/maintenance.html ] && cp /tmp/dap-deploy-incoming/maintenance.html /data/dap/app/frontend/dist/index.html || echo "⚠️ Maintenance page missing"
+cp /tmp/dap-deploy-incoming/maintenance.html /data/dap/www/maintenance.html 2>/dev/null || true
 
 # Copy files as dap user
 sudo -u dap bash << 'DAPCMDS'
