@@ -46,6 +46,20 @@ import {
     faImage as farImage,
     faLightbulb as farLightbulb,
     faObjectGroup as farObjectGroup,
+    faRectangleList as farRectangleList,
+    faWindowMaximize as farWindowMaximize,
+    faKeyboard as farKeyboard,
+    faMap as farMap,
+    faCompass as farCompass,
+    faNewspaper as farNewspaper,
+    faNoteSticky as farNoteSticky,
+    faAddressCard as farAddressCard,
+    faIdBadge as farIdBadge,
+    faClipboard as farClipboard,
+    faHandshake as farHandshake,
+    faGem as farGem,
+    faBuilding as farBuilding,
+    faCircleUser as farCircleUser,
 } from '@fortawesome/free-regular-svg-icons';
 
 // Solid icons (for icons not available in regular or need filled style)
@@ -518,6 +532,29 @@ export const ColorLens = createIcon(faPaintBrush, 'ColorLens');
 export const LockReset = createIcon(faUnlockKeyhole, 'LockReset');
 export const Update = createIcon(faSync, 'Update');
 
+// ==========================================
+// Outlined Icons (Regular style - flat/simple)
+// ==========================================
+export const RectangleList = createIcon(farRectangleList, 'RectangleList');
+export const WindowMaximize = createIcon(farWindowMaximize, 'WindowMaximize');
+export const Compass = createIcon(farCompass, 'Compass');
+export const Newspaper = createIcon(farNewspaper, 'Newspaper');
+export const NoteSticky = createIcon(farNoteSticky, 'NoteSticky');
+export const AddressCard = createIcon(farAddressCard, 'AddressCard');
+export const IdBadge = createIcon(farIdBadge, 'IdBadge');
+export const ClipboardOutlined = createIcon(farClipboard, 'ClipboardOutlined');
+export const Handshake = createIcon(farHandshake, 'Handshake');
+export const Gem = createIcon(farGem, 'Gem');
+export const BuildingOutlined = createIcon(farBuilding, 'BuildingOutlined');
+export const CircleUserOutlined = createIcon(farCircleUser, 'CircleUserOutlined');
+export const FileOutlined = createIcon(farFile, 'FileOutlined');
+export const CommentOutlined = createIcon(farComment, 'CommentOutlined');
+export const BellOutlined = createIcon(farBell, 'BellOutlined');
+export const ClockOutlined = createIcon(farClock, 'ClockOutlined');
+export const StarOutlined = createIcon(farStar, 'StarOutlined');
+export const UserOutlined = createIcon(farUser, 'UserOutlined');
+export const ObjectGroupOutlined = createIcon(farObjectGroup, 'ObjectGroupOutlined');
+export const ImageOutlined = createIcon(farImage, 'ImageOutlined');
 
 // Export all as namespace for easy access
 export const Icons = {
