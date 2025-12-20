@@ -36,7 +36,7 @@ import {
     DataObject,
     TextFields,
     Download,
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 import DataTable, { DataTableColumn } from './DataTable';
 
 export interface QueryResultDisplayProps {

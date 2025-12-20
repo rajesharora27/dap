@@ -1,8 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Box, Button, Container, Paper, Typography } from '@mui/material';
 import { captureException } from '../lib/sentry';
-import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
-import RefreshIcon from '@mui/icons-material/Refresh';
+import { ErrorOutline as ErrorOutlineIcon, Refresh as RefreshIcon } from './common/FAIcon';
 
 interface Props {
     children: ReactNode;

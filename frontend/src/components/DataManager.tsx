@@ -24,7 +24,7 @@ import {
     Select,
     MenuItem
 } from '@mui/material';
-import { Delete, Refresh, Warning, DataObject, Add, RemoveCircleOutline } from '@mui/icons-material';
+import { Delete, Refresh, Warning, DataObject, Add, RemoveCircleOutline } from '../components/common/FAIcon';
 
 const DELETE_ALL_TASKS = gql`
   mutation ProcessDeletionQueue {

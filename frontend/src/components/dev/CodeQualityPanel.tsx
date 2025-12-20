@@ -20,7 +20,7 @@ import {
     Error as FailIcon,
     Info as InfoIcon,
     PlayArrow as RunIcon
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 
 interface CoverageMetrics {
     total: number;

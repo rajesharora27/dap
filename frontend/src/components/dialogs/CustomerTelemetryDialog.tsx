@@ -24,7 +24,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import { Add, Delete, CheckCircle, Cancel } from '@mui/icons-material';
+import { Add, Delete, CheckCircle, Cancel } from '../../components/common/FAIcon';
 
 const GET_TASK_TELEMETRY = gql`
   query GetTaskTelemetry($customerTaskId: ID!) {

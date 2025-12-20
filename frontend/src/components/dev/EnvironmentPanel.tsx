@@ -23,7 +23,7 @@ import {
     Refresh as RefreshIcon,
     Lock as LockIcon,
     Info as InfoIcon
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 
 interface EnvVar {
     key: string;

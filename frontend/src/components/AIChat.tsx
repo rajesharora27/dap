@@ -42,7 +42,7 @@ import {
   DeleteOutline,
   Refresh,
   Storage,
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 import { gql, useMutation, useQuery } from '@apollo/client';
 import { useAuth } from './AuthContext';
 import { useAIAssistant, AIMessage } from '../hooks/useAIAssistant';

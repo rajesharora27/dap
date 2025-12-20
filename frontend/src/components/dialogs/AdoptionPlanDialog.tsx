@@ -33,7 +33,7 @@ import {
   MoreVert,
   Sync,
   Assessment,
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 
 const GET_ADOPTION_PLAN = gql`
   query GetAdoptionPlan($id: ID!) {

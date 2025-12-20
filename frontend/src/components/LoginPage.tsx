@@ -19,7 +19,7 @@ import {
   Person,
   Lock,
   ArrowForward
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 import { useAuth } from './AuthContext';
 
 const LOGIN = gql`

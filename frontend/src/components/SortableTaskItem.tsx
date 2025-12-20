@@ -14,7 +14,7 @@ import {
     DragIndicator,
     Edit,
     Delete
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 

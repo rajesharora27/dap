@@ -7,7 +7,7 @@ import {
     Checkbox, OutlinedInput, Collapse
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension, FilterList, ExpandMore, ExpandLess } from '@mui/icons-material';
+import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension, FilterList, ExpandMore, ExpandLess } from '../components/common/FAIcon';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';

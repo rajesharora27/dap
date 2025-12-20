@@ -12,7 +12,7 @@ import {
   Chip,
   Paper
 } from '@mui/material';
-import { Add, Edit, Delete } from '@mui/icons-material';
+import { Add, Edit, Delete } from '../components/common/FAIcon';
 import { ProductDialog } from './dialogs/ProductDialog';
 import { gql, useMutation } from '@apollo/client';
 

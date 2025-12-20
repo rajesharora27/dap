@@ -28,7 +28,7 @@ import {
   Cancel as CancelIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 import { useTheme } from '../theme/ThemeProvider';
 import { getThemeOptions, themes, CustomThemeConfig } from '../theme/themes';
 

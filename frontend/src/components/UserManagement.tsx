@@ -38,7 +38,7 @@ import {
   LockReset as ResetPasswordIcon,
   CheckCircle,
   Cancel
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 import { gql, useQuery, useMutation } from '@apollo/client';
 
 // GraphQL Queries

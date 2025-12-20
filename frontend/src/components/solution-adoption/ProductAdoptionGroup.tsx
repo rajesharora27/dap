@@ -30,7 +30,7 @@ import {
   Upload,
   FilterList,
   Clear,
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 import { AdoptionTaskTable, TaskData } from '../shared/AdoptionTaskTable';
 import { adoptionPlanColors } from '../../utils/tabStyles';
 

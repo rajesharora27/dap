@@ -34,7 +34,7 @@ import {
   Business,
   CloudDownload,
   CloudUpload,
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 import { AdoptionPlanDialog } from './dialogs/AdoptionPlanDialog';
 import { AssignProductDialog } from './dialogs/AssignProductDialog';
 

@@ -18,7 +18,7 @@ import {
   DialogActions,
   Divider
 } from '@mui/material';
-import { Add, Edit, Delete, Download, Upload, Assessment } from '@mui/icons-material';
+import { Add, Edit, Delete, Download, Upload, Assessment } from '../components/common/FAIcon';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { AssignSolutionDialog } from './dialogs/AssignSolutionDialog';
 import { EditSolutionEntitlementsDialog } from './dialogs/EditSolutionEntitlementsDialog';

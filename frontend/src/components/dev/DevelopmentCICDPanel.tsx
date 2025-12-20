@@ -27,7 +27,7 @@ import {
     Refresh as RefreshIcon,
     OpenInNew as OpenIcon,
     Info as InfoIcon
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 
 interface WorkflowRun {
     id: number;

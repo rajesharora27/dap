@@ -28,7 +28,7 @@ import {
     TrendingUp as TrendingUpIcon,
     CheckCircle as checkIcon,
     Warning as warningIcon
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 
 // GraphQL Queries
 const DASHBOARD_DATA = gql`

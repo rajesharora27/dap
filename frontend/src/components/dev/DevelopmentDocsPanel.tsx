@@ -34,7 +34,7 @@ import {
     Download as DownloadIcon,
     OpenInNew as OpenIcon,
     Info as InfoIcon
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 
 interface Document {
     name: string;

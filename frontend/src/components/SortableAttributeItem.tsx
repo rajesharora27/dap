@@ -11,7 +11,7 @@ import {
     Edit as EditIcon,
     Delete as DeleteIcon,
     DragIndicator
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 

@@ -50,7 +50,7 @@ import {
     BugReport,
     Speed,
     Storage
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 
 // ==================== Types ====================
 

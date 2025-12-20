@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, Button, Alert, Stack, Chip } from '@mui/material';
 import { getDevApiBaseUrl } from '../../config/frontend.config';
-import { CheckCircle, Error as ErrorIcon, Info } from '@mui/icons-material';
+import { CheckCircle, Error as ErrorIcon, Info } from '../../components/common/FAIcon';
 
 /**
  * DevTools API Connection Tester

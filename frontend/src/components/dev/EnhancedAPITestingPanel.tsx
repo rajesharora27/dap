@@ -28,7 +28,7 @@ import {
     Code,
     CheckCircle,
     Error as ErrorIcon
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 
 interface Example {
     name: string;

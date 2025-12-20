@@ -18,7 +18,7 @@ import {
   ListItemText,
   Tooltip
 } from '@mui/material';
-import { Sync, Assessment, FilterList } from '@mui/icons-material';
+import { Sync, Assessment, FilterList } from '../../components/common/FAIcon';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { ProductAdoptionGroup } from './ProductAdoptionGroup';
 import { SolutionTasksGroup } from './SolutionTasksGroup';

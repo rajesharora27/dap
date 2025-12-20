@@ -24,7 +24,7 @@ import {
   Sort,
   AccessTime,
   Update
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 import { ProductDialog } from './dialogs/ProductDialog';
 
 const PRODUCTS = gql`query Products($first:Int,$after:String,$last:Int,$before:String){ 

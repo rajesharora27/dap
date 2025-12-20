@@ -17,7 +17,7 @@ import {
     IconButton,
     LinearProgress
 } from '@mui/material';
-import { Close, Inventory, Description, CheckCircle, LocalOffer, NewReleases } from '@mui/icons-material';
+import { Close, Inventory, Description, CheckCircle, LocalOffer, NewReleases } from '../../components/common/FAIcon';
 import { gql, useQuery } from '@apollo/client';
 
 const GET_PRODUCT_DETAILS = gql`

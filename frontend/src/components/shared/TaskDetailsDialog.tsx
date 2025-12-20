@@ -24,7 +24,7 @@ import {
 import {
   Article,
   OndemandVideo,
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 import { getStatusBackgroundColor, getStatusColor } from '../../utils/statusStyles';
 import { formatSuccessCriteria } from '../../utils/criteriaFormatter';
 

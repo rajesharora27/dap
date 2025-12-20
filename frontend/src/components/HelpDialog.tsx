@@ -33,7 +33,7 @@ import {
     TrendingUp,
     Settings,
     Security,
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 
 interface HelpDialogProps {
     open: boolean;

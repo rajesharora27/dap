@@ -27,7 +27,7 @@ import {
     Info as InfoIcon,
     BugReport as DebugIcon,
     Info as InfoIconOutlined
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 
 interface LogEntry {
     timestamp: string;

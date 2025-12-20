@@ -4,7 +4,7 @@ import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button, CircularProgress
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add } from '@mui/icons-material';
+import { Edit, Delete, Add } from '../components/common/FAIcon';
 import { useQuery } from '@apollo/client';
 import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
 import { gql } from '@apollo/client';

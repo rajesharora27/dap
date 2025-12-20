@@ -34,7 +34,7 @@ import {
 import {
   ExpandMore,
   ExpandLess,
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 import { getStatusBackgroundColor, getStatusColor, getUpdateSourceChipColor } from '../../utils/statusStyles';
 import { TaskDetailsDialog, TaskDetailsData } from './TaskDetailsDialog';
 

@@ -23,7 +23,7 @@ import {
   Divider,
   TextField,
 } from '@mui/material';
-import { CheckCircle } from '@mui/icons-material';
+import { CheckCircle } from '../../components/common/FAIcon';
 import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from './TaskDialog';
 
 const GET_PRODUCTS_AND_OUTCOMES = gql`

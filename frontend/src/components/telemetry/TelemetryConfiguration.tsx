@@ -27,7 +27,7 @@ import {
   ExpandMore as ExpandMoreIcon,
   CheckCircle as CheckCircleIcon,
   Error as ErrorIcon
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 
 // Types for telemetry configuration
 interface TelemetryAttribute {

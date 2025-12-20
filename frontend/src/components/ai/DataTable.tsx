@@ -32,7 +32,7 @@ import {
     KeyboardArrowDown,
     KeyboardArrowUp,
     Check,
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 
 export interface DataTableColumn {
     /** Column key (matches data property) */

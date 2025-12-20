@@ -47,7 +47,7 @@ import {
   Delete as DeleteIcon,
   PersonAdd as AssignIcon,
   Close as CloseIcon
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 import { gql, useQuery, useMutation } from '@apollo/client';
 
 // GraphQL Queries

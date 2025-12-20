@@ -67,6 +67,7 @@ import { BackupManagementPanel } from '../components/BackupManagementPanel';
 import { ThemeSelector } from '../components/ThemeSelector';
 import { AboutPage } from '../components/AboutPage';
 import { License, Outcome } from '../types/shared';
+// Font Awesome Icon Components (drop-in replacements for MUI icons)
 import {
   Inventory2 as ProductIcon,
   Lightbulb as SolutionIcon,
@@ -74,7 +75,6 @@ import {
   Backup as BackupIcon,
   Edit,
   Delete,
-
   DragIndicator,
   ImportExport,
   FileDownload,
@@ -95,8 +95,19 @@ import {
   People as UsersIcon,
   Security as RolesIcon,
   Palette as PaletteIcon,
-  Info as AboutIcon
-} from '@mui/icons-material';
+  Info as AboutIcon,
+  Storage as StorageIcon,
+  Article as ArticleIcon,
+  Build as BuildIcon,
+  Settings as SettingsIcon,
+  Api as ApiIcon,
+  Assessment as AssessmentIcon,
+  Speed as SpeedIcon,
+  GitHub as GitHubIcon,
+  PlaylistPlay as PlaylistPlayIcon,
+  BugReport as BugReportIcon,
+  DeveloperMode as DeveloperModeIcon,
+} from '../components/common/FAIcon';
 import { AuthBar } from '../components/AuthBar';
 import { useAuth } from '../components/AuthContext';
 import { LoginPage } from '../components/LoginPage';
@@ -112,19 +123,6 @@ import { EnhancedAPITestingPanel } from '../components/dev/EnhancedAPITestingPan
 import { CodeQualityPanel } from '../components/dev/CodeQualityPanel';
 import { PerformancePanel, TaskRunnerPanel } from '../components/dev/AdvancedPanels';
 import { EnhancedGitPanel } from '../components/dev/EnhancedGitPanel';
-
-// Dev Icons
-import DeveloperModeIcon from '@mui/icons-material/DeveloperMode';
-import StorageIcon from '@mui/icons-material/Storage';
-import ArticleIcon from '@mui/icons-material/Article';
-import BuildIcon from '@mui/icons-material/Build';
-import SettingsIcon from '@mui/icons-material/Settings';
-import ApiIcon from '@mui/icons-material/Api';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import SpeedIcon from '@mui/icons-material/Speed';
-import GitHubIcon from '@mui/icons-material/GitHub';
-import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
-import BugReportIcon from '@mui/icons-material/BugReport';
 import { gql, useQuery, useApolloClient, ApolloError } from '@apollo/client';
 import {
   DndContext,

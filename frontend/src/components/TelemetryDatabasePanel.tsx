@@ -23,7 +23,7 @@ import {
   IconButton,
   Tooltip,
 } from '@mui/material';
-import { CheckCircle, Cancel, Edit, Refresh, Download, Upload } from '@mui/icons-material';
+import { CheckCircle, Cancel, Edit, Refresh, Download, Upload } from '../components/common/FAIcon';
 
 const GET_TELEMETRY_DATABASE = gql`
   query GetCustomerTelemetryDatabase($customerId: ID, $customerProductId: ID) {

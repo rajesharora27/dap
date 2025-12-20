@@ -22,7 +22,7 @@ import {
   Person,
   Psychology,
   HelpOutline,
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 import { useQuery } from '@apollo/client';
 import { useAuth } from './AuthContext';
 import { AIChat } from './AIChat';

@@ -5,12 +5,12 @@ import {
     IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, List, ListItem, ListItemText, CircularProgress, Card, CardContent, Checkbox, OutlinedInput, Collapse, Alert
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2, Label, FilterList, ExpandMore, ExpandLess, VerifiedUser, NewReleases } from '@mui/icons-material';
+import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2, Label, FilterList, ExpandMore, ExpandLess, VerifiedUser, NewReleases } from '../components/common/FAIcon';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { DragIndicator } from '@mui/icons-material';
+import { DragIndicator } from '../components/common/FAIcon';
 
 import { SOLUTIONS, TASKS_FOR_SOLUTION, PRODUCTS, SOLUTION, SOLUTION_TAGS } from '../graphql/queries';
 import { DELETE_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, UPDATE_SOLUTION, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '../graphql/mutations';

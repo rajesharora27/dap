@@ -38,7 +38,7 @@ import {
     Close,
     Code,
     CallSplit
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 
 interface GitStatus {
     branch: string;

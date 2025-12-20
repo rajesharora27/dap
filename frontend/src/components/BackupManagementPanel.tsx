@@ -42,7 +42,7 @@ import {
   Schedule,
   DataObject,
   Upload
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 
 // GraphQL Queries and Mutations
 const LIST_BACKUPS = gql`

@@ -30,7 +30,7 @@ import {
     Error as ErrorIcon,
     Code,
     Timeline
-} from '@mui/icons-material';
+} from '../../components/common/FAIcon';
 
 interface BuildResult {
     success: boolean;

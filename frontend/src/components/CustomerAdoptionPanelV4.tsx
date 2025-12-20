@@ -60,7 +60,7 @@ import {
   OndemandVideo,
   Assessment,
   Label,
-} from '@mui/icons-material';
+} from '../components/common/FAIcon';
 import { CustomerDialog } from './dialogs/CustomerDialog';
 import { AssignProductDialog } from './dialogs/AssignProductDialog';
 import { EditEntitlementsDialog } from './dialogs/EditEntitlementsDialog';
