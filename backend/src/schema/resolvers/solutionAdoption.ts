@@ -1605,30 +1605,80 @@ export const SolutionAdoptionMutationResolvers = {
       throw new Error('Solution adoption plan not found');
     }
 
-    // STEP 1: First, sync all underlying product adoption plans
-    // Get underlying product adoption plans using customerSolutionId relationship
-    const customerProducts = await prisma.customerProduct.findMany({
-      where: {
-        customerSolutionId: plan.customerSolutionId  // Use proper relationship instead of name matching
-      },
+    // STEP 1: Sync underlying products and handle missing ones
+    // Get the solution definition to see what products SHOULD be there
+    const customerSolution = await prisma.customerSolution.findUnique({
+      where: { id: plan.customerSolutionId },
       include: {
-        product: true,
-        adoptionPlan: {
+        solution: {
           include: {
-            tasks: true
+            products: {
+              include: { product: true }
+            }
           }
         }
       }
     });
 
-    console.log(`syncSolutionAdoptionPlan STEP 1: Found ${customerProducts.length} products linked to solution`);
+    if (!customerSolution) {
+      throw new Error('Customer solution not found');
+    }
 
-    // Sync each product adoption plan to ensure they reflect latest product changes
     const { CustomerAdoptionMutationResolvers } = require('./customerAdoption');
     const syncResults: { productId: string; productName: string; synced: boolean; error?: string }[] = [];
 
-    for (const cp of customerProducts) {
-      if (cp.adoptionPlan) {
+    // Ensure all products from the solution definition exist for this customer solution
+    for (const solutionProduct of customerSolution.solution.products) {
+      const product = solutionProduct.product;
+
+      // Look for existing customer product assignment for this solution
+      let cp = await prisma.customerProduct.findFirst({
+        where: {
+          customerSolutionId: plan.customerSolutionId,
+          productId: product.id
+        },
+        include: {
+          adoptionPlan: true
+        }
+      });
+
+      if (!cp) {
+        console.log(`syncSolutionAdoptionPlan: Adding missing product ${product.name} to solution`);
+        // Create the missing customer product
+        cp = await prisma.customerProduct.create({
+          data: {
+            customerId: customerSolution.customerId,
+            productId: product.id,
+            name: `${customerSolution.name} - ${customerSolution.solution.name} - ${product.name}`,
+            licenseLevel: customerSolution.licenseLevel,
+            customerSolutionId: customerSolution.id,
+            // Initialize with empty selections, sync will fill them if logic allows
+            selectedOutcomes: [],
+            selectedReleases: []
+          },
+          include: {
+            adoptionPlan: true
+          }
+        });
+      }
+
+      // Ensure adoption plan exists
+      if (!cp.adoptionPlan) {
+        console.log(`syncSolutionAdoptionPlan: Creating missing adoption plan for ${product.name}`);
+        await CustomerAdoptionMutationResolvers.createAdoptionPlan(
+          _,
+          { customerProductId: cp.id },
+          ctx
+        );
+        // Re-fetch to get the new adoption plan
+        cp = await prisma.customerProduct.findUnique({
+          where: { id: cp.id },
+          include: { adoptionPlan: true }
+        }) as any;
+      }
+
+      // Sync the product adoption plan
+      if (cp?.adoptionPlan) {
         try {
           await CustomerAdoptionMutationResolvers.syncAdoptionPlan(
             _,
@@ -1636,15 +1686,15 @@ export const SolutionAdoptionMutationResolvers = {
             ctx
           );
           syncResults.push({
-            productId: cp.productId,
-            productName: cp.name,
+            productId: product.id,
+            productName: product.name,
             synced: true
           });
         } catch (error: any) {
-          console.error(`Failed to sync product adoption plan for ${cp.name}:`, error.message);
+          console.error(`Failed to sync product adoption plan for ${product.name}:`, error.message);
           syncResults.push({
-            productId: cp.productId,
-            productName: cp.name,
+            productId: product.id,
+            productName: product.name,
             synced: false,
             error: error.message
           });

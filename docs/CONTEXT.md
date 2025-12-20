@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.9.0
-**Last Updated:** December 20, 2025  
+**Version:** 2.9.1
+**Last Updated:** December 20, 2025 (18:15 EST)
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -1410,6 +1410,18 @@ Previously only Tasks opened a preview dialog. Now all entities have preview dia
 - **Severity**: Low
 - **Fix**: Removed all debug console.logs from backend and frontend
 - **Files Changed**: Multiple resolver and component files
+
+**Issue 5: Solution Sync Lag & Default Settings**
+- **Severity**: Low (UX)
+- **Problem 1**: Product progress in "Solution Assigned" tab not updating immediately after sync.
+- **Fix 1**: Updated `SYNC_SOLUTION_ADOPTION_PLAN` to return full product data, leveraging Apollo Cache automatic updates. Added `lastSyncedAt` prop to trigger child component refetch.
+- **Problem 2**: Default solution was alphabetical/creation-based, not "SASE".
+- **Fix 2**: Hardcoded logic to prioritize "SASE" for solution selection and "Cisco Secure Access" for product selection if available.
+- **Files Changed**:
+  - `frontend/src/components/CustomerSolutionPanel.tsx`
+  - `frontend/src/components/CustomerAdoptionPanelV4.tsx`
+  - `frontend/src/components/solution-adoption/SolutionAdoptionPlanView.tsx`
+  - `backend/src/seed-solutions.ts` (updated seed defaults)
 
 #### Standard Release Process Created
 

@@ -774,7 +774,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
   // Auto-select first product when customer is selected or products change
   useEffect(() => {
     if (sortedProducts.length > 0 && !selectedCustomerProductId) {
-      setSelectedCustomerProductId(sortedProducts[0].id);
+      // Prioritize Cisco Secure Access
+      const defaultProduct = sortedProducts.find((p: any) => p.name.includes("Cisco Secure Access")) || sortedProducts[0];
+      setSelectedCustomerProductId(defaultProduct.id);
     }
   }, [selectedCustomerId, sortedProducts.length, selectedCustomerProductId, sortedProducts]);
 

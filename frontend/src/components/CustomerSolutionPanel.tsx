@@ -119,11 +119,19 @@ const IMPORT_SOLUTION_TELEMETRY = gql`
 `;
 
 const SYNC_SOLUTION_ADOPTION_PLAN = gql`
-  mutation SyncSolutionAdoptionPlan($id: ID!) {
-    syncSolutionAdoptionPlan(id: $id) {
+  mutation SyncSolutionAdoptionPlan($solutionAdoptionPlanId: ID!) {
+    syncSolutionAdoptionPlan(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
       id
       progressPercentage
       needsSync
+      lastSyncedAt
+      products {
+        id
+        status
+        progressPercentage
+        totalTasks
+        completedTasks
+      }
     }
   }
 `;
@@ -161,9 +169,13 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
     if (lastSelectedId && solutions.some((s: any) => s.id === lastSelectedId)) {
       setSelectedSolutionId(lastSelectedId);
     } else if (!selectedSolutionId) {
-      // Default to first solution with adoption plan, or just first solution
+      // Default logic:
+      // 1. Prioritize solution named "SASE" if available
+      // 2. Otherwise prioritize first solution with an adoption plan
+      // 3. Fallback to just the first solution in the list
+      const saseSolution = solutions.find((s: any) => s.solution.name === 'SASE');
       const solutionWithPlan = solutions.find((s: any) => s.adoptionPlan);
-      setSelectedSolutionId(solutionWithPlan?.id || solutions[0].id);
+      setSelectedSolutionId(saseSolution?.id || solutionWithPlan?.id || solutions[0].id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.customer?.solutions, customerId]); // Intentionally excluding selectedSolutionId to prevent infinite loop
@@ -412,7 +424,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
                       size="small"
                       startIcon={<Sync />}
                       color={selectedCustomerSolution.adoptionPlan.needsSync ? 'warning' : 'primary'}
-                      onClick={() => syncPlan({ variables: { id: selectedCustomerSolution.adoptionPlan.id } })}
+                      onClick={() => syncPlan({ variables: { solutionAdoptionPlanId: selectedCustomerSolution.adoptionPlan.id } })}
                       disabled={syncLoading}
                     >
                       {syncLoading ? 'Syncing...' : selectedCustomerSolution.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
@@ -480,6 +492,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
         <SolutionAdoptionPlanView
           solutionAdoptionPlanId={selectedCustomerSolution.adoptionPlan.id}
           customerName={customer.name}
+          lastSyncedAt={selectedCustomerSolution.adoptionPlan.lastSyncedAt}
         />
       )}
 

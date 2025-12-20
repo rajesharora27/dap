@@ -253,11 +253,13 @@ const EXPORT_SOLUTION_TELEMETRY_TEMPLATE = gql`
 interface Props {
   solutionAdoptionPlanId: string;
   customerName: string;
+  lastSyncedAt?: string;
 }
 
 export const SolutionAdoptionPlanView: React.FC<Props> = ({
   solutionAdoptionPlanId,
-  customerName
+  customerName,
+  lastSyncedAt
 }) => {
   const [success, setSuccess] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -276,6 +278,13 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     variables: { id: solutionAdoptionPlanId },
     skip: !solutionAdoptionPlanId
   });
+
+  // Refetch when lastSyncedAt changes (triggered by parent sync)
+  React.useEffect(() => {
+    if (lastSyncedAt) {
+      refetch();
+    }
+  }, [lastSyncedAt, refetch]);
 
   const [updateSolutionTaskStatus] = useMutation(UPDATE_CUSTOMER_SOLUTION_TASK_STATUS, {
     onCompleted: () => {

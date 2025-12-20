@@ -378,24 +378,58 @@ export async function seedSolutions() {
     const customers = await prisma.customer.findMany({ take: 3 });
 
     if (customers.length > 0) {
-      // Assign security solution to first customer
+      // Assign SASE solution to first customer (Default Solution)
       const customerSolution1 = await prisma.customerSolution.upsert({
         where: {
           customerId_solutionId: {
             customerId: customers[0].id,
-            solutionId: securitySolution.id
+            solutionId: digitalSolution.id
           }
         },
         update: {},
         create: {
           customerId: customers[0].id,
-          solutionId: securitySolution.id,
-          name: 'Production Security Bundle',
+          solutionId: digitalSolution.id,
+          name: 'Global SASE Deployment',
           licenseLevel: LicenseLevel.ADVANTAGE,
-          selectedOutcomes: [securityOutcome1.id, securityOutcome2.id],
-          selectedReleases: [securityRelease.id]
+          selectedOutcomes: [digitalOutcome1.id, digitalOutcome2.id],
+          selectedReleases: []
         }
       });
+
+      console.log('[seed-solutions] Created default customer solution assignment (SASE):', customerSolution1.id);
+
+      // Assign Cisco Secure Access as standalone product (Default Product)
+      const secureAccessProduct = await prisma.product.findUnique({
+        where: { id: 'prod-cisco-secure-access-sample' }
+      });
+
+      if (secureAccessProduct) {
+        // Find existing to determine if upsert is needed by name or just create if complex unique constraint
+        // The unique constraint is [customerId, productId, name] or similar. We'll use findFirst to check.
+        const existingCA = await prisma.customerProduct.findFirst({
+          where: {
+            customerId: customers[0].id,
+            productId: secureAccessProduct.id,
+            customerSolutionId: null // Ensure it's standalone
+          }
+        });
+
+        if (!existingCA) {
+          await prisma.customerProduct.create({
+            data: {
+              customerId: customers[0].id,
+              productId: secureAccessProduct.id,
+              name: 'Cisco Secure Access',
+              licenseLevel: LicenseLevel.ESSENTIAL,
+              customerSolutionId: null
+            }
+          });
+          console.log('[seed-solutions] Created default standalone product assignment: Cisco Secure Access');
+        } else {
+          console.log('[seed-solutions] Cisco Secure Access already assigned as standalone product');
+        }
+      }
 
       console.log('[seed-solutions] Created customer solution assignment:', customerSolution1.id);
 
