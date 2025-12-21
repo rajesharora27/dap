@@ -74,16 +74,24 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
             const isValidSelection = selectedProduct && products.some((p: any) => p.id === selectedProduct);
 
             if (!isValidSelection) {
-                const defaultProduct = products.find((p: any) => p.name === 'Cisco Secure Access');
+                // Try case-insensitive comparison
+                const defaultProduct = products.find((p: any) =>
+                    p.name.trim().toLowerCase() === 'cisco secure access'
+                );
+
+                // Fallback to first product if default not found
                 const targetId = defaultProduct ? defaultProduct.id : products[0].id;
 
                 if (targetId && targetId !== selectedProduct) {
+                    // console.log('Setting default product to:', defaultProduct?.name || products[0].name);
                     setSelectedProduct(targetId);
                     localStorage.setItem('lastSelectedProductId', targetId);
                 }
             }
         }
     }, [products, productsLoading, selectedProduct]);
+
+
 
     // Fetch single product details if selected
     const { data: productData, error: productError, refetch: refetchProductDetail } = useQuery(PRODUCT, {
@@ -592,6 +600,23 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         } catch (error) {
             console.error('Error reordering tasks:', error);
             alert('Failed to update sequence');
+        }
+    };
+
+    const handleTagChange = async (taskId: string, newTagIds: string[]) => {
+        try {
+            await client.mutate({
+                mutation: UPDATE_TASK,
+                variables: {
+                    id: taskId,
+                    input: { tagIds: newTagIds }
+                },
+                refetchQueries: ['TasksForProduct'],
+                awaitRefetchQueries: true
+            });
+        } catch (error) {
+            console.error('Error updating task tags:', error);
+            alert('Failed to update task tags');
         }
     };
 
@@ -1183,6 +1208,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         onDoubleClick={(t: any) => { setEditingTask(t); setTaskDialog(true); }}
                                                         onWeightChange={handleWeightChange}
                                                         onSequenceChange={handleSequenceChange}
+                                                        onTagChange={handleTagChange}
+                                                        availableTags={displayProduct?.tags || []}
                                                         disableDrag={hasActiveFilters}
                                                     />
                                                 ))}
@@ -1489,11 +1516,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         setTagDialog(true);
                                                     }}
                                                     onDelete={() => handleDeleteTag(tag.id)}
-                                                    deleteIcon={
-                                                        <Tooltip title="Delete Tag">
-                                                            <Delete />
-                                                        </Tooltip>
-                                                    }
+                                                    deleteIcon={<Delete />}
                                                 />
                                             ))}
                                         </Box>

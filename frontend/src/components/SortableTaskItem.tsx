@@ -13,14 +13,16 @@ import {
 import {
     DragIndicator,
     Edit,
-    Delete
+    Delete,
+    Add
 } from '../components/common/FAIcon';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChange, onSequenceChange, disableDrag }: any) {
+export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChange, onSequenceChange, onTagChange, availableTags, disableDrag }: any) {
     const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
     const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
+    const [tagMenuAnchor, setTagMenuAnchor] = useState<{ el: HTMLElement; task: any } | null>(null);
 
     const {
         attributes,
@@ -123,33 +125,57 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                     </Typography>
                 </TableCell>
 
-                {/* Tags Column */}
-                <TableCell sx={{ minWidth: 120, textAlign: 'left' }}>
-                    {(() => {
-                        const allTags = [...(task.tags || []), ...(task.solutionTags || [])];
-                        if (allTags.length === 0) return <Typography variant="caption" color="text.secondary">-</Typography>;
-                        return (
-                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                                {allTags.map((tagRef: any) => {
-                                    const tag = tagRef.tag || tagRef;
-                                    return (
-                                        <Chip
-                                            key={tag.id}
-                                            label={tag.name}
-                                            size="small"
-                                            sx={{
-                                                height: 18,
-                                                fontSize: '0.65rem',
-                                                backgroundColor: tag.color || '#888',
-                                                color: '#fff',
-                                                fontWeight: 600
-                                            }}
-                                        />
-                                    );
-                                })}
-                            </Box>
-                        );
-                    })()}
+                <TableCell sx={{ minWidth: 150, textAlign: 'left' }}>
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                        {(() => {
+                            const allTags = [...(task.tags || []), ...(task.solutionTags || [])];
+                            return allTags.map((tagRef: any) => {
+                                const tag = tagRef.tag || tagRef;
+                                return (
+                                    <Chip
+                                        key={tag.id}
+                                        label={tag.name}
+                                        size="small"
+                                        onDelete={(e) => {
+                                            e.stopPropagation();
+                                            // Call the new onTagChange handler to remove this tag
+                                            // This requires the parent component to pass onTagChange
+                                            if (onTagChange) {
+                                                const currentTagIds = (task.tags || []).map((t: any) => t.id);
+                                                const newTagIds = currentTagIds.filter((id: string) => id !== tag.id);
+                                                onTagChange(task.id, newTagIds);
+                                            }
+                                        }}
+                                        sx={{
+                                            height: 20,
+                                            fontSize: '0.7rem',
+                                            backgroundColor: tag.color || '#888',
+                                            color: '#fff',
+                                            fontWeight: 600,
+                                            '& .MuiChip-deleteIcon': {
+                                                color: 'rgba(255, 255, 255, 0.7)',
+                                                fontSize: '12px',
+                                                '&:hover': {
+                                                    color: '#fff'
+                                                }
+                                            }
+                                        }}
+                                    />
+                                );
+                            });
+                        })()}
+                        {/* Dropdown to add tags */}
+                        <IconButton
+                            size="small"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setTagMenuAnchor({ el: e.currentTarget, task });
+                            }}
+                            sx={{ padding: 0.5, marginLeft: 0.5 }}
+                        >
+                            <Add sx={{ fontSize: '1rem' }} />
+                        </IconButton>
+                    </Box>
                 </TableCell>
 
                 {/* Resources */}
@@ -402,6 +428,46 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 >
                     Open All ({videoMenuAnchor?.links.length})
                 </MenuItem>
+            </Menu>
+
+            {/* Menu for adding tags */}
+            <Menu
+                anchorEl={tagMenuAnchor?.el}
+                open={Boolean(tagMenuAnchor)}
+                onClose={() => setTagMenuAnchor(null)}
+            >
+                <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
+                    Select tag to add:
+                </MenuItem>
+                {availableTags && availableTags.length > 0 ? (
+                    availableTags
+                        .filter((tag: any) => !tagMenuAnchor?.task.tags?.some((t: any) => t.id === tag.id))
+                        .map((tag: any) => (
+                            <MenuItem
+                                key={tag.id}
+                                onClick={() => {
+                                    if (onTagChange && tagMenuAnchor) {
+                                        const currentTagIds = (tagMenuAnchor.task.tags || []).map((t: any) => t.id);
+                                        onTagChange(tagMenuAnchor.task.id, [...currentTagIds, tag.id]);
+                                    }
+                                    setTagMenuAnchor(null);
+                                }}
+                                sx={{ fontSize: '0.875rem' }}
+                            >
+                                <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: tag.color, mr: 1, display: 'inline-block' }} />
+                                {tag.name}
+                            </MenuItem>
+                        ))
+                ) : (
+                    <MenuItem disabled sx={{ fontSize: '0.875rem' }}>
+                        No available tags
+                    </MenuItem>
+                )}
+                {availableTags && availableTags.length > 0 && availableTags.every((tag: any) => tagMenuAnchor?.task.tags?.some((t: any) => t.id === tag.id)) && (
+                    <MenuItem disabled sx={{ fontSize: '0.875rem', fontStyle: 'italic' }}>
+                        All available tags assigned
+                    </MenuItem>
+                )}
             </Menu>
         </>
     );
