@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApolloClient } from '@apollo/client';
-import { exportProductData } from '../utils/productExport';
+import { EXPORT_PRODUCT_TO_EXCEL } from '../graphql/queries';
+
 import { importProductData, ImportStats } from '../utils/productImport';
 
 export const useProductImportExport = (
@@ -18,7 +19,30 @@ export const useProductImportExport = (
         const product = products.find(p => p.id === selectedProduct);
         if (!product) return;
         try {
-            await exportProductData(product, tasks);
+            const { data } = await client.query({
+                query: EXPORT_PRODUCT_TO_EXCEL,
+                variables: { productName: product.name },
+                fetchPolicy: 'network-only' // Ensure fresh data
+            });
+
+            const { filename, content, mimeType } = data.exportProductToExcel;
+
+            // Convert base64 to blob and download
+            const binaryString = window.atob(content);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
         } catch (error) {
             console.error('Export failed:', error);
             alert('Export failed');

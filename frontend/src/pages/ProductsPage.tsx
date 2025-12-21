@@ -68,6 +68,23 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     });
     const products = productsData?.products?.edges?.map((e: any) => e.node) || [];
 
+    // Set default product to 'Cisco Secure Access' if no valid product is selected
+    useEffect(() => {
+        if (!productsLoading && products.length > 0) {
+            const isValidSelection = selectedProduct && products.some((p: any) => p.id === selectedProduct);
+
+            if (!isValidSelection) {
+                const defaultProduct = products.find((p: any) => p.name === 'Cisco Secure Access');
+                const targetId = defaultProduct ? defaultProduct.id : products[0].id;
+
+                if (targetId && targetId !== selectedProduct) {
+                    setSelectedProduct(targetId);
+                    localStorage.setItem('lastSelectedProductId', targetId);
+                }
+            }
+        }
+    }, [products, productsLoading, selectedProduct]);
+
     // Fetch single product details if selected
     const { data: productData, error: productError, refetch: refetchProductDetail } = useQuery(PRODUCT, {
         variables: { id: selectedProduct },
@@ -92,6 +109,9 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         async () => {
             await refetchProducts();
             await refetchTasks();
+            if (selectedProduct) {
+                await refetchProductDetail();
+            }
         }
     );
 

@@ -51,7 +51,12 @@ export class ExcelExportService {
                 release: true
               }
             },
-            telemetryAttributes: includeTelemetry
+            telemetryAttributes: includeTelemetry,
+            taskTags: {
+              include: {
+                tag: true
+              }
+            }
           },
           orderBy: { sequenceNumber: 'asc' }
         },
@@ -219,15 +224,16 @@ export class ExcelExportService {
         notes: task.notes || '',
         outcomes: task.outcomes.map((to: any) => to.outcome.name).join(', '),
         releases: task.releases.map((tr: any) => tr.release.name).join(', '),
-        tags: task.tags.map((tt: any) => tt.tag.name).join(', ')
+        tags: task.taskTags.map((tt: any) => tt.tag.name).join(', ')
       });
     });
 
     // Freeze header row
     sheet.views = [{ state: 'frozen', xSplit: 0, ySplit: 1 }];
     sheet.getCell('D1').note = 'Validated against license levels defined in the Licenses tab.';
-    sheet.getCell('K1').note = 'Use comma-separated outcome names from the Outcomes tab (validation enforced).';
-    sheet.getCell('L1').note = 'Use comma-separated release names from the Releases tab (validation enforced).';
+    sheet.getCell('J1').note = 'Use comma-separated outcome names from the Outcomes tab (validation enforced).';
+    sheet.getCell('K1').note = 'Use comma-separated release names from the Releases tab (validation enforced).';
+    sheet.getCell('L1').note = 'Use comma-separated tag names from the Tags tab (validation enforced).';
 
     const maxRows = Math.max(sheet.rowCount, 500);
 
@@ -244,28 +250,28 @@ export class ExcelExportService {
         error: 'Select a license level from the Licenses tab.'
       };
 
-      sheet.getCell(`K${row}`).dataValidation = {
+      sheet.getCell(`J${row}`).dataValidation = {
         type: 'custom',
         allowBlank: true,
-        formulae: [buildMultiSelectFormula(`K${row}`, "'Outcomes'!$A:$A")],
+        formulae: [buildMultiSelectFormula(`J${row}`, "'Outcomes'!$A:$A")],
         showErrorMessage: true,
         errorTitle: 'Invalid Outcome',
         error: 'Provide comma-separated outcome names from the Outcomes tab.'
       };
 
-      sheet.getCell(`L${row}`).dataValidation = {
+      sheet.getCell(`K${row}`).dataValidation = {
         type: 'custom',
         allowBlank: true,
-        formulae: [buildMultiSelectFormula(`L${row}`, "'Releases'!$A:$A")],
+        formulae: [buildMultiSelectFormula(`K${row}`, "'Releases'!$A:$A")],
         showErrorMessage: true,
         errorTitle: 'Invalid Release',
         error: 'Provide comma-separated release names from the Releases tab.'
       };
 
-      sheet.getCell(`M${row}`).dataValidation = {
+      sheet.getCell(`L${row}`).dataValidation = {
         type: 'custom',
         allowBlank: true,
-        formulae: [buildMultiSelectFormula(`M${row}`, "'Tags'!$A:$A")],
+        formulae: [buildMultiSelectFormula(`L${row}`, "'Tags'!$A:$A")],
         showErrorMessage: true,
         errorTitle: 'Invalid Tag',
         error: 'Provide comma-separated tag names from the Tags tab.'
@@ -583,6 +589,7 @@ export class ExcelExportService {
       '• Weight: 0-100 (decimal allowed)',
       '• Outcomes: Comma-separated outcome names from Tab 4',
       '• Releases: Comma-separated release levels from Tab 5',
+      '• Tags: Comma-separated tag names from Tab 7',
       '',
       'Tab 3: Licenses',
       '--------------',
@@ -606,7 +613,14 @@ export class ExcelExportService {
       '• Data Type: TEXT, NUMBER, DATE, BOOLEAN, or JSON',
       '• Add/remove rows to manage custom attributes',
       '',
-      'Tab 7: Telemetry (Optional)',
+      'Tab 7: Tags ⭐ NEW',
+      '------------------',
+      '• Product-level tags definition',
+      '• Tag Name: Required, unique within product',
+      '• Color: Display color (e.g., error, success, warning)',
+      '• Display Order: Number',
+      '',
+      'Tab 8: Telemetry (Optional)',
       '---------------------------',
       '• Advanced feature - can skip if not needed',
       '• Task Name: Must match task in Tab 2',

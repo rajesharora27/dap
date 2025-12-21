@@ -450,6 +450,7 @@ type CustomerSolutionTaskTag {
     releasesImported: Int!
     licensesImported: Int!
     customAttributesImported: Int!
+    tagsImported: Int!
     telemetryAttributesImported: Int!
   }
 

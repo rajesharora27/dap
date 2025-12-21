@@ -74,6 +74,11 @@ export interface ImportPreview {
       toUpdate: any[];
       toDelete: any[];
     };
+    tags: {
+      toCreate: any[];
+      toUpdate: any[];
+      toDelete: any[];
+    };
     telemetryAttributes: {
       toCreate: any[];
       toUpdate: any[];
@@ -97,6 +102,7 @@ export interface ImportResult {
     releasesImported: number;
     licensesImported: number;
     customAttributesImported: number;
+    tagsImported: number;
     telemetryAttributesImported: number;
   };
   errors: ValidationError[];
@@ -127,6 +133,7 @@ export class ExcelImportService {
     const licensesData = this.parseLicensesSheet(workbook, validationErrors);
     const outcomesData = this.parseOutcomesSheet(workbook, validationErrors);
     const releasesData = this.parseReleasesSheet(workbook, validationErrors);
+    const tagsData = this.parseTagsSheet(workbook, validationErrors);
     const customAttributesData = this.parseCustomAttributesSheet(workbook, validationErrors);
     const telemetryData = this.parseTelemetrySheet(workbook, validationErrors);
 
@@ -137,6 +144,7 @@ export class ExcelImportService {
       licenses: licensesData.length,
       outcomes: outcomesData.length,
       releases: releasesData.length,
+      tags: tagsData.length,
       customAttributes: customAttributesData.length,
       telemetry: telemetryData.length,
       customAttributesSample: customAttributesData.slice(0, 2),
@@ -151,6 +159,7 @@ export class ExcelImportService {
         outcomes: true,
         releases: true,
         licenses: true,
+        tags: true,
         customAttributes: true
       }
     });
@@ -160,6 +169,7 @@ export class ExcelImportService {
       licensesData,
       outcomesData,
       releasesData,
+      tagsData,
       existingProduct,
       validationErrors
     );
@@ -223,6 +233,11 @@ export class ExcelImportService {
           existingProduct?.customAttrs as Record<string, any> || {},
           customAttributesData
         ),
+        tags: this.compareArrays(
+          existingProduct?.tags || [],
+          tagsData,
+          'name'
+        ),
         telemetryAttributes: this.compareTelemetryAttributes(
           existingProduct?.tasks || [],
           tasksData,
@@ -260,6 +275,7 @@ export class ExcelImportService {
           releasesImported: 0,
           licensesImported: 0,
           customAttributesImported: 0,
+          tagsImported: 0,
           telemetryAttributesImported: 0
         },
         errors: actualErrors,
@@ -420,6 +436,42 @@ export class ExcelImportService {
         });
         existingLicenses.forEach((l: any) => licenseMap.set(l.name, l.id));
 
+        // Import tags
+        const tagMap = new Map<string, string>();
+        for (const tag of preview.changes.tags.toCreate) {
+          const created = await tx.productTag.create({
+            data: {
+              name: tag.name,
+              color: tag.color || 'default',
+              displayOrder: tag.displayOrder || 0,
+              productId
+            }
+          });
+          tagMap.set(tag.name, created.id);
+        }
+
+        for (const tag of preview.changes.tags.toUpdate) {
+          const existing = await tx.productTag.findFirst({
+            where: { name: tag.name, productId }
+          });
+          if (existing) {
+            await tx.productTag.update({
+              where: { id: existing.id },
+              data: {
+                color: tag.color || 'default',
+                displayOrder: tag.displayOrder || 0
+              }
+            });
+            tagMap.set(tag.name, existing.id);
+          }
+        }
+
+        // Get existing tags for mapping
+        const existingTags = await tx.productTag.findMany({
+          where: { productId }
+        });
+        existingTags.forEach((t: any) => tagMap.set(t.name, t.id));
+
         // Import custom attributes to the JSON field (customAttrs)
         // This is the legacy JSON field that the frontend uses
         const customAttrsJson: Record<string, any> = {};
@@ -471,6 +523,7 @@ export class ExcelImportService {
         for (const task of preview.changes.tasks.toCreate) {
           const outcomeIds = this.resolveTaskEntityIds(task.outcomes, outcomeMap);
           const releaseIds = this.resolveTaskEntityIds(task.releases, releaseMap);
+          const tagIds = this.resolveTaskEntityIds(task.tags, tagMap);
           const licenseLevel = this.normalizeTaskLicenseLevel(task.licenseLevel);
 
           // Use the imported sequence number or assign the next available
@@ -493,6 +546,9 @@ export class ExcelImportService {
               },
               releases: {
                 create: releaseIds.map((id: string) => ({ releaseId: id }))
+              },
+              taskTags: {
+                create: tagIds.map((id: string) => ({ tagId: id }))
               }
             }
           });
@@ -520,6 +576,7 @@ export class ExcelImportService {
           if (existing) {
             const outcomeIds = this.resolveTaskEntityIds(task.outcomes, outcomeMap);
             const releaseIds = this.resolveTaskEntityIds(task.releases, releaseMap);
+            const tagIds = this.resolveTaskEntityIds(task.tags, tagMap);
             const licenseLevel = this.normalizeTaskLicenseLevel(task.licenseLevel);
 
             await tx.task.update({
@@ -553,6 +610,15 @@ export class ExcelImportService {
               });
             }
 
+            await tx.taskTag.deleteMany({
+              where: { taskId: existing.id }
+            });
+            for (const tagId of tagIds) {
+              await tx.taskTag.create({
+                data: { taskId: existing.id, tagId }
+              });
+            }
+
             await tx.telemetryAttribute.deleteMany({
               where: { taskId: existing.id }
             });
@@ -580,6 +646,7 @@ export class ExcelImportService {
           outcomesImported: preview.changes.outcomes.toCreate.length + preview.changes.outcomes.toUpdate.length,
           releasesImported: preview.changes.releases.toCreate.length + preview.changes.releases.toUpdate.length,
           licensesImported: preview.changes.licenses.toCreate.length + preview.changes.licenses.toUpdate.length,
+          tagsImported: preview.changes.tags.toCreate.length + preview.changes.tags.toUpdate.length,
           customAttributesImported: preview.changes.customAttributes.toCreate.length + preview.changes.customAttributes.toUpdate.length,
           telemetryAttributesImported: preview.changes.telemetryAttributes.toCreate.length
         };
@@ -603,6 +670,7 @@ export class ExcelImportService {
           releasesImported: 0,
           licensesImported: 0,
           customAttributesImported: 0,
+          tagsImported: 0,
           telemetryAttributesImported: 0
         },
         errors: [
@@ -765,6 +833,7 @@ export class ExcelImportService {
           else if (header === 'how-to video' || header === 'howtovideo' || header === 'how to video' || header === 'video') task.howToVideo = value;
           else if (header === 'outcomes' || header === 'outcome' || header === 'outcome names') task.outcomes = value ? value.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
           else if (header === 'releases' || header === 'release' || header === 'release names') task.releases = value ? value.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
+          else if (header === 'tags' || header === 'tag' || header === 'tag names') task.tags = value ? value.split(',').map((s: string) => s.trim()).filter(Boolean) : [];
         });
 
         if (task.name) {
@@ -929,6 +998,47 @@ export class ExcelImportService {
     });
 
     return releases;
+  }
+
+  /**
+   * Parse Tags sheet (Tags tab)
+   */
+  private parseTagsSheet(
+    workbook: ExcelJS.Workbook,
+    errors: ValidationError[]
+  ): any[] {
+    const sheet = this.findWorksheetCaseInsensitive(workbook, 'Tags');
+    if (!sheet) {
+      // Tags are optional for backward compatibility, but if used in tasks, they must be defined
+      return [];
+    }
+
+    const tags: any[] = [];
+    const headers: string[] = [];
+
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) {
+        row.eachCell((cell, colNumber) => {
+          headers[colNumber] = cell.value?.toString().trim() || '';
+        });
+      } else {
+        const tag: any = { __rowNumber: rowNumber };
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber]?.toLowerCase() || '';
+          const value = cell.value?.toString().trim();
+
+          if (header === 'tag name' || header === 'name') tag.name = value;
+          else if (header === 'color') tag.color = value;
+          else if (header === 'display order' || header === 'displayorder' || header === 'order') tag.displayOrder = parseInt(value || '0');
+        });
+
+        if (tag.name) {
+          tags.push(tag);
+        }
+      }
+    });
+
+    return tags;
   }
 
   /**
@@ -1171,6 +1281,7 @@ export class ExcelImportService {
     licensesData: any[],
     outcomesData: any[],
     releasesData: any[],
+    tagsData: any[],
     existingProduct: any,
     errors: ValidationError[]
   ) {
@@ -1262,10 +1373,24 @@ export class ExcelImportService {
       }));
     }
 
+    const tagNames = new Set<string>();
+    const registerTag = (tag: any) => {
+      if (!tag) return;
+      const name = tag.name?.toString().trim();
+      if (name) {
+        tagNames.add(name);
+      }
+    };
+    tagsData.forEach(registerTag);
+    if (existingProduct?.tags) {
+      existingProduct.tags.forEach((tag: any) => registerTag({ name: tag.name }));
+    }
+
     const allowedLicenseDisplay = Array.from(licenseLevels).sort().join(', ') || 'No licenses defined';
     const allowedOutcomeDisplay = Array.from(outcomeNames).sort().join(', ') || 'No outcomes defined';
     const allowedReleaseTokens = new Set<string>([...releaseNames, ...releaseLevels]);
     const allowedReleaseDisplay = Array.from(new Set([...releaseNames, ...releaseLevels])).sort().join(', ') || 'No releases defined';
+    const allowedTagDisplay = Array.from(tagNames).sort().join(', ') || 'No tags defined';
 
     for (const task of tasks) {
       const row = task.__rowNumber;
@@ -1316,6 +1441,21 @@ export class ExcelImportService {
               row,
               field: 'Releases',
               message: `Task "${taskName}" references release "${releaseName}" that is not defined. Allowed values: ${allowedReleaseDisplay}.`,
+              severity: 'error'
+            });
+          }
+        }
+      }
+
+      if (task.tags && task.tags.length > 0) {
+        for (const tagName of task.tags) {
+          if (!tagName) continue;
+          if (tagNames.size > 0 && !tagNames.has(tagName.trim())) {
+            errors.push({
+              sheet: 'Tasks',
+              row,
+              field: 'Tags',
+              message: `Task "${taskName}" references tag "${tagName}" that is not defined. Allowed values: ${allowedTagDisplay}.`,
               severity: 'error'
             });
           }

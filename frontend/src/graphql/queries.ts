@@ -391,3 +391,22 @@ export const CUSTOMER_SOLUTION_TAGS = gql`
      }
   }
 `;
+
+export const EXPORT_PRODUCT_TO_EXCEL = gql`
+  query ExportProductToExcel($productName: String!) {
+    exportProductToExcel(productName: $productName) {
+      filename
+      content
+      mimeType
+      size
+      stats {
+        tasksExported
+        customAttributesExported
+        licensesExported
+        outcomesExported
+        releasesExported
+        telemetryAttributesExported
+      }
+    }
+  }
+`;
