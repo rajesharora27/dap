@@ -7,7 +7,7 @@
  * - Session cleanup after database restore
  */
 
-import { prisma } from '../context';
+import { prisma } from '../shared/graphql/context';
 
 export class SessionManager {
   /**

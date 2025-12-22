@@ -1,0 +1,46 @@
+# Product Module GraphQL Schema
+
+type Product implements Node {
+  id: ID!
+  name: String!
+  description: String
+  tasks(first: Int, after: String, last: Int, before: String): TaskConnection!
+  statusPercent: Int!
+  completionPercentage: Int!
+  customAttrs: JSON
+  solutions: [Solution!]!
+  customers: [Customer!]!
+  licenses: [License!]!
+  outcomes: [Outcome!]!
+  releases: [Release!]!
+  tags: [ProductTag!]!
+}
+
+type ProductEdge {
+  cursor: String!
+  node: Product!
+}
+
+type ProductConnection {
+  edges: [ProductEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+input ProductInput {
+  name: String!
+  description: String
+  customAttrs: JSON
+  licenseIds: [ID!]
+}
+
+extend type Query {
+  product(id: ID!): Product
+  products(first: Int, after: String, last: Int, before: String): ProductConnection!
+}
+
+extend type Mutation {
+  createProduct(input: ProductInput!): Product!
+  updateProduct(id: ID!, input: ProductInput!): Product!
+  deleteProduct(id: ID!): Boolean!
+}

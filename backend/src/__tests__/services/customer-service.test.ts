@@ -1,4 +1,4 @@
-import { CustomerService } from '../../services/CustomerService';
+import { CustomerService } from '../../modules/customer';
 import { TestFactory } from '../factories/TestFactory';
 import { PrismaClient } from '@prisma/client';
 

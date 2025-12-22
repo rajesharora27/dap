@@ -28,7 +28,7 @@ import { AuditLogger, getAuditLogger, generateRequestId, AuditLogEntry } from '.
 import { ErrorHandler, getErrorHandler, AIErrorType } from './ErrorHandler';
 import { DataContextManager, getDataContextManager } from './DataContextManager';
 import { PrismaClient } from '@prisma/client';
-import { prisma as sharedPrisma } from '../../context';
+import { prisma as sharedPrisma } from '../../shared/graphql/context';
 
 /**
  * Default configuration for the AI Agent

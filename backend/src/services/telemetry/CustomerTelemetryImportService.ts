@@ -8,7 +8,7 @@
  */
 
 import ExcelJS from 'exceljs';
-import { prisma } from '../../context';
+import { prisma } from '../../shared/graphql/context';
 import { v4 as uuidv4 } from 'uuid';
 import { evaluateTelemetryAttribute, evaluateTaskStatusFromTelemetry } from './evaluationEngine';
 

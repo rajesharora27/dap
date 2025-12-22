@@ -17,7 +17,7 @@ jest.mock('../../../lib/permissions', () => ({
 }));
 
 // Mock the context
-jest.mock('../../../context', () => ({
+jest.mock('../../../shared/graphql/context', () => ({
     prisma: {
         user: { findUnique: jest.fn() },
     },

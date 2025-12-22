@@ -1,5 +1,5 @@
 
-import { prisma } from './context';
+import { prisma } from './shared/graphql/context';
 
 async function inspectTask() {
     console.log('--- Inspecting Task ---');

@@ -1,5 +1,5 @@
 import ExcelJS from 'exceljs';
-import { prisma } from '../../context';
+import { prisma } from '../../shared/graphql/context';
 import { Product, Task, License, Outcome, Release, CustomAttribute, TelemetryAttribute } from '@prisma/client';
 
 export interface ExportProductOptions {

@@ -12,7 +12,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { prisma as sharedPrisma } from '../../context';
+import { prisma as sharedPrisma } from '../../shared/graphql/context';
 
 /**
  * Structure for caching product data

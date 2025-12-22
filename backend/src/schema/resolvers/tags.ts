@@ -1,6 +1,6 @@
-import { prisma } from '../../context';
-import { requireUser } from '../../lib/auth';
-import { requirePermission } from '../../lib/permissions';
+import { prisma } from '../../shared/graphql/context';
+import { requireUser } from '../../shared/auth/auth-helpers';
+import { requirePermission } from '../../shared/auth/permissions';
 import { PermissionLevel, ResourceType, ProductTag, SolutionTag } from '@prisma/client';
 
 export const TagResolvers = {

@@ -8,7 +8,7 @@
  */
 
 import ExcelJS from 'exceljs';
-import { prisma } from '../../context';
+import { prisma } from '../../shared/graphql/context';
 
 export interface TelemetryTemplateRow {
   taskName: string;

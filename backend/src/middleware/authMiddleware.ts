@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { createAuthService } from '../services/authService';
-import { prisma } from '../context';
+import { prisma } from '../shared/graphql/context';
 
 export interface AuthRequest extends Request {
   user?: {

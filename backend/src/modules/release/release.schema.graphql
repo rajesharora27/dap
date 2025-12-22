@@ -1,0 +1,34 @@
+# Release Module GraphQL Schema
+
+type Release implements Node {
+  id: ID!
+  name: String!
+  description: String
+  level: Float!
+  isActive: Boolean!
+  product: Product
+  productId: ID
+  tasks: [Task!]!
+  inheritedTasks: [Task!]!
+  customAttrs: JSON
+}
+
+input ReleaseInput {
+ name: String!
+  description: String
+  level: Float!
+  isActive: Boolean
+  productId: ID
+  solutionId: ID
+  customAttrs: JSON
+}
+
+extend type Query {
+  releases(productId: ID): [Release!]!
+}
+
+extend type Mutation {
+  createRelease(input: ReleaseInput!): Release!
+  updateRelease(id: ID!, input: ReleaseInput!): Release!
+  deleteRelease(id: ID!): Boolean!
+}

@@ -1,6 +1,6 @@
-import { prisma } from '../../context';
-import { ensureRole } from '../../lib/auth';
-import { logAudit } from '../../lib/audit';
+import { prisma } from '../../shared/graphql/context';
+import { ensureRole } from '../../shared/auth/auth-helpers';
+import { logAudit } from '../../shared/utils/audit';
 import { LicenseLevel } from '@prisma/client';
 import { CustomerTelemetryExportService } from '../../services/telemetry/CustomerTelemetryExportService';
 import { CustomerTelemetryImportService } from '../../services/telemetry/CustomerTelemetryImportService';

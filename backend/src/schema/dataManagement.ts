@@ -1,6 +1,6 @@
-import { logger } from '../context';
-import { prisma } from '../context';
-import { Context } from '../context';
+import { logger } from '../shared/graphql/context';
+import { prisma } from '../shared/graphql/context';
+import { Context } from '../shared/graphql/context';
 
 const dataManagementResolvers = {
   Mutation: {

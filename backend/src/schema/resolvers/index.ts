@@ -1,14 +1,14 @@
 import { GraphQLScalarType, Kind } from 'graphql';
 import { ConnectionArguments, connectionFromArraySlice, cursorToOffset } from 'graphql-relay';
-import { prisma, fallbackActive } from '../../context';
+import { prisma, fallbackActive } from '../../shared/graphql/context';
 import { ExcelExportService, ExcelImportService, ImportMode } from '../../services/excel';
 // (removed earlier simpler import replaced by extended import below)
-import { updateProduct as fbUpdateProduct, softDeleteProduct as fbDeleteProduct, createProduct as fbCreateProduct, createTask as fbCreateTask, updateTask as fbUpdateTask, softDeleteTask as fbSoftDeleteTask, createSolution as fbCreateSolution, updateSolution as fbUpdateSolution, softDeleteSolution as fbDeleteSolution, createCustomer as fbCreateCustomer, updateCustomer as fbUpdateCustomer, softDeleteCustomer as fbDeleteCustomer, listCustomers as fbListCustomers, listLicenses, createLicense as fbCreateLicense, updateLicense as fbUpdateLicense, softDeleteLicense as fbDeleteLicense, createOutcome as fbCreateOutcome, updateOutcome as fbUpdateOutcome, softDeleteOutcome as fbSoftDeleteOutcome, listOutcomes as fbListOutcomes, listOutcomesForProduct as fbListOutcomesForProduct, getOutcomesForTask as fbGetOutcomesForTask, addProductToSolution as fbAddProductToSolution, removeProductFromSolution as fbRemoveProductFromSolution, addProductToCustomer as fbAddProductToCustomer, removeProductFromCustomer as fbRemoveProductFromCustomer, addSolutionToCustomer as fbAddSolutionToCustomer, removeSolutionFromCustomer as fbRemoveSolutionFromCustomer, reorderTasks as fbReorderTasks, fallbackConnections } from '../../lib/fallbackStore';
-import { acquireLock, releaseLock } from '../../lib/lock';
-import { createChangeSet, recordChange, commitChangeSet, undoChangeSet, listChangeSets, getChangeSet, revertChangeSet } from '../../lib/changes';
-import { exportCsv, importCsv } from '../../lib/csv';
-import { generateProductSampleCsv, generateTaskSampleCsv, validateProductHeaders, validateTaskHeaders } from '../../lib/csvSamples';
-import { pubsub, PUBSUB_EVENTS } from '../../lib/pubsub';
+import { updateProduct as fbUpdateProduct, softDeleteProduct as fbDeleteProduct, createProduct as fbCreateProduct, createTask as fbCreateTask, updateTask as fbUpdateTask, softDeleteTask as fbSoftDeleteTask, createSolution as fbCreateSolution, updateSolution as fbUpdateSolution, softDeleteSolution as fbDeleteSolution, createCustomer as fbCreateCustomer, updateCustomer as fbUpdateCustomer, softDeleteCustomer as fbDeleteCustomer, listCustomers as fbListCustomers, listLicenses, createLicense as fbCreateLicense, updateLicense as fbUpdateLicense, softDeleteLicense as fbDeleteLicense, createOutcome as fbCreateOutcome, updateOutcome as fbUpdateOutcome, softDeleteOutcome as fbSoftDeleteOutcome, listOutcomes as fbListOutcomes, listOutcomesForProduct as fbListOutcomesForProduct, getOutcomesForTask as fbGetOutcomesForTask, addProductToSolution as fbAddProductToSolution, removeProductFromSolution as fbRemoveProductFromSolution, addProductToCustomer as fbAddProductToCustomer, removeProductFromCustomer as fbRemoveProductFromCustomer, addSolutionToCustomer as fbAddSolutionToCustomer, removeSolutionFromCustomer as fbRemoveSolutionFromCustomer, reorderTasks as fbReorderTasks, fallbackConnections } from '../../shared/utils/fallbackStore';
+import { acquireLock, releaseLock } from '../../shared/utils/lock';
+import { createChangeSet, recordChange, commitChangeSet, undoChangeSet, listChangeSets, getChangeSet, revertChangeSet } from '../../shared/utils/changes';
+import { exportCsv, importCsv } from '../../shared/utils/csv';
+import { generateProductSampleCsv, generateTaskSampleCsv, validateProductHeaders, validateTaskHeaders } from '../../shared/utils/csvSamples';
+import { pubsub, PUBSUB_EVENTS } from '../../shared/pubsub/pubsub';
 import {
   TelemetryAttributeResolvers,
   TelemetryValueResolvers,
@@ -38,23 +38,65 @@ import { solutionReportingService } from '../../services/solutionReportingServic
 import { BackupQueryResolvers, BackupMutationResolvers } from './backup';
 import { AuthQueryResolvers, AuthMutationResolvers } from './auth';
 import { AIQueryResolvers, AIMutationResolvers } from './ai';
-import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../lib/pagination';
-import { logAudit } from '../../lib/audit';
-import { ensureRole, requireUser } from '../../lib/auth';
+import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../shared/utils/pagination';
+import { logAudit } from '../../shared/utils/audit';
+import { ensureRole, requireUser } from '../../shared/auth/auth-helpers';
 import {
   requirePermission,
   filterAccessibleResources,
   getUserAccessibleResources,
   canUserAccessResource
-} from '../../lib/permissions';
+} from '../../shared/auth/permissions';
 import { ResourceType, PermissionLevel } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { CreateProductSchema, UpdateProductSchema, CreateSolutionSchema, UpdateSolutionSchema, CreateCustomerSchema, UpdateCustomerSchema } from '../../validation/schemas';
-import { ProductService } from '../../services/ProductService';
-import { SolutionService } from '../../services/SolutionService';
-import { CustomerService } from '../../services/CustomerService';
+import { ProductService } from '../../modules/product';
+import { SolutionService } from '../../modules/solution';
+import { CustomerService } from '../../modules/customer';
 
+// Product Module (NEW - modular architecture)
+import {
+  ProductFieldResolvers,
+  ProductQueryResolvers,
+  ProductMutationResolvers
+} from '../../modules/product';
+
+
+// License Module
+import {
+  LicenseFieldResolvers,
+  LicenseQueryResolvers,
+  LicenseMutationResolvers
+} from '../../modules/license';
+
+// Solution Module
+import {
+  SolutionFieldResolvers,
+  SolutionQueryResolvers,
+  SolutionMutationResolvers
+} from '../../modules/solution';
+
+// Customer Module
+import {
+  CustomerFieldResolvers,
+  CustomerQueryResolvers,
+  CustomerMutationResolvers
+} from '../../modules/customer';
+
+// Release Module
+import {
+  ReleaseFieldResolvers,
+  ReleaseQueryResolvers,
+  ReleaseMutationResolvers
+} from '../../modules/release';
+
+// Outcome Module
+import {
+  OutcomeFieldResolvers,
+  OutcomeQueryResolvers,
+  OutcomeMutationResolvers
+} from '../../modules/outcome';
 const JSONScalar = new GraphQLScalarType({
   name: 'JSON',
   description: 'Arbitrary JSON value',
@@ -130,212 +172,9 @@ export const resolvers = {
       return null;
     }
   },
-  Product: {
-    tags: TagResolvers.Product.tags,
-    tasks: async (parent: any, args: any) => {
-      if (fallbackActive) {
-        return fallbackConnections.tasksForProduct(parent.id);
-      }
-      return fetchTasksPaginated(parent.id, args);
-    },
-    statusPercent: async (parent: any) => {
-      try {
-        if (fallbackActive) {
-          const { tasks: allTasks } = require('../../lib/fallbackStore');
-          const tasks = allTasks.filter((t: any) => t.productId === parent.id);
-          if (!tasks.length) return 0;
-          const totalWeight = tasks.reduce((a: number, t: any) => {
-            const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : (t.weight || 0);
-            return a + weight;
-          }, 0) || 1;
-          const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => {
-            const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : (t.weight || 0);
-            return a + weight;
-          }, 0);
-          return Math.round((completed / totalWeight) * 100);
-        }
-        const tasks = await prisma.task.findMany({ where: { productId: parent.id, deletedAt: null } });
-        if (!tasks.length) return 0;
-        const totalWeight = tasks.reduce((a: number, t: any) => {
-          const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : Number(t.weight || 0);
-          const safeWeight = (isNaN(weight) || weight == null) ? 0 : weight;
-          return a + safeWeight;
-        }, 0) || 1;
-        const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => {
-          const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : Number(t.weight || 0);
-          const safeWeight = (isNaN(weight) || weight == null) ? 0 : weight;
-          return a + safeWeight;
-        }, 0);
-        const result = Math.round((completed / totalWeight) * 100);
-        return (isNaN(result) || !isFinite(result)) ? 0 : result;
-      } catch (error) {
-        console.error('Error calculating statusPercent:', error);
-        return 0;
-      }
-    },
-    completionPercentage: async (parent: any) => {
-      try {
-        if (fallbackActive) {
-          const { tasks: allTasks } = require('../../lib/fallbackStore');
-          const tasks = allTasks.filter((t: any) => t.productId === parent.id);
-          if (!tasks.length) return 0;
-          const totalWeight = tasks.reduce((a: number, t: any) => a + t.weight, 0) || 1;
-          const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => a + t.weight, 0);
-          return Math.round((completed / totalWeight) * 100);
-        }
-        const tasks = await prisma.task.findMany({ where: { productId: parent.id, deletedAt: null } });
-        if (!tasks.length) return 0;
-        const totalWeight = tasks.reduce((a: number, t: any) => {
-          const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : Number(t.weight || 0);
-          const safeWeight = (isNaN(weight) || weight == null) ? 0 : weight;
-          return a + safeWeight;
-        }, 0) || 1;
-        const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => {
-          const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : Number(t.weight || 0);
-          const safeWeight = (isNaN(weight) || weight == null) ? 0 : weight;
-          return a + safeWeight;
-        }, 0);
-        const result = Math.round((completed / totalWeight) * 100);
-        return (isNaN(result) || !isFinite(result)) ? 0 : result;
-      } catch (error) {
-        console.error('Error calculating completionPercentage:', error);
-        return 0;
-      }
-    },
-    outcomes: async (parent: any) => {
-      if (fallbackActive) {
-        return fbListOutcomesForProduct(parent.id);
-      }
-      return prisma.outcome.findMany({ where: { productId: parent.id } });
-    },
-    licenses: async (parent: any) => {
-      if (fallbackActive) {
-        return listLicenses().filter((l: any) => l.productId === parent.id);
-      }
-      return prisma.license.findMany({ where: { productId: parent.id, deletedAt: null } });
-    },
-    releases: async (parent: any) => {
-      if (fallbackActive) {
-        // Fallback logic for releases would go here if needed
-        return [];
-      }
-      return prisma.release.findMany({
-        where: { productId: parent.id, deletedAt: null },
-        orderBy: { level: 'asc' }
-      });
-    },
-    solutions: async (parent: any) => {
-      if (fallbackActive) {
-        const { solutions } = require('../../lib/fallbackStore');
-        return solutions.filter((s: any) => parent.solutionIds?.includes(s.id));
-      }
-      // Fetch SolutionProduct records and extract Solution objects
-      const solutionProducts = await prisma.solutionProduct.findMany({
-        where: { productId: parent.id },
-        include: { solution: true },
-        orderBy: { order: 'asc' }
-      });
-      // Return actual Solution objects
-      return solutionProducts.map((sp: any) => sp.solution).filter((s: any) => s && !s.deletedAt);
-    }
-  },
-  Solution: {
-    tags: TagResolvers.Solution.tags,
-    products: async (parent: any, args: any, ctx: any) => {
-      if (fallbackActive) {
-        const { products } = require('../../lib/fallbackStore');
-        const list = products.filter((p: any) => parent.productIds?.includes(p.id));
-        return { edges: list.map((p: any) => ({ cursor: Buffer.from(JSON.stringify({ id: p.id }), 'utf8').toString('base64'), node: p })), pageInfo: { hasNextPage: false, hasPreviousPage: false, startCursor: null, endCursor: null }, totalCount: list.length };
-      }
-      // Fetch SolutionProduct records with order, then include the product
-      const prods = await prisma.solutionProduct.findMany({
-        where: { solutionId: parent.id },
-        include: { product: true },
-        orderBy: { order: 'asc' }  // Order by SolutionProduct.order field
-      });
-      // Map to products and attach order metadata
-      const list = prods.map((sp: any) => ({ ...sp.product, _solutionProductOrder: sp.order }));
-      return { edges: list.map((p: any) => ({ cursor: Buffer.from(JSON.stringify({ id: p.id }), 'utf8').toString('base64'), node: p })), pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: list.length };
-    },
-    tasks: async (parent: any, args: any) => {
-      if (fallbackActive) {
-        // For fallback, return empty tasks or implement fallback logic
-        return { edges: [], pageInfo: { hasNextPage: false, hasPreviousPage: false }, totalCount: 0 };
-      }
-      return fetchTasksPaginated(undefined, { ...args, solutionId: parent.id });
-    },
-    completionPercentage: async (parent: any) => {
-      if (fallbackActive) {
-        return 0; // Fallback doesn't support solution tasks yet
-      }
-      const tasks = await prisma.task.findMany({ where: { solutionId: parent.id, deletedAt: null } });
-      if (!tasks.length) return 0;
-      const totalWeight = tasks.reduce((a: number, t: any) => {
-        const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : t.weight;
-        return a + weight;
-      }, 0) || 1;
-      const completed = tasks.filter((t: any) => !!t.completedAt).reduce((a: number, t: any) => {
-        const weight = typeof t.weight === 'object' && 'toNumber' in t.weight ? t.weight.toNumber() : t.weight;
-        return a + weight;
-      }, 0);
-      return Math.round((completed / totalWeight) * 100);
-    },
-    licenses: async (parent: any) => {
-      if (fallbackActive) {
-        return [];
-      }
-      return prisma.license.findMany({
-        where: { solutionId: parent.id, deletedAt: null }
-      });
-    },
-    releases: async (parent: any) => {
-      if (fallbackActive) {
-        // Fallback logic for releases would go here if needed
-        return [];
-      }
-      return prisma.release.findMany({
-        where: { solutionId: parent.id, deletedAt: null },
-        orderBy: { level: 'asc' }
-      });
-    },
-    outcomes: async (parent: any) => {
-      if (fallbackActive) {
-        return [];
-      }
-      return prisma.outcome.findMany({ where: { solutionId: parent.id } });
-    }
-  },
-  Customer: {
-    products: (parent: any) => {
-      if (fallbackActive) {
-        const { products } = require('../../lib/fallbackStore');
-        return products.filter((p: any) => parent.productIds?.includes(p.id));
-      }
-      // Return CustomerProductWithPlan instead of just Product
-      return prisma.customerProduct.findMany({
-        where: { customerId: parent.id },
-        include: {
-          product: true,
-          customer: true,
-        }
-      });
-    },
-    solutions: (parent: any) => {
-      if (fallbackActive) {
-        const { solutions } = require('../../lib/fallbackStore');
-        return solutions.filter((s: any) => parent.solutionIds?.includes(s.id));
-      }
-      // Return CustomerSolutionWithPlan instead of just Solution
-      return prisma.customerSolution.findMany({
-        where: { customerId: parent.id },
-        include: {
-          solution: true,
-          customer: true,
-          adoptionPlan: true
-        }
-      });
-    }
-  },
+  Product: ProductFieldResolvers,  // FROM PRODUCT MODULE
+  Solution: SolutionFieldResolvers,  // FROM SOLUTION MODULE
+  Customer: CustomerFieldResolvers,  // FROM CUSTOMER MODULE
   Task: {
     tags: TagResolvers.Task.tags,
     solutionTags: TagResolvers.Task.solutionTags,
@@ -493,108 +332,17 @@ export const resolvers = {
   SolutionAdoptionProduct: SolutionAdoptionProductResolvers,
   CustomerSolutionTask: CustomerSolutionTaskResolvers,
 
-  Outcome: {
-    product: (parent: any) => {
-      if (!parent.productId) return null;
-      if (fallbackActive) {
-        const { products } = require('../../lib/fallbackStore');
-        return products.find((p: any) => p.id === parent.productId);
-      }
-      return prisma.product.findUnique({ where: { id: parent.productId } });
-    },
-    solution: (parent: any) => {
-      if (!parent.solutionId) return null;
-      if (fallbackActive) {
-        const { solutions } = require('../../lib/fallbackStore');
-        return solutions.find((s: any) => s.id === parent.solutionId);
-      }
-      return prisma.solution.findUnique({ where: { id: parent.solutionId } });
-    }
-  },
-  License: {
-    product: (parent: any) => {
-      if (fallbackActive) {
-        const { products } = require('../../lib/fallbackStore');
-        return products.find((p: any) => p.id === parent.productId);
-      }
-      return parent.productId ? prisma.product.findUnique({ where: { id: parent.productId } }) : null;
-    }
-  },
-  Release: {
-    product: (parent: any) => {
-      if (fallbackActive) {
-        const { products } = require('../../lib/fallbackStore');
-        return products.find((p: any) => p.id === parent.productId);
-      }
-      return parent.productId ? prisma.product.findUnique({ where: { id: parent.productId } }) : null;
-    },
-    tasks: async (parent: any) => {
-      if (fallbackActive) {
-        return [];
-      }
-      const taskReleases = await prisma.taskRelease.findMany({
-        where: { releaseId: parent.id },
-        include: { task: true }
-      });
-      return taskReleases.map((tr: any) => tr.task);
-    },
-    inheritedTasks: async (parent: any) => {
-      if (fallbackActive) {
-        return [];
-      }
-      // Get all tasks that should be available in this release through inheritance
-      // This includes tasks directly assigned to this release AND tasks from lower releases
-
-      const productId = parent.productId;
-      const solutionId = parent.solutionId;
-
-      let lowerReleases: any[] = [];
-      if (productId) {
-        lowerReleases = await prisma.release.findMany({
-          where: {
-            productId,
-            level: { lte: parent.level },
-            deletedAt: null
-          },
-          include: {
-            tasks: {
-              include: { task: true }
-            }
-          }
-        });
-      } else if (solutionId) {
-        lowerReleases = await prisma.release.findMany({
-          where: {
-            solutionId,
-            level: { lte: parent.level },
-            deletedAt: null
-          },
-          include: {
-            tasks: {
-              include: { task: true }
-            }
-          }
-        });
-      }
-
-      // Collect all tasks from releases at or below this level
-      const taskSet = new Set();
-      const tasks: any[] = [];
-
-      lowerReleases.forEach((release: any) => {
-        release.tasks.forEach((tr: any) => {
-          if (!taskSet.has(tr.task.id)) {
-            taskSet.add(tr.task.id);
-            tasks.push(tr.task);
-          }
-        });
-      });
-
-      return tasks;
-    }
-  },
+  Outcome: OutcomeFieldResolvers,  // FROM OUTCOME MODULE
+  License: LicenseFieldResolvers,  // FROM LICENSE MODULE
+  Release: ReleaseFieldResolvers,  // FROM RELEASE MODULE
   Query: {
     ...TagResolvers.Query,
+    ...ProductQueryResolvers,  // FROM PRODUCT MODULE
+    ...LicenseQueryResolvers,
+    ...SolutionQueryResolvers,
+    ...CustomerQueryResolvers,
+    ...ReleaseQueryResolvers,
+    ...OutcomeQueryResolvers,
     node: async (_: any, { id }: any) => {
       return prisma.product.findUnique({ where: { id } }) || prisma.task.findUnique({ where: { id } });
     },
@@ -858,6 +606,13 @@ export const resolvers = {
   },
   Mutation: {
     ...TagResolvers.Mutation,
+    ...ProductMutationResolvers,  // FROM PRODUCT MODULE
+    ...LicenseMutationResolvers,
+    ...SolutionMutationResolvers,
+    ...CustomerMutationResolvers,
+    ...ReleaseMutationResolvers,
+    ...OutcomeMutationResolvers,
+
     signup: async (_: any, { email, username, password, role, name }: any) => {
       const hashed = await bcrypt.hash(password, 10);
       const user = await prisma.user.create({ data: { email, username: username || email.split('@')[0], password: hashed, role, name } });

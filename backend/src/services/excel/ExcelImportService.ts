@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { LicenseLevel } from '@prisma/client';
-import { prisma } from '../../context';  // Use shared instance to prevent connection leaks
+import { prisma } from '../../shared/graphql/context';  // Use shared instance to prevent connection leaks
 
 const LICENSE_LEVEL_NAME_TO_NUMBER: Record<string, number> = {
   ESSENTIAL: 1,

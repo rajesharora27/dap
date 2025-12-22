@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { createApp } from '../server';
-import { prisma } from '../context';
+import { prisma } from '../shared/graphql/context';
 
 let app: any;
 let dbAvailable = true;

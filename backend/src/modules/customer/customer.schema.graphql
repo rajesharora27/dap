@@ -1,0 +1,32 @@
+# Customer Module GraphQL Schema
+
+type Customer implements Node {
+  id: ID!
+  name: String!
+  description: String
+  customAttrs: JSON
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  products: [CustomerProductWithPlan!]!
+  solutions: [CustomerSolutionWithPlan!]!
+}
+
+input CustomerInput {
+  name: String!
+  description: String
+}
+
+extend type Query {
+  customer(id: ID!): Customer
+  customers: [Customer!]!
+}
+
+extend type Mutation {
+  createCustomer(input: CustomerInput!): Customer!
+  updateCustomer(id: ID!, input: CustomerInput!): Customer!
+  deleteCustomer(id: ID!): Boolean!
+  addProductToCustomer(customerId: ID!, productId: ID!): Boolean!
+  removeProductFromCustomer(customerId: ID!, productId: ID!): Boolean!
+  addSolutionToCustomer(customerId: ID!, solutionId: ID!): Boolean!
+  removeSolutionFromCustomer(customerId: ID!, solutionId: ID!): Boolean!
+}

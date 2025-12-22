@@ -1,5 +1,5 @@
 
-import { prisma } from './context';
+import { prisma } from './shared/graphql/context';
 import { SolutionAdoptionMutationResolvers } from './schema/resolvers/solutionAdoption';
 
 async function reproduce() {

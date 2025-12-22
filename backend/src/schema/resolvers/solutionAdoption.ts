@@ -1,6 +1,6 @@
-import { prisma } from '../../context';
-import { ensureRole, requireUser } from '../../lib/auth';
-import { logAudit } from '../../lib/audit';
+import { prisma } from '../../shared/graphql/context';
+import { ensureRole, requireUser } from '../../shared/auth/auth-helpers';
+import { logAudit } from '../../shared/utils/audit';
 import { LicenseLevel, TaskSourceType, SolutionProductStatus } from '@prisma/client';
 import { evaluateTelemetryAttribute, evaluateTaskStatusFromTelemetry } from '../../services/telemetry/evaluationEngine';
 

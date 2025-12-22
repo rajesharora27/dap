@@ -1,5 +1,5 @@
 import { BackupRestoreService } from './BackupRestoreService';
-import { prisma } from '../context';
+import { prisma } from '../shared/graphql/context';
 import * as cron from 'node-cron';
 import * as fs from 'fs';
 import * as path from 'path';

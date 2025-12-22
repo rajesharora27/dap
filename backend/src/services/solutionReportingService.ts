@@ -1,4 +1,4 @@
-import { prisma } from '../context';
+import { prisma } from '../shared/graphql/context';
 import { CustomerTaskStatus, SolutionProductStatus, TaskSourceType } from '@prisma/client';
 
 /**

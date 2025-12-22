@@ -15,8 +15,8 @@
  * @version 1.0.0
  */
 
-import { prisma } from '../../context';
-import { logAudit } from '../../lib/audit';
+import { prisma } from '../../shared/graphql/context';
+import { logAudit } from '../../shared/utils/audit';
 import { 
   TelemetryAttribute, 
   TelemetryValue, 

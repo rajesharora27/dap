@@ -10,7 +10,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { prisma as sharedPrisma } from '../../context';
+import { prisma as sharedPrisma } from '../../shared/graphql/context';
 
 // Always use the shared Prisma instance to prevent connection pool exhaustion
 const defaultPrisma = sharedPrisma;

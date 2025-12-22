@@ -12,7 +12,7 @@
  */
 
 import { getAIAgentService } from '../../services/ai';
-import { Context } from '../../context';
+import { Context } from '../../shared/graphql/context';
 
 /**
  * AI Query Resolvers

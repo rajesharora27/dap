@@ -1,4 +1,4 @@
-import { prisma } from './context';
+import { prisma } from './shared/graphql/context';
 import { Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { seedSolutions } from './seed-solutions';

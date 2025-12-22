@@ -14,13 +14,13 @@ import multer from 'multer';
 import { typeDefs } from './schema/typeDefs';
 import { resolvers } from './schema/resolvers';
 import { makeExecutableSchema } from '@graphql-tools/schema';
-import { createContext, prisma } from './context';
+import { createContext, prisma } from './shared/graphql/context';
 import { config as appConfig } from './config/app.config';
 import { envConfig } from './config/env';
 import { CustomerTelemetryImportService } from './services/telemetry/CustomerTelemetryImportService';
 import { SessionManager } from './utils/sessionManager';
 import { AutoBackupScheduler } from './services/AutoBackupScheduler';
-import { initSentry, captureException } from './lib/sentry';
+import { initSentry, captureException } from './shared/monitoring/sentry';
 import { ApolloServerPluginLandingPageLocalDefault, ApolloServerPluginLandingPageProductionDefault } from '@apollo/server/plugin/landingPage/default';
 import devToolsRouter, { addLogEntry } from './api/devTools';
 // Force restart to load permission enforcement - 2025-11-11

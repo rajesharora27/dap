@@ -2,7 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
-import { prisma } from '../context';
+import { prisma } from '../shared/graphql/context';
 import { SessionManager } from '../utils/sessionManager';
 
 const execPromise = promisify(exec);

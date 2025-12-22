@@ -1,0 +1,28 @@
+# Outcome Module GraphQL Schema
+
+type Outcome implements Node {
+  id: ID!
+  name: String!
+  description: String
+  product: Product
+  solution: Solution
+  productId: ID
+  solutionId: ID
+}
+
+input OutcomeInput {
+  name: String!
+  description: String
+  productId: ID
+  solutionId: ID
+}
+
+extend type Query {
+  outcomes(productId: ID, solutionId: ID): [Outcome!]!
+}
+
+extend type Mutation {
+  createOutcome(input: OutcomeInput!): Outcome!
+  updateOutcome(id: ID!, input: OutcomeInput!): Outcome!
+  deleteOutcome(id: ID!): Boolean!
+}

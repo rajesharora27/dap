@@ -14,8 +14,8 @@
  * @version 1.0.0
  */
 
-import { fallbackActive } from '../../../context';
-import { ensureRole } from '../../../lib/auth';
+import { fallbackActive } from '../../../shared/graphql/context';
+import { ensureRole } from '../../../shared/auth/auth-helpers';
 import { TelemetryService } from '../../../services/telemetry';
 
 /**
@@ -27,7 +27,7 @@ export const TelemetryAttributeResolvers = {
       return null;
     }
     try {
-      const { prisma } = await import('../../../context');
+      const { prisma } = await import('../../../shared/graphql/context');
       return await prisma.task.findUnique({ where: { id: parent.taskId } });
     } catch (error) {
       console.error('Error resolving telemetry attribute task:', error);
@@ -125,7 +125,7 @@ export const TelemetryQueryResolvers = {
       return null;
     }
     try {
-      const { prisma } = await import('../../../context');
+      const { prisma } = await import('../../../shared/graphql/context');
       return await prisma.telemetryValue.findUnique({
         where: { id },
         include: { attribute: true }
@@ -153,7 +153,7 @@ export const TelemetryQueryResolvers = {
       return [];
     }
     try {
-      const { prisma } = await import('../../../context');
+      const { prisma } = await import('../../../shared/graphql/context');
       return await prisma.telemetryValue.findMany({
         where: { batchId },
         orderBy: { createdAt: 'desc' },

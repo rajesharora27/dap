@@ -10,8 +10,8 @@
  */
 
 import { PrismaClient, ResourceType, PermissionLevel } from '@prisma/client';
-import { prisma as defaultPrisma } from '../../context';
-import { getUserAccessibleResources, checkUserPermission } from '../../lib/permissions';
+import { prisma as defaultPrisma } from '../../shared/graphql/context';
+import { getUserAccessibleResources, checkUserPermission } from '../../shared/auth/permissions';
 import { QueryConfig } from './QueryExecutor';
 
 /**

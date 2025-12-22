@@ -1,6 +1,6 @@
 import { BackupRestoreService } from '../../services/BackupRestoreService';
 import { AutoBackupScheduler } from '../../services/AutoBackupScheduler';
-import { ensureRole } from '../../lib/auth';
+import { ensureRole } from '../../shared/auth/auth-helpers';
 
 export const BackupQueryResolvers = {
   /**
