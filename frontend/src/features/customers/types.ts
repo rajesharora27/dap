@@ -1,4 +1,4 @@
-import { Product } from '@/types/shared';
+import { Product } from '@features/products';
 
 export interface Customer {
     id: string;

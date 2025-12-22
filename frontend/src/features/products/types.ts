@@ -1,3 +1,6 @@
+import { License } from '@features/product-licenses';
+import { Outcome } from '@features/product-outcomes';
+import { Release } from '@features/product-releases';
 /**
  * Product Types
  */
@@ -10,6 +13,9 @@ export interface Product {
     customAttrs?: Record<string, any>;
     createdAt?: string;
     updatedAt?: string;
+    licenses?: License[];
+    outcomes?: Outcome[];
+    releases?: Release[];
 }
 
 export interface ProductInput {

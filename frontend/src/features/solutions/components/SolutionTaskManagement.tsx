@@ -18,37 +18,8 @@ import {
 import { Add, Edit, Delete, ExpandMore } from '@shared/components/FAIcon';
 import { useMutation, gql } from '@apollo/client';
 
-const CREATE_SOLUTION_TASK = gql`
-  mutation CreateTask($input: TaskCreateInput!) {
-    createTask(input: $input) {
-      id
-      name
-      description
-      estMinutes
-      weight
-      sequenceNumber
-      licenseLevel
-    }
-  }
-`;
+import { CREATE_TASK, DELETE_TASK, Task } from '@features/tasks';
 
-const DELETE_SOLUTION_TASK = gql`
-  mutation DeleteTask($id: ID!) {
-    queueTaskSoftDelete(id: $id)
-  }
-`;
-
-interface Task {
-  id: string;
-  name: string;
-  description?: string;
-  estMinutes: number;
-  weight: number;
-  sequenceNumber: number;
-  licenseLevel: string;
-  outcomes?: any[];
-  releases?: any[];
-}
 
 interface Props {
   solutionId: string;
@@ -65,11 +36,11 @@ export const SolutionTaskManagement: React.FC<Props> = ({
   onRefetch,
   onEditTask
 }) => {
-  const [createTask] = useMutation(CREATE_SOLUTION_TASK, { onCompleted: onRefetch });
-  const [deleteTask] = useMutation(DELETE_SOLUTION_TASK, { onCompleted: onRefetch });
+  const [createTask] = useMutation(CREATE_TASK, { onCompleted: onRefetch });
+  const [deleteTask] = useMutation(DELETE_TASK, { onCompleted: onRefetch });
 
   const handleAddTask = async () => {
-    const maxSeq = Math.max(...solutionTasks.map(t => t.sequenceNumber), 0);
+    const maxSeq = Math.max(...solutionTasks.map(t => t.sequenceNumber || 0), 0);
     const name = prompt('Enter task name:');
     if (!name) return;
 
@@ -139,7 +110,7 @@ export const SolutionTaskManagement: React.FC<Props> = ({
                     size="small"
                     sx={{ minWidth: 50 }}
                   />
-                  
+
                   <ListItemText
                     primary={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -147,9 +118,9 @@ export const SolutionTaskManagement: React.FC<Props> = ({
                           {task.name}
                         </Typography>
                         <Chip
-                          label={task.licenseLevel}
+                          label={task.licenseLevel || 'Essential'}
                           size="small"
-                          color={getLicenseLevelColor(task.licenseLevel)}
+                          color={getLicenseLevelColor(task.licenseLevel || 'Essential')}
                         />
                         <Chip
                           label={`${task.estMinutes}min`}
@@ -239,9 +210,9 @@ export const SolutionTaskManagement: React.FC<Props> = ({
                               {task.name}
                             </Typography>
                             <Chip
-                              label={task.licenseLevel}
+                              label={task.licenseLevel || 'Essential'}
                               size="small"
-                              color={getLicenseLevelColor(task.licenseLevel)}
+                              color={getLicenseLevelColor(task.licenseLevel || 'Essential')}
                             />
                           </Box>
                         }

@@ -21,12 +21,16 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableAttributeItem } from '@shared/components/SortableAttributeItem';
 import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@shared/components/FAIcon';
-import { License, Outcome, Product, CustomAttribute, Release } from '@/types/shared';
-import { ValidationUtils } from '@/utils/sharedHandlers';
+import { License } from '@features/product-licenses';
+import { Outcome } from '@features/product-outcomes';
+import { Release } from '@features/product-releases';
+import { Product } from '../types';
+import { CustomAttribute } from '@shared/types';
+import { ValidationUtils } from '@shared/utils/validation';
 import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
-import { LicenseDialog } from '@/components/dialogs/LicenseDialog';
-import { OutcomeDialog } from '@/components/dialogs/OutcomeDialog';
-import { ReleaseDialog } from '@/components/dialogs/ReleaseDialog';
+import { OutcomeDialog } from '@features/product-outcomes';
+import { ReleaseDialog } from '@features/product-releases';
+import { LicenseDialog } from '@features/product-licenses';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -60,9 +64,9 @@ interface Props {
     name: string;
     description?: string;
     customAttrs?: any;
-    outcomes?: Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>;
-    licenses?: Array<{ id?: string; name: string; description?: string; level: string; isActive: boolean; isNew?: boolean; delete?: boolean }>;
-    releases?: Array<{ id?: string; name: string; level: number; description?: string; isNew?: boolean; delete?: boolean }>;
+    outcomes?: Outcome[];
+    licenses?: License[];
+    releases?: Release[];
   }) => Promise<void>;
   product?: Product | null;
   title: string;
@@ -82,9 +86,9 @@ export const ProductDialog: React.FC<Props> = ({
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [customAttrs, setCustomAttrs] = useState<{ [key: string]: any }>({});
-  const [outcomes, setOutcomes] = useState<Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>>([]);
-  const [licenses, setLicenses] = useState<Array<{ id?: string; name: string; description?: string; level: string; isActive: boolean; isNew?: boolean; delete?: boolean }>>([]);
-  const [releases, setReleases] = useState<Array<{ id?: string; name: string; level: number; description?: string; isNew?: boolean; delete?: boolean }>>([]);
+  const [outcomes, setOutcomes] = useState<Outcome[]>([]);
+  const [licenses, setLicenses] = useState<License[]>([]);
+  const [releases, setReleases] = useState<Release[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [tabValue, setTabValue] = useState(0);
@@ -117,7 +121,7 @@ export const ProductDialog: React.FC<Props> = ({
         id: license.id,
         name: license.name,
         description: license.description,
-        level: String(license.level),
+        level: license.level,
         isActive: license.isActive
       })));
       setReleases((product.releases || []).map(release => ({
@@ -135,7 +139,7 @@ export const ProductDialog: React.FC<Props> = ({
       setLicenses([{
         name: 'Essential',
         description: 'Basic features',
-        level: '1',
+        level: 1,
         isActive: true,
         isNew: true
       }]);
@@ -165,20 +169,19 @@ export const ProductDialog: React.FC<Props> = ({
   }, [open, initialTab]);
 
   // License handlers
-  const handleAddLicense = (licenseData: { name: string; description?: string; level: number; isActive: boolean }) => {
+  const handleAddLicense = (licenseData: Omit<License, 'id'> & { customAttrs?: { productLicenseMapping?: { [productId: string]: string[] } } }) => {
     setLicenses([...licenses, {
       ...licenseData,
-      level: String(licenseData.level),
       isNew: true
     }]);
     setAddLicenseDialog(false);
   };
 
-  const handleEditLicense = (licenseData: { name: string; description?: string; level: number; isActive: boolean }) => {
+  const handleEditLicense = (licenseData: Omit<License, 'id'> & { customAttrs?: { productLicenseMapping?: { [productId: string]: string[] } } }) => {
     if (editingLicense) {
       const updatedLicenses = licenses.map(license =>
-        license.id === editingLicense.id || (license.name === editingLicense.name && license.level === String(editingLicense.level))
-          ? { ...license, ...licenseData, level: String(licenseData.level) }
+        license.id === editingLicense.id || (license.name === editingLicense.name && license.level === editingLicense.level)
+          ? { ...license, ...licenseData }
           : license
       );
       setLicenses(updatedLicenses);

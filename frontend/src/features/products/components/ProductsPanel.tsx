@@ -26,6 +26,9 @@ import {
   Update
 } from '@shared/components/FAIcon';
 import { ProductDialog } from './ProductDialog';
+import { License } from '@features/product-licenses';
+import { Outcome } from '@features/product-outcomes';
+import { Release } from '@features/product-releases';
 
 const PRODUCTS = gql`query Products($first:Int,$after:String,$last:Int,$before:String){ 
   products(first:$first,after:$after,last:$last,before:$before){ 
@@ -185,15 +188,15 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
     name: string;
     description?: string;
     customAttrs?: any;
-    outcomes?: Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>;
-    licenses?: Array<{ id?: string; name: string; description?: string; level: string; isActive: boolean; isNew?: boolean; delete?: boolean }>;
-    releases?: Array<{ id?: string; name: string; level: number; description?: string; isNew?: boolean; delete?: boolean }>;
+    outcomes?: Outcome[];
+    licenses?: License[];
+    releases?: Release[];
     requiredLicenseLevel?: number;
   }) => {
     console.log('=== Product Save Started ===');
     console.log('Editing existing product:', !!editingProduct);
     console.log('Data received:', JSON.stringify(data, null, 2));
-    
+
     try {
       let productId: string;
 
@@ -336,7 +339,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
               console.log(`Deleted license: ${license.name}`);
             } else if (license.isNew || !license.id) {
               // Create new license
-              const licenseLevel = license.level !== undefined && license.level !== '' ? parseInt(license.level) : 1;
+              const licenseLevel = license.level || 1;
               console.log(`Creating license: ${license.name}, level: ${licenseLevel}, productId: ${productId}`);
               const result = await client.mutate({
                 mutation: gql`
@@ -361,7 +364,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
               console.log(`Created license: ${license.name}`, result.data);
             } else if (license.id) {
               // Update existing license
-              const licenseLevel = license.level !== undefined && license.level !== '' ? parseInt(license.level) : 1;
+              const licenseLevel = license.level || 1;
               console.log(`Updating license: ${license.name}, id: ${license.id}, level: ${licenseLevel}, productId: ${productId}`);
               const result = await client.mutate({
                 mutation: gql`
@@ -466,19 +469,19 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
       }
 
       console.log('=== All mutations completed successfully ===');
-      
+
       // Clear Apollo cache to ensure fresh data
       console.log('Clearing Apollo cache...');
       await client.clearStore();
-      
+
       // Wait a bit for backend consistency
       await new Promise(resolve => setTimeout(resolve, 500));
-      
+
       // Refetch data after ALL operations are complete
       console.log('Refetching products...');
       const refetchResult = await refetch();
       console.log('Refetch completed. Products count:', refetchResult.data?.products?.edges?.length);
-      
+
       console.log('=== Product save completed successfully ===');
 
     } catch (error: any) {

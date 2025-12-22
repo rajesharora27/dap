@@ -167,18 +167,6 @@ export const TASKS_FOR_PRODUCT_QUERY = gql`
   }
 `;
 
-export const OUTCOMES_QUERY = gql`
-  query Outcomes($productId: ID) {
-    outcomes(productId: $productId) {
-      id
-      name
-      product {
-        id
-        name
-      }
-    }
-  }
-`;
 
 export function useProducts() {
   const { data, loading, error, refetch } = useQuery(PRODUCTS_QUERY, {
@@ -255,17 +243,3 @@ export function useTasksForProduct(productId: string) {
   };
 }
 
-export function useOutcomes(productId?: string) {
-  const { data, loading, error, refetch } = useQuery(OUTCOMES_QUERY, {
-    variables: { productId },
-    skip: !productId,
-    errorPolicy: 'all'
-  });
-
-  return {
-    outcomes: data?.outcomes || [],
-    loading,
-    error,
-    refetch
-  };
-}

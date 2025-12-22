@@ -11,20 +11,18 @@ import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
 import { CSS } from '@dnd-kit/utilities';
 
-import { PRODUCTS, TASKS_FOR_PRODUCT, OUTCOMES, PRODUCT } from '../graphql/queries';
-import { DELETE_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE, CREATE_PRODUCT, UPDATE_PRODUCT, CREATE_PRODUCT_TAG, UPDATE_PRODUCT_TAG, DELETE_PRODUCT_TAG } from '../graphql/mutations';
+import { PRODUCTS, PRODUCT, DELETE_PRODUCT, CREATE_PRODUCT, UPDATE_PRODUCT, ProductDialog, OUTCOMES } from '@features/products';
+import { OutcomeDialog, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME } from '@features/product-outcomes';
+import { ReleaseDialog, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE } from '@features/product-releases';
+import { LicenseDialog, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
+import { TASKS_FOR_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, TaskDialog } from '@features/tasks';
 import { SortableTaskItem } from '@shared/components/SortableTaskItem';
-import { ProductDialog } from '../components/dialogs/ProductDialog';
-import { TaskDialog } from '../components/dialogs/TaskDialog';
-import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
-import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
-import { LicenseDialog } from '../components/dialogs/LicenseDialog';
-import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
-import { TagDialog, ProductTag } from '../components/dialogs/TagDialog';
+import { TagDialog, ProductTag, CREATE_PRODUCT_TAG, UPDATE_PRODUCT_TAG, DELETE_PRODUCT_TAG } from '@features/tags';
 import { useAuth } from '../components/AuthContext';
-import { useProductImportExport } from '../hooks/useProductImportExport';
+import { useProductImportExport } from '@features/products';
 import { InlineEditableText } from '@shared/components/InlineEditableText';
 
 interface ProductsPageProps {
@@ -319,7 +317,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     };
 
     // Tag Handlers
-    const handleSaveTag = async (tagData: Omit<ProductTag, 'id'>, existingId?: string) => {
+    const handleSaveTag = async (tagData: any, existingId?: string) => {
         try {
             if (existingId) {
                 await client.mutate({

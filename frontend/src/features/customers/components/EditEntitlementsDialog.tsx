@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { gql, useQuery } from '@apollo/client';
-import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from '@/components/dialogs/TaskDialog';
+import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from '@features/tasks';
 import {
   Dialog,
   DialogTitle,

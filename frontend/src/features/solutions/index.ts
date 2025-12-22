@@ -3,16 +3,13 @@
  */
 
 // Components
-export { AssignSolutionDialog } from './components/AssignSolutionDialog';
-export { ProductAdoptionGroup } from './components/ProductAdoptionGroup';
-export { SolutionAdoptionPlanView } from './components/SolutionAdoptionPlanView';
+export { SolutionsPanel } from './components/SolutionsPanel';
+export { SolutionProductList } from './components/SolutionProductList';
 export { SolutionDialog } from './components/SolutionDialog';
 export { SolutionPreviewDialog } from './components/SolutionPreviewDialog';
-export { SolutionProductList } from './components/SolutionProductList';
-export { SolutionReleaseDialog } from './components/SolutionReleaseDialog';
-export { SolutionsPanel } from './components/SolutionsPanel';
 export { SolutionTaskManagement } from './components/SolutionTaskManagement';
-export { SolutionTasksGroup } from './components/SolutionTasksGroup';
+
+// Hooks
 
 // GraphQL
 export * from './graphql';

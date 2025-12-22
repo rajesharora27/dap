@@ -12,16 +12,16 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { CSS } from '@dnd-kit/utilities';
 import { DragIndicator } from '@shared/components/FAIcon';
 
-import { SOLUTIONS, TASKS_FOR_SOLUTION, PRODUCTS, SOLUTION, SOLUTION_TAGS } from '../graphql/queries';
-import { DELETE_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, UPDATE_SOLUTION, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE, UPDATE_OUTCOME, DELETE_OUTCOME } from '../graphql/mutations';
+import { SOLUTIONS, SOLUTION, DELETE_SOLUTION, UPDATE_SOLUTION, SolutionDialog } from '@features/solutions';
+import { PRODUCTS } from '@features/products';
+import { TASKS_FOR_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, TaskDialog } from '@features/tasks';
+import { SOLUTION_TAGS, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS, TagDialog } from '@features/tags';
+import { OutcomeDialog, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME } from '@features/product-outcomes';
+import { ReleaseDialog, SolutionReleaseDialog, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE } from '@features/product-releases';
+import { LicenseDialog, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
 import { SortableTaskItem } from '@shared/components/SortableTaskItem';
-import { SolutionDialog } from '../components/dialogs/SolutionDialog';
-import { TaskDialog } from '../components/dialogs/TaskDialog';
-import { LicenseDialog } from '../components/dialogs/LicenseDialog';
-import { SolutionReleaseDialog } from '../components/dialogs/SolutionReleaseDialog';
 
 import { useAuth } from '../components/AuthContext';
-import { TagDialog } from '../components/dialogs/TagDialog';
 import { InlineEditableText } from '@shared/components/InlineEditableText';
 
 export const SolutionsPage: React.FC = () => {

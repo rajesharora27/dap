@@ -1,14 +1,14 @@
 import ExcelJS from 'exceljs';
 import { ApolloClient } from '@apollo/client';
-import { CREATE_OUTCOME, UPDATE_OUTCOME } from '../graphql/mutations';
+import { CREATE_OUTCOME, UPDATE_OUTCOME } from '@features/product-outcomes';
 
 export class ExcelService {
-  constructor(private client: ApolloClient<any>) {}
+  constructor(private client: ApolloClient<any>) { }
 
   async exportProductWorkbook(productId: string, productName: string, tasks: any[], outcomes: any[], licenses: any[], releases: any[]) {
     try {
       const workbook = new ExcelJS.Workbook();
-      
+
       // Instructions sheet
       const instructionsSheet = workbook.addWorksheet('Instructions');
       instructionsSheet.addRow(['DAP Excel Import/Export Instructions']);
@@ -35,12 +35,12 @@ export class ExcelService {
       // Tasks sheet
       const tasksSheet = workbook.addWorksheet('Tasks');
       tasksSheet.addRow([
-        'ID', 'Name (Required)', 'Description', 'Est Minutes (Required)', 
-        'Weight (Required)', 'Sequence Number', 'License Level', 
+        'ID', 'Name (Required)', 'Description', 'Est Minutes (Required)',
+        'Weight (Required)', 'Sequence Number', 'License Level',
         'Notes', 'How To Doc (JSON Array)', 'How To Video (JSON Array)',
         'License ID', 'Outcome IDs (JSON Array)', 'Release IDs (JSON Array)'
       ]);
-      
+
       tasks.forEach(task => {
         tasksSheet.addRow([
           task.id,
@@ -104,7 +104,7 @@ export class ExcelService {
       // Telemetry sheet
       const telemetrySheet = workbook.addWorksheet('Telemetry');
       telemetrySheet.addRow(['Task ID', 'Attribute Name', 'Data Type', 'Success Criteria (JSON)', 'Required', 'Active', 'Order']);
-      
+
       tasks.forEach(task => {
         if (task.telemetryAttributes) {
           task.telemetryAttributes.forEach((attr: any) => {
@@ -162,7 +162,7 @@ export class ExcelService {
       for (let i = 2; i <= worksheet.rowCount; i++) {
         const row = worksheet.getRow(i);
         const values: any[] = [];
-        
+
         row.eachCell((cell, colNumber) => {
           values[colNumber - 1] = cell.value;
         });
@@ -223,7 +223,7 @@ export class ExcelService {
       }
 
       await refetchProducts();
-      
+
       return {
         success: true,
         importedCount,

@@ -15,8 +15,8 @@ import {
     MenuItem,
     Chip
 } from '@mui/material';
-import { CustomAttribute } from '../../types/shared';
-import { ValidationUtils } from '../../utils/sharedHandlers';
+import { CustomAttribute } from '@shared/types';
+import { ValidationUtils } from '@shared/utils/validation';
 
 interface CustomAttributeDialogProps {
     open: boolean;

@@ -35,12 +35,14 @@ import {
 } from '@shared/components/FAIcon';
 import { gql, useMutation, useApolloClient } from '@apollo/client';
 import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
-import { OutcomeDialog } from '@/components/dialogs/OutcomeDialog';
-import { SolutionReleaseDialog } from './SolutionReleaseDialog';
-import { LicenseDialog } from '@/components/dialogs/LicenseDialog';
+import { OutcomeDialog } from '@features/product-outcomes';
+import { SolutionReleaseDialog, Release } from '@features/product-releases';
+import { LicenseDialog } from '@features/product-licenses';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableAttributeItem } from '@shared/components/SortableAttributeItem';
+import { License } from '@features/product-licenses';
+import { Outcome } from '@features/product-outcomes';
 
 const CREATE_SOLUTION = gql`
   mutation CreateSolution($input: SolutionInput!) {
@@ -223,9 +225,9 @@ export const SolutionDialog: React.FC<Props> = ({
   const [description, setDescription] = useState('');
   const [customAttrs, setCustomAttrs] = useState<{ [key: string]: any }>({});
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
-  const [solutionOutcomes, setSolutionOutcomes] = useState<Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>>([]);
-  const [releases, setReleases] = useState<Array<{ id?: string; name: string; level: number; description?: string; productReleaseMapping?: any; customAttrs?: any; isActive?: boolean; isNew?: boolean; delete?: boolean }>>([]);
-  const [licenses, setLicenses] = useState<Array<{ id?: string; name: string; level: number; description?: string; isActive: boolean; customAttrs?: any; isNew?: boolean; delete?: boolean }>>([]);
+  const [solutionOutcomes, setSolutionOutcomes] = useState<Outcome[]>([]);
+  const [releases, setReleases] = useState<Release[]>([]);
+  const [licenses, setLicenses] = useState<License[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [tabValue, setTabValue] = useState(0);
@@ -593,12 +595,12 @@ export const SolutionDialog: React.FC<Props> = ({
     setEditCustomAttributeDialog(true);
   };
 
-  const handleAddOutcomeSave = (outcome: { name: string; description?: string }) => {
+  const handleAddOutcomeSave = (outcome: Omit<Outcome, 'id'>) => {
     setSolutionOutcomes(prev => [...prev, { ...outcome, isNew: true }]);
     setAddOutcomeDialog(false);
   };
 
-  const handleEditOutcomeSave = (outcome: { name: string; description?: string }) => {
+  const handleEditOutcomeSave = (outcome: Omit<Outcome, 'id'>) => {
     setSolutionOutcomes(prev => prev.map(o => (o === editingOutcome ? { ...o, ...outcome } : o)));
     setEditOutcomeDialog(false);
     setEditingOutcome(null);
@@ -635,12 +637,12 @@ export const SolutionDialog: React.FC<Props> = ({
     }
   };
 
-  const handleAddLicenseSave = (license: { name: string; level: number; description?: string; isActive: boolean; customAttrs?: any }) => {
+  const handleAddLicenseSave = (license: Omit<License, 'id'> & { customAttrs?: { productLicenseMapping?: { [productId: string]: string[] } } }) => {
     setLicenses(prev => [...prev, { ...license, isNew: true }]);
     setAddLicenseDialog(false);
   };
 
-  const handleEditLicenseSave = (license: { name: string; level: number; description?: string; isActive: boolean; customAttrs?: any }) => {
+  const handleEditLicenseSave = (license: Omit<License, 'id'> & { customAttrs?: { productLicenseMapping?: { [productId: string]: string[] } } }) => {
     setLicenses(prev => prev.map(l => (l === editingLicense ? { ...l, ...license } : l)));
     setEditLicenseDialog(false);
     setEditingLicense(null);

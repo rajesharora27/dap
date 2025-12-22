@@ -24,7 +24,7 @@ import {
   TextField,
 } from '@mui/material';
 import { CheckCircle } from '@shared/components/FAIcon';
-import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from '@/components/dialogs/TaskDialog';
+import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from '@features/tasks';
 
 const GET_PRODUCTS_AND_OUTCOMES = gql`
   query GetProductsAndOutcomes {

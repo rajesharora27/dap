@@ -41,10 +41,9 @@ import {
   CircularProgress,
   useTheme
 } from '@mui/material';
-import { TaskDialog } from '../components/dialogs/TaskDialog';
-import { TaskPreviewDialog } from '../components/dialogs/TaskPreviewDialog';
-import { ProductPreviewDialog } from '../components/dialogs/ProductPreviewDialog';
-import { SolutionPreviewDialog } from '../components/dialogs/SolutionPreviewDialog';
+import { TaskDialog, TaskPreviewDialog } from '@features/tasks';
+import { ProductPreviewDialog } from '@features/products';
+import { SolutionPreviewDialog } from '@features/solutions';
 import { CustomerPreviewDialog, AdoptionPlanDialog, CustomersPanel, CUSTOMERS } from '@features/customers';
 
 import { DashboardPage } from './DashboardPage';
@@ -52,11 +51,12 @@ import { ProductsPage } from './ProductsPage';
 import { SolutionsPage } from './SolutionsPage';
 import { CustomersPage } from './CustomersPage';
 
-import { ProductDialog } from '../components/dialogs/ProductDialog';
-import { SolutionDialog } from '../components/dialogs/SolutionDialog';
-import { LicenseDialog } from '../components/dialogs/LicenseDialog';
-import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
-import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
+import { ProductDialog } from '@features/products';
+import { OutcomeDialog, Outcome } from '@features/product-outcomes';
+import { ReleaseDialog, Release, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE } from '@features/product-releases';
+import { LicenseDialog, License, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
+import { SolutionDialog } from '@features/solutions';
+import { TagDialog } from '@features/tags';
 import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
 
 import { UserProfileDialog } from '../components/UserProfileDialog';
@@ -65,7 +65,6 @@ import { RoleManagement } from '../components/RoleManagement';
 import { BackupManagementPanel } from '../components/BackupManagementPanel';
 import { ThemeSelector } from '@shared/components/ThemeSelector';
 import { AboutPage } from '../components/AboutPage';
-import { License, Outcome } from '../types/shared';
 // Font Awesome Icon Components (drop-in replacements for MUI icons)
 import {
   Inventory2 as ProductIcon,
@@ -144,77 +143,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 
-// GraphQL queries for fetching data with relationships
-const PRODUCTS = gql`
-  query Products {
-    products {
-      edges {
-        node {
-          id
-          name
-          description
-          statusPercent
-          customAttrs
-          licenses {
-            id
-            name
-            description
-            level
-            isActive
-          }
-          releases {
-            id
-            name
-            description
-            level
-            isActive
-          }
-          outcomes {
-            id
-            name
-            description
-          }
-        }
-      }
-    }
-  }
-`;
-
-const TASKS_FOR_PRODUCT = gql`
-  query TasksForProduct($productId: ID!) {
-    tasks(productId: $productId) {
-      edges {
-        node {
-          id
-          name
-          description
-          estMinutes
-          weight
-          sequenceNumber
-          licenseLevel
-          notes
-          howToDoc
-          howToVideo
-          license {
-            id
-            name
-            level
-          }
-          outcomes {
-            id
-            name
-          }
-          releases {
-            id
-            name
-            level
-          }
-        }
-      }
-    }
-  }
-`;
-
+import { TASKS_FOR_PRODUCT } from '@features/tasks';
+import { PRODUCTS } from '../graphql/queries';
 
 
 
@@ -235,11 +165,7 @@ const OUTCOMES = gql`
   }
 `;
 
-const REORDER_TASKS = gql`
-  mutation ReorderTasks($productId: ID, $solutionId: ID, $order: [ID!]!) {
-    reorderTasks(productId: $productId, solutionId: $solutionId, order: $order)
-  }
-`;
+import { REORDER_TASKS } from '@features/tasks';
 
 const UPDATE_PRODUCT = gql`
   mutation UpdateProduct($id: ID!, $input: ProductInput!) {
@@ -253,65 +179,9 @@ const UPDATE_PRODUCT = gql`
   }
 `;
 
-const UPDATE_TASK = gql`
-  mutation UpdateTask($id: ID!, $input: TaskUpdateInput!) {
-    updateTask(id: $id, input: $input) {
-      id
-      name
-      description
-      estMinutes
-      weight
-      sequenceNumber
-      licenseLevel
-      notes
-      howToDoc
-      howToVideo
-      license {
-        id
-        name
-        level
-      }
-      outcomes {
-        id
-        name
-      }
-      releases {
-        id
-        name
-        level
-      }
-      telemetryAttributes {
-        id
-        name
-        description
-        dataType
-        isRequired
-        successCriteria
-        order
-        isActive
-        isSuccessful
-        currentValue {
-          id
-          value
-          source
-          createdAt
-        }
-      }
-    }
-  }
-`;
+import { UPDATE_TASK } from '@features/tasks';
 
-const DELETE_TASK = gql`
-  mutation DeleteTask($id: ID!) {
-    queueTaskSoftDelete(id: $id)
-  }
-`;
-
-const PROCESS_DELETION_QUEUE = gql`
-  mutation ProcessDeletionQueue {
-    processDeletionQueue
-  }
-`;
+import { DELETE_TASK, PROCESS_DELETION_QUEUE } from '@features/tasks';
 
 const DELETE_PRODUCT = gql`
   mutation DeleteProduct($id: ID!) {
@@ -325,65 +195,6 @@ const DELETE_SOLUTION = gql`
   }
 `;
 
-const CREATE_LICENSE = gql`
-  mutation CreateLicense($input: LicenseInput!) {
-    createLicense(input: $input) {
-      id
-      name
-      description
-      level
-      isActive
-    }
-  }
-`;
-
-const UPDATE_LICENSE = gql`
-  mutation UpdateLicense($id: ID!, $input: LicenseInput!) {
-    updateLicense(id: $id, input: $input) {
-      id
-      name
-      description
-      level
-      isActive
-    }
-  }
-`;
-
-const DELETE_LICENSE = gql`
-  mutation DeleteLicense($id: ID!) {
-    deleteLicense(id: $id)
-  }
-`;
-
-const CREATE_RELEASE = gql`
-  mutation CreateRelease($input: ReleaseInput!) {
-    createRelease(input: $input) {
-      id
-      name
-      description
-      level
-      isActive
-    }
-  }
-`;
-
-const UPDATE_RELEASE = gql`
-  mutation UpdateRelease($id: ID!, $input: ReleaseInput!) {
-    updateRelease(id: $id, input: $input) {
-      id
-      name
-      description
-      level
-      isActive
-    }
-  }
-`;
-
-const DELETE_RELEASE = gql`
-  mutation DeleteRelease($id: ID!) {
-    deleteRelease(id: $id)
-  }
-`;
 
 // Telemetry mutations
 const CREATE_TELEMETRY_ATTRIBUTE = gql`
@@ -1781,9 +1592,9 @@ export function App() {
     name: string;
     description?: string;
     customAttrs?: any;
-    outcomes?: Array<{ id?: string; name: string; description?: string; isNew?: boolean; delete?: boolean }>;
-    licenses?: Array<{ id?: string; name: string; description?: string; level: string; isActive: boolean; isNew?: boolean; delete?: boolean }>;
-    releases?: Array<{ id?: string; name: string; level: number; description?: string; isNew?: boolean; delete?: boolean }>;
+    outcomes?: Outcome[];
+    licenses?: License[];
+    releases?: Release[];
   }) => {
     if (!data.name?.trim()) return;
 
@@ -1811,7 +1622,7 @@ export function App() {
             const licenseResult = await licenseHandlers.createLicense({
               name: license.name,
               description: license.description || '',
-              level: parseInt(license.level),
+              level: license.level,
               isActive: license.isActive,
               productId: productId
             }, {

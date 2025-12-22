@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Paper, Divider, Chip } from '@mui/material';
-import { Info as InfoIcon } from './common/FAIcon';
+import { Info as InfoIcon } from '@shared/components/FAIcon';
 
 export const AboutPage: React.FC = () => {
     const version = __APP_VERSION__;
