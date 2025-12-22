@@ -16,7 +16,7 @@ if (typeof window !== 'undefined' && (!window.crypto || !window.crypto.randomUUI
 
 import * as ReactDOM from 'react-dom/client';
 import App from './pages/App';
-import { AuthProvider } from './components/AuthContext';
+import { AuthProvider } from '@features/auth';
 import { ApolloClientWrapper } from './components/ApolloClientProvider';
 import { AppThemeProvider } from './theme/ThemeProvider';
 import { ErrorBoundary } from '@shared/components/ErrorBoundary';

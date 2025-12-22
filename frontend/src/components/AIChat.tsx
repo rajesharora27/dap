@@ -45,7 +45,7 @@ import {
   AISparkle,
 } from '@shared/components/FAIcon';
 import { gql, useMutation, useQuery } from '@apollo/client';
-import { useAuth } from './AuthContext';
+import { useAuth } from '@features/auth';
 import { useAIAssistant, AIMessage } from '../hooks/useAIAssistant';
 import QueryResultDisplay from './ai/QueryResultDisplay';
 

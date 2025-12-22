@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { createContext, useContext, useState, useEffect } from 'react';
-import { isTokenValid, getUserFromToken, clearAuth } from '../utils/auth';
+import { isTokenValid, getUserFromToken, clearAuth } from '@/utils/auth';
 
 interface AuthState {
   token: string | null;

@@ -59,9 +59,9 @@ import { SolutionDialog } from '@features/solutions';
 import { TagDialog } from '@features/tags';
 import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
 
-import { UserProfileDialog } from '../components/UserProfileDialog';
-import { UserManagement } from '../components/UserManagement';
-import { RoleManagement } from '../components/RoleManagement';
+import { UserProfileDialog } from '@features/auth';
+import { UserManagement } from '@features/admin';
+import { RoleManagement } from '@features/admin';
 import { BackupManagementPanel } from '../components/BackupManagementPanel';
 import { ThemeSelector } from '@shared/components/ThemeSelector';
 import { AboutPage } from '../components/AboutPage';
@@ -107,9 +107,9 @@ import {
   DeveloperMode as DeveloperModeIcon,
   Add,
 } from '@shared/components/FAIcon';
-import { AuthBar } from '../components/AuthBar';
-import { useAuth } from '../components/AuthContext';
-import { LoginPage } from '../components/LoginPage';
+import { AuthBar } from '@features/auth';
+import { useAuth } from '@features/auth';
+import { LoginPage } from '@features/auth';
 // Development Tools
 import { TestPanelNew } from '../components/dev/TestPanelNew';
 import { DevelopmentCICDPanel } from '../components/dev/DevelopmentCICDPanel';

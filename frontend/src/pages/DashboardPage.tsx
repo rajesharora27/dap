@@ -11,7 +11,7 @@ import {
     Stack
 } from '@mui/material';
 import { useQuery, gql } from '@apollo/client';
-import { useAuth } from '../components/AuthContext';
+import { useAuth } from '@features/auth';
 // Flat outlined icons only (Regular style)
 import {
     ObjectGroupOutlined,

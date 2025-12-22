@@ -21,7 +21,7 @@ import { ReleaseDialog, SolutionReleaseDialog, CREATE_RELEASE, UPDATE_RELEASE, D
 import { LicenseDialog, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
 import { SortableTaskItem } from '@shared/components/SortableTaskItem';
 
-import { useAuth } from '../components/AuthContext';
+import { useAuth } from '@features/auth';
 import { InlineEditableText } from '@shared/components/InlineEditableText';
 
 export const SolutionsPage: React.FC = () => {

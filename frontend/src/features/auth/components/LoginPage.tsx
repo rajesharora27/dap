@@ -20,7 +20,7 @@ import {
   Lock,
   ArrowForward
 } from '@shared/components/FAIcon';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 const LOGIN = gql`
   mutation Login($username: String!, $password: String!) {

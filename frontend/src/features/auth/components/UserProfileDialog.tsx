@@ -14,7 +14,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import { gql, useMutation, useQuery } from '@apollo/client';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 const GET_ME = gql`
   query GetMe {
@@ -63,20 +63,20 @@ interface UserProfileDialogProps {
 export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onClose }) => {
   const { user: authUser, setUser } = useAuth();
   const [activeTab, setActiveTab] = useState(0);
-  
+
   // Profile form state
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  
+
   // Password form state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  
+
   // UI state
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
-  
+
   // GraphQL
   const { data, loading, refetch } = useQuery(GET_ME, {
     skip: !open,
@@ -87,17 +87,17 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
       }
     }
   });
-  
+
   const [changePassword, { loading: changingPassword }] = useMutation(CHANGE_PASSWORD);
-  
+
   const user = data?.me;
-  
+
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
     setSuccessMsg('');
     setErrorMsg('');
   };
-  
+
   const handleClose = () => {
     setActiveTab(0);
     setCurrentPassword('');
@@ -107,32 +107,32 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
     setErrorMsg('');
     onClose();
   };
-  
+
   const handlePasswordChange = async () => {
     setErrorMsg('');
     setSuccessMsg('');
-    
+
     // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
       setErrorMsg('All password fields are required');
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       setErrorMsg('New passwords do not match');
       return;
     }
-    
+
     if (newPassword.length < 6) {
       setErrorMsg('Password must be at least 6 characters long');
       return;
     }
-    
+
     if (!user?.id) {
       setErrorMsg('User ID not found');
       return;
     }
-    
+
     try {
       await changePassword({
         variables: {
@@ -143,12 +143,12 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
           }
         }
       });
-      
+
       setSuccessMsg('Password changed successfully!');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      
+
       // Close dialog after 2 seconds
       setTimeout(() => {
         handleClose();
@@ -157,11 +157,11 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
       setErrorMsg(err.message || 'Failed to change password');
     }
   };
-  
+
   const handleProfileUpdate = async () => {
     setErrorMsg('');
     setSuccessMsg('');
-    
+
     // For now, just update the local user state
     // You can add a mutation to update user profile on backend if needed
     if (authUser) {
@@ -172,17 +172,17 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
       };
       setUser(updatedUser);
       setSuccessMsg('Profile updated successfully!');
-      
+
       setTimeout(() => {
         handleClose();
       }, 2000);
     }
   };
-  
+
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>User Profile</DialogTitle>
-      
+
       <DialogContent>
         {loading ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -194,19 +194,19 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
               <Tab label="Profile" />
               <Tab label="Change Password" />
             </Tabs>
-            
+
             {successMsg && (
               <Alert severity="success" sx={{ mt: 2 }}>
                 {successMsg}
               </Alert>
             )}
-            
+
             {errorMsg && (
               <Alert severity="error" sx={{ mt: 2 }}>
                 {errorMsg}
               </Alert>
             )}
-            
+
             <TabPanel value={activeTab} index={0}>
               <Box sx={{ mt: 2 }}>
                 <TextField
@@ -217,7 +217,7 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
                   margin="normal"
                   helperText="Username cannot be changed"
                 />
-                
+
                 <TextField
                   fullWidth
                   label="Full Name"
@@ -225,7 +225,7 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
                   onChange={(e) => setFullName(e.target.value)}
                   margin="normal"
                 />
-                
+
                 <TextField
                   fullWidth
                   label="Email"
@@ -234,7 +234,7 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
                   onChange={(e) => setEmail(e.target.value)}
                   margin="normal"
                 />
-                
+
                 {user?.isAdmin && (
                   <Alert severity="info" sx={{ mt: 2 }}>
                     You are an administrator
@@ -242,13 +242,13 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
                 )}
               </Box>
             </TabPanel>
-            
+
             <TabPanel value={activeTab} index={1}>
               <Box sx={{ mt: 2 }}>
                 <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
                   Choose a strong password with at least 6 characters.
                 </Typography>
-                
+
                 <TextField
                   fullWidth
                   label="Current Password"
@@ -258,7 +258,7 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
                   margin="normal"
                   autoComplete="current-password"
                 />
-                
+
                 <TextField
                   fullWidth
                   label="New Password"
@@ -268,7 +268,7 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
                   margin="normal"
                   autoComplete="new-password"
                 />
-                
+
                 <TextField
                   fullWidth
                   label="Confirm New Password"
@@ -283,20 +283,20 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
           </>
         )}
       </DialogContent>
-      
+
       <DialogActions>
         <Button onClick={handleClose}>Cancel</Button>
         {activeTab === 0 ? (
-          <Button 
-            onClick={handleProfileUpdate} 
+          <Button
+            onClick={handleProfileUpdate}
             variant="contained"
             disabled={loading}
           >
             Update Profile
           </Button>
         ) : (
-          <Button 
-            onClick={handlePasswordChange} 
+          <Button
+            onClick={handlePasswordChange}
             variant="contained"
             disabled={changingPassword || loading}
           >

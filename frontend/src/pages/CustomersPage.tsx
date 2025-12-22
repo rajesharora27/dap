@@ -8,7 +8,7 @@ import { useQuery } from '@apollo/client';
 import { CustomersPanel, CUSTOMERS } from '@features/customers';
 
 
-import { useAuth } from '../components/AuthContext';
+import { useAuth } from '@features/auth';
 
 
 export const CustomersPage: React.FC = () => {

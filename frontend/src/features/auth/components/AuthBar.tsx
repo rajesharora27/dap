@@ -25,10 +25,10 @@ import {
   AISparkle,
 } from '@shared/components/FAIcon';
 import { useQuery } from '@apollo/client';
-import { useAuth } from './AuthContext';
-import { AIChat } from './AIChat';
-import { HelpDialog } from './HelpDialog';
-import { IS_AI_AGENT_AVAILABLE, IsAIAgentAvailableResponse } from '../graphql/ai';
+import { useAuth } from '../context/AuthContext';
+import { AIChat } from '@/components/AIChat';
+import { HelpDialog } from '@/components/HelpDialog';
+import { IS_AI_AGENT_AVAILABLE, IsAIAgentAvailableResponse } from '@/graphql/ai';
 
 interface AuthBarProps {
   onMenuClick?: () => void;

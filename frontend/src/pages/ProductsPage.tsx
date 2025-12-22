@@ -21,7 +21,7 @@ import { LicenseDialog, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@
 import { TASKS_FOR_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, TaskDialog } from '@features/tasks';
 import { SortableTaskItem } from '@shared/components/SortableTaskItem';
 import { TagDialog, ProductTag, CREATE_PRODUCT_TAG, UPDATE_PRODUCT_TAG, DELETE_PRODUCT_TAG } from '@features/tags';
-import { useAuth } from '../components/AuthContext';
+import { useAuth } from '@features/auth';
 import { useProductImportExport } from '@features/products';
 import { InlineEditableText } from '@shared/components/InlineEditableText';
 
