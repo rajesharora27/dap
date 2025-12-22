@@ -13,7 +13,7 @@ import {
   Chip
 } from '@mui/material';
 import { Add, Edit, Delete } from '@shared/components/FAIcon';
-import { SolutionDialog } from '@features/solutions';
+import { SolutionDialog } from './SolutionDialog';
 
 const SOLUTIONS = gql`
   query Solutions {
