@@ -7,7 +7,7 @@ Production-ready customer adoption and product management platform with Excel im
 ## 🌐 Access
 
 **Development:** http://dev.rajarora.csslab/dap/  
-**Production:** http://prod.rajarora.csslab/dap/ and https://myapps.cxsaaslab.com/dap/
+**Production:** https://myapps.cxsaaslab.com/dap/
 
 **Default Login:** `admin` / `DAP123` (change on first login)
 

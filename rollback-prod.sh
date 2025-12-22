@@ -3,7 +3,7 @@
 
 set -e
 
-PROD_HOST="prod.rajarora.csslab"
+PROD_HOST="centos2.rajarora.csslab"
 PROD_USER="rajarora"
 
 TIMESTAMP="$1"
