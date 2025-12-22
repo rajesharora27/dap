@@ -2,43 +2,82 @@
 # =============================================================================
 # Setup Environment Configuration
 # =============================================================================
-# This script copies the appropriate .env file based on the target environment
-# Usage: ./scripts/setup-env.sh [development|production]
+# This script helps set up the .env file from .env.example
+# Usage: ./scripts/setup-env.sh [--sync-only]
 # =============================================================================
 
 set -e
 
-ENV=${1:-development}
-BACKEND_DIR="/data/dap/backend"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 echo "======================================"
-echo "Setting up environment: $ENV"
+echo "DAP Environment Setup"
 echo "======================================"
 
-case $ENV in
-  development|dev)
-    ENV_FILE=".env.development"
-    ;;
-  production|prod)
-    ENV_FILE=".env.production"
-    ;;
-  *)
-    echo "❌ Unknown environment: $ENV"
-    echo "Usage: $0 [development|production]"
+# Check for .env.example
+if [ ! -f "$PROJECT_DIR/.env.example" ]; then
+    echo "❌ .env.example not found in project root"
     exit 1
-    ;;
-esac
-
-if [ ! -f "$BACKEND_DIR/$ENV_FILE" ]; then
-  echo "❌ Environment file not found: $BACKEND_DIR/$ENV_FILE"
-  exit 1
 fi
 
-echo "📋 Copying $ENV_FILE to .env..."
-cp "$BACKEND_DIR/$ENV_FILE" "$BACKEND_DIR/.env"
+# If --sync-only, just sync existing .env to backend
+if [ "$1" = "--sync-only" ]; then
+    if [ ! -f "$PROJECT_DIR/.env" ]; then
+        echo "❌ .env not found. Run without --sync-only to create it."
+        exit 1
+    fi
+    echo "📋 Syncing .env to backend/.env..."
+    cp "$PROJECT_DIR/.env" "$PROJECT_DIR/backend/.env"
+    echo "✅ Sync complete"
+    exit 0
+fi
 
-echo "✅ Environment set to: $ENV"
+# Check if .env already exists
+if [ -f "$PROJECT_DIR/.env" ]; then
+    echo "ℹ️  .env already exists"
+    read -p "Overwrite with .env.example? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        echo "Keeping existing .env"
+        echo ""
+        echo "To sync to backend: ./scripts/setup-env.sh --sync-only"
+        exit 0
+    fi
+fi
+
+# Copy .env.example to .env
+echo "📋 Creating .env from .env.example..."
+cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
+
+# Detect platform and suggest settings
+OS_NAME="$(uname -s)"
+if [ "$OS_NAME" = "Darwin" ]; then
+    echo ""
+    echo "🍎 Detected macOS - Suggested settings for Mac Demo:"
+    echo ""
+    echo "  DATABASE_URL=postgresql://$(whoami)@localhost:5432/dap?schema=public&connection_limit=5"
+    echo "  NODE_ENV=production"
+    echo "  VITE_BASE_PATH=/"
+    echo "  SHOW_DEV_MENU=false"
+    echo ""
+    echo "💡 Tip: You can use __MACUSER__ placeholder in DATABASE_URL"
+    echo "   It will be replaced with your username by ./dap start"
+else
+    echo ""
+    echo "🐧 Detected Linux - Suggested settings:"
+    echo ""
+    echo "  DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dap?schema=public"
+    echo "  NODE_ENV=development"
+    echo "  VITE_BASE_PATH=/dap/"
+    echo "  SHOW_DEV_MENU=true"
+fi
+
 echo ""
-echo "Current settings:"
-grep -E "^(NODE_ENV|LLM_PROVIDER|AI_AGENT_ENABLED)" "$BACKEND_DIR/.env" | head -5
+echo "✅ Created .env from template"
 echo ""
+echo "Next steps:"
+echo "  1. Edit .env with your settings"
+echo "  2. Run: ./dap start"
+echo ""
+echo "See docs/ENVIRONMENT_MANAGEMENT.md for complete configuration guide."

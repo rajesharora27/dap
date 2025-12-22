@@ -7,6 +7,7 @@ export { ProductsPanel } from './components/ProductsPanel';
 export { ProductManagement } from './components/ProductManagement';
 export { ProductDialog } from './components/ProductDialog';
 export { ProductPreviewDialog } from './components/ProductPreviewDialog';
+export { ProductSummaryDashboard } from './components/ProductSummaryDashboard';
 export { AssignProductDialog } from './components/AssignProductDialog';
 
 // Hooks

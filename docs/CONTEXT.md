@@ -758,16 +758,35 @@ npx prisma db push
 
 ## Development Workflow
 
+### Configuration Model
+
+DAP uses a **single `.env.example` template** with **Zod runtime validation**:
+
+```
+.env.example  →  .env  →  backend/.env
+   (template)   (your config)  (synced)
+```
+
+| File | Purpose | Git Status |
+|------|---------|------------|
+| `.env.example` | Template with all variables documented | ✅ Committed |
+| `.env` | Your active configuration | ❌ Gitignored |
+| `backend/.env` | Synced copy for backend | ❌ Gitignored |
+
+The backend validates all variables at startup using Zod schemas. Missing required variables cause immediate startup failure with clear error messages.
+
+**For complete environment configuration details, see:** `docs/ENVIRONMENT_MANAGEMENT.md`
+
 ### Cross-Platform Development
 
 DAP supports four deployment environments with unified CLI:
 
-| Environment | Platform | Mode | ./dap Behavior | Environment File |
-|------------|----------|------|----------------|------------------|
-| **MacBook** | macOS | `mac-demo` | Light production for demos | `.env.macdev` |
-| **centos1** | Linux | `linux-dev` | Full development toolkit | `.env.linuxdev` |
-| **centos2** | Linux | `production` | Staging (delegates to `dap-prod`) | `.env.stage` |
-| **dapoc** | RHEL 9 | `production` | Production (delegates to `dap-prod`) | `.env.prod` |
+| Environment | Platform | Mode | ./dap Behavior |
+|------------|----------|------|----------------|
+| **MacBook** | macOS | `mac-demo` | Light production for demos |
+| **centos1** | Linux | `linux-dev` | Full development toolkit |
+| **centos2** | Linux | `production` | Staging (delegates to `dap-prod`) |
+| **dapoc** | RHEL 9 | `production` | Production (delegates to `dap-prod`) |
 
 The `./dap` script automatically detects the environment based on OS and hostname.
 
@@ -776,15 +795,17 @@ The `./dap` script automatically detects the environment based on OS and hostnam
 ### Mac Demo Setup (No Docker Required)
 
 ```bash
-# 1. Clone repository
+# 1. Clone repository and setup config
 cd ~/Develop/dap
+cp .env.example .env
+# Edit .env: set DATABASE_URL, JWT_SECRET, etc.
 
 # 2. Start (auto-detected on macOS)
 ./dap start
 
 # This automatically:
+# - Syncs .env to backend/.env
 # - Installs PostgreSQL via Homebrew (if needed)
-# - Syncs .env.macbook to backend/.env
 # - Runs migrations
 # - Builds backend/frontend
 # - Starts services on ports 4000/5173
@@ -803,10 +824,12 @@ cd ~/Develop/dap
 ### Linux Development Setup (Docker-based)
 
 ```bash
-# 1. Clone repository
+# 1. Clone repository and setup config
 cd /data/dap
+cp .env.example .env
+# Edit .env: set DATABASE_URL, JWT_SECRET, etc.
 
-# 2. Setup database (Docker/Podman)
+# 2. Setup database (Docker/Podman) - if not using ./dap managed container
 docker run --name dap_db \
   -e POSTGRES_DB=dap \
   -e POSTGRES_PASSWORD=postgres \

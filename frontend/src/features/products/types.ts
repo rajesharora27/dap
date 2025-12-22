@@ -16,6 +16,18 @@ export interface Product {
     licenses?: License[];
     outcomes?: Outcome[];
     releases?: Release[];
+    tasks?: {
+        edges: Array<{
+            node: {
+                id: string;
+                name: string;
+                howToDoc?: string[];
+                howToVideo?: string[];
+                telemetryAttributes?: Array<{ id: string }>;
+                outcomes?: Array<{ id: string; name: string }>;
+            }
+        }>
+    };
 }
 
 export interface ProductInput {

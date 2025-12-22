@@ -14,7 +14,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
 import { CSS } from '@dnd-kit/utilities';
 
-import { PRODUCTS, PRODUCT, DELETE_PRODUCT, CREATE_PRODUCT, UPDATE_PRODUCT, ProductDialog, OUTCOMES } from '@features/products';
+import { PRODUCTS, PRODUCT, DELETE_PRODUCT, CREATE_PRODUCT, UPDATE_PRODUCT, ProductDialog, ProductSummaryDashboard, OUTCOMES } from '@features/products';
 import { OutcomeDialog, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME } from '@features/product-outcomes';
 import { ReleaseDialog, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE } from '@features/product-releases';
 import { LicenseDialog, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
@@ -166,14 +166,21 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         }
         // Outcome filter (OR within outcomes)
         if (taskOutcomeFilter.length > 0) {
-            // If task has NO specific outcomes, it implies it applies to ALL outcomes
             const hasSpecificOutcomes = task.outcomes && task.outcomes.length > 0;
-            if (hasSpecificOutcomes) {
+            
+            // Special case: "__ALL_OUTCOMES__" means show ONLY tasks with no specific outcomes
+            if (taskOutcomeFilter.includes('__ALL_OUTCOMES__')) {
+                if (hasSpecificOutcomes) {
+                    return false; // Exclude tasks that have specific outcomes
+                }
+                // Keep tasks with no specific outcomes (they apply to ALL)
+            } else if (hasSpecificOutcomes) {
+                // Normal filtering: check if task has any of the selected outcomes
                 if (!task.outcomes.some((o: any) => taskOutcomeFilter.includes(o.id))) {
                     return false;
                 }
             }
-            // If !hasSpecificOutcomes, we keep it (matches all)
+            // If !hasSpecificOutcomes and not filtering for __ALL_OUTCOMES__, keep it (matches all)
         }
         // Release filter (OR within releases)
         if (taskReleaseFilter.length > 0) {
@@ -906,137 +913,29 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
 
                     {selectedSubSection === 'summary' && (
                         <Box sx={{ mt: 2 }}>
-                            {/* Read-only Dashboard Layout - Full Width */}
-                            <Grid container spacing={3}>
-                                <Grid size={{ xs: 12 }}>
-                                    {/* Description/Overview - Without title or banner */}
-                                    <Box sx={{ mb: 3, pl: 1, borderLeft: `3px solid ${alpha(theme.palette.primary.main, 0.3)}` }}>
-                                        <InlineEditableText
-                                            value={displayProduct.description || ''}
-                                            onSave={(val) => handleInlineProductUpdate('description', val)}
-                                            multiline
-                                            variant="body1"
-                                            color={theme.palette.text.secondary}
-                                            placeholder="No detailed description provided for this product. Click to add one."
-                                            fullWidth
-                                        />
-                                    </Box>
-
-                                    {/* Outcomes */}
-                                    <Card
-                                        elevation={2}
-                                        sx={{
-                                            borderRadius: 2,
-                                            border: `1px solid ${alpha(theme.palette.success.main, 0.2)}`
-                                        }}
-                                    >
-                                        <CardContent>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                                <CheckCircle sx={{ color: theme.palette.success.main }} />
-                                                <Typography variant="h6" sx={{ fontWeight: 'bold', color: theme.palette.success.main }}>
-                                                    Outcomes
-                                                </Typography>
-                                                <Chip
-                                                    label={displayProduct.outcomes?.length || 0}
-                                                    size="small"
-                                                    sx={{
-                                                        ml: 1,
-                                                        bgcolor: alpha(theme.palette.success.main, 0.15),
-                                                        color: theme.palette.success.dark,
-                                                        fontWeight: 'bold'
-                                                    }}
-                                                />
-                                            </Box>
-                                            {displayProduct.outcomes && displayProduct.outcomes.length > 0 ? (
-                                                <List disablePadding>
-                                                    {displayProduct.outcomes.map((o: any, idx: number) => (
-                                                        <ListItem
-                                                            key={o.id}
-                                                            sx={{
-                                                                py: 1,
-                                                                px: 2,
-                                                                bgcolor: idx % 2 === 0 ? alpha(theme.palette.success.main, 0.03) : 'transparent',
-                                                                borderRadius: 1,
-                                                                mb: 0.5,
-                                                                cursor: 'default',
-                                                                '&:hover': { bgcolor: 'action.hover' }
-                                                            }}
-                                                            secondaryAction={
-                                                                <Box>
-                                                                    {inlineEditingOutcome === o.id ? (
-                                                                        <IconButton
-                                                                            size="small"
-                                                                            color="success"
-                                                                            onClick={() => handleSaveInlineOutcome(o.id)}
-                                                                        >
-                                                                            <CheckCircle fontSize="small" />
-                                                                        </IconButton>
-                                                                    ) : (
-                                                                        <IconButton
-                                                                            size="small"
-                                                                            onClick={() => {
-                                                                                setInlineEditingOutcome(o.id);
-                                                                                setInlineOutcomeName(o.name);
-                                                                            }}
-                                                                        >
-                                                                            <Edit fontSize="small" />
-                                                                        </IconButton>
-                                                                    )}
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={inlineEditingOutcome === o.id ? () => setInlineEditingOutcome(null) : () => handleDeleteOutcome(o.id)}
-                                                                        color="error"
-                                                                    >
-                                                                        <Delete fontSize="small" />
-                                                                    </IconButton>
-                                                                </Box>
-                                                            }
-                                                        >
-                                                            {inlineEditingOutcome === o.id ? (
-                                                                <OutlinedInput
-                                                                    fullWidth
-                                                                    size="small"
-                                                                    value={inlineOutcomeName}
-                                                                    onChange={(e) => setInlineOutcomeName(e.target.value)}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === 'Enter') handleSaveInlineOutcome(o.id);
-                                                                        if (e.key === 'Escape') setInlineEditingOutcome(null);
-                                                                    }}
-                                                                    autoFocus
-                                                                    sx={{ mr: 6 }}
-                                                                />
-                                                            ) : (
-                                                                <Tooltip title={o.description || 'Double-click to edit'} placement="top" arrow>
-                                                                    <ListItemText
-                                                                        primary={
-                                                                            <Typography variant="subtitle1" sx={{ fontWeight: 500 }}>
-                                                                                {o.name}
-                                                                            </Typography>
-                                                                        }
-                                                                        secondary={o.description && (
-                                                                            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                                                                                {o.description}
-                                                                            </Typography>
-                                                                        )}
-                                                                        onDoubleClick={() => {
-                                                                            setInlineEditingOutcome(o.id);
-                                                                            setInlineOutcomeName(o.name);
-                                                                        }}
-                                                                    />
-                                                                </Tooltip>
-                                                            )}
-                                                        </ListItem>
-                                                    ))}
-                                                </List>
-                                            ) : (
-                                                <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>
-                                                    No outcomes defined for this product.
-                                                </Typography>
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                            </Grid>
+                            <ProductSummaryDashboard
+                                product={{
+                                    ...displayProduct,
+                                    tasks: { edges: tasks.map((t: any) => ({ node: t })) }
+                                }}
+                                onOutcomeClick={(outcomeName) => {
+                                    // Switch to tasks tab and set filter
+                                    setSelectedSubSection('tasks');
+                                    setShowFilters(true);
+                                    
+                                    if (outcomeName === 'All Outcomes') {
+                                        // Filter to show only tasks that have no specific outcomes
+                                        // These tasks apply to ALL outcomes
+                                        setTaskOutcomeFilter(['__ALL_OUTCOMES__']);
+                                    } else {
+                                        // Find the outcome ID by name
+                                        const outcome = displayProduct?.outcomes?.find((o: any) => o.name === outcomeName);
+                                        if (outcome) {
+                                            setTaskOutcomeFilter([outcome.id]);
+                                        }
+                                    }
+                                }}
+                            />
                         </Box>
                     )}
 

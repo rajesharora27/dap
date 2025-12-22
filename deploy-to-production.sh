@@ -58,7 +58,8 @@ cp -r frontend/dist /tmp/dap-deploy-prod/frontend-dist
 cp -r docs /tmp/dap-deploy-prod/docs 2>/dev/null || true
 
 # Copy environment files
-cp .env.prod /tmp/dap-deploy-prod/.env
+# NOTE: We now rely on the server having its own configuration
+# cp .env.prod /tmp/dap-deploy-prod/.env
 
 # Copy config files
 mkdir -p /tmp/dap-deploy-prod/config
@@ -107,11 +108,17 @@ cp /tmp/dap-deploy-incoming/maintenance.html /data/dap/www/maintenance.html 2>/d
 sudo -u dap bash << 'DAPCMDS'
 set -e
 DAP_ROOT="/data/dap/app"
+# ...
 
+# (In SSH block)
 # Copy environment file
-cp /tmp/dap-deploy-incoming/.env "$DAP_ROOT/.env"
-cp /tmp/dap-deploy-incoming/.env "$DAP_ROOT/backend/.env"
-echo "✅ Environment file updated"
+if [ -f /tmp/dap-deploy-incoming/.env ]; then
+  cp /tmp/dap-deploy-incoming/.env "$DAP_ROOT/.env"
+  cp /tmp/dap-deploy-incoming/.env "$DAP_ROOT/backend/.env"
+  echo "✅ Environment file updated"
+else
+  echo "ℹ️  No environment file in deployment payload. Relying on existing configuration."
+fi
 
 # Copy scripts
 if [ -d "/tmp/dap-deploy-incoming/scripts-new" ]; then

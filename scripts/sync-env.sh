@@ -1,35 +1,19 @@
 #!/bin/bash
 
-# Default to development if no argument provided
-ENV_MODE=${1:-development}
-
-if [ "$ENV_MODE" != "development" ] && [ "$ENV_MODE" != "production" ]; then
-    echo "Usage: ./scripts/sync-env.sh [development|production]"
+# Sync root .env to backend and frontend
+if [ ! -f .env ]; then
+    echo "Error: Root .env file not found."
     exit 1
 fi
 
-SOURCE_FILE=".env.${ENV_MODE}"
+echo "--- Syncing Environment from root .env ---"
 
-if [ ! -f "$SOURCE_FILE" ]; then
-    echo "Error: Source environment file '$SOURCE_FILE' not found in root."
-    exit 1
-fi
-
-echo "--- Syncing Environment: ${ENV_MODE} ---"
-
-# 1. Update Root .env (for convenience)
-echo "Updating root .env..."
-cp "$SOURCE_FILE" .env
-
-# 2. Update Backend .env
+# 1. Update Backend .env
 echo "Updating backend/.env..."
-cp "$SOURCE_FILE" backend/.env
+cp .env backend/.env
 
-# 3. Update Frontend .env
-# Note: Vite loads .env, .env.local, .env.[mode], .env.[mode].local
-# We copy to .env to ensure these variables take precedence or are available as base.
+# 2. Update Frontend .env
 echo "Updating frontend/.env..."
-cp "$SOURCE_FILE" frontend/.env
+cp .env frontend/.env
 
 echo "--- Environment Sync Complete ---"
-echo "Active Configuration: $SOURCE_FILE"

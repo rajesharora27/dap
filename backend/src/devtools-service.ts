@@ -5,7 +5,7 @@ import devToolsRouter from './api/devTools';
 import { envConfig } from './config/env';
 
 const app = express();
-const PORT = 4001;
+const PORT = envConfig.features.devTools.port;
 
 // CORS configuration
 app.use(cors({

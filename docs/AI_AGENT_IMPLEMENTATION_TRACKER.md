@@ -1135,8 +1135,8 @@ query {
 **Files modified:**
 - `backend/src/services/ai/providers/index.ts` - Added all providers
 - `backend/config/llm.config.json` - Added Cisco as default
-- `.env.development` - Added Cisco config
-- `.env.production` - Added Cisco config
+- `.env.example` - Documents Cisco config (template)
+- `.env` - Holds Cisco credentials per environment (gitignored)
 
 **Issues encountered:**
 - Cisco OAuth token rejected (401 Invalid token) - Fixed by using Basic Auth
@@ -1364,8 +1364,7 @@ Error Handling:
 | AI_AGENT_QUICK_START.md | ✅ Complete | Dec 5, 2025 |
 | AI_AGENT_IMPLEMENTATION_TRACKER.md | ✅ Complete | Dec 8, 2025 |
 | llm.config.json | ✅ Complete | Dec 6, 2025 |
-| .env.development | ✅ Updated | Dec 6, 2025 |
-| .env.production | ✅ Updated | Dec 6, 2025 |
+| .env.example | ✅ Updated | Dec 22, 2025 |
 | API Documentation | ⬜ Not Started | - |
 | User Guide | ⬜ Not Started | - |
 

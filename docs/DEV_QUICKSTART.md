@@ -66,6 +66,31 @@ The `./dap` script works on **all environments** and auto-detects which mode to 
 
 ---
 
+## Configuration Model
+
+DAP uses a **single `.env.example` template** with environment-specific customization:
+
+```
+.env.example  →  .env  →  backend/.env
+   (template)   (your config)  (synced)
+```
+
+**Initial Setup (any environment):**
+
+```bash
+# 1. Copy template to create your .env
+cp .env.example .env
+
+# 2. Edit .env for your environment (see docs/ENVIRONMENT_MANAGEMENT.md)
+
+# 3. Start
+./dap start
+```
+
+**For complete configuration details, see:** `docs/ENVIRONMENT_MANAGEMENT.md`
+
+---
+
 ## MacBook Development (Primary)
 
 ### Daily Workflow
@@ -89,7 +114,7 @@ The `./dap` script works on **all environments** and auto-detects which mode to 
 
 ### What `./dap start` Does
 
-1. ✅ Syncs `.env.macbook` → `backend/.env`
+1. ✅ Syncs `.env` → `backend/.env`
 2. ✅ Starts PostgreSQL (via Homebrew)
 3. ✅ Runs database migrations
 4. ✅ Builds backend (production mode)
@@ -100,6 +125,7 @@ The `./dap` script works on **all environments** and auto-detects which mode to 
 ### Troubleshooting MacBook
 
 **App not loading?**
+
 ```bash
 # Check status first
 ./dap status
@@ -114,6 +140,7 @@ tail -50 tmp/mac-frontend.log
 ```
 
 **Database issues?**
+
 ```bash
 # Reset database
 ./dap reset
@@ -191,16 +218,24 @@ sudo -u dap pm2 restart all
 
 ---
 
-## Environment Files
+## Configuration Quick Reference
 
-| File | Used By | Base Path | Description |
-|------|---------|-----------|-------------|
-| `.env.macdev` | MacBook (`./dap`) | `/` | Primary development |
-| `.env.linuxdev` | CentOS1 (`./dap`) | `/dap/` | Shared Linux dev |
-| `.env.stage` | Stage (`deploy-to-stage.sh`) | `/dap/` | Pre-production testing |
-| `.env.prod` | Prod (`deploy-to-production.sh`) | `/dap/` | Live production |
+| Environment | NODE_ENV | VITE_BASE_PATH | SHOW_DEV_MENU | Database |
+|-------------|----------|----------------|---------------|----------|
+| Mac Demo | production | `/` | false | Homebrew PostgreSQL |
+| Linux Dev | development | `/dap/` | true | Docker PostgreSQL |
+| Stage | production | `/dap/` | false | Systemd PostgreSQL |
+| Production | production | `/dap/` | false | Systemd PostgreSQL |
 
-> **Note:** Stage and Production use `/dap/` base path because they run behind Apache/Nginx with a subpath.
+**Key `.env` variables to customize:**
+
+```bash
+NODE_ENV=production|development
+DATABASE_URL=postgresql://user:pass@localhost:5432/dap
+JWT_SECRET=your-secret-at-least-32-characters
+VITE_BASE_PATH=/|/dap/
+SHOW_DEV_MENU=true|false
+```
 
 ---
 
@@ -230,3 +265,11 @@ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:5173
 | cssuser | DAP123 | CSS User |
 
 Use `./dap reset` to reset database with demo data and these users.
+
+---
+
+## Related Documentation
+
+- **Environment Management:** `docs/ENVIRONMENT_MANAGEMENT.md` ⭐
+- **Local Development:** `docs/DEV_CONTEXT_LOCAL.md`
+- **Deployment:** `docs/deployment/DEPLOYMENT_INDEX.md`

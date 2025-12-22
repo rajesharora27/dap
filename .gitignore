@@ -16,6 +16,10 @@ tests/*.log
 archive/
 .env.local
 .env.*.local
+.env
+backend/.env
+.agent/
+
 
 # Backup files
 backend/temp/backups/

@@ -200,13 +200,22 @@ export function getProviderApiKey(provider: ProviderType): string | undefined {
  * Check if Cisco AI provider is fully configured
  */
 export function isCiscoConfigured(): boolean {
-  return Boolean(
-    process.env.CISCO_AI_CLIENT_ID &&
-    process.env.CISCO_AI_CLIENT_SECRET &&
-    process.env.CISCO_AI_TOKEN_URL &&
-    process.env.CISCO_AI_ENDPOINT &&
-    process.env.CISCO_AI_API_KEY
-  );
+  const requiredVars = [
+    'CISCO_AI_CLIENT_ID',
+    'CISCO_AI_CLIENT_SECRET',
+    'CISCO_AI_TOKEN_URL',
+    'CISCO_AI_ENDPOINT',
+    'CISCO_AI_API_KEY'
+  ];
+  
+  const missing = requiredVars.filter(v => !process.env[v]);
+  
+  if (missing.length > 0) {
+    console.log(`[LLM] Cisco AI not fully configured. Missing: ${missing.join(', ')}`);
+    return false;
+  }
+  
+  return true;
 }
 
 /**

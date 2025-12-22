@@ -778,6 +778,12 @@ export class AIAgentService {
 
     console.log(`[AI Agent] Starting LLM query processing for: "${request.question}" using provider: ${providerName}`);
 
+    // Warning for mock provider - it only does simple keyword matching and is NOT suitable for production
+    if (providerName === 'mock') {
+      console.warn(`[AI Agent] WARNING: Mock provider being used. Results will be generic and may not match the query intent.`);
+      console.warn(`[AI Agent] For accurate AI queries, configure a real LLM provider (OpenAI, Gemini, Anthropic, or Cisco AI) in your .env file.`);
+    }
+
     try {
       // 1. Interpret user intent and generate query config
       const queryConfig = await this.generateQueryConfig(request.question);
@@ -839,6 +845,11 @@ export class AIAgentService {
         queryConfig,
         providerName  // providerUsed
       );
+
+      // Add warning banner if mock provider was used
+      if (providerName === 'mock') {
+        formattedResponse.answer = `⚠️ **Mock Provider Warning**: The AI Agent is using a mock provider which only does simple keyword matching. Results may not match your query intent.\n\n**To enable accurate AI queries**, configure a real LLM provider (OpenAI, Gemini, Anthropic, or Cisco AI) in your \`.env\` file.\n\n---\n\n${formattedResponse.answer}`;
+      }
 
       return formattedResponse;
 

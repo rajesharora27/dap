@@ -47,9 +47,10 @@ cp -r docs /tmp/dap-deploy/docs 2>/dev/null || true
 
 # Copy environment files
 # Copy environment files (from root)
-cp .env.stage /tmp/dap-deploy/.env
-cp .env.development /tmp/dap-deploy/.env.development 2>/dev/null || true
-cp .env.stage /tmp/dap-deploy/.env.stage 2>/dev/null || true
+# NOTE: Relying on server configuration
+# cp .env.stage /tmp/dap-deploy/.env
+# cp .env.development /tmp/dap-deploy/.env.development 2>/dev/null || true
+# cp .env.stage /tmp/dap-deploy/.env.stage 2>/dev/null || true
 
 # Copy config files (including LLM config)
 mkdir -p /tmp/dap-deploy/config
@@ -109,10 +110,14 @@ mkdir -p "$DAP_ROOT/docs"
 mkdir -p "/data/dap/scripts"
 
 # Copy environment files to root
-cp /tmp/dap-deploy-prod/.env "$DAP_ROOT/.env"
-cp /tmp/dap-deploy-prod/.env.development "$DAP_ROOT/.env.development" 2>/dev/null || true
-cp /tmp/dap-deploy-prod/.env.stage "$DAP_ROOT/.env.stage" 2>/dev/null || true
-echo "✅ Environment files updated in root"
+if [ -f /tmp/dap-deploy-prod/.env ]; then
+  cp /tmp/dap-deploy-prod/.env "$DAP_ROOT/.env"
+  cp /tmp/dap-deploy-prod/.env.development "$DAP_ROOT/.env.development" 2>/dev/null || true
+  cp /tmp/dap-deploy-prod/.env.stage "$DAP_ROOT/.env.stage" 2>/dev/null || true
+  echo "✅ Environment files updated in root"
+else
+  echo "ℹ️  No environment file in payload, keeping existing config"
+fi
 
 # Copy scripts if provided (Early copy to ensure sync-env is available)
 if [ -d "/tmp/dap-deploy-prod/scripts-new" ]; then

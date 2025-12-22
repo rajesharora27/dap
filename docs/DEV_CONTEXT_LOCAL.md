@@ -1,17 +1,39 @@
-## Local Development Context (Mac Demo + CentOS1 Dev + CentOS2 Prod)
+# Local Development Context
 
-**Updated:** 2025-12-17  
-**Purpose:** Document cross-platform development, deployment, and environment-specific configurations.
+**Updated:** December 22, 2025  
+**Purpose:** Cross-platform development, deployment, and environment-specific configurations.
 
 ---
 
 ## Environment Overview
 
-| Environment | Platform | Mode | ./dap Behavior | Environment File |
-|------------|----------|------|----------------|------------------|
-| **MacBook** | macOS (Darwin) | `mac-demo` | Light production for demos | `.env.macbook` |
-| **centos1** | Linux | `linux-dev` | Full development toolkit | `.env.development` |
-| **centos2** | Linux | `production` | Production (delegates to `dap-prod`) | `.env.production` |
+| Environment | Platform | Mode | URL | Database |
+|------------|----------|------|-----|----------|
+| **MacBook** | macOS (Darwin) | `mac-demo` | http://localhost:5173 | Homebrew PostgreSQL |
+| **centos1** | Linux | `linux-dev` | http://centos1:5173 | Docker PostgreSQL |
+| **centos2** | Linux | `production` | http://centos2/dap/ | Systemd PostgreSQL |
+| **dapoc** | RHEL 9 | `production` | https://myapps.cxsaaslab.com/dap/ | Systemd PostgreSQL |
+
+---
+
+## Configuration Model
+
+DAP uses a **single `.env.example` template** with **Zod runtime validation**:
+
+```
+.env.example  →  .env  →  backend/.env
+   (template)   (your config)  (synced)
+```
+
+**Key Files:**
+
+| File | Purpose | Git Status |
+|------|---------|------------|
+| `.env.example` | Template with all variables documented | ✅ Committed |
+| `.env` | Your active configuration | ❌ Gitignored |
+| `backend/.env` | Synced copy for backend | ❌ Gitignored |
+
+**For complete configuration details, see:** `docs/ENVIRONMENT_MANAGEMENT.md`
 
 ---
 
@@ -22,12 +44,12 @@ The main `./dap` script automatically detects the environment and runs the appro
 ```bash
 # Auto-detection logic:
 # 1. macOS (Darwin) → mac-demo mode
-# 2. Hostname contains "centos2" → production mode (delegates to ./dap-prod)
-# 3. Hostname contains "centos1" → linux-dev mode
-# 4. Default → linux-dev mode
+# 2. Hostname contains "centos2" or "dapoc" → production mode (delegates to ./dap-prod)
+# 3. Otherwise → linux-dev mode
 ```
 
 ### Overriding Mode
+
 ```bash
 DAP_MODE=mac-demo ./dap start     # Force Mac demo mode
 DAP_MODE=linux-dev ./dap start    # Force development mode
@@ -39,15 +61,35 @@ DAP_MODE=production ./dap start   # Force production mode (uses dap-prod)
 ## Mac Demo Environment
 
 ### Purpose
+
 Minimal footprint for fast offline demos. Uses local PostgreSQL (Homebrew), no Docker required.
 
-### Environment File: `.env.macbook`
-Located at project root. Key settings:
-- `DATABASE_URL` - Local PostgreSQL (passwordless, uses macOS username)
-- `NODE_ENV=production` - Production mode for realistic demo
-- `SHOW_DEV_MENU=false` - Development toolkit disabled
-- `GRAPHQL_PLAYGROUND=true` - GraphQL Playground enabled
-- Relaxed rate limiting for demo use
+### Initial Setup
+
+```bash
+# 1. Copy template to create your .env
+cp .env.example .env
+
+# 2. Edit .env with Mac-specific settings:
+#    - DATABASE_URL: Use your macOS username (Homebrew Postgres peer auth)
+#    - NODE_ENV: production
+#    - VITE_BASE_PATH: /
+#    - SHOW_DEV_MENU: false
+
+# 3. Start (handles everything automatically)
+./dap start
+```
+
+### Key Configuration
+
+```bash
+# In .env:
+NODE_ENV=production
+DATABASE_URL=postgresql://<your-mac-username>@localhost:5432/dap?schema=public&connection_limit=5
+VITE_BASE_PATH=/
+SHOW_DEV_MENU=false
+VITE_SHOW_DEV_MENU=false
+```
 
 ### Mac Demo Workflow
 
@@ -57,23 +99,23 @@ Located at project root. Key settings:
 - **NO Docker required** - uses local PostgreSQL
 
 **Start:**
+
 ```bash
 ./dap start              # auto-detected on macOS
 ```
 
 This command:
-1. Syncs `.env.macbook` to `backend/.env`
+1. Syncs `.env` to `backend/.env`
 2. Ensures PostgreSQL is installed and running (via Homebrew)
-   - **Auto-detects installed version** (14, 15, or 16)
-   - **Cleans up stale lock files** if PostgreSQL fails to start
+   - Auto-detects installed version (14, 15, or 16)
+   - Cleans up stale lock files if PostgreSQL fails to start
 3. Creates `dap` database if it doesn't exist
 4. Runs migrations
-5. Builds backend/frontend in production mode with correct env vars:
-   - `VITE_BASE_PATH=/` (assets at root)
-   - `VITE_SHOW_DEV_MENU=false` (no dev toolkit)
+5. Builds backend/frontend in production mode
 6. Starts backend (port 4000) and frontend preview (port 5173)
 
 **Stop/Status/Restart:**
+
 ```bash
 ./dap stop
 ./dap status
@@ -81,6 +123,7 @@ This command:
 ```
 
 **Reset Database:**
+
 ```bash
 ./dap reset              # Reseeds with demo data
 ```
@@ -91,19 +134,25 @@ This command:
 3. Executes `seed-light-demo.ts` to create demo users
 
 ### Demo Users (Mac)
-- `admin` / `DAP123!!!` (Administrator)
-- `smeuser` / `DAP123` (SME User)
-- `cssuser` / `DAP123` (CSS User)
+
+| User | Password | Role |
+|------|----------|------|
+| admin | DAP123!!! | Administrator |
+| smeuser | DAP123 | SME User |
+| cssuser | DAP123 | CSS User |
 
 **Run Tests:**
+
 ```bash
 ./dap test               # Uses local PostgreSQL, creates dap_test database
 ```
 
 ### Dataset Footprint
-10 products, 2 solutions, 2 customers, 10 product adoption plans, 2 solution plans, 5 users (admin/sme/css/viewer/demo), 3 roles.
 
-### Backups on Mac demo
+10 products, 2 solutions, 2 customers, 10 product adoption plans, 2 solution plans, 3 users (admin/sme/css), 3 roles.
+
+### Backups on Mac Demo
+
 Keep at most 1–2 snapshots if needed; default flow does not auto-backup.
 
 ---
@@ -111,12 +160,36 @@ Keep at most 1–2 snapshots if needed; default flow does not auto-backup.
 ## CentOS1 Development Environment
 
 ### Purpose
+
 Full development toolkit with hot reload, dev data, and Docker-based PostgreSQL.
 
-### Environment File: `.env.development`
-Located at project root.
+### Initial Setup
+
+```bash
+# 1. Copy template
+cp .env.example .env
+
+# 2. Edit .env with development settings:
+#    - DATABASE_URL: postgresql://postgres:postgres@localhost:5432/dap
+#    - NODE_ENV: development
+#    - VITE_BASE_PATH: /dap/
+#    - SHOW_DEV_MENU: true
+```
+
+### Key Configuration
+
+```bash
+# In .env:
+NODE_ENV=development
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/dap?schema=public
+VITE_BASE_PATH=/dap/
+SHOW_DEV_MENU=true
+VITE_SHOW_DEV_MENU=true
+GRAPHQL_PLAYGROUND=true
+```
 
 ### Development Workflow
+
 ```bash
 ./dap start              # auto-detected on centos1
 ./dap stop
@@ -127,6 +200,7 @@ Located at project root.
 ```
 
 ### Features
+
 - Full Development Toolkit visible (SHOW_DEV_MENU=true)
 - Hot reload enabled
 - Rich dataset (Cisco sample, telemetry, dev tools)
@@ -134,15 +208,45 @@ Located at project root.
 
 ---
 
-## CentOS2 Production Environment
+## CentOS2 / Stage Environment
 
 ### Purpose
-Clean production deployment. No development toolkit, no updating user tables/application data.
 
-### Environment File: `.env.production`
-Located at project root.
+Pre-production testing. No development toolkit, production-like settings.
 
-### Production Storage Locations
+### Key Configuration
+
+```bash
+# In .env on centos2:
+NODE_ENV=production
+DATABASE_URL=postgresql://dap:secure-stage-password@localhost:5432/dap?schema=public&connection_limit=20
+VITE_BASE_PATH=/dap/
+CORS_ORIGIN=http://centos2.rajarora.csslab
+SHOW_DEV_MENU=false
+GRAPHQL_PLAYGROUND=false
+RATE_LIMIT_ENABLED=true
+```
+
+### Deployment
+
+When `./dap` detects hostname contains "centos2", it automatically delegates to `./dap-prod`:
+
+```bash
+./dap start              # Starts PostgreSQL + PM2 processes
+./dap restart            # Runs ./dap-prod restart
+./dap status             # Runs ./dap-prod status
+./dap logs               # Runs ./dap-prod logs
+```
+
+---
+
+## DAPOC / Production Environment
+
+### Purpose
+
+Live production deployment. Maximum security, no dev features.
+
+### Storage Locations
 
 All DAP data is stored on the `/data` partition (not root):
 
@@ -156,19 +260,24 @@ All DAP data is stored on the `/data` partition (not root):
 | **Backups** | `/data/dap/backups` |
 | **PostgreSQL Data** | `/data/pgsql/16/data` |
 
-> **Note:** PostgreSQL data directory was moved from `/var/lib/pgsql/16/data` to `/data/pgsql/16/data` via systemd override (`/etc/systemd/system/postgresql-16.service.d/override.conf`).
-
-### Production Workflow
-When `./dap` detects hostname contains "centos2", it automatically delegates to `./dap-prod`:
+### Key Configuration
 
 ```bash
-./dap start              # Starts PostgreSQL + PM2 processes
-./dap restart            # Runs ./dap-prod restart
-./dap status             # Runs ./dap-prod status
-./dap logs               # Runs ./dap-prod logs
+# In .env on dapoc:
+NODE_ENV=production
+DATABASE_URL=postgresql://dap:STRONG-PRODUCTION-PASSWORD@localhost:5432/dap?schema=public&connection_limit=50
+JWT_SECRET=UNIQUE-PRODUCTION-SECRET-64-CHARS-RECOMMENDED
+VITE_BASE_PATH=/dap/
+CORS_ORIGIN=https://myapps.cxsaaslab.com
+SHOW_DEV_MENU=false
+GRAPHQL_PLAYGROUND=false
+APOLLO_INTROSPECTION=false
+DEVTOOLS_ENABLED=false
+RATE_LIMIT_ENABLED=true
 ```
 
-### Direct `dap-prod` Usage
+### Production Commands
+
 ```bash
 ./dap-prod start             # Start PostgreSQL + all PM2 processes
 ./dap-prod restart           # Restart all services
@@ -180,24 +289,25 @@ When `./dap` detects hostname contains "centos2", it automatically delegates to 
 ```
 
 ### Production Guardrails
+
 - Uses PM2 for process management
 - Uses systemd PostgreSQL service
-- **`./dap start` now automatically starts PostgreSQL** if not running
+- **`./dap start` automatically starts PostgreSQL** if not running
 - No development toolkit visible
 - Follow `deploy/README.md` for deployments
 
 ---
 
-## Code Consistency
+## Environment Differences Summary
 
-**The application code (frontend and backend) is the same across all environments.** Only environment variables differ:
-
-| Setting | Mac Demo | Development | Production |
+| Setting | Mac Demo | CentOS1 Dev | Stage/Prod |
 |---------|----------|-------------|------------|
 | `NODE_ENV` | production | development | production |
 | `SHOW_DEV_MENU` | false | true | false |
 | `VITE_BASE_PATH` | `/` | `/dap/` | `/dap/` |
-| Database | Local PostgreSQL | Docker PostgreSQL | Systemd PostgreSQL |
+| `GRAPHQL_PLAYGROUND` | true | true | false |
+| `RATE_LIMIT_ENABLED` | false | false | true |
+| Database | Homebrew PostgreSQL | Docker PostgreSQL | Systemd PostgreSQL |
 | Docker Required | No | Yes | No |
 
 ---
@@ -205,6 +315,7 @@ When `./dap` detects hostname contains "centos2", it automatically delegates to 
 ## Tab Order (UI)
 
 Tabs in Products and Solutions pages are ordered consistently across all environments:
+
 - Products Page: Outcomes → Releases → Licenses → Custom Attributes → **Tasks** (last)
 - Solutions Page: Products → Outcomes → Releases → Custom Attributes → **Tasks** (last)
 
@@ -212,8 +323,8 @@ Tabs in Products and Solutions pages are ordered consistently across all environ
 
 ## Quick Reference
 
-| Action | Mac | centos1 (Dev) | centos2 (Prod) |
-|--------|-----|---------------|----------------|
+| Action | Mac | centos1 (Dev) | centos2/dapoc (Prod) |
+|--------|-----|---------------|----------------------|
 | Start | `./dap start` | `./dap start` | `./dap start` or `./dap-prod start` |
 | Stop | `./dap stop` | `./dap stop` | `./dap stop` or `./dap-prod stop` |
 | Restart | `./dap restart` | `./dap restart` | `./dap restart` or `./dap-prod restart` |
@@ -223,22 +334,10 @@ Tabs in Products and Solutions pages are ordered consistently across all environ
 
 ---
 
-## Related Files
+## Related Documentation
 
-- `.env.macbook` - Mac demo configuration
-- `.env.development` - Development configuration
-- `.env.production` - Production configuration
-- `scripts/mac-light-deploy.sh` - Mac demo deployment script
-- `dap` - Main application manager script
-- `dap-prod` - Production manager script
-- `backend/scripts/seed-light-demo.ts` - Mac demo seeding script
-
----
-
-## Notes
-
-- If you need the dev stack on macOS temporarily, set `DAP_MODE=linux-dev` when running `./dap`.
-- The Mac demo intentionally avoids Docker and heavy tooling to keep startup fast for live demos.
-- The `./dap` script unifies the CLI experience across all platforms.
-- **Mac:** Auto-detects PostgreSQL version (14/15/16) and cleans stale lock files on startup failures.
-- **Production:** All data stored on `/data` partition to avoid filling root filesystem.
+- **Environment Variables:** `docs/ENVIRONMENT_MANAGEMENT.md` ⭐
+- **Quick Start:** `docs/DEV_QUICKSTART.md`
+- **Deployment:** `docs/deployment/DEPLOYMENT_INDEX.md`
+- **Mac Deploy Script:** `scripts/mac-light-deploy.sh`
+- **Seed Script:** `backend/scripts/seed-light-demo.ts`

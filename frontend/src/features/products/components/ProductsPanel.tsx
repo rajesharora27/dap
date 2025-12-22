@@ -63,6 +63,15 @@ const PRODUCTS = gql`query Products($first:Int,$after:String,$last:Int,$before:S
             node {
               id
               name
+              howToDoc
+              howToVideo
+              telemetryAttributes {
+                id
+              }
+              outcomes {
+                id
+                name
+              }
             }
           }
         }

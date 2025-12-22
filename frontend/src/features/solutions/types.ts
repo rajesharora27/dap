@@ -12,6 +12,14 @@ export interface Solution {
     products?: Product[];
     createdAt?: string;
     updatedAt?: string;
+    releases?: any[];
+    licenses?: any[];
+    outcomes?: any[];
+    tasks?: {
+        edges: Array<{
+            node: any
+        }>
+    };
 }
 
 export interface SolutionInput {

@@ -685,13 +685,20 @@ dev_mode() {
 start_all() {
     log_header "STARTING $APP_NAME"
     
-    # Sync development environment files (linux-dev mode)
-    if [ -f "$PROJECT_DIR/.env.linuxdev" ]; then
-        log_info "Syncing linux development environment..."
-        cp "$PROJECT_DIR/.env.linuxdev" "$PROJECT_DIR/.env"
-        cp "$PROJECT_DIR/.env.linuxdev" "$BACKEND_DIR/.env"
-        cp "$PROJECT_DIR/.env.linuxdev" "$FRONTEND_DIR/.env"
-        log_success "Environment synced from .env.linuxdev"
+    # Sync development environment files
+    if [ ! -f "$PROJECT_DIR/.env" ]; then
+        if [ -f "$PROJECT_DIR/.env.example" ]; then
+             log_warning "No .env found. Creating from .env.example..."
+             cp "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
+             log_warning "Please edit .env with your configuration!"
+        fi
+    fi
+
+    if [ -f "$PROJECT_DIR/.env" ]; then
+        log_info "Syncing environment..."
+        cp "$PROJECT_DIR/.env" "$BACKEND_DIR/.env"
+        cp "$PROJECT_DIR/.env" "$FRONTEND_DIR/.env"
+        log_success "Environment synced from .env"
     fi
     
     manage_docker start || exit 1

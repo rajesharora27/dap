@@ -47,10 +47,7 @@ Master list of feature requests, improvements, and technical debt items.
 **Description:** Cleaned up environment architecture with clear, consistent naming.
 
 **Changes Made:**
-- [x] Renamed `.env.macbook` → `.env.macdev`
-- [x] Renamed `.env.development` → `.env.linuxdev`
-- [x] Renamed `.env.production` → `.env.prod`
-- [x] Created `.env.stage` for staging environment
+- [x] Consolidated environment configuration to a single `.env.example` template (`cp .env.example .env`)
 - [x] Updated `./dap`, `dap-prod`, `mac-light-deploy.sh`
 - [x] Updated `deploy-to-stage.sh`, `deploy-to-production.sh`
 - [x] Updated documentation

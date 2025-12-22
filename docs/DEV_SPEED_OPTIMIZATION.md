@@ -4,6 +4,9 @@
 
 **Last Updated:** December 1, 2025
 
+> **Note (Dec 2025):** This doc contains legacy references to multiple env files (e.g. `.env.development`, `.env.production`).
+> DAP now uses **one** template: `cp .env.example .env` and keeps secrets in `.env` (gitignored).
+
 ---
 
 ## Table of Contents

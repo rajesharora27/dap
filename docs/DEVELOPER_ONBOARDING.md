@@ -5,7 +5,7 @@ Welcome to DAP (Digital Adoption Platform). This guide walks you through the fir
 ## Day 0 – Access Checklist
 - GitHub repository access with SSH key.
 - VPN or bastion credentials for centos1 (dev) and centos2 (prod).
-- Database credentials and `.env.production` secrets from the vault.
+- Database credentials and environment secrets from the vault (stored in `.env` on the target machine, never committed).
 - Slack access to `#dap-dev` and PagerDuty rotation.
 
 ## Day 1 – Local Environment

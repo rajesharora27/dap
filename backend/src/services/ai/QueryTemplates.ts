@@ -387,17 +387,25 @@ export class QueryTemplates {
         description: 'Find tasks for a specific product that have no telemetry',
         patterns: [
           // Standard patterns - note: (?:all\s+)?(?:the\s+)? handles "all", "the", "all the"
-          /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:without|missing|with\s+no)\s+telemetry/i,
+          /(?:find|show|list|get)\s+(?:me\s+)?(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:without|missing|with\s+no)\s+telemetry/i,
           /tasks?\s+(?:of|for)\s+(.+?)\s+(?:with\s+no|without)\s+telemetry/i,
           // "that does not have" / "that doesn't have" variants - FIXED to match both expanded and contracted forms
-          /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+that\s+(?:does\s+not\s+have|doesn'?t\s+have|do\s+not\s+have|don'?t\s+have|has\s+no|lacks?)\s+telemetry/i,
-          /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:lacking|missing)\s+telemetry/i,
+          /(?:find|show|list|get)\s+(?:me\s+)?(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+that\s+(?:does\s+not\s+have|doesn'?t\s+have|do\s+not\s+have|don'?t\s+have|has\s+no|lacks?)\s+telemetry/i,
+          /(?:find|show|list|get)\s+(?:me\s+)?(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:lacking|missing)\s+telemetry/i,
           // "without telemetry for product" (reversed order)
-          /(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+(?:without|missing|with\s+no)\s+telemetry\s+(?:of|for|in)\s+(.+)/i,
+          /(?:find|show|list|get)\s+(?:me\s+)?(?:all\s+)?(?:the\s+)?tasks?\s+(?:without|missing|with\s+no)\s+telemetry\s+(?:of|for|in)\s+(.+)/i,
           // Product first patterns
           /(.+?)\s+tasks?\s+(?:without|missing|with\s+no|that\s+(?:does\s+not\s+have|doesn'?t\s+have|lacks?))\s+telemetry/i,
           // Simple "product tasks without telemetry" 
           /(.+?)\s+tasks?\s+(?:with\s+)?no\s+telemetry/i,
+          // NEW: "for which telemetry is not configured" patterns
+          /(?:find|show|list|get)\s+(?:me\s+)?(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:for\s+which|where|that\s+have)\s+telemetry\s+is\s+not\s+(?:configured|set\s*up|defined|available)/i,
+          /(?:find|show|list|get)\s+(?:me\s+)?(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:for\s+which|where)\s+(?:no\s+)?telemetry\s+(?:is\s+)?(?:not\s+)?(?:configured|set\s*up|defined)/i,
+          /(?:find|show|list|get)\s+(?:me\s+)?(?:all\s+)?(?:the\s+)?tasks?\s+(?:of|for)\s+(.+?)\s+(?:with\s+)?(?:no|unconfigured|undefined)\s+telemetry/i,
+          // "telemetry not configured for product tasks"
+          /tasks?\s+(?:of|for)\s+(.+?)\s+(?:for\s+which|where|that\s+have)\s+telemetry\s+(?:is\s+)?not\s+(?:configured|set\s*up|defined)/i,
+          // "product name tasks where telemetry is missing/not configured"
+          /(.+?)\s+tasks?\s+(?:for\s+which|where)\s+telemetry\s+(?:is\s+)?(?:not\s+)?(?:configured|set\s*up|defined|missing)/i,
         ],
         category: 'tasks',
         buildQuery: (params: Record<string, any>) => ({
@@ -434,8 +442,8 @@ export class QueryTemplates {
           {
             name: 'productName',
             type: 'string',
-            // Extract product name - handles "tasks for X without telemetry" and "X tasks without telemetry"
-            extractPattern: /(?:tasks?\s+(?:of|for)\s+)(.+?)(?:\s+(?:that\s+)?(?:without|missing|with\s+no|do(?:es)?n?'?t?\s+have|has\s+no|lacking)\s+telemetry)|(?:(?:without|missing|with\s+no)\s+telemetry\s+(?:of|for|in)\s+)(.+)|^(.+?)\s+tasks?\s+(?:with\s+)?(?:no|without)/i,
+            // Extract product name - handles many variations
+            extractPattern: /(?:tasks?\s+(?:of|for)\s+)(.+?)(?:\s+(?:that\s+)?(?:without|missing|with\s+no|do(?:es)?n?'?t?\s+have|has\s+no|lacking|for\s+which|where)\s+(?:no\s+)?telemetry)|(?:(?:without|missing|with\s+no)\s+telemetry\s+(?:of|for|in)\s+)(.+)|^(.+?)\s+tasks?\s+(?:with\s+)?(?:no|without|where|for\s+which)/i,
             required: true,
           }
         ],
@@ -446,6 +454,8 @@ export class QueryTemplates {
           'Find tasks for Secure Access that do not have telemetry',
           'Show tasks without telemetry for Cisco Duo',
           'Cisco Secure Access tasks without telemetry',
+          'Show me all the tasks of Cisco Secure Access for which telemetry is not configured',
+          'Tasks for Product X where telemetry is not set up',
         ],
       },
 
