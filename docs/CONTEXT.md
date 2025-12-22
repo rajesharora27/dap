@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.9.1
-**Last Updated:** December 20, 2025 (18:15 EST)
+**Version:** 2.9.2
+**Last Updated:** December 21, 2025 (22:20 EST)
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -961,6 +961,106 @@ All DAP data is stored on `/data` partition (not root):
 
 ## Recent Changes & Fixes
 
+### Version 2.9.2 (December 21, 2025)
+
+#### Tag Description Support & Solution Tag Functionality
+
+**Feature 1: Tag Description Field**
+- **Enhancement**: Added `description` field to all tag types for better tag documentation
+- **Implementation**:
+  - Added `description` field to `ProductTag`, `SolutionTag`, `CustomerProductTag`, and `CustomerSolutionTag` database models
+  - Created migration: `20251222012700_add_tag_description`
+  - Updated GraphQL schema to include description in all tag types and input types
+  - Tag descriptions now persist through sync operations (solution/adoption plan)
+- **Files Changed**:
+  - `backend/prisma/schema.prisma` - Added description field to tag models
+  - `backend/src/schema/typeDefs.ts` - Updated GraphQL types
+  - `backend/src/schema/resolvers/solutionAdoption.ts` - Description syncing
+  - `backend/src/schema/resolvers/customerAdoption.ts` - Description syncing
+
+**Feature 2: Tag Tooltip Improvements**
+- **Issue**: Tag tooltips were showing both tag description AND task description, making them verbose
+- **Fix**: Updated tag tooltips to show ONLY the tag description (or tag name if no description)
+- **Files Changed**:
+  - `frontend/src/components/CustomerAdoptionPanelV4.tsx` - Simplified tag tooltips
+  - `frontend/src/components/SortableTaskItem.tsx` - Simplified tag tooltips
+
+**Feature 3: Tag Import/Export Support**
+- **Enhancement**: Excel import/export now includes tag descriptions
+- **Implementation**:
+  - Added 'Description' column to Tags tab in Excel export
+  - Updated import service to read and save tag descriptions
+  - Added documentation for Description field in Instructions tab
+- **Files Changed**:
+  - `backend/src/services/excel/ExcelExportService.ts`
+  - `backend/src/services/excel/ExcelImportService.ts`
+
+**Feature 4: Solution Tag Assignment Fix**
+- **Issue**: Tags could not be assigned to solution tasks (missing from dropdown)
+- **Root Cause**: Multiple issues:
+  1. `SOLUTIONS` query didn't fetch `tags` field
+  2. `displaySolution` was prioritizing list data over fetched data
+  3. `TaskDialog` wasn't receiving solution tags
+- **Fix**:
+  - Added `tags` field to `SOLUTIONS` GraphQL query
+  - Fixed `displaySolution` priority to use `fetchedSolution` first (matches ProductsPage)
+  - Added `fetchPolicy: 'cache-and-network'` to SOLUTION query
+  - Added refetch functions after tag mutations
+- **Files Changed**:
+  - `frontend/src/graphql/queries.ts` - Added tags to SOLUTIONS query
+  - `frontend/src/pages/SolutionsPage.tsx` - Fixed displaySolution priority, fetch policy
+
+**Feature 5: Inline Tag Editing for Solutions**
+- **Enhancement**: Solution tasks now support inline tag editing in the task list (matching Products functionality)
+- **Implementation**:
+  - Added `handleTagChange` function using `SET_SOLUTION_TASK_TAGS` mutation
+  - Passed `onTagChange` and `availableTags` props to `SortableTaskItem`
+  - Tags can now be clicked/edited directly in the solution task table
+- **Files Changed**:
+  - `frontend/src/pages/SolutionsPage.tsx` - Added inline tag editing handler
+
+**Feature 6: TaskDialog Tag Loading**
+- **Enhancement**: TaskDialog now correctly loads solution tags vs product tags
+- **Implementation**:
+  - Updated `Task` interface to include optional `solutionTags` field
+  - Modified `useEffect` to prioritize `task.solutionTags` for solution tasks
+  - Falls back to `task.tags` for product tasks
+- **Files Changed**:
+  - `frontend/src/components/dialogs/TaskDialog.tsx`
+
+**Bug Fix 1: CustomerSolutionTask Query Error**
+- **Issue**: "Unknown field `solutionTaskTags`" Prisma error when loading solution adoption plans
+- **Root Cause**: Query used incorrect field name (`solutionTaskTags` instead of `taskTags`)
+- **Fix**: Changed `solutionTaskTags` to `taskTags` in CustomerSolutionTask include statement
+- **Files Changed**:
+  - `backend/src/schema/resolvers/solutionAdoption.ts` - Line 124
+
+**Bug Fix 2: Solution Tag Validation**
+- **Issue**: `setSolutionTaskTags` was too restrictive about which tasks could have tags
+- **Fix**: Updated validation logic to allow solution tags on any task within the solution (not just solution-owned tasks)
+- **Files Changed**:
+  - `backend/src/schema/resolvers/tags.ts` - setSolutionTaskTags validation
+
+**UI Cleanup: Entitlement → License Terminology**
+- **Standardization**: Replaced remaining "Entitlement" references with "License" in SolutionDialog
+- **Changes**:
+  - Tab label: "Licenses" instead of "Entitlements"
+  - Button text: "Add Solution License"
+  - Section headers updated
+- **Files Changed**:
+  - `frontend/src/components/dialogs/SolutionDialog.tsx`
+
+**Documentation Cleanup**
+- **Removed**: All references to `prod.rajarora.csslab` (no longer valid)
+- **Updated**: 
+  - `deploy-to-stage.sh` - Removed prod URL from output
+  - `rollback-prod.sh` - Updated PROD_HOST to centos2
+  - `README.md` - Updated production URL
+  - `deploy/scripts/deploy-app.sh` - Updated access points
+- **Production URL**: Now only `https://myapps.cxsaaslab.com/dap/`
+
+---
+
 ### Version 2.9.0 (December 20, 2025)
 
 #### UI/UX Cleanup, Branding & AI Icon Redesign
@@ -1701,8 +1801,8 @@ sudo tail -f /var/log/httpd/error_log
 
 ---
 
-**Last Updated:** December 20, 2025  
-**Version:** 2.9.1  
+**Last Updated:** December 21, 2025  
+**Version:** 2.9.2  
 **Status:** Production Ready (SSL Enabled)
 
 *This document should be updated whenever significant changes are made to the application.*
