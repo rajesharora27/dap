@@ -6,17 +6,135 @@
  * accurate queries.
  * 
  * @module services/ai/SchemaContextManager
- * @version 1.0.0
+ * @version 2.0.0
  * @created 2025-12-05
+ * @updated 2025-12-22 (Dynamic DMMF Integration)
  */
 
 import { TableSchema, ColumnSchema, RelationshipSchema, SchemaContext } from './types';
+import { Prisma } from '@prisma/client';
+
+/**
+ * Manual metadata to enrich the dynamic schema with descriptions and business context.
+ * This augments the raw Prisma schema with human-friendly implementation details.
+ */
+const MANUAL_METADATA: Record<string, {
+  description?: string;
+  columns?: Record<string, { description?: string; sampleValues?: string[] }>;
+  relationships?: Record<string, string>;
+}> = {
+  Product: {
+    description: 'Software products that customers can adopt. Each product has tasks, licenses, outcomes, and releases.',
+    columns: {
+      name: { description: 'Unique product name', sampleValues: ['Cisco Duo', 'Secure Firewall', 'SD-WAN', 'ISE'] },
+      customAttrs: { description: 'Custom attributes as JSON' },
+      deletedAt: { description: 'Soft delete timestamp' }
+    },
+    relationships: {
+      customers: 'Product assignments/adoption plans - customers using this product'
+    }
+  },
+  Solution: {
+    description: 'Bundles of products. Solutions can have their own tasks and aggregate product progress.',
+    columns: {
+      name: { sampleValues: ['Hybrid Private Access', 'SASE Bundle'] }
+    },
+    relationships: {
+      customers: 'Solution assignments/adoption plans - customers using this solution'
+    }
+  },
+  Customer: {
+    description: 'Organizations using products/solutions. Customers have adoption plans that track their progress.'
+  },
+  Task: {
+    description: 'Implementation steps for products/solutions. Tasks have weight, estimated time, and telemetry attributes.',
+    columns: {
+      productId: { description: 'Parent product (mutually exclusive with solutionId)' },
+      solutionId: { description: 'Parent solution (mutually exclusive with productId)' },
+      name: { sampleValues: ['Configure SSO', 'Enable Logging', 'Deploy Agents'] },
+      estMinutes: { description: 'Estimated minutes to complete', sampleValues: ['30', '60', '120'] },
+      weight: { description: 'Weightage percentage (0-100, supports decimals)', sampleValues: ['10', '25.5', '50'] },
+      sequenceNumber: { description: 'Execution order' },
+      licenseLevel: { description: 'Required license level' },
+      howToDoc: { description: 'Links to documentation' },
+      howToVideo: { description: 'Links to videos' },
+      softDeleteQueued: { description: 'Marked for deletion' }
+    }
+  },
+  TelemetryAttribute: {
+    description: 'Metrics tracked for tasks. Can auto-update task status when success criteria are met.',
+    columns: {
+      name: { description: 'Attribute name (e.g., "users_synced")' },
+      dataType: { description: 'BOOLEAN, NUMBER, STRING, TIMESTAMP, or JSON' },
+      isRequired: { description: 'Required for task completion' },
+      successCriteria: { description: 'Criteria definition with AND/OR logic' },
+      order: { description: 'Display order' }
+    }
+  },
+  License: {
+    description: 'License levels for products/solutions. Hierarchical: higher levels include lower level features.',
+    columns: {
+      level: { description: 'Hierarchical level (higher includes lower)' }
+    }
+  },
+  Outcome: {
+    description: 'Business outcomes/goals that tasks contribute to.'
+  },
+  Release: {
+    description: 'Version releases for products/solutions. Tasks can be assigned to specific releases.',
+    columns: {
+      level: { description: 'Version level (1.0, 1.1, 2.0)' }
+    }
+  },
+  CustomerProduct: {
+    description: 'Represents a Product Assignment (also called Product Adoption Plan). When a product is assigned to a customer, this creates an adoption plan to track their progress. Terms "product assignment" and "product adoption plan" are interchangeable.',
+    columns: {
+      name: { description: 'Assignment/adoption plan name (e.g., "Production", "Phase 1")' },
+      selectedOutcomes: { description: 'Selected outcome IDs' },
+      selectedReleases: { description: 'Selected release IDs' }
+    }
+  },
+  AdoptionPlan: {
+    description: 'Tracks customer progress on a product. Contains snapshot of tasks at creation time.',
+    columns: {
+      productName: { description: 'Snapshot of product name' },
+      progressPercentage: { description: 'Weighted completion percentage' }
+    }
+  },
+  CustomerTask: {
+    description: 'Customer-specific copy of a task with status tracking. Status can be updated manually or via telemetry.',
+    columns: {
+      originalTaskId: { description: 'Reference to product task' },
+      status: { description: 'Current status', sampleValues: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] },
+      statusUpdatedBy: { description: 'User ID or "telemetry"' },
+      statusUpdateSource: { description: 'How status was updated' }
+    }
+  },
+  ProductTag: {
+    description: 'Tags for categorizing products and their tasks. Tasks link to these tags via TaskTag.',
+    columns: {
+      name: { description: 'Tag name' }
+    }
+  },
+  TaskTag: {
+    description: 'Link table connecting Tasks to ProductTags.'
+  },
+  SolutionTag: {
+    description: 'Tags for categorizing solutions.'
+  },
+  CustomerProductTag: {
+    description: 'Customer-specific copy of a ProductTag.'
+  },
+  CustomerTaskTag: {
+    description: 'Link table connecting CustomerTasks to CustomerProductTags.'
+  }
+};
 
 /**
  * Schema Context Manager
  * 
  * Responsible for building and managing the database schema context
- * that is provided to the LLM for query generation.
+ * dynamically from the Prisma DMMF definitions.
  */
 export class SchemaContextManager {
   private context: SchemaContext | null = null;
@@ -44,11 +162,8 @@ export class SchemaContextManager {
 
   /**
    * Get a subset of context relevant to a specific question
-   * (For now, returns full context - can be optimized later)
    */
   getRelevantContext(question: string): SchemaContext {
-    // TODO: Implement smart context selection based on question
-    // For now, return full context
     return this.getFullContext();
   }
 
@@ -72,319 +187,65 @@ export class SchemaContextManager {
   }
 
   /**
-   * Build table definitions
+   * Build table definitions dynamically from Prisma DMMF
    */
   private buildTables(): TableSchema[] {
-    return [
-      // Core Entities
-      {
-        name: 'Product',
-        description: 'Software products that customers can adopt. Each product has tasks, licenses, outcomes, and releases.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, description: 'Unique product name', sampleValues: ['Cisco Duo', 'Secure Firewall', 'SD-WAN', 'ISE'] },
-          { name: 'description', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'customAttrs', type: 'Json', nullable: true, isPrimaryKey: false, description: 'Custom attributes as JSON' },
-          { name: 'createdAt', type: 'DateTime', nullable: false, isPrimaryKey: false },
-          { name: 'updatedAt', type: 'DateTime', nullable: false, isPrimaryKey: false },
-          { name: 'deletedAt', type: 'DateTime', nullable: true, isPrimaryKey: false, description: 'Soft delete timestamp' },
-        ],
-        relationships: [
-          { name: 'tasks', relatedTable: 'Task', type: 'oneToMany' },
-          { name: 'licenses', relatedTable: 'License', type: 'oneToMany' },
-          { name: 'outcomes', relatedTable: 'Outcome', type: 'oneToMany' },
-          { name: 'releases', relatedTable: 'Release', type: 'oneToMany' },
-          { name: 'solutions', relatedTable: 'Solution', type: 'manyToMany' },
-          { name: 'customers', relatedTable: 'CustomerProduct', type: 'oneToMany', description: 'Product assignments/adoption plans - customers using this product' },
-          { name: 'tags', relatedTable: 'ProductTag', type: 'oneToMany' },
-        ],
-      },
-      {
-        name: 'Solution',
-        description: 'Bundles of products. Solutions can have their own tasks and aggregate product progress.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, sampleValues: ['Hybrid Private Access', 'SASE Bundle'] },
-          { name: 'description', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'customAttrs', type: 'Json', nullable: true, isPrimaryKey: false },
-          { name: 'createdAt', type: 'DateTime', nullable: false, isPrimaryKey: false },
-          { name: 'updatedAt', type: 'DateTime', nullable: false, isPrimaryKey: false },
-          { name: 'deletedAt', type: 'DateTime', nullable: true, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'products', relatedTable: 'Product', type: 'manyToMany' },
-          { name: 'tasks', relatedTable: 'Task', type: 'oneToMany' },
-          { name: 'licenses', relatedTable: 'License', type: 'oneToMany' },
-          { name: 'outcomes', relatedTable: 'Outcome', type: 'oneToMany' },
-          { name: 'releases', relatedTable: 'Release', type: 'oneToMany' },
-          { name: 'customers', relatedTable: 'CustomerSolution', type: 'oneToMany', description: 'Solution assignments/adoption plans - customers using this solution' },
-          { name: 'tags', relatedTable: 'SolutionTag', type: 'oneToMany' },
-        ],
-      },
-      {
-        name: 'Customer',
-        description: 'Organizations using products/solutions. Customers have adoption plans that track their progress.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'description', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'createdAt', type: 'DateTime', nullable: false, isPrimaryKey: false },
-          { name: 'updatedAt', type: 'DateTime', nullable: false, isPrimaryKey: false },
-          { name: 'deletedAt', type: 'DateTime', nullable: true, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'products', relatedTable: 'CustomerProduct', type: 'oneToMany' },
-          { name: 'solutions', relatedTable: 'CustomerSolution', type: 'oneToMany' },
-        ],
-      },
-      {
-        name: 'Task',
-        description: 'Implementation steps for products/solutions. Tasks have weight, estimated time, and telemetry attributes.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'productId', type: 'String', nullable: true, isPrimaryKey: false, description: 'Parent product (mutually exclusive with solutionId)' },
-          { name: 'solutionId', type: 'String', nullable: true, isPrimaryKey: false, description: 'Parent solution (mutually exclusive with productId)' },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, sampleValues: ['Configure SSO', 'Enable Logging', 'Deploy Agents'] },
-          { name: 'description', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'estMinutes', type: 'Int', nullable: false, isPrimaryKey: false, description: 'Estimated minutes to complete', sampleValues: ['30', '60', '120'] },
-          { name: 'weight', type: 'Decimal', nullable: false, isPrimaryKey: false, description: 'Weightage percentage (0-100, supports decimals)', sampleValues: ['10', '25.5', '50'] },
-          { name: 'sequenceNumber', type: 'Int', nullable: false, isPrimaryKey: false, description: 'Execution order' },
-          { name: 'licenseLevel', type: 'LicenseLevel', nullable: false, isPrimaryKey: false, description: 'Required license level' },
-          { name: 'howToDoc', type: 'String[]', nullable: false, isPrimaryKey: false, description: 'Links to documentation' },
-          { name: 'howToVideo', type: 'String[]', nullable: false, isPrimaryKey: false, description: 'Links to videos' },
-          { name: 'notes', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'softDeleteQueued', type: 'Boolean', nullable: false, isPrimaryKey: false, description: 'Marked for deletion' },
-          { name: 'deletedAt', type: 'DateTime', nullable: true, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'product', relatedTable: 'Product', type: 'manyToOne', foreignKey: 'productId' },
-          { name: 'solution', relatedTable: 'Solution', type: 'manyToOne', foreignKey: 'solutionId' },
-          { name: 'telemetryAttributes', relatedTable: 'TelemetryAttribute', type: 'oneToMany' },
-          { name: 'outcomes', relatedTable: 'Outcome', type: 'manyToMany' },
-          { name: 'releases', relatedTable: 'Release', type: 'manyToMany' },
-          { name: 'taskTags', relatedTable: 'TaskTag', type: 'oneToMany' },
-        ],
-      },
-      {
-        name: 'TelemetryAttribute',
-        description: 'Metrics tracked for tasks. Can auto-update task status when success criteria are met.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'taskId', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, description: 'Attribute name (e.g., "users_synced")' },
-          { name: 'description', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'dataType', type: 'TelemetryDataType', nullable: false, isPrimaryKey: false, description: 'BOOLEAN, NUMBER, STRING, TIMESTAMP, or JSON' },
-          { name: 'isRequired', type: 'Boolean', nullable: false, isPrimaryKey: false, description: 'Required for task completion' },
-          { name: 'successCriteria', type: 'Json', nullable: false, isPrimaryKey: false, description: 'Criteria definition with AND/OR logic' },
-          { name: 'order', type: 'Int', nullable: false, isPrimaryKey: false, description: 'Display order' },
-          { name: 'isActive', type: 'Boolean', nullable: false, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'task', relatedTable: 'Task', type: 'manyToOne', foreignKey: 'taskId' },
-          { name: 'values', relatedTable: 'TelemetryValue', type: 'oneToMany' },
-        ],
-      },
-      {
-        name: 'License',
-        description: 'License levels for products/solutions. Hierarchical: higher levels include lower level features.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'description', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'level', type: 'Int', nullable: false, isPrimaryKey: false, description: 'Hierarchical level (higher includes lower)' },
-          { name: 'isActive', type: 'Boolean', nullable: false, isPrimaryKey: false },
-          { name: 'productId', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'solutionId', type: 'String', nullable: true, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'product', relatedTable: 'Product', type: 'manyToOne', foreignKey: 'productId' },
-          { name: 'solution', relatedTable: 'Solution', type: 'manyToOne', foreignKey: 'solutionId' },
-        ],
-      },
-      {
-        name: 'Outcome',
-        description: 'Business outcomes/goals that tasks contribute to.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'description', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'productId', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'solutionId', type: 'String', nullable: true, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'product', relatedTable: 'Product', type: 'manyToOne', foreignKey: 'productId' },
-          { name: 'solution', relatedTable: 'Solution', type: 'manyToOne', foreignKey: 'solutionId' },
-          { name: 'tasks', relatedTable: 'Task', type: 'manyToMany' },
-        ],
-      },
-      {
-        name: 'Release',
-        description: 'Version releases for products/solutions. Tasks can be assigned to specific releases.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'description', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'level', type: 'Float', nullable: false, isPrimaryKey: false, description: 'Version level (1.0, 1.1, 2.0)' },
-          { name: 'isActive', type: 'Boolean', nullable: false, isPrimaryKey: false },
-          { name: 'productId', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'solutionId', type: 'String', nullable: true, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'product', relatedTable: 'Product', type: 'manyToOne', foreignKey: 'productId' },
-          { name: 'solution', relatedTable: 'Solution', type: 'manyToOne', foreignKey: 'solutionId' },
-          { name: 'tasks', relatedTable: 'Task', type: 'manyToMany' },
-        ],
-      },
-      // Customer Adoption Tracking
-      {
-        name: 'CustomerProduct',
-        description: 'Represents a Product Assignment (also called Product Adoption Plan). When a product is assigned to a customer, this creates an adoption plan to track their progress. Terms "product assignment" and "product adoption plan" are interchangeable.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'customerId', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'productId', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, description: 'Assignment/adoption plan name (e.g., "Production", "Phase 1")' },
-          { name: 'licenseLevel', type: 'LicenseLevel', nullable: false, isPrimaryKey: false },
-          { name: 'selectedOutcomes', type: 'Json', nullable: true, isPrimaryKey: false, description: 'Selected outcome IDs' },
-          { name: 'selectedReleases', type: 'Json', nullable: true, isPrimaryKey: false, description: 'Selected release IDs' },
-          { name: 'purchasedAt', type: 'DateTime', nullable: false, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'customer', relatedTable: 'Customer', type: 'manyToOne', foreignKey: 'customerId' },
-          { name: 'product', relatedTable: 'Product', type: 'manyToOne', foreignKey: 'productId' },
-          { name: 'adoptionPlan', relatedTable: 'AdoptionPlan', type: 'oneToOne' },
-          { name: 'tags', relatedTable: 'CustomerProductTag', type: 'oneToMany' },
-        ],
-      },
-      {
-        name: 'AdoptionPlan',
-        description: 'Tracks customer progress on a product. Contains snapshot of tasks at creation time.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'customerProductId', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'productId', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'productName', type: 'String', nullable: false, isPrimaryKey: false, description: 'Snapshot of product name' },
-          { name: 'licenseLevel', type: 'LicenseLevel', nullable: false, isPrimaryKey: false },
-          { name: 'totalTasks', type: 'Int', nullable: false, isPrimaryKey: false },
-          { name: 'completedTasks', type: 'Int', nullable: false, isPrimaryKey: false },
-          { name: 'totalWeight', type: 'Decimal', nullable: false, isPrimaryKey: false },
-          { name: 'completedWeight', type: 'Decimal', nullable: false, isPrimaryKey: false },
-          { name: 'progressPercentage', type: 'Decimal', nullable: false, isPrimaryKey: false, description: 'Weighted completion percentage' },
-          { name: 'lastSyncedAt', type: 'DateTime', nullable: true, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'customerProduct', relatedTable: 'CustomerProduct', type: 'oneToOne', foreignKey: 'customerProductId' },
-          { name: 'tasks', relatedTable: 'CustomerTask', type: 'oneToMany' },
-        ],
-      },
-      {
-        name: 'CustomerTask',
-        description: 'Customer-specific copy of a task with status tracking. Status can be updated manually or via telemetry.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'adoptionPlanId', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'originalTaskId', type: 'String', nullable: false, isPrimaryKey: false, description: 'Reference to product task' },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'description', type: 'String', nullable: true, isPrimaryKey: false },
-          { name: 'estMinutes', type: 'Int', nullable: false, isPrimaryKey: false },
-          { name: 'weight', type: 'Decimal', nullable: false, isPrimaryKey: false },
-          { name: 'sequenceNumber', type: 'Int', nullable: false, isPrimaryKey: false },
-          { name: 'licenseLevel', type: 'LicenseLevel', nullable: false, isPrimaryKey: false },
-          { name: 'status', type: 'CustomerTaskStatus', nullable: false, isPrimaryKey: false, description: 'Current status', sampleValues: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'] },
-          { name: 'statusUpdatedAt', type: 'DateTime', nullable: true, isPrimaryKey: false },
-          { name: 'statusUpdatedBy', type: 'String', nullable: true, isPrimaryKey: false, description: 'User ID or "telemetry"' },
-          { name: 'statusUpdateSource', type: 'StatusUpdateSource', nullable: true, isPrimaryKey: false, description: 'How status was updated' },
-          { name: 'isComplete', type: 'Boolean', nullable: false, isPrimaryKey: false },
-          { name: 'completedAt', type: 'DateTime', nullable: true, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'adoptionPlan', relatedTable: 'AdoptionPlan', type: 'manyToOne', foreignKey: 'adoptionPlanId' },
-          { name: 'telemetryAttributes', relatedTable: 'CustomerTelemetryAttribute', type: 'oneToMany' },
-          { name: 'taskTags', relatedTable: 'CustomerTaskTag', type: 'oneToMany' },
-        ],
-      },
-      // Tag Tables
-      {
-        name: 'ProductTag',
-        description: 'Tags for categorizing products and their tasks. Tasks link to these tags via TaskTag.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'productId', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false, description: 'Tag name' },
-          { name: 'color', type: 'String', nullable: true, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'product', relatedTable: 'Product', type: 'manyToOne', foreignKey: 'productId' },
-          { name: 'taskTags', relatedTable: 'TaskTag', type: 'oneToMany' },
-        ],
-      },
-      {
-        name: 'TaskTag',
-        description: 'Link table connecting Tasks to ProductTags.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'taskId', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'tagId', type: 'String', nullable: false, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'task', relatedTable: 'Task', type: 'manyToOne', foreignKey: 'taskId' },
-          { name: 'tag', relatedTable: 'ProductTag', type: 'manyToOne', foreignKey: 'tagId' },
-        ],
-      },
-      {
-        name: 'SolutionTag',
-        description: 'Tags for categorizing solutions.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'solutionId', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'color', type: 'String', nullable: true, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'solution', relatedTable: 'Solution', type: 'manyToOne', foreignKey: 'solutionId' },
-        ],
-      },
-      {
-        name: 'CustomerProductTag',
-        description: 'Customer-specific copy of a ProductTag.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'customerProductId', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'name', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'color', type: 'String', nullable: true, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'customerProduct', relatedTable: 'CustomerProduct', type: 'manyToOne', foreignKey: 'customerProductId' },
-          { name: 'taskTags', relatedTable: 'CustomerTaskTag', type: 'oneToMany' },
-        ],
-      },
-      {
-        name: 'CustomerTaskTag',
-        description: 'Link table connecting CustomerTasks to CustomerProductTags.',
-        columns: [
-          { name: 'id', type: 'String', nullable: false, isPrimaryKey: true },
-          { name: 'customerTaskId', type: 'String', nullable: false, isPrimaryKey: false },
-          { name: 'tagId', type: 'String', nullable: false, isPrimaryKey: false },
-        ],
-        relationships: [
-          { name: 'customerTask', relatedTable: 'CustomerTask', type: 'manyToOne', foreignKey: 'customerTaskId' },
-          { name: 'tag', relatedTable: 'CustomerProductTag', type: 'manyToOne', foreignKey: 'tagId' },
-        ],
-      },
-    ];
+    // Force DMMF check to be safe
+    const dmmf = Prisma.dmmf;
+    if (!dmmf || !dmmf.datamodel) {
+      console.error('Prisma DMMF not available, falling back to empty tables');
+      return [];
+    }
+
+    return dmmf.datamodel.models.map(model => {
+      // Get manual metadata overlay
+      const meta = MANUAL_METADATA[model.name] || {};
+
+      // Build columns (excluding relation fields)
+      const columns: ColumnSchema[] = model.fields
+        .filter(f => f.kind !== 'object')
+        .map(f => ({
+          name: f.name,
+          type: f.type.toString(),
+          nullable: !f.isRequired,
+          isPrimaryKey: f.isId,
+          description: meta.columns?.[f.name]?.description,
+          sampleValues: meta.columns?.[f.name]?.sampleValues
+        }));
+
+      // Build relationships (relation fields only)
+      const relationships: RelationshipSchema[] = model.fields
+        .filter(f => f.kind === 'object')
+        .map(f => ({
+          name: f.name,
+          relatedTable: f.type,
+          type: f.isList ? 'oneToMany' : 'manyToOne', // Simple heuristic; refined by extra checks if needed
+          foreignKey: (f as any).relationFromFields?.[0], // DMMF provides this
+          description: meta.relationships?.[f.name]
+        }));
+
+      return {
+        name: model.name,
+        description: meta.description || '',
+        columns,
+        relationships
+      };
+    });
   }
 
   /**
-   * Build enum definitions
+   * Build enum definitions dynamically from Prisma DMMF
    */
   private buildEnums(): Record<string, string[]> {
-    return {
-      SystemRole: ['ADMIN', 'USER', 'SME', 'CSS', 'VIEWER'],
-      LicenseLevel: ['ESSENTIAL', 'ADVANTAGE', 'SIGNATURE'],
-      TelemetryDataType: ['BOOLEAN', 'NUMBER', 'STRING', 'TIMESTAMP', 'JSON'],
-      CustomerTaskStatus: ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'DONE', 'NOT_APPLICABLE', 'NO_LONGER_USING'],
-      StatusUpdateSource: ['MANUAL', 'TELEMETRY', 'IMPORT', 'SYSTEM'],
-    };
+    const enums: Record<string, string[]> = {};
+
+    if (Prisma.dmmf && Prisma.dmmf.datamodel) {
+      Prisma.dmmf.datamodel.enums.forEach(e => {
+        enums[e.name] = e.values.map(v => v.name);
+      });
+    }
+
+    return enums;
   }
 
   /**
@@ -518,5 +379,3 @@ export function getSchemaContextManager(): SchemaContextManager {
 export function resetSchemaContextManager(): void {
   instance = null;
 }
-
-

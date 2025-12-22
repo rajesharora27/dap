@@ -9,7 +9,7 @@
  * @created 2025-12-06
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { prisma as sharedPrisma } from '../../shared/graphql/context';
 
 // Always use the shared Prisma instance to prevent connection pool exhaustion
@@ -69,16 +69,21 @@ const DEFAULT_OPTIONS: Required<QueryExecutorOptions> = {
 const ALLOWED_OPERATIONS = ['findMany', 'findUnique', 'findFirst', 'count', 'aggregate', 'groupBy'];
 
 /**
- * Valid Prisma model names (for safety)
+ * Valid Prisma model names (dynamically loaded from DMMF)
  */
-const VALID_MODELS = [
-    'product', 'solution', 'customer', 'task', 'user',
-    'telemetryAttribute', 'license', 'outcome', 'release',
-    'customerProduct', 'customerSolution', 'adoptionPlan',
-    'customerTask', 'customerTelemetryAttribute', 'customAttribute',
-    'customerSolutionTask', 'customerSolutionTelemetryAttribute',
-    'auditLog', 'session', 'taskStatus', 'permission', 'resourceAssignment',
+const VALID_MODELS = Prisma.dmmf.datamodel.models.map(m => m.name.toLowerCase());
+
+// Add special system models that might not be in DMMF or are aliases
+const EXTRA_MODELS = [
+    'aggregate',
+    'count',
+    'group',
+    'permissions', // alias
+    'roles',      // alias
 ];
+
+// Merge all valid models
+const ALL_VALID_MODELS = [...new Set([...VALID_MODELS, ...EXTRA_MODELS])];
 
 /**
  * Query Executor
@@ -198,7 +203,7 @@ export class QueryExecutor {
 
         // Validate model name (case-insensitive)
         const modelLower = config.model.toLowerCase();
-        const validModelsLower = VALID_MODELS.map(m => m.toLowerCase());
+        const validModelsLower = ALL_VALID_MODELS;
         if (!validModelsLower.includes(modelLower)) {
             throw new Error(`Invalid model: ${config.model}`);
         }
