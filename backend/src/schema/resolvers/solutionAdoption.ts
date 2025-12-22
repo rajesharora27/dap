@@ -121,7 +121,7 @@ export const SolutionAdoptionQueryResolvers = {
             },
             outcomes: true,
             releases: true,
-            solutionTaskTags: {
+            taskTags: {
               include: {
                 tag: true
               }
