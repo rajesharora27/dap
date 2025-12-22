@@ -22,13 +22,13 @@ import { Sync, Assessment, FilterList } from '@shared/components/FAIcon';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { ProductAdoptionGroup } from './ProductAdoptionGroup';
 import { SolutionTasksGroup } from './SolutionTasksGroup';
-import { TelemetryImportResultDialog } from '../shared/TelemetryImportResultDialog';
+import { TelemetryImportResultDialog } from '@shared/components/TelemetryImportResultDialog';
 import {
   downloadFileFromUrl,
   importProductTelemetry,
   importSolutionTelemetry,
   ImportResultDialogState
-} from '../../utils/telemetryOperations';
+} from '@/utils/telemetryOperations';
 
 const ALL_RELEASES_ID = '__ALL_RELEASES__';
 const ALL_OUTCOMES_ID = '__ALL_OUTCOMES__';

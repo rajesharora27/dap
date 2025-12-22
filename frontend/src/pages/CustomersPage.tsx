@@ -5,43 +5,11 @@ import {
 import { useTheme, alpha } from '@mui/material/styles';
 import { Edit, Delete, Add } from '@shared/components/FAIcon';
 import { useQuery } from '@apollo/client';
-import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
-import { gql } from '@apollo/client';
+import { CustomersPanel, CUSTOMERS } from '@features/customers';
 
 
 import { useAuth } from '../components/AuthContext';
 
-const CUSTOMERS = gql`
-  query Customers {
-    customers {
-      id
-      name
-      description
-      products {
-        id
-        name
-        product {
-          id
-          name
-        }
-        adoptionPlan {
-          id
-        }
-      }
-      solutions {
-        id
-        name
-        solution {
-          id
-          name
-        }
-        adoptionPlan {
-          id
-        }
-      }
-    }
-  }
-`;
 
 export const CustomersPage: React.FC = () => {
     const theme = useTheme();
@@ -171,7 +139,7 @@ export const CustomersPage: React.FC = () => {
             {/* Customer Content */}
             {!customersLoading && !customersError && customers.find((c: any) => c.id === selectedCustomerId) && (
                 <>
-                    <CustomerAdoptionPanelV4
+                    <CustomersPanel
                         selectedCustomerId={selectedCustomerId}
                         onRequestAddCustomer={() => {
                             localStorage.removeItem('lastSelectedCustomerId');

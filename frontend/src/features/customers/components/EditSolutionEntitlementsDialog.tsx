@@ -21,7 +21,7 @@ import {
   FormGroup,
   Paper
 } from '@mui/material';
-import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from './TaskDialog';
+import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from '@/components/dialogs/TaskDialog';
 
 const GET_CUSTOMER_SOLUTION = gql`
   query GetCustomerSolution($id: ID!) {

@@ -31,8 +31,8 @@ import {
   FilterList,
   Clear,
 } from '@shared/components/FAIcon';
-import { AdoptionTaskTable, TaskData } from '../shared/AdoptionTaskTable';
-import { adoptionPlanColors } from '../../utils/tabStyles';
+import { AdoptionTaskTable, TaskData } from '@shared/components/AdoptionTaskTable';
+import { adoptionPlanColors } from '@/utils/tabStyles';
 
 const ALL_RELEASES_ID = '__ALL_RELEASES__';
 const ALL_OUTCOMES_ID = '__ALL_OUTCOMES__';

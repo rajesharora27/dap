@@ -45,8 +45,7 @@ import { TaskDialog } from '../components/dialogs/TaskDialog';
 import { TaskPreviewDialog } from '../components/dialogs/TaskPreviewDialog';
 import { ProductPreviewDialog } from '../components/dialogs/ProductPreviewDialog';
 import { SolutionPreviewDialog } from '../components/dialogs/SolutionPreviewDialog';
-import { CustomerPreviewDialog } from '../components/dialogs/CustomerPreviewDialog';
-import { AdoptionPlanDialog } from '../components/dialogs/AdoptionPlanDialog';
+import { CustomerPreviewDialog, AdoptionPlanDialog, CustomersPanel, CUSTOMERS } from '@features/customers';
 
 import { DashboardPage } from './DashboardPage';
 import { ProductsPage } from './ProductsPage';
@@ -59,7 +58,7 @@ import { LicenseDialog } from '../components/dialogs/LicenseDialog';
 import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
 import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
-import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
+
 import { UserProfileDialog } from '../components/UserProfileDialog';
 import { UserManagement } from '../components/UserManagement';
 import { RoleManagement } from '../components/RoleManagement';
@@ -217,37 +216,7 @@ const TASKS_FOR_PRODUCT = gql`
 `;
 
 
-const CUSTOMERS = gql`
-  query Customers {
-    customers {
-      id
-      name
-      description
-      products {
-        id
-        name
-        product {
-          id
-          name
-        }
-        adoptionPlan {
-          id
-        }
-      }
-      solutions {
-        id
-        name
-        solution {
-          id
-          name
-        }
-        adoptionPlan {
-          id
-        }
-      }
-    }
-  }
-`;
+
 
 
 

@@ -35,7 +35,7 @@ import {
   CloudDownload,
   CloudUpload,
 } from '@shared/components/FAIcon';
-import { AdoptionPlanDialog } from './dialogs/AdoptionPlanDialog';
+import { AdoptionPlanDialog } from './AdoptionPlanDialog';
 import { AssignProductDialog } from '@features/products';
 
 // GraphQL Queries

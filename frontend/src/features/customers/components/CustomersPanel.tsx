@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { gql, useQuery, useMutation, useApolloClient } from '@apollo/client';
-import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from './dialogs/TaskDialog';
+import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from '@/components/dialogs/TaskDialog';
 import {
   Box,
   Typography,
@@ -62,16 +62,16 @@ import {
   Label,
   KeyboardArrowDown,
 } from '@shared/components/FAIcon';
-import { CustomerDialog } from './dialogs/CustomerDialog';
+import { CustomerDialog } from './CustomerDialog';
 import { AssignProductDialog } from '@features/products';
-import { EditEntitlementsDialog } from './dialogs/EditEntitlementsDialog';
-import { AssignSolutionDialog } from './dialogs/AssignSolutionDialog';
-import { EditSolutionEntitlementsDialog } from './dialogs/EditSolutionEntitlementsDialog';
+import { EditEntitlementsDialog } from './EditEntitlementsDialog';
+import { AssignSolutionDialog } from './AssignSolutionDialog';
+import { EditSolutionEntitlementsDialog } from './EditSolutionEntitlementsDialog';
 import { CustomerSolutionPanel } from './CustomerSolutionPanel';
-import { getApiUrl } from '../config/frontend.config';
-import { getStatusBackgroundColor, getStatusColor, getStatusChipColor, getUpdateSourceChipColor, formatStatus } from '../utils/statusStyles';
-import { formatSuccessCriteria } from '../utils/criteriaFormatter';
-import { TaskDetailsDialog, TaskDetailsData } from './shared/TaskDetailsDialog';
+import { getApiUrl } from '@/config/frontend.config';
+import { getStatusBackgroundColor, getStatusColor, getStatusChipColor, getUpdateSourceChipColor, formatStatus } from '@/utils/statusStyles';
+import { formatSuccessCriteria } from '@/utils/criteriaFormatter';
+import { TaskDetailsDialog, TaskDetailsData } from '@shared/components/TaskDetailsDialog';
 
 // GraphQL Queries
 const GET_CUSTOMERS = gql`
@@ -621,14 +621,14 @@ interface ImportResultDialog {
   errorMessage?: string;
 }
 
-interface CustomerAdoptionPanelV4Props {
+interface CustomersPanelProps {
   selectedCustomerId: string | null;
   onRequestAddCustomer?: () => void;
   forceTab?: 'main' | 'products' | 'solutions';
   hideTabs?: boolean;
 }
 
-export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustomer, forceTab, hideTabs }: CustomerAdoptionPanelV4Props) {
+export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, forceTab, hideTabs }: CustomersPanelProps) {
   const [activeTab, setActiveTab] = useState<'main' | 'products' | 'solutions'>(forceTab || 'main');
 
   // Sync activeTab with forceTab when it changes
