@@ -24,7 +24,7 @@ import {
     CommentOutlined,
     Compass,
     AISparkle
-} from '../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 // GraphQL Queries
 const DASHBOARD_DATA = gql`

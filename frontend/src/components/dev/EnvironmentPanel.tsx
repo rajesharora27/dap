@@ -23,7 +23,7 @@ import {
     Refresh as RefreshIcon,
     Lock as LockIcon,
     Info as InfoIcon
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 interface EnvVar {
     key: string;

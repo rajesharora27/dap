@@ -36,7 +36,7 @@ import {
     DataObject,
     TextFields,
     Download,
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 import DataTable, { DataTableColumn } from './DataTable';
 
 export interface QueryResultDisplayProps {

@@ -61,9 +61,9 @@ import {
   Assessment,
   Label,
   KeyboardArrowDown,
-} from '../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 import { CustomerDialog } from './dialogs/CustomerDialog';
-import { AssignProductDialog } from './dialogs/AssignProductDialog';
+import { AssignProductDialog } from '@features/products';
 import { EditEntitlementsDialog } from './dialogs/EditEntitlementsDialog';
 import { AssignSolutionDialog } from './dialogs/AssignSolutionDialog';
 import { EditSolutionEntitlementsDialog } from './dialogs/EditSolutionEntitlementsDialog';

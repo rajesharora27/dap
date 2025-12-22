@@ -43,7 +43,7 @@ import {
   Refresh,
   Storage,
   AISparkle,
-} from '../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 import { gql, useMutation, useQuery } from '@apollo/client';
 import { useAuth } from './AuthContext';
 import { useAIAssistant, AIMessage } from '../hooks/useAIAssistant';

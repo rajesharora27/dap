@@ -24,8 +24,8 @@ import {
   Sort,
   AccessTime,
   Update
-} from '../components/common/FAIcon';
-import { ProductDialog } from './dialogs/ProductDialog';
+} from '@shared/components/FAIcon';
+import { ProductDialog } from '@features/products';
 
 const PRODUCTS = gql`query Products($first:Int,$after:String,$last:Int,$before:String){ 
   products(first:$first,after:$after,last:$last,before:$before){ 

@@ -42,7 +42,7 @@ import {
   Schedule,
   DataObject,
   Upload
-} from '../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 // GraphQL Queries and Mutations
 const LIST_BACKUPS = gql`

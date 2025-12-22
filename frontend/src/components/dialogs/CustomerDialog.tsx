@@ -19,7 +19,7 @@ import {
   AccordionSummary,
   AccordionDetails
 } from '@mui/material';
-import { ExpandMore } from '../../components/common/FAIcon';
+import { ExpandMore } from '@shared/components/FAIcon';
 
 interface Customer {
   id: string;

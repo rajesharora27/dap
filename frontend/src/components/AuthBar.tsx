@@ -23,7 +23,7 @@ import {
   Psychology,
   HelpOutline,
   AISparkle,
-} from '../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 import { useQuery } from '@apollo/client';
 import { useAuth } from './AuthContext';
 import { AIChat } from './AIChat';

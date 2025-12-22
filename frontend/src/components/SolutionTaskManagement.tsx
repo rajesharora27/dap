@@ -15,7 +15,7 @@ import {
   AccordionSummary,
   AccordionDetails
 } from '@mui/material';
-import { Add, Edit, Delete, ExpandMore } from '../components/common/FAIcon';
+import { Add, Edit, Delete, ExpandMore } from '@shared/components/FAIcon';
 import { useMutation, gql } from '@apollo/client';
 
 const CREATE_SOLUTION_TASK = gql`

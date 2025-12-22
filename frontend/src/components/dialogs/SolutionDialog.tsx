@@ -32,7 +32,7 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   Badge as BadgeIcon
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 import { gql, useMutation, useApolloClient } from '@apollo/client';
 import { CustomAttributeDialog } from './CustomAttributeDialog';
 import { OutcomeDialog } from './OutcomeDialog';

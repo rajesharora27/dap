@@ -26,7 +26,7 @@ import {
   Autocomplete
 } from '@mui/material';
 import { gql, useMutation, useQuery } from '@apollo/client';
-import { ExpandMore } from '../../components/common/FAIcon';
+import { ExpandMore } from '@shared/components/FAIcon';
 import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from './TaskDialog';
 
 const SOLUTIONS_QUERY = gql`

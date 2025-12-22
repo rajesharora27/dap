@@ -30,7 +30,7 @@ import {
     Error as ErrorIcon,
     Code,
     Timeline
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 interface BuildResult {
     success: boolean;

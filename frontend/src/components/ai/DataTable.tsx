@@ -32,7 +32,7 @@ import {
     KeyboardArrowDown,
     KeyboardArrowUp,
     Check,
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 export interface DataTableColumn {
     /** Column key (matches data property) */

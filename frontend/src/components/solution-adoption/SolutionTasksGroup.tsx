@@ -19,7 +19,7 @@ import {
   ExpandLess,
   Download,
   Upload,
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 import { AdoptionTaskTable, TaskData } from '../shared/AdoptionTaskTable';
 import { adoptionPlanColors } from '../../utils/tabStyles';
 

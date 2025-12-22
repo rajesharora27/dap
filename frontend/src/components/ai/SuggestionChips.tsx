@@ -15,7 +15,7 @@ import {
     useTheme,
     alpha,
 } from '@mui/material';
-import { Lightbulb, AutoAwesome } from '../../components/common/FAIcon';
+import { Lightbulb, AutoAwesome } from '@shared/components/FAIcon';
 
 export interface SuggestionChipsProps {
     /** List of suggestion strings */

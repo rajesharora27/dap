@@ -23,7 +23,7 @@ import {
     Web as WebIcon,
     Storage as StorageIcon,
     Info as InfoIcon
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 export const BuildDeployPanel: React.FC = () => {
     const [loading, setLoading] = useState(false);

@@ -19,7 +19,7 @@ import App from './pages/App';
 import { AuthProvider } from './components/AuthContext';
 import { ApolloClientWrapper } from './components/ApolloClientProvider';
 import { AppThemeProvider } from './theme/ThemeProvider';
-import { ErrorBoundary } from './components/ErrorBoundary';
+import { ErrorBoundary } from '@shared/components/ErrorBoundary';
 import { initSentry } from './lib/sentry';
 
 // Initialize Sentry for error tracking

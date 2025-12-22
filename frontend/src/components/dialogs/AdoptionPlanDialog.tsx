@@ -33,7 +33,7 @@ import {
   MoreVert,
   Sync,
   Assessment,
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 const GET_ADOPTION_PLAN = gql`
   query GetAdoptionPlan($id: ID!) {

@@ -13,7 +13,7 @@ import {
     IconButton,
     Tooltip
 } from '@mui/material';
-import { Close, Save } from '../../components/common/FAIcon';
+import { Close, Save } from '@shared/components/FAIcon';
 
 // Define the shape of a ProductTag used by the UI
 export interface ProductTag {

@@ -50,7 +50,7 @@ import {
     BugReport,
     Speed,
     Storage
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 // ==================== Types ====================
 

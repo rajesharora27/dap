@@ -27,7 +27,7 @@ import {
     Refresh as RefreshIcon,
     OpenInNew as OpenIcon,
     Info as InfoIcon
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 interface WorkflowRun {
     id: number;

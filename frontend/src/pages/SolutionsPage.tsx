@@ -5,16 +5,16 @@ import {
     IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, List, ListItem, ListItemText, CircularProgress, Card, CardContent, Checkbox, OutlinedInput, Collapse, Alert, Divider
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2, Label, FilterList, ExpandMore, ExpandLess, VerifiedUser, NewReleases } from '../components/common/FAIcon';
+import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2, Label, FilterList, ExpandMore, ExpandLess, VerifiedUser, NewReleases } from '@shared/components/FAIcon';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { DragIndicator } from '../components/common/FAIcon';
+import { DragIndicator } from '@shared/components/FAIcon';
 
 import { SOLUTIONS, TASKS_FOR_SOLUTION, PRODUCTS, SOLUTION, SOLUTION_TAGS } from '../graphql/queries';
 import { DELETE_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, UPDATE_SOLUTION, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE, UPDATE_OUTCOME, DELETE_OUTCOME } from '../graphql/mutations';
-import { SortableTaskItem } from '../components/SortableTaskItem';
+import { SortableTaskItem } from '@shared/components/SortableTaskItem';
 import { SolutionDialog } from '../components/dialogs/SolutionDialog';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
 import { LicenseDialog } from '../components/dialogs/LicenseDialog';
@@ -22,7 +22,7 @@ import { SolutionReleaseDialog } from '../components/dialogs/SolutionReleaseDial
 
 import { useAuth } from '../components/AuthContext';
 import { TagDialog } from '../components/dialogs/TagDialog';
-import { InlineEditableText } from '../components/common/InlineEditableText';
+import { InlineEditableText } from '@shared/components/InlineEditableText';
 
 export const SolutionsPage: React.FC = () => {
     // State

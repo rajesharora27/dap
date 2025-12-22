@@ -19,7 +19,7 @@ import {
   Divider,
   Chip
 } from '@mui/material';
-import { Add, Edit, Delete, Download, Upload, Assessment, Sync } from '../components/common/FAIcon';
+import { Add, Edit, Delete, Download, Upload, Assessment, Sync } from '@shared/components/FAIcon';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { AssignSolutionDialog } from './dialogs/AssignSolutionDialog';
 import { EditSolutionEntitlementsDialog } from './dialogs/EditSolutionEntitlementsDialog';

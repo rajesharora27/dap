@@ -20,7 +20,7 @@ import {
     Error as FailIcon,
     Info as InfoIcon,
     PlayArrow as RunIcon
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 interface CoverageMetrics {
     total: number;

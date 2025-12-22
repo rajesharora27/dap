@@ -17,7 +17,7 @@ import {
     Save as SaveIcon,
     Delete as ClearIcon,
     Info as InfoIcon
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 export const APITestingPanel: React.FC = () => {
     const [query, setQuery] = useState(`query GetProducts {

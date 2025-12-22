@@ -34,7 +34,7 @@ import {
     Settings,
     Security,
     AISparkle,
-} from '../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 interface HelpDialogProps {
     open: boolean;

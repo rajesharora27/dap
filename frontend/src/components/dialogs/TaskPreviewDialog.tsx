@@ -17,7 +17,7 @@ import {
     Link,
     IconButton
 } from '@mui/material';
-import { Close, Description, Speed, Scale, Link as LinkIcon } from '../../components/common/FAIcon';
+import { Close, Description, Speed, Scale, Link as LinkIcon } from '@shared/components/FAIcon';
 import { gql, useQuery } from '@apollo/client';
 
 const GET_TASK_DETAILS = gql`

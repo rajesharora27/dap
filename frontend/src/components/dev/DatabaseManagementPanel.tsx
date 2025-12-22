@@ -37,7 +37,7 @@ import {
     CloudUpload as MigrateIcon,
     Science as SeedIcon,
     Code as CodeIcon
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 interface MigrationInfo {
     name: string;

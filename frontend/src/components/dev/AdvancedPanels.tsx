@@ -34,7 +34,7 @@ import {
     PlayArrow as RunIcon,
     Info as InfoIcon,
     Refresh as RefreshIcon
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 // --- Performance Panel ---
 export const PerformancePanel: React.FC = () => {

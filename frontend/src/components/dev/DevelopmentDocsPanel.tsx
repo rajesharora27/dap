@@ -34,7 +34,7 @@ import {
     Download as DownloadIcon,
     OpenInNew as OpenIcon,
     Info as InfoIcon
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 interface Document {
     name: string;

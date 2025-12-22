@@ -38,7 +38,7 @@ import {
     Close,
     Code,
     CallSplit
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 interface GitStatus {
     branch: string;

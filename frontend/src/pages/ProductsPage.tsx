@@ -7,7 +7,7 @@ import {
     Checkbox, OutlinedInput, Collapse, Divider
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension, FilterList, ExpandMore, ExpandLess } from '../components/common/FAIcon';
+import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension, FilterList, ExpandMore, ExpandLess } from '@shared/components/FAIcon';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -15,17 +15,17 @@ import { CSS } from '@dnd-kit/utilities';
 
 import { PRODUCTS, TASKS_FOR_PRODUCT, OUTCOMES, PRODUCT } from '../graphql/queries';
 import { DELETE_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE, CREATE_PRODUCT, UPDATE_PRODUCT, CREATE_PRODUCT_TAG, UPDATE_PRODUCT_TAG, DELETE_PRODUCT_TAG } from '../graphql/mutations';
-import { SortableTaskItem } from '../components/SortableTaskItem';
+import { SortableTaskItem } from '@shared/components/SortableTaskItem';
 import { ProductDialog } from '../components/dialogs/ProductDialog';
 import { TaskDialog } from '../components/dialogs/TaskDialog';
 import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
 import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { LicenseDialog } from '../components/dialogs/LicenseDialog';
-import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
+import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
 import { TagDialog, ProductTag } from '../components/dialogs/TagDialog';
 import { useAuth } from '../components/AuthContext';
 import { useProductImportExport } from '../hooks/useProductImportExport';
-import { InlineEditableText } from '../components/common/InlineEditableText';
+import { InlineEditableText } from '@shared/components/InlineEditableText';
 
 interface ProductsPageProps {
     onEditProduct: (product: any) => void;

@@ -20,7 +20,7 @@ import {
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableAttributeItem } from '../SortableAttributeItem';
-import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '../../components/common/FAIcon';
+import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@shared/components/FAIcon';
 import { License, Outcome, Product, CustomAttribute, Release } from '../../types/shared';
 import { ValidationUtils } from '../../utils/sharedHandlers';
 import { CustomAttributeDialog } from './CustomAttributeDialog';

@@ -22,6 +22,13 @@ export default defineConfig(({ mode }) => {
   return {
     envDir: '..',
     base: process.env.VITE_BASE_PATH || env.VITE_BASE_PATH || '/',
+    resolve: {
+      alias: {
+        '@features': path.resolve(__dirname, './src/features'),
+        '@shared': path.resolve(__dirname, './src/shared'),
+        '@': path.resolve(__dirname, './src')
+      }
+    },
     plugins: [
       react({
         fastRefresh: true,

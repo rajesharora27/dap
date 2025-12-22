@@ -27,7 +27,7 @@ import {
     Info as InfoIcon,
     BugReport as DebugIcon,
     Info as InfoIconOutlined
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 interface LogEntry {
     timestamp: string;

@@ -28,7 +28,7 @@ import {
   Cancel as CancelIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-} from '../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 import { useTheme } from '../theme/ThemeProvider';
 import { getThemeOptions, themes, CustomThemeConfig } from '../theme/themes';
 

@@ -34,9 +34,9 @@ import {
   Business,
   CloudDownload,
   CloudUpload,
-} from '../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 import { AdoptionPlanDialog } from './dialogs/AdoptionPlanDialog';
-import { AssignProductDialog } from './dialogs/AssignProductDialog';
+import { AssignProductDialog } from '@features/products';
 
 // GraphQL Queries
 const GET_CUSTOMER_DETAIL = gql`

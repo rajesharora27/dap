@@ -16,7 +16,7 @@ import {
     Paper,
     IconButton
 } from '@mui/material';
-import { Close, Business, Description, Inventory, Category } from '../../components/common/FAIcon';
+import { Close, Business, Description, Inventory, Category } from '@shared/components/FAIcon';
 import { gql, useQuery } from '@apollo/client';
 
 const GET_CUSTOMER_DETAILS = gql`

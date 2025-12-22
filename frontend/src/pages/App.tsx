@@ -58,13 +58,13 @@ import { SolutionDialog } from '../components/dialogs/SolutionDialog';
 import { LicenseDialog } from '../components/dialogs/LicenseDialog';
 import { ReleaseDialog } from '../components/dialogs/ReleaseDialog';
 import { OutcomeDialog } from '../components/dialogs/OutcomeDialog';
-import { CustomAttributeDialog } from '../components/dialogs/CustomAttributeDialog';
+import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
 import { CustomerAdoptionPanelV4 } from '../components/CustomerAdoptionPanelV4';
 import { UserProfileDialog } from '../components/UserProfileDialog';
 import { UserManagement } from '../components/UserManagement';
 import { RoleManagement } from '../components/RoleManagement';
 import { BackupManagementPanel } from '../components/BackupManagementPanel';
-import { ThemeSelector } from '../components/ThemeSelector';
+import { ThemeSelector } from '@shared/components/ThemeSelector';
 import { AboutPage } from '../components/AboutPage';
 import { License, Outcome } from '../types/shared';
 // Font Awesome Icon Components (drop-in replacements for MUI icons)
@@ -108,7 +108,7 @@ import {
   BugReport as BugReportIcon,
   DeveloperMode as DeveloperModeIcon,
   Add,
-} from '../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 import { AuthBar } from '../components/AuthBar';
 import { useAuth } from '../components/AuthContext';
 import { LoginPage } from '../components/LoginPage';

@@ -28,7 +28,7 @@ import {
     Code,
     CheckCircle,
     Error as ErrorIcon
-} from '../../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 
 interface Example {
     name: string;

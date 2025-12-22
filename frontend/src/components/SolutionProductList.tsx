@@ -20,7 +20,7 @@ import {
   MenuItem,
   Divider
 } from '@mui/material';
-import { Add, Delete, DragIndicator, ArrowUpward, ArrowDownward } from '../components/common/FAIcon';
+import { Add, Delete, DragIndicator, ArrowUpward, ArrowDownward } from '@shared/components/FAIcon';
 import { useMutation } from '@apollo/client';
 import { 
   ADD_PRODUCT_TO_SOLUTION_ENHANCED, 

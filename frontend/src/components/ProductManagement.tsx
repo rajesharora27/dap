@@ -12,8 +12,8 @@ import {
   Chip,
   Paper
 } from '@mui/material';
-import { Add, Edit, Delete } from '../components/common/FAIcon';
-import { ProductDialog } from './dialogs/ProductDialog';
+import { Add, Edit, Delete } from '@shared/components/FAIcon';
+import { ProductDialog } from '@features/products';
 import { gql, useMutation } from '@apollo/client';
 
 const DELETE_PRODUCT = gql`

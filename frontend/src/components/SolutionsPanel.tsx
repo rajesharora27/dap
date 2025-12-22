@@ -12,7 +12,7 @@ import {
   Typography,
   Chip
 } from '@mui/material';
-import { Add, Edit, Delete } from '../components/common/FAIcon';
+import { Add, Edit, Delete } from '@shared/components/FAIcon';
 import { SolutionDialog } from './dialogs/SolutionDialog';
 
 const SOLUTIONS = gql`

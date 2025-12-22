@@ -19,7 +19,7 @@ import {
   Person,
   Lock,
   ArrowForward
-} from '../components/common/FAIcon';
+} from '@shared/components/FAIcon';
 import { useAuth } from './AuthContext';
 
 const LOGIN = gql`
