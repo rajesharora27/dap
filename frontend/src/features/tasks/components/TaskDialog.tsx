@@ -23,7 +23,7 @@ import {
   Tooltip,
 } from '@mui/material';
 import { Release } from '@features/product-releases';
-import TelemetryConfiguration from '@/components/telemetry/TelemetryConfiguration';
+import { TelemetryConfiguration } from '@features/telemetry';
 import { ProductTag } from '@features/tags';
 
 // Special marker IDs for "All" selections

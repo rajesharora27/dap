@@ -62,9 +62,9 @@ import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog'
 import { UserProfileDialog } from '@features/auth';
 import { UserManagement } from '@features/admin';
 import { RoleManagement } from '@features/admin';
-import { BackupManagementPanel } from '../components/BackupManagementPanel';
+import { BackupManagementPanel } from '@features/backups';
 import { ThemeSelector } from '@shared/components/ThemeSelector';
-import { AboutPage } from '../components/AboutPage';
+import { AboutPage } from '@/pages/AboutPage';
 // Font Awesome Icon Components (drop-in replacements for MUI icons)
 import {
   Inventory2 as ProductIcon,
@@ -111,17 +111,20 @@ import { AuthBar } from '@features/auth';
 import { useAuth } from '@features/auth';
 import { LoginPage } from '@features/auth';
 // Development Tools
-import { TestPanelNew } from '../components/dev/TestPanelNew';
-import { DevelopmentCICDPanel } from '../components/dev/DevelopmentCICDPanel';
-import { DevelopmentDocsPanel } from '../components/dev/DevelopmentDocsPanel';
-import { DatabaseManagementPanel } from '../components/dev/DatabaseManagementPanel';
-import { LogsViewerPanel } from '../components/dev/LogsViewerPanel';
-import { EnhancedBuildDeployPanel } from '../components/dev/EnhancedBuildDeployPanel';
-import { EnvironmentPanel } from '../components/dev/EnvironmentPanel';
-import { EnhancedAPITestingPanel } from '../components/dev/EnhancedAPITestingPanel';
-import { CodeQualityPanel } from '../components/dev/CodeQualityPanel';
-import { PerformancePanel, TaskRunnerPanel } from '../components/dev/AdvancedPanels';
-import { EnhancedGitPanel } from '../components/dev/EnhancedGitPanel';
+import {
+  TestPanelNew,
+  DevelopmentCICDPanel,
+  DevelopmentDocsPanel,
+  DatabaseManagementPanel,
+  LogsViewerPanel,
+  EnhancedBuildDeployPanel,
+  EnvironmentPanel,
+  EnhancedAPITestingPanel,
+  CodeQualityPanel,
+  PerformancePanel,
+  TaskRunnerPanel,
+  EnhancedGitPanel
+} from '@features/dev-tools';
 import { gql, useQuery, useApolloClient, ApolloError } from '@apollo/client';
 import {
   DndContext,

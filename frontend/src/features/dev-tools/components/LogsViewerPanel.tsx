@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getDevApiBaseUrl } from '../../config/frontend.config';
+import { getDevApiBaseUrl } from '@/config/frontend.config';
 import {
     Box,
     Paper,

@@ -24,7 +24,7 @@ import {
     Tabs,
     Tab
 } from '@mui/material';
-import { getDevApiBaseUrl } from '../../config/frontend.config';
+import { getDevApiBaseUrl } from '@/config/frontend.config';
 import {
     Storage as DatabaseIcon,
     PlayArrow as RunIcon,

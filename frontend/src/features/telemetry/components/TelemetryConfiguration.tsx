@@ -52,7 +52,7 @@ interface TelemetryConfigurationProps {
   disabled?: boolean;
 }
 
-const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
+export const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
   taskId,
   attributes,
   onChange,
@@ -654,4 +654,3 @@ const TelemetryConfiguration: React.FC<TelemetryConfigurationProps> = ({
   );
 };
 
-export default TelemetryConfiguration;

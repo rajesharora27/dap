@@ -12,7 +12,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { getDevApiBaseUrl } from '../../config/frontend.config';
+import { getDevApiBaseUrl } from '@/config/frontend.config';
 import {
     Box,
     Paper,

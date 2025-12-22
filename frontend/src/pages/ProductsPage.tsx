@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { EntitySummary } from '../components/EntitySummary';
+import { EntitySummary } from '@features/telemetry';
 import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button,
     IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,

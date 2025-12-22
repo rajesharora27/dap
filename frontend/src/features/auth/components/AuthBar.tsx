@@ -26,9 +26,9 @@ import {
 } from '@shared/components/FAIcon';
 import { useQuery } from '@apollo/client';
 import { useAuth } from '../context/AuthContext';
-import { AIChat } from '@/components/AIChat';
-import { HelpDialog } from '@/components/HelpDialog';
-import { IS_AI_AGENT_AVAILABLE, IsAIAgentAvailableResponse } from '@/graphql/ai';
+import { AIChat } from '@features/ai-assistant';
+import { HelpDialog } from '@shared/components/HelpDialog';
+import { IS_AI_AGENT_AVAILABLE, IsAIAgentAvailableResponse } from '@features/ai-assistant';
 
 interface AuthBarProps {
   onMenuClick?: () => void;
