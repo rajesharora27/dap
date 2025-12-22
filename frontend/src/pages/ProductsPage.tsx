@@ -34,7 +34,7 @@ interface ProductsPageProps {
 export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => {
     // State
     const { isAuthenticated, isLoading: authLoading } = useAuth();
-    const [selectedProduct, setSelectedProduct] = useState<string | null>(localStorage.getItem('lastSelectedProductId'));
+    const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
     const [selectedSubSection, setSelectedSubSection] = useState<'summary' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('summary');
     const importFileRef = useRef<HTMLInputElement>(null);
 

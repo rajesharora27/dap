@@ -238,8 +238,8 @@ const sizeMap: Record<string, string> = {
 
 // Create icon component factory
 function createIcon(icon: IconDefinition, displayName: string) {
-    const IconComponent = React.forwardRef<HTMLSpanElement, IconProps>(
-        ({ fontSize = 'medium', color = 'inherit', sx, className, style }, ref) => {
+    const IconComponent = React.forwardRef<HTMLSpanElement, IconProps & React.HTMLAttributes<HTMLSpanElement>>(
+        ({ fontSize = 'medium', color = 'inherit', sx, className, style, ...rest }, ref) => {
             const theme = useTheme();
 
             const size = typeof fontSize === 'number'
@@ -273,6 +273,7 @@ function createIcon(icon: IconDefinition, displayName: string) {
                         ...sx,
                     }}
                     style={style}
+                    {...rest}
                 >
                     <FontAwesomeIcon icon={icon} style={{ fontSize: 'inherit' }} />
                 </Box>
