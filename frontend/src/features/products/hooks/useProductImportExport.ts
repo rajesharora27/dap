@@ -80,7 +80,7 @@ export const useProductImportExport = (
 
             if (stats.warnings.length > 0) {
                 lines.push('', 'Warnings:');
-                stats.warnings.forEach(w => lines.push(`  ⚠ ${w}`));
+                stats.warnings.forEach((w: string) => lines.push(`  ⚠ ${w}`));
             }
 
             alert(lines.join('\n'));
