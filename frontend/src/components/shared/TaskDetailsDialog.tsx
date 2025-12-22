@@ -20,6 +20,7 @@ import {
   Tabs,
   Tab,
   Alert,
+  Tooltip,
 } from '@mui/material';
 import {
   Article,
@@ -61,6 +62,8 @@ export interface TaskDetailsData {
       createdAt?: string;
     }>;
   }>;
+  tags?: Array<{ id: string; name: string; color?: string; description?: string }>;
+  solutionTags?: Array<{ id: string; name: string; color?: string; description?: string }>;
 }
 
 interface TaskDetailsDialogProps {
@@ -265,6 +268,46 @@ export const TaskDetailsDialog: React.FC<TaskDetailsDialogProps> = ({
                             </Box>
                           </Box>
                         )}
+                      </Box>
+                    </CardContent>
+                  </Card>
+                )}
+
+              {/* Tags Section */}
+              {((task.tags && task.tags.length > 0) ||
+                (task.solutionTags && task.solutionTags.length > 0)) && (
+                  <Card variant="outlined" sx={{ mb: 3 }}>
+                    <CardContent>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
+                        Tags
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        {task.tags && task.tags.map((tag) => (
+                          <Tooltip key={tag.id} title={tag.description || tag.name} arrow>
+                            <Chip
+                              label={tag.name}
+                              size="small"
+                              sx={{
+                                backgroundColor: tag.color || '#888',
+                                color: '#fff',
+                                fontWeight: 500
+                              }}
+                            />
+                          </Tooltip>
+                        ))}
+                        {task.solutionTags && task.solutionTags.map((tag) => (
+                          <Tooltip key={tag.id} title={tag.description || tag.name} arrow>
+                            <Chip
+                              label={tag.name}
+                              size="small"
+                              sx={{
+                                backgroundColor: tag.color || '#888',
+                                color: '#fff',
+                                fontWeight: 500
+                              }}
+                            />
+                          </Tooltip>
+                        ))}
                       </Box>
                     </CardContent>
                   </Card>

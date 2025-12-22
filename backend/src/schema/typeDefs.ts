@@ -175,6 +175,7 @@ export const typeDefs = gql`
   id: ID!
   productId: ID!
   name: String!
+  description: String
   color: String
   displayOrder: Int
   taskTags: [TaskTag!]
@@ -184,6 +185,7 @@ type SolutionTag {
   id: ID!
   solutionId: ID!
   name: String!
+  description: String
   color: String
   displayOrder: Int
   taskTags: [SolutionTaskTag!]
@@ -208,6 +210,7 @@ type CustomerProductTag {
     name: String!
     color: String
     displayOrder: Int
+    description: String
 }
 
 type CustomerTaskTag {
@@ -223,6 +226,7 @@ type CustomerSolutionTag {
     name: String!
     color: String
     displayOrder: Int
+    description: String
 }
 
 type CustomerSolutionTaskTag {
@@ -612,12 +616,14 @@ type CustomerSolutionTaskTag {
   input ProductTagInput {
     productId: ID!
     name: String!
+    description: String
     color: String
     displayOrder: Int
   }
 
   input ProductTagUpdateInput {
     name: String
+    description: String
     color: String
     displayOrder: Int
   }
@@ -625,12 +631,14 @@ type CustomerSolutionTaskTag {
   input SolutionTagInput {
     solutionId: ID!
     name: String!
+    description: String
     color: String
     displayOrder: Int
   }
 
   input SolutionTagUpdateInput {
     name: String
+    description: String
     color: String
     displayOrder: Int
   }

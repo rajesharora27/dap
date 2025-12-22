@@ -120,7 +120,12 @@ export const SolutionAdoptionQueryResolvers = {
               }
             },
             outcomes: true,
-            releases: true
+            releases: true,
+            solutionTaskTags: {
+              include: {
+                tag: true
+              }
+            }
           }
         },
         products: {
@@ -686,6 +691,7 @@ export const SolutionAdoptionMutationResolvers = {
           customerSolutionId,
           sourceTagId: tag.id,
           name: tag.name,
+          description: tag.description,
           color: tag.color,
           displayOrder: tag.displayOrder
         }
@@ -1277,6 +1283,7 @@ export const SolutionAdoptionMutationResolvers = {
             customerSolutionId,
             sourceTagId: tag.id,
             name: tag.name,
+            description: tag.description,
             color: tag.color,
             displayOrder: tag.displayOrder
           }
@@ -1764,6 +1771,7 @@ export const SolutionAdoptionMutationResolvers = {
             customerSolutionId: plan.customerSolutionId,
             sourceTagId: tag.id,
             name: tag.name,
+            description: tag.description,
             color: tag.color,
             displayOrder: tag.displayOrder
           }
@@ -2944,6 +2952,7 @@ async function syncSolutionDefinitionFn(_: any, { solutionAdoptionPlanId }: any,
           customerSolutionId,
           sourceTagId: tag.id,
           name: tag.name,
+          description: tag.description,
           color: tag.color,
           displayOrder: tag.displayOrder
         }

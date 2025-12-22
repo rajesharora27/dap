@@ -457,6 +457,7 @@ export class ExcelExportService {
     // Define columns
     sheet.columns = [
       { header: 'Tag Name', key: 'name', width: 30 },
+      { header: 'Description', key: 'description', width: 50 },
       { header: 'Color', key: 'color', width: 15 },
       { header: 'Display Order', key: 'displayOrder', width: 15 }
     ];
@@ -475,6 +476,7 @@ export class ExcelExportService {
     tags.forEach(tag => {
       sheet.addRow({
         name: tag.name,
+        description: tag.description || '',
         color: tag.color || 'default',
         displayOrder: tag.displayOrder || 0
       });
@@ -617,6 +619,7 @@ export class ExcelExportService {
       '------------------',
       '• Product-level tags definition',
       '• Tag Name: Required, unique within product',
+      '• Description: Optional description for the tag',
       '• Color: Display color (e.g., error, success, warning)',
       '• Display Order: Number',
       '',

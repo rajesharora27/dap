@@ -404,6 +404,7 @@ model ProductTag {
   id           String   @id @default(cuid())
   productId    String
   name         String
+  description  String?
   color        String?   // Theme color key
   displayOrder Int       @default(0)
   createdAt    DateTime @default(now())
@@ -430,6 +431,7 @@ model CustomerProductTag {
   customerProductId String
   sourceTagId       String?  // Reference to original ProductTag for sync
   name              String
+  description       String?
   color             String?
   displayOrder      Int      @default(0)
   createdAt         DateTime @default(now())
@@ -882,6 +884,7 @@ model SolutionTag {
   id           String            @id @default(cuid())
   solutionId   String
   name         String
+  description  String?
   color        String?
   displayOrder Int               @default(0)
   createdAt    DateTime          @default(now())
@@ -917,6 +920,7 @@ model CustomerSolutionTag {
   customerSolutionId  String
   sourceTagId         String?
   name                String
+  description         String?
   color               String?
   displayOrder        Int              @default(0)
   createdAt           DateTime         @default(now())

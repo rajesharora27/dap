@@ -158,6 +158,7 @@ const GET_ADOPTION_PLAN = gql`
           id
           name
           color
+          description
         }
       }
       tasks {
@@ -201,6 +202,7 @@ const GET_ADOPTION_PLAN = gql`
           id
           name
           color
+          description
         }
       }
     }
@@ -252,6 +254,7 @@ const UPDATE_TASK_STATUS = gql`
         id
         name
         color
+        description
       }
     }
   }
@@ -329,6 +332,7 @@ const SYNC_ADOPTION_PLAN = gql`
           id
           name
           color
+          description
         }
       }
     }
@@ -446,6 +450,7 @@ const SYNC_SOLUTION_ADOPTION_PLAN = gql`
           id
           name
           color
+          description
         }
       }
       products {
@@ -457,6 +462,7 @@ const SYNC_SOLUTION_ADOPTION_PLAN = gql`
               id
               name
               color
+              description
             }
           }
           tasks {
@@ -465,6 +471,7 @@ const SYNC_SOLUTION_ADOPTION_PLAN = gql`
               id
               name
               color
+              description
             }
           }
         }
@@ -2374,16 +2381,17 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                           {selected.map((value) => {
                                             const tag = availableTags.find((t: any) => t.id === value);
                                             return (
-                                              <Chip
-                                                key={value}
-                                                label={tag?.name || value}
-                                                size="small"
-                                                sx={{
-                                                  bgcolor: tag?.color,
-                                                  color: '#fff',
-                                                  '& .MuiChip-label': { fontWeight: 500 }
-                                                }}
-                                              />
+                                              <Tooltip key={value} title={tag?.description || tag?.name || value} arrow>
+                                                <Chip
+                                                  label={tag?.name || value}
+                                                  size="small"
+                                                  sx={{
+                                                    bgcolor: tag?.color,
+                                                    color: '#fff',
+                                                    '& .MuiChip-label': { fontWeight: 500 }
+                                                  }}
+                                                />
+                                              </Tooltip>
                                             );
                                           })}
                                         </Box>
@@ -2394,7 +2402,7 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                           <Checkbox checked={filterTags.includes(tag.id)} />
                                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <Label sx={{ color: tag.color, fontSize: 20 }} />
-                                            <ListItemText primary={tag.name} />
+                                            <ListItemText primary={tag.name} secondary={tag.description} />
                                           </Box>
                                         </MenuItem>
                                       ))}
@@ -2439,6 +2447,9 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                       </TableCell>
                                       <TableCell width={80} sx={{ whiteSpace: 'nowrap' }}>
                                         <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Impl %</Typography>
+                                      </TableCell>
+                                      <TableCell sx={{ minWidth: 120 }}>
+                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Tags</Typography>
                                       </TableCell>
 
                                       <TableCell width={160} sx={{ whiteSpace: 'nowrap' }}>
@@ -2558,6 +2569,34 @@ export function CustomerAdoptionPanelV4({ selectedCustomerId, onRequestAddCustom
                                             </Box>
                                           </TableCell>
                                           <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.weight}%</TableCell>
+                                          <TableCell>
+                                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                                              {task.tags?.map((tag: any) => (
+                                                <Tooltip
+                                                  key={tag.id}
+                                                  title={
+                                                    <Box>
+                                                      <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>Tag: {tag.name}</Typography>
+                                                      {tag.description && <Typography variant="caption" display="block">{tag.description}</Typography>}
+                                                    </Box>
+                                                  }
+                                                  arrow
+                                                >
+                                                  <Chip
+                                                    label={tag.name}
+                                                    size="small"
+                                                    sx={{
+                                                      height: 18,
+                                                      fontSize: '0.65rem',
+                                                      backgroundColor: tag.color || '#888',
+                                                      color: '#fff',
+                                                      fontWeight: 600
+                                                    }}
+                                                  />
+                                                </Tooltip>
+                                              ))}
+                                            </Box>
+                                          </TableCell>
 
                                           <TableCell>
                                             {(() => {

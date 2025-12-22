@@ -1496,28 +1496,29 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                     ) : (
                                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                                             {displayProduct.tags.map((tag: any) => (
-                                                <Chip
-                                                    key={tag.id}
-                                                    label={tag.name}
-                                                    sx={{
-                                                        backgroundColor: tag.color,
-                                                        color: '#fff',
-                                                        fontWeight: 500,
-                                                        cursor: 'pointer',
-                                                        '& .MuiChip-deleteIcon': {
-                                                            color: 'rgba(255, 255, 255, 0.7)',
-                                                            '&:hover': {
-                                                                color: '#fff'
+                                                <Tooltip key={tag.id} title={tag.description || tag.name} arrow>
+                                                    <Chip
+                                                        label={tag.name}
+                                                        sx={{
+                                                            backgroundColor: tag.color,
+                                                            color: '#fff',
+                                                            fontWeight: 500,
+                                                            cursor: 'pointer',
+                                                            '& .MuiChip-deleteIcon': {
+                                                                color: 'rgba(255, 255, 255, 0.7)',
+                                                                '&:hover': {
+                                                                    color: '#fff'
+                                                                }
                                                             }
-                                                        }
-                                                    }}
-                                                    onClick={() => {
-                                                        setEditingTag(tag);
-                                                        setTagDialog(true);
-                                                    }}
-                                                    onDelete={() => handleDeleteTag(tag.id)}
-                                                    deleteIcon={<Delete />}
-                                                />
+                                                        }}
+                                                        onClick={() => {
+                                                            setEditingTag(tag);
+                                                            setTagDialog(true);
+                                                        }}
+                                                        onDelete={() => handleDeleteTag(tag.id)}
+                                                        deleteIcon={<Delete />}
+                                                    />
+                                                </Tooltip>
                                             ))}
                                         </Box>
                                     )}

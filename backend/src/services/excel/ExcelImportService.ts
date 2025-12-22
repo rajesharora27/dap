@@ -442,6 +442,7 @@ export class ExcelImportService {
           const created = await tx.productTag.create({
             data: {
               name: tag.name,
+              description: tag.description || '',
               color: tag.color || 'default',
               displayOrder: tag.displayOrder || 0,
               productId
@@ -458,6 +459,7 @@ export class ExcelImportService {
             await tx.productTag.update({
               where: { id: existing.id },
               data: {
+                description: tag.description || '',
                 color: tag.color || 'default',
                 displayOrder: tag.displayOrder || 0
               }
@@ -1028,6 +1030,7 @@ export class ExcelImportService {
           const value = cell.value?.toString().trim();
 
           if (header === 'tag name' || header === 'name') tag.name = value;
+          else if (header === 'description') tag.description = value;
           else if (header === 'color') tag.color = value;
           else if (header === 'display order' || header === 'displayorder' || header === 'order') tag.displayOrder = parseInt(value || '0');
         });

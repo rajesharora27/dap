@@ -19,6 +19,7 @@ import { Close, Save } from '../../components/common/FAIcon';
 export interface ProductTag {
     id: string;
     name: string;
+    description?: string;
     color?: string; // hex colour string, e.g. "#1976d2"
     displayOrder?: number;
 }
@@ -46,6 +47,7 @@ export const TagDialog: React.FC<TagDialogProps> = ({
     const isEditMode = Boolean(tag);
 
     const [name, setName] = useState('');
+    const [description, setDescription] = useState('');
     const [color, setColor] = useState('#1976d2'); // default MUI primary colour
     const [nameError, setNameError] = useState('');
 
@@ -53,9 +55,11 @@ export const TagDialog: React.FC<TagDialogProps> = ({
     useEffect(() => {
         if (tag) {
             setName(tag.name);
+            setDescription(tag.description || '');
             setColor(tag.color ?? '#1976d2');
         } else {
             setName('');
+            setDescription('');
             setColor('#1976d2');
         }
         setNameError('');
@@ -81,6 +85,7 @@ export const TagDialog: React.FC<TagDialogProps> = ({
         if (!validate()) return;
         const payload: Omit<ProductTag, 'id'> = {
             name: name.trim(),
+            description: description.trim() || undefined,
             color,
             // displayOrder will be handled by the backend (auto‑increment) if omitted
         };
@@ -89,7 +94,7 @@ export const TagDialog: React.FC<TagDialogProps> = ({
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+        <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
             <DialogTitle>{isEditMode ? 'Edit Tag' : 'Create Tag'}</DialogTitle>
             <DialogContent>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
@@ -105,6 +110,17 @@ export const TagDialog: React.FC<TagDialogProps> = ({
                         fullWidth
                         required
                     />
+
+                    <TextField
+                        label="Description"
+                        value={description}
+                        onChange={e => setDescription(e.target.value)}
+                        placeholder="Optional description"
+                        fullWidth
+                        multiline
+                        rows={2}
+                    />
+
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <TextField
                             label="Colour"

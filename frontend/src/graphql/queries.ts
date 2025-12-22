@@ -75,6 +75,13 @@ export const SOLUTIONS = gql`
               }
             }
           }
+          tags {
+            id
+            name
+            color
+            description
+            displayOrder
+          }
         }
       }
     }
@@ -164,6 +171,7 @@ export const TASKS_FOR_PRODUCT = gql`
             id
             name
             color
+            description
           }
           isCompleteBasedOnTelemetry
           telemetryCompletionPercentage
@@ -224,11 +232,13 @@ export const TASKS_FOR_SOLUTION = gql`
             id
             name
             color
+            description
           }
           solutionTags {
             id
             name
             color
+            description
           }
           isCompleteBasedOnTelemetry
           telemetryCompletionPercentage
@@ -284,6 +294,7 @@ export const PRODUCT = gql`
         id
         name
         color
+        description
         displayOrder
       }
     }
@@ -330,6 +341,7 @@ export const SOLUTION = gql`
         id
         name
         color
+        description
         displayOrder
       }
     }
@@ -341,6 +353,7 @@ export const PRODUCT_TAGS = gql`
      id
      name
      color
+     description
      displayOrder
    }
   }
@@ -354,6 +367,7 @@ export const TASK_TAGS = gql`
         id
         name
         color
+        description
       }
     }
   }
@@ -365,6 +379,7 @@ export const CUSTOMER_PRODUCT_TAGS = gql`
       id
       name
       color
+      description
       displayOrder
     }
   }
@@ -376,6 +391,7 @@ export const SOLUTION_TAGS = gql`
       id
       name
       color
+      description
       displayOrder
     }
   }
@@ -387,6 +403,7 @@ export const CUSTOMER_SOLUTION_TAGS = gql`
        id
        name
        color
+       description
        displayOrder
      }
   }

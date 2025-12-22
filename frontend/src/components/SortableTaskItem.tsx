@@ -46,7 +46,6 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 style={style}
                 hover
                 onDoubleClick={() => onDoubleClick(task)}
-                title={task.description || 'No description available'}
                 sx={{
                     cursor: 'pointer',
                     transition: 'all 0.2s ease-in-out',
@@ -116,13 +115,15 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
 
                 {/* Task name */}
                 <TableCell sx={{ maxWidth: 300, textAlign: 'left' }}>
-                    <Typography variant="body2" sx={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                    }}>
-                        {task.name}
-                    </Typography>
+                    <Tooltip title={task.description || 'No description available'} placement="top-start" arrow>
+                        <Typography variant="body2" sx={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap'
+                        }}>
+                            {task.name}
+                        </Typography>
+                    </Tooltip>
                 </TableCell>
 
                 <TableCell sx={{ minWidth: 150, textAlign: 'left' }}>
@@ -132,35 +133,45 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                             return allTags.map((tagRef: any) => {
                                 const tag = tagRef.tag || tagRef;
                                 return (
-                                    <Chip
+                                    <Tooltip
                                         key={tag.id}
-                                        label={tag.name}
-                                        size="small"
-                                        onDelete={(e) => {
-                                            e.stopPropagation();
-                                            // Call the new onTagChange handler to remove this tag
-                                            // This requires the parent component to pass onTagChange
-                                            if (onTagChange) {
-                                                const currentTagIds = (task.tags || []).map((t: any) => t.id);
-                                                const newTagIds = currentTagIds.filter((id: string) => id !== tag.id);
-                                                onTagChange(task.id, newTagIds);
-                                            }
-                                        }}
-                                        sx={{
-                                            height: 20,
-                                            fontSize: '0.7rem',
-                                            backgroundColor: tag.color || '#888',
-                                            color: '#fff',
-                                            fontWeight: 600,
-                                            '& .MuiChip-deleteIcon': {
-                                                color: 'rgba(255, 255, 255, 0.7)',
-                                                fontSize: '12px',
-                                                '&:hover': {
-                                                    color: '#fff'
+                                        title={
+                                            <Box>
+                                                <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>Tag: {tag.name}</Typography>
+                                                {tag.description && <Typography variant="caption" display="block">{tag.description}</Typography>}
+                                            </Box>
+                                        }
+                                        arrow
+                                    >
+                                        <Chip
+                                            label={tag.name}
+                                            size="small"
+                                            onDelete={(e) => {
+                                                e.stopPropagation();
+                                                // Call the new onTagChange handler to remove this tag
+                                                // This requires the parent component to pass onTagChange
+                                                if (onTagChange) {
+                                                    const currentTagIds = (task.tags || []).map((t: any) => t.id);
+                                                    const newTagIds = currentTagIds.filter((id: string) => id !== tag.id);
+                                                    onTagChange(task.id, newTagIds);
                                                 }
-                                            }
-                                        }}
-                                    />
+                                            }}
+                                            sx={{
+                                                height: 20,
+                                                fontSize: '0.7rem',
+                                                backgroundColor: tag.color || '#888',
+                                                color: '#fff',
+                                                fontWeight: 600,
+                                                '& .MuiChip-deleteIcon': {
+                                                    color: 'rgba(255, 255, 255, 0.7)',
+                                                    fontSize: '12px',
+                                                    '&:hover': {
+                                                        color: '#fff'
+                                                    }
+                                                }
+                                            }}
+                                        />
+                                    </Tooltip>
                                 );
                             });
                         })()}

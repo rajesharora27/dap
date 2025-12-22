@@ -54,7 +54,7 @@ export const TagResolvers = {
         createProductTag: async (_: any, { input }: any, ctx: any) => {
             console.log('[createProductTag] Called with input:', JSON.stringify(input));
             requireUser(ctx);
-            const { productId, name, color, displayOrder } = input;
+            const { productId, name, description, color, displayOrder } = input;
             // Check permissions
             await requirePermission(ctx, ResourceType.PRODUCT, productId, PermissionLevel.WRITE);
 
@@ -73,6 +73,7 @@ export const TagResolvers = {
                 data: {
                     productId,
                     name,
+                    description,
                     color,
                     displayOrder: displayOrder ?? ((maxOrder?.displayOrder || 0) + 1)
                 }
@@ -182,7 +183,7 @@ export const TagResolvers = {
         },
         createSolutionTag: async (_: any, { input }: any, ctx: any) => {
             requireUser(ctx);
-            const { solutionId, name, color, displayOrder } = input;
+            const { solutionId, name, description, color, displayOrder } = input;
             await requirePermission(ctx, ResourceType.SOLUTION, solutionId, PermissionLevel.WRITE);
 
             const existing = await prisma.solutionTag.findFirst({
@@ -199,6 +200,7 @@ export const TagResolvers = {
                 data: {
                     solutionId,
                     name,
+                    description,
                     color,
                     displayOrder: displayOrder ?? ((maxOrder?.displayOrder || 0) + 1)
                 }
@@ -242,8 +244,10 @@ export const TagResolvers = {
             if (tagIds.length > 0) {
                 const tags = await prisma.solutionTag.findMany({ where: { id: { in: tagIds } } });
                 if (tags.length !== tagIds.length) throw new Error('Some tags not found');
-                const invalidTags = tags.filter((t: SolutionTag) => t.solutionId !== task.solutionId);
-                if (invalidTags.length > 0) throw new Error('Tags must belong to the same solution as the task');
+
+                // Ensure all tags belong to the same solution
+                const solutionIds = new Set(tags.map((t: SolutionTag) => t.solutionId));
+                if (solutionIds.size > 1) throw new Error('All tags must belong to the same solution');
             }
 
             await prisma.solutionTaskTag.deleteMany({ where: { taskId } });

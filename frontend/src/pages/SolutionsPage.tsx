@@ -78,12 +78,14 @@ export const SolutionsPage: React.FC = () => {
     const tasks = tasksData?.tasks?.edges?.map((e: any) => e.node) || [];
 
     // Fetch single solution details if selected
-    const { data: solutionData } = useQuery(SOLUTION, {
+    const { data: solutionData, refetch: refetchSolutionDetail } = useQuery(SOLUTION, {
         variables: { id: selectedSolution },
-        skip: !selectedSolution || !isAuthenticated || authLoading
+        skip: !selectedSolution || !isAuthenticated || authLoading,
+        fetchPolicy: 'cache-and-network'
     });
     const fetchedSolution = solutionData?.solution;
-    const displaySolution = solutions.find((s: any) => s.id === selectedSolution) || fetchedSolution;
+    const listSolution = solutions.find((s: any) => s.id === selectedSolution);
+    const displaySolution = (fetchedSolution?.id === selectedSolution) ? fetchedSolution : listSolution;
 
     // Filter available releases to only those from products that are part of the solution
     const availableProductReleases = React.useMemo(() => {
@@ -510,6 +512,24 @@ export const SolutionsPage: React.FC = () => {
         }
     };
 
+    // Handle tag change from inline edit
+    const handleTagChange = async (taskId: string, newTagIds: string[]) => {
+        try {
+            await client.mutate({
+                mutation: SET_SOLUTION_TASK_TAGS,
+                variables: {
+                    taskId,
+                    tagIds: newTagIds
+                },
+                refetchQueries: ['TasksForSolution'],
+                awaitRefetchQueries: true
+            });
+        } catch (error) {
+            console.error('Error updating task tags:', error);
+            alert('Failed to update task tags');
+        }
+    };
+
     // Handle sequence number change from inline edit
     const handleSequenceChange = async (taskId: string, taskName: string, newSequence: number) => {
         try {
@@ -547,11 +567,16 @@ export const SolutionsPage: React.FC = () => {
                         id: existingId,
                         input: {
                             name: tagData.name,
+                            description: tagData.description,
                             color: tagData.color,
                             displayOrder: tagData.displayOrder
                         }
                     },
-                    refetchQueries: [{ query: SOLUTION_TAGS, variables: { solutionId: selectedSolution } }]
+                    refetchQueries: [
+                        { query: SOLUTION_TAGS, variables: { solutionId: selectedSolution } },
+                        { query: SOLUTION, variables: { id: selectedSolution } },
+                        'Solutions'
+                    ]
                 });
             } else {
                 await client.mutate({
@@ -560,15 +585,21 @@ export const SolutionsPage: React.FC = () => {
                         input: {
                             solutionId: selectedSolution,
                             name: tagData.name,
+                            description: tagData.description,
                             color: tagData.color,
                             displayOrder: tagData.displayOrder
                         }
                     },
-                    refetchQueries: [{ query: SOLUTION_TAGS, variables: { solutionId: selectedSolution } }]
+                    refetchQueries: [
+                        { query: SOLUTION_TAGS, variables: { solutionId: selectedSolution } },
+                        { query: SOLUTION, variables: { id: selectedSolution } },
+                        'Solutions'
+                    ]
                 });
             }
-            // Also refetch tasks to update tag display
+            // Also refetch tasks and solution detail to update tag display
             refetchTasks && refetchTasks();
+            refetchSolutionDetail && refetchSolutionDetail();
         } catch (error: any) {
             console.error('Error saving tag:', error);
             alert('Failed to save tag: ' + error.message);
@@ -901,7 +932,9 @@ export const SolutionsPage: React.FC = () => {
                                                             {selected.map((value) => {
                                                                 const tag = solutionTags.find((t: any) => t.id === value);
                                                                 return (
-                                                                    <Chip key={value} label={tag?.name} size="small" sx={{ bgcolor: tag?.color, color: '#fff', height: 20 }} />
+                                                                    <Tooltip key={value} title={tag?.description || tag?.name || value} arrow>
+                                                                        <Chip label={tag?.name} size="small" sx={{ bgcolor: tag?.color, color: '#fff', height: 20 }} />
+                                                                    </Tooltip>
                                                                 );
                                                             })}
                                                         </Box>
@@ -910,7 +943,7 @@ export const SolutionsPage: React.FC = () => {
                                                     {solutionTags.map((tag: any) => (
                                                         <MenuItem key={tag.id} value={tag.id}>
                                                             <Checkbox checked={taskTagFilter.indexOf(tag.id) > -1} size="small" />
-                                                            <ListItemText primary={tag.name} />
+                                                            <ListItemText primary={tag.name} secondary={tag.description} />
                                                         </MenuItem>
                                                     ))}
                                                 </Select>
@@ -1472,15 +1505,17 @@ export const SolutionsPage: React.FC = () => {
                                                 >
                                                     <Box sx={{ mr: 2, display: 'flex', alignItems: 'center' }}>
                                                         <Label sx={{ color: tag.color, mr: 1 }} />
-                                                        <Chip
-                                                            label={tag.name}
-                                                            size="small"
-                                                            sx={{
-                                                                bgcolor: tag.color,
-                                                                color: '#fff',
-                                                                fontWeight: 500
-                                                            }}
-                                                        />
+                                                        <Tooltip title={tag?.description || tag?.name} arrow>
+                                                            <Chip
+                                                                label={tag?.name}
+                                                                size="small"
+                                                                sx={{
+                                                                    bgcolor: tag?.color,
+                                                                    color: '#fff',
+                                                                    '& .MuiChip-label': { fontWeight: 500 }
+                                                                }}
+                                                            />
+                                                        </Tooltip>
                                                     </Box>
                                                 </ListItem>
                                             ))}
@@ -1531,6 +1566,8 @@ export const SolutionsPage: React.FC = () => {
                                                             onDelete={handleDeleteTask}
                                                             onWeightChange={handleWeightChange}
                                                             onSequenceChange={handleSequenceChange}
+                                                            onTagChange={handleTagChange}
+                                                            availableTags={displaySolution?.tags || []}
                                                             disableDrag={hasActiveFilters}
                                                         />
                                                     ))}
@@ -1604,7 +1641,7 @@ export const SolutionsPage: React.FC = () => {
                 outcomes={aggregatedOutcomes}
                 availableLicenses={aggregatedLicenses}
                 availableReleases={aggregatedReleases}
-                availableTags={solutionTags}
+                availableTags={displaySolution?.tags || []}
             />
         </Box >
     );

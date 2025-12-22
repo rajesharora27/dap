@@ -66,6 +66,7 @@ export const CREATE_TASK = gql`
         id
         name
         color
+        description
       }
       telemetryAttributes {
         id
@@ -119,6 +120,7 @@ export const UPDATE_TASK = gql`
         id
         name
         color
+        description
       }
       telemetryAttributes {
         id
@@ -362,6 +364,7 @@ export const CREATE_PRODUCT_TAG = gql`
       productId
       name
       color
+      description
       displayOrder
     }
   }
@@ -374,6 +377,7 @@ export const UPDATE_PRODUCT_TAG = gql`
       productId
       name
       color
+      description
       displayOrder
     }
   }
@@ -393,6 +397,7 @@ export const SET_TASK_TAGS = gql`
         id
         name
         color
+        description
       }
     }
   }
@@ -406,6 +411,7 @@ export const ADD_TAG_TO_TASK = gql`
         id
         name
         color
+        description
       }
     }
   }
@@ -419,6 +425,7 @@ export const REMOVE_TAG_FROM_TASK = gql`
         id
         name
         color
+        description
       }
     }
   }
@@ -431,6 +438,7 @@ export const CREATE_SOLUTION_TAG = gql`
       solutionId
       name
       color
+      description
       displayOrder
     }
   }
@@ -443,6 +451,7 @@ export const UPDATE_SOLUTION_TAG = gql`
       solutionId
       name
       color
+      description
       displayOrder
     }
   }
@@ -462,6 +471,7 @@ export const SET_SOLUTION_TASK_TAGS = gql`
          id
          name
          color
+         description
        }
      }
   }
@@ -475,6 +485,7 @@ export const ADD_SOLUTION_TAG_TO_TASK = gql`
         id
         name
         color
+        description
       }
     }
   }
@@ -488,6 +499,7 @@ export const REMOVE_SOLUTION_TAG_FROM_TASK = gql`
         id
         name
         color
+        description
       }
     }
   }

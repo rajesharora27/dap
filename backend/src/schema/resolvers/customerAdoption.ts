@@ -855,6 +855,7 @@ export const CustomerAdoptionMutationResolvers = {
           customerProductId,
           sourceTagId: tag.id,
           name: tag.name,
+          description: tag.description,
           color: tag.color,
           displayOrder: tag.displayOrder
         }
@@ -1030,6 +1031,7 @@ export const CustomerAdoptionMutationResolvers = {
           customerProductId: customerProduct.id,
           sourceTagId: tag.id,
           name: tag.name,
+          description: tag.description,
           color: tag.color,
           displayOrder: tag.displayOrder
         }

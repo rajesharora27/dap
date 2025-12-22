@@ -19,7 +19,8 @@ import {
   Tabs,
   Tab,
   Checkbox,
-  ListItemText
+  ListItemText,
+  Tooltip,
 } from '@mui/material';
 import { Release } from '../../types/shared';
 import TelemetryConfiguration from '../telemetry/TelemetryConfiguration';
@@ -48,6 +49,7 @@ interface Task {
   releaseIds?: string[];
   telemetryAttributes?: TelemetryAttribute[];
   tags?: { id: string; name: string; color: string }[];
+  solutionTags?: { id: string; name: string; color: string }[];
 }
 
 interface TelemetryAttribute {
@@ -164,7 +166,9 @@ export const TaskDialog: React.FC<Props> = ({
       setSelectedReleases(taskReleases.length > 0 ? taskReleases : [ALL_RELEASES_ID]);
 
       setTelemetryAttributes(task.telemetryAttributes || []);
-      setSelectedTags(task.tags?.map(t => t.id) || []);
+      // For solution tasks, use solutionTags; for product tasks, use tags
+      const taskTags = task.solutionTags?.length ? task.solutionTags : task.tags;
+      setSelectedTags(taskTags?.map(t => t.id) || []);
     } else {
       setName('');
       setDescription('');
@@ -392,16 +396,17 @@ export const TaskDialog: React.FC<Props> = ({
                           const tag = availableTags.find(t => t.id === value);
                           if (!tag) return null;
                           return (
-                            <Chip
-                              key={value}
-                              label={tag.name}
-                              size="small"
-                              sx={{
-                                backgroundColor: tag.color,
-                                color: '#fff',
-                                fontWeight: 500
-                              }}
-                            />
+                            <Tooltip key={value} title={tag.description || tag.name} arrow>
+                              <Chip
+                                label={tag.name}
+                                size="small"
+                                sx={{
+                                  backgroundColor: tag.color,
+                                  color: '#fff',
+                                  fontWeight: 500
+                                }}
+                              />
+                            </Tooltip>
                           );
                         })}
                       </Box>
@@ -413,7 +418,7 @@ export const TaskDialog: React.FC<Props> = ({
                       availableTags.map((tag) => (
                         <MenuItem key={tag.id} value={tag.id}>
                           <Checkbox checked={selectedTags.indexOf(tag.id) > -1} />
-                          <ListItemText primary={tag.name} />
+                          <ListItemText primary={tag.name} secondary={tag.description} />
                           <Box sx={{ width: 16, height: 16, borderRadius: '50%', bgcolor: tag.color, mr: 1 }} />
                         </MenuItem>
                       ))
