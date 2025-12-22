@@ -60,9 +60,11 @@ Add an intelligent AI assistant to DAP that understands the database schema and 
 | FR-5 | Aggregations | High | Support counts, percentages, averages, sums |
 | FR-6 | Filtering & comparisons | High | Support filters, date ranges, comparisons |
 | FR-7 | RBAC compliance | High | Respect user permissions - only show authorized data |
-| FR-8 | Query transparency | Medium | Optionally show the generated query |
-| FR-9 | Follow-up suggestions | Medium | Suggest related questions |
-| FR-10 | Export results | Low | Export query results to CSV/Excel |
+| FR-8 | Hybrid RAG (Docs + Data) | High | Answer "How-to" questions from documentation |
+| FR-9 | Smart Intent Routing | High | Smartly route between SQL and Docs engines |
+| FR-10 | Query transparency | Medium | Optionally show the generated query |
+| FR-11 | Follow-up suggestions | Medium | Suggest related questions |
+| FR-12 | Export results | Low | Export query results to CSV/Excel |
 
 #### Example Queries to Support
 
@@ -206,7 +208,20 @@ Feature: AI Assistant for DAP
 
 ### 3.2 Component Design
 
+
+                                 
+#### 3.2.0 Smart Intent Router (NEW)
+
+The **Smart Intent Router** is the brain of the AI Agent. It intercepts every question and classifies it:
+
+1.  **DATA Intent**: Questions about specific records, counts, or metrics ("Show me...", "List...", "Count...").
+2.  **DOCUMENTATION Intent**: Questions about how to use the system, concepts, or architecture ("How do I...", "What is...", "Explain...").
+
+- **Data Route**: Sends request to **Text-to-SQL Engine** (Prisma).
+- **Docs Route**: Sends request to **RAG Engine** (Vector/Search).
+                                 
 #### 3.2.1 AI Agent Service
+
 
 **Location:** `backend/src/services/ai/AIAgentService.ts`
 

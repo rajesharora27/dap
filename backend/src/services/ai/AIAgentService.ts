@@ -23,6 +23,7 @@ import { QueryExecutor, getQueryExecutor, QueryExecutionResult, QueryConfig } fr
 import { RBACFilter, getRBACFilter, RBACUserContext, RBACFilterResult } from './RBACFilter';
 import { ResponseFormatter, getResponseFormatter } from './ResponseFormatter';
 import { ILLMProvider, getDefaultProvider } from './providers';
+import { DocumentationService, getDocumentationService } from './DocumentationService';
 import { CacheManager, getCacheManager } from './CacheManager';
 import { AuditLogger, getAuditLogger, generateRequestId, AuditLogEntry } from './AuditLogger';
 import { ErrorHandler, getErrorHandler, AIErrorType } from './ErrorHandler';
@@ -67,6 +68,7 @@ export class AIAgentService {
   private queryExecutor: QueryExecutor;
   private rbacFilter: RBACFilter;
   private responseFormatter: ResponseFormatter;
+  private documentationService: DocumentationService;
   private llmProvider: ILLMProvider | null = null;
 
   // Phase 4 components
@@ -87,6 +89,8 @@ export class AIAgentService {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.queryTemplates = getQueryTemplates();
     this.schemaContextManager = getSchemaContextManager();
+    this.documentationService = getDocumentationService();
+    this.documentationService.initialize();
     this.queryExecutor = getQueryExecutor(prisma, {
       maxRows: this.config.maxRows,
       timeoutMs: this.config.timeout,
@@ -168,6 +172,16 @@ export class AIAgentService {
     try {
       // Validate request
       this.validateRequest(request);
+
+      // Phase 1: Determine INTENT (Data vs Docs)
+      // Heuristic: If question starts with "How to", "What is", "Where is", "Explain" -> likely Docs
+      // Heuristic: If question contains "Show me", "List", "Find", "Count" -> likely Data
+      const intent = this.heuristicIntentDetection(request.question);
+
+      // If INTENT is Documentation, perform RAG
+      if (intent === 'DOCUMENTATION' && this.llmProvider) {
+        return this.handleDocumentationQuery(request, startTime);
+      }
 
       // Phase 4.1: Check cache first
       const cachedResponse = this.cacheManager.get(
@@ -1408,6 +1422,61 @@ Response:
     this.prisma = sharedPrisma as PrismaClient;
     this.dataContextManager = getDataContextManager();
     console.log('[AI Agent] Data context manager uses shared Prisma client');
+  }
+
+  /**
+   * Simple heuristic to detect if query is about Documentation/Knowledge or Database/Data.
+   */
+  private heuristicIntentDetection(question: string): 'DATA' | 'DOCUMENTATION' {
+    const q = question.toLowerCase().trim();
+
+    // Strong signals for Docs
+    if (q.startsWith('how to') || q.startsWith('how do i')) return 'DOCUMENTATION';
+    if (q.includes('documentation') || q.includes('guide')) return 'DOCUMENTATION';
+    if (q.startsWith('what is') || q.startsWith('explain')) return 'DOCUMENTATION';
+    if (q.includes('architecture') || q.includes('deployment')) return 'DOCUMENTATION';
+
+    // Default to Data
+    return 'DATA';
+  }
+
+  /**
+   * Handle Documentation RAG Query
+   */
+  private async handleDocumentationQuery(request: AIQueryRequest, startTime: number): Promise<AIQueryResponse> {
+    const context = this.documentationService.getRAGContext(request.question);
+
+    const systemPrompt = `You are an expert DAP System assistant. 
+User is asking a question about the system, architecture, or usage.
+Use the provided Documentation Context to answer.
+If the context doesn't have the answer, admit it.
+
+CONTEXT:
+${context.contextString}
+`;
+
+    if (!this.llmProvider) throw new Error("LLM Provider not initialized");
+
+    try {
+      const response = await this.llmProvider.complete(request.question, { systemPrompt });
+
+      return {
+        answer: response.text,
+        metadata: {
+          executionTime: Date.now() - startTime,
+          rowCount: 0,
+          truncated: false,
+          cached: false,
+          templateUsed: 'rag-docs',
+          providerUsed: this.llmProvider.name
+        }
+      };
+    } catch (e: any) {
+      return {
+        answer: "I failed to retrieve the answer from documentation.",
+        error: e.message
+      };
+    }
   }
 }
 

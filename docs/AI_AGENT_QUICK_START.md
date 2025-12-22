@@ -14,6 +14,15 @@ The DAP AI Agent allows you to ask natural language questions about your data in
 2. Click on **AI Assistant** in the sidebar (or press `Cmd/Ctrl + K`)
 3. Type your question and press Enter
 
+### Intelligent Routing
+
+The AI Assistant now intelligently handles two types of questions:
+
+1.  **Data Questions**: "Show me...", "List...", "Count..." (Queries the database)
+2.  **Documentation Questions**: "How do I...", "What is...", "Explain..." (Searches the documentation)
+
+You don't need to switch modes; just ask naturally!
+
 ### Example Questions
 
 #### Products & Solutions
@@ -23,6 +32,8 @@ The DAP AI Agent allows you to ask natural language questions about your data in
 "Which solutions have the most tasks?"
 "Find tasks with weight = 0"
 "List products without any assigned customers"
+"How do I add a new product?" (Docs Query)
+"What is the difference between specific and global tasks?" (Docs Query)
 ```
 
 #### Customers & Adoption

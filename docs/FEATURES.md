@@ -11,6 +11,7 @@ This document provides a comprehensive overview of all features in the Data Appl
 5. [Task Management](#task-management)
 6. [Product Management](#product-management)
 7. [UI/UX Features](#uiux-features)
+8. [AI Agent](#ai-agent)
 
 ---
 
@@ -373,6 +374,35 @@ Product
 - **Test Automation**: Pre-deployment testing
 - **Deployment Guides**: Comprehensive documentation
 - **Environment Promotion**: Dev → Staging → Production
+
+---
+
+## AI Agent
+
+### Overview
+The **AI Agent** is a powerful assistant that answers questions about your data and documentation.
+
+### Core Capabilities
+
+1.  **Text-to-SQL Engine** ✅
+    *   **Natural Language Queries**: "Show me all products with no customers"
+    *   **Dynamic Schema**: Automatically learns new tables and columns
+    *   **Safety First**: Read-only queries, RBAC filtered
+
+2.  **Documentation RAG** ✅
+    *   **Knowledge Base**: Answers from architecture docs, guides, and release notes
+    *   **How-To Support**: "How do I create a new user?"
+    *   **Context Aware**: Knows the difference between Data and Docs questions
+
+3.  **Smart Routing** ✅
+    *   Automatically detects intent (Data vs Docs)
+    *   No need to switch modes
+
+### Example Questions
+*   "Show me all products" (Data)
+*   "How do I back up the database?" (Docs)
+*   "Which customers are stuck?" (Data)
+*   "Explain the architecture" (Docs)
 
 ---
 
