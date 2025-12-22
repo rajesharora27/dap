@@ -139,7 +139,7 @@ DAP is a customer adoption tracking system where an **Executive Dashboard** prov
 #### Infrastructure
 - **Development Server:** centos1.rajarora.csslab (Node.js 20.12.1)
 - **Staging Server:** centos2.rajarora.csslab (CentOS 8, Apache httpd)
-- **Production Server:** dapoc.cisco.com (RHEL 9, Nginx with SSL)
+- **Production Server:** dapoc (RHEL 9, Nginx with SSL)
 - **Deployment:** SSH-based deployment scripts
 - **Database Backups:** Automated daily backups
 - **Monitoring:** PM2 monitoring, application logs
@@ -588,7 +588,7 @@ ADMIN > WRITE > READ
 |------------|--------|-----|---------|------|
 | **MAC** | MacBook | http://localhost:5173 | Offline Demos | `mac-demo` |
 | **DEV** | centos1.rajarora.csslab | http://dev.rajarora.csslab/dap/ | Development & Testing | `linux-dev` |
-| **PROD** | centos2.rajarora.csslab | https://myapps.cxsaaslab.com/dap/ | Production | `production` |
+| **PROD** | dapoc | https://myapps.cxsaaslab.com/dap/ | Production | `production` |
 
 ### Standard Release Workflow
 
@@ -636,15 +636,16 @@ cd /data/dap
 #### 3. Deploy to Production
 
 ```bash
-# Deploy release to centos2
-./deploy/release-to-prod.sh releases/release-YYYYMMDD-HHMMSS.tar.gz
+# Standard Production Deployment (dapoc)
+./deploy-to-production.sh
 
-# Script automatically:
-# - Creates backup of production database
-# - Transfers files
-# - Builds backend
-# - Updates database
-# - Restarts services
+# This script automatically:
+# - Connects to dapoc (PROD_USER=dap, PROD_HOST=dapoc)
+# - Creates a backup of the current production backend
+# - Activates maintenance mode
+# - Transfers and updates code
+# - Updates database schema (prisma db push)
+# - Restarts services via PM2
 # - Verifies deployment
 ```
 
@@ -653,26 +654,18 @@ cd /data/dap
 For small bug fixes:
 
 ```bash
-cd /data/dap
-
-# Use quick patch script (or create custom one based on APPLY_RBAC_PATCH.sh)
-./APPLY_RBAC_PATCH.sh
-
-# This:
-# - Transfers only changed files
-# - Builds and restarts
-# - Verifies deployment
+# Use deployment script with skip build flags (if built locally)
+./deploy-to-production.sh --skip-build-backend --skip-build-frontend
 ```
 
 ### Deployment Scripts
 
 | Script | Purpose | Location |
 |--------|---------|----------|
-| `release-manager.sh` | **Main deployment orchestration** (deploy/patch/rollback) | `/data/dap/deploy/` |
+| `deploy-to-production.sh` | **Main Production Deployment Script** | Project Root |
+| `release-manager.sh` | Orchestration (deploy/patch/rollback) | `/data/dap/deploy/` |
 | `health-check.sh` | System health verification (14 checks) | `/data/dap/deploy/` |
-| `migration-manager.sh` | Database migration management | `/data/dap/deploy/` |
 | `create-release.sh` | Create versioned release package | `/data/dap/deploy/` |
-| `release-to-prod.sh` | Legacy deployment script | `/data/dap/deploy/` |
 
 ### Rollback Procedure
 
