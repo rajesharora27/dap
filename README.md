@@ -144,9 +144,10 @@ For a complete, categorized list of all documentation, see **[DOCUMENTATION_INDE
 /data/dap/
 ├── frontend/           # React application
 │   └── src/
-│       ├── components/ # UI components
+│       ├── features/   # Feature modules (Domain-Driven)
+│       ├── shared/     # Shared components & utils
 │       ├── pages/      # Main application pages
-│       └── graphql/    # GraphQL queries/mutations
+│       └── providers/  # Context providers
 ├── backend/            # Node.js GraphQL API
 │   └── src/
 │       ├── schema/     # GraphQL schema and resolvers

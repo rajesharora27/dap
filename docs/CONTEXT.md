@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.9.2
-**Last Updated:** December 21, 2025 (22:20 EST)
+**Version:** 2.9.5
+**Last Updated:** December 22, 2025 (15:30 EST)
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -118,6 +118,7 @@ DAP is a customer adoption tracking system where an **Executive Dashboard** prov
 
 #### Frontend
 - **Framework:** React 19 with TypeScript
+- **Architecture:** Feature-Based Modular Architecture
 - **Build Tool:** Vite 7
 - **UI Library:** Material-UI (MUI) v6
 - **GraphQL Client:** Apollo Client
@@ -318,7 +319,7 @@ User Query → QueryTemplates (regex match) → Direct Prisma Query (fast)
 - `backend/src/services/ai/QueryTemplates.ts` - Fast-path templates
 - `backend/src/services/ai/SchemaContextManager.ts` - Schema context
 - `backend/src/services/ai/DataContextManager.ts` - Dynamic data context
-- `frontend/src/components/AIChat.tsx` - Chat UI
+- `frontend/src/features/ai-assistant/components/AIChat.tsx` - Chat UI
 
 ### 8. Task Tagging System
 The tagging system allows categorizing tasks within products and solutions to help CSS and customers filter and prioritize adoption activities.
@@ -560,9 +561,9 @@ ADMIN > WRITE > READ
 
 #### Frontend Authorization
 **Files:**
-- `frontend/src/components/MenuBar.tsx` - Role-based menu visibility
-- `frontend/src/components/dialogs/*` - Permission-aware dialogs
-- `frontend/src/lib/auth.tsx` - Auth context provider
+- `frontend/src/features/auth/components/AuthBar.tsx` - Role-based menu visibility
+- `frontend/src/features/*/components/*Dialog.tsx` - Permission-aware dialogs
+- `frontend/src/features/auth/context/AuthContext.tsx` - Auth context provider
 
 **Menu Visibility:**
 - Admin: Products, Solutions, Customers, Users & Roles, Backup & Restore
@@ -961,579 +962,51 @@ All DAP data is stored on `/data` partition (not root):
 
 ## Recent Changes & Fixes
 
-### Version 2.9.2 (December 21, 2025)
-
-#### Tag Description Support & Solution Tag Functionality
-
-**Feature 1: Tag Description Field**
-- **Enhancement**: Added `description` field to all tag types for better tag documentation
-- **Implementation**:
-  - Added `description` field to `ProductTag`, `SolutionTag`, `CustomerProductTag`, and `CustomerSolutionTag` database models
-  - Created migration: `20251222012700_add_tag_description`
-  - Updated GraphQL schema to include description in all tag types and input types
-  - Tag descriptions now persist through sync operations (solution/adoption plan)
-- **Files Changed**:
-  - `backend/prisma/schema.prisma` - Added description field to tag models
-  - `backend/src/schema/typeDefs.ts` - Updated GraphQL types
-  - `backend/src/schema/resolvers/solutionAdoption.ts` - Description syncing
-  - `backend/src/schema/resolvers/customerAdoption.ts` - Description syncing
-
-**Feature 2: Tag Tooltip Improvements**
-- **Issue**: Tag tooltips were showing both tag description AND task description, making them verbose
-- **Fix**: Updated tag tooltips to show ONLY the tag description (or tag name if no description)
-- **Files Changed**:
-  - `frontend/src/components/CustomerAdoptionPanelV4.tsx` - Simplified tag tooltips
-  - `frontend/src/components/SortableTaskItem.tsx` - Simplified tag tooltips
-
-**Feature 3: Tag Import/Export Support**
-- **Enhancement**: Excel import/export now includes tag descriptions
-- **Implementation**:
-  - Added 'Description' column to Tags tab in Excel export
-  - Updated import service to read and save tag descriptions
-  - Added documentation for Description field in Instructions tab
-- **Files Changed**:
-  - `backend/src/services/excel/ExcelExportService.ts`
-  - `backend/src/services/excel/ExcelImportService.ts`
-
-**Feature 4: Solution Tag Assignment Fix**
-- **Issue**: Tags could not be assigned to solution tasks (missing from dropdown)
-- **Root Cause**: Multiple issues:
-  1. `SOLUTIONS` query didn't fetch `tags` field
-  2. `displaySolution` was prioritizing list data over fetched data
-  3. `TaskDialog` wasn't receiving solution tags
-- **Fix**:
-  - Added `tags` field to `SOLUTIONS` GraphQL query
-  - Fixed `displaySolution` priority to use `fetchedSolution` first (matches ProductsPage)
-  - Added `fetchPolicy: 'cache-and-network'` to SOLUTION query
-  - Added refetch functions after tag mutations
-- **Files Changed**:
-  - `frontend/src/graphql/queries.ts` - Added tags to SOLUTIONS query
-  - `frontend/src/pages/SolutionsPage.tsx` - Fixed displaySolution priority, fetch policy
-
-**Feature 5: Inline Tag Editing for Solutions**
-- **Enhancement**: Solution tasks now support inline tag editing in the task list (matching Products functionality)
-- **Implementation**:
-  - Added `handleTagChange` function using `SET_SOLUTION_TASK_TAGS` mutation
-  - Passed `onTagChange` and `availableTags` props to `SortableTaskItem`
-  - Tags can now be clicked/edited directly in the solution task table
-- **Files Changed**:
-  - `frontend/src/pages/SolutionsPage.tsx` - Added inline tag editing handler
-
-**Feature 6: TaskDialog Tag Loading**
-- **Enhancement**: TaskDialog now correctly loads solution tags vs product tags
-- **Implementation**:
-  - Updated `Task` interface to include optional `solutionTags` field
-  - Modified `useEffect` to prioritize `task.solutionTags` for solution tasks
-  - Falls back to `task.tags` for product tasks
-- **Files Changed**:
-  - `frontend/src/components/dialogs/TaskDialog.tsx`
-
-**Bug Fix 1: CustomerSolutionTask Query Error**
-- **Issue**: "Unknown field `solutionTaskTags`" Prisma error when loading solution adoption plans
-- **Root Cause**: Query used incorrect field name (`solutionTaskTags` instead of `taskTags`)
-- **Fix**: Changed `solutionTaskTags` to `taskTags` in CustomerSolutionTask include statement
-- **Files Changed**:
-  - `backend/src/schema/resolvers/solutionAdoption.ts` - Line 124
-
-**Bug Fix 2: Solution Tag Validation**
-- **Issue**: `setSolutionTaskTags` was too restrictive about which tasks could have tags
-- **Fix**: Updated validation logic to allow solution tags on any task within the solution (not just solution-owned tasks)
-- **Files Changed**:
-  - `backend/src/schema/resolvers/tags.ts` - setSolutionTaskTags validation
-
-**UI Cleanup: Entitlement → License Terminology**
-- **Standardization**: Replaced remaining "Entitlement" references with "License" in SolutionDialog
-- **Changes**:
-  - Tab label: "Licenses" instead of "Entitlements"
-  - Button text: "Add Solution License"
-  - Section headers updated
-- **Files Changed**:
-  - `frontend/src/components/dialogs/SolutionDialog.tsx`
-
-**Documentation Cleanup**
-- **Removed**: All references to `prod.rajarora.csslab` (no longer valid)
-- **Updated**: 
-  - `deploy-to-stage.sh` - Removed prod URL from output
-  - `rollback-prod.sh` - Updated PROD_HOST to centos2
-  - `README.md` - Updated production URL
-  - `deploy/scripts/deploy-app.sh` - Updated access points
-- **Production URL**: Now only `https://myapps.cxsaaslab.com/dap/`
-
----
-
-### Version 2.9.0 (December 20, 2025)
-
-#### UI/UX Cleanup, Branding & AI Icon Redesign
-
-**Feature 1: Modern AI Assistant Icon**
-- **Improvement**: Redesigned the AI Assistant icon to be more modern and professional.
-- **Implementation**: Created a custom `AISparkle` SVG icon featuring three 4-pointed stars (sparkles) inside a chat bubble.
-- **Availability**: Replaced the previous `Psychology` (brain) icon in the Header, AI Chat dialog, Dashboard, and Help guide.
-- **Files Changed**: `FAIcon.tsx`, `AuthBar.tsx`, `AIChat.tsx`, `DashboardPage.tsx`, `HelpDialog.tsx`
-
-**Feature 2: Customer Detail View Streamlining**
-- **Improvement**: Centralized summary info and metrics to the "Overview" tab for a cleaner interface.
-- **Cleanup**: Removed the large `EntitySummary` customer banner from the top of the page.
-- **New Metrics**: Added interactive scorecard tiles ("Total Product Assigned", "Direct vs Solution", "Solutions Assigned") to the Overview tab.
-- **Compact Progress**: Re-introduced compact overall progress trackers to the "Products Assigned" and "Solutions Assigned" tabs to maintain visibility without vertical clutter.
-- **Files Changed**: `CustomersPage.tsx`, `CustomerAdoptionPanelV4.tsx`, `SolutionAdoptionPlanView.tsx`
-
-**Feature 3: App Branding & Visual Consistency**
-- **Update**: Rebranded the application to **"Dynamic Adoption Platform"** with the new subtitle **"Centralized logic for product and solution adoption."**
-- **Standardization**: 
-  - Renamed "Entitlements" tab to **"Licenses"** and "Add Entitlement" to **"Add License"**.
-  - Renamed "Filter by X" labels to just **"X"** across all selection controls.
-  - Made the Outcomes list inline editable on the Summary tab for both Products and Solutions.
-- **Files Changed**: `index.html`, `LoginPage.tsx`, `AuthBar.tsx`, `ProductsPage.tsx`, `SolutionsPage.tsx`, `CustomerAdoptionPanelV4.tsx`, `HelpDialog.tsx`
-
-**Feature 4: Minor UI Fixes**
-- **Input Refinement**: Hidden the up/down spinner arrows from the "Implementation %" (formerly Weight) number input for a cleaner look.
-- **Files Changed**: `SortableTaskItem.tsx`
-
----
-
-### Version 2.8.0 (December 19, 2025)
-
-#### Filter Persistence & Environment Architecture
-
-**Feature 1: Adoption Plan Filter Persistence**
-- **Issue**: Filter selections (releases, outcomes, tags) were lost on page refresh or navigation.
-- **Fix**: Implemented database persistence for user filter preferences:
-  - Added `FilterPreference` table to database schema
-  - Created GraphQL mutations: `saveFilterPreference`, queries: `getFilterPreference`
-  - Updated `SolutionAdoptionPlanView` to save/restore filters automatically
-  - Updated `CustomerAdoptionPanelV4` (Product Adoption) to save/restore filters
-  - Filters now persist across sessions for each user/entity combination
-- **Files Changed**: 
-  - `backend/prisma/schema.prisma` - Added FilterPreference model
-  - `backend/src/schema/typeDefs.ts` - Added GraphQL types and operations
-  - `backend/src/schema/resolvers/customerAdoption.ts` - Added filter preference resolvers
-  - `backend/src/schema/resolvers/solutionAdoption.ts` - Added filter preference resolvers
-  - `frontend/src/graphql/queries.ts` - Added GET_FILTER_PREFERENCE query
-  - `frontend/src/graphql/mutations.ts` - Added SAVE_FILTER_PREFERENCE mutation
-  - `frontend/src/components/CustomerAdoptionPanelV4.tsx` - Filter persistence hooks
-  - `frontend/src/components/solution-adoption/SolutionAdoptionPlanView.tsx` - Filter persistence hooks
-
-**Feature 2: Environment Architecture Cleanup**
-- **Issue**: Environment file naming was inconsistent and confusing across platforms.
-- **Fix**: Standardized environment file naming:
-  - Renamed `.env.macbook` → `.env.macdev`
-  - Renamed `.env.development` → `.env.linuxdev`
-  - Renamed `.env.production` → `.env.prod`
-  - Created `.env.stage` for staging environment
-  - Updated `./dap`, `dap-prod`, `mac-light-deploy.sh` scripts
-  - Updated `deploy-to-stage.sh`, `deploy-to-production.sh`
-  - Deleted old environment files from repository
-- **Files Changed**: `dap`, `dap-prod`, `scripts/mac-light-deploy.sh`, `deploy-to-*.sh`
-
-**Feature 3: Drag-and-Drop Sorting for Custom Attributes**
-- **Improvement**: Implemented drag-and-drop reordering for custom attributes in Product and Solution edit dialogs.
-- **Files Changed**: `SolutionDialog.tsx`, `frontend/src/components/dialogs/*`
-
-**Known Issue: First Login Authentication Race Condition**
-- **Status**: Parked for future investigation
-- **Symptom**: Products, Solutions, Customers pages may show "No token found" on first load after restart
-- **Workaround**: Refresh the page after login
-- **Tracked In**: `docs/TODO.md`
-
----
-
-### Version 2.6.2 (December 18, 2025)
-
-#### Dashboard Simplification & Solutions Enhancements
-
-**Feature 1: Simplified Dashboard Layout (Products & Solutions)**
-- **Issue**: The dashboard view was previously cluttered with licenses, product chips, and a redundant summary card.
-- **Fix**: Streamlined the dashboard for both Products and Solutions:
-  - Removed licenses from Product name header and product chips from Solutions name header.
-  - Removed the sticky Summary Card from the right column for a cleaner, full-width presentation.
-  - Renamed "Description" to "Overview" and "Product Outcomes" to "Outcomes".
-  - Moved "Custom Attributes" from the dashboard view to its own dedicated tab.
-- **Files Changed**: `frontend/src/pages/ProductsPage.tsx`, `frontend/src/pages/SolutionsPage.tsx`
-
-**Feature 2: Enhanced Solutions Dashboard**
-- **Improvement**: Added a "Products" section directly below the Solution name header in the dashboard for immediate visibility.
-- **Cleanup**: Removed the redundant description tile from the "Products" tab in the Solutions section.
-- **Files Changed**: `frontend/src/pages/SolutionsPage.tsx`
-
-**Feature 3: GraphQL Mutation Bug Fix**
-- **Issue**: "Variable $input is never used" error when updating solutions with outcomes.
-- **Root Cause**: Typos in `UPDATE_OUTCOME` mutation passing `$id` where `$input` was expected.
-- **Fix**: Corrected the mutation definition in `SolutionDialog.tsx`.
-- **Files Changed**: `frontend/src/components/dialogs/SolutionDialog.tsx`
-
-**Feature 4: Theming & Visual Consistency**
-- **Improvement**: Refactored `EntitySummary` and main entity pages to strictly use theme-derived colors via Material-UI's `alpha()` and `useTheme()`.
-- **Files Changed**: `EntitySummary.tsx`, `CustomersPage.tsx`, `ProductsPage.tsx`, `SolutionsPage.tsx`
-
----
-
-### Version 2.6.1 (December 17, 2025)
-
-#### Production Infrastructure Improvements
-
-**Feature 1: PostgreSQL Auto-Start in Production**
-- **Issue**: `./dap start` on production (centos2) did not start PostgreSQL if it was stopped.
-- **Fix**: Updated `dap-prod` script with `start_all()` function that:
-  - Checks if PostgreSQL is running before starting PM2
-  - Starts PostgreSQL via `systemctl start postgresql-16` if not running
-  - Waits for PostgreSQL to accept connections (30s timeout)
-  - Handles CentOS PATH issues with `pg_is_running()` helper
-- **Files Changed**: `dap-prod`
-
-**Feature 2: PostgreSQL Data Moved to /data Partition**
-- **Issue**: PostgreSQL data was on root partition which had limited space.
-- **Fix**: Migrated PostgreSQL data directory from `/var/lib/pgsql/16/data` to `/data/pgsql/16/data`
-- **Implementation**:
-  - Created `/data/pgsql/16/data` with postgres ownership
-  - Copied data via rsync
-  - Created systemd override at `/etc/systemd/system/postgresql-16.service.d/override.conf`
-  - Verified PostgreSQL starts with new data directory
-- **Result**: All DAP data now on `/data` partition (238GB available)
-
-**Feature 3: Mac PostgreSQL Auto-Detection**
-- **Issue**: Mac script hardcoded `postgresql@16` but different versions could be installed.
-- **Fix**: Updated `mac-light-deploy.sh` with:
-  - `detect_postgres_version()` function to find installed version
-  - `cleanup_postgres_locks()` to handle stale PID files
-  - Improved startup with retry after lock cleanup
-- **Files Changed**: `scripts/mac-light-deploy.sh`
-
-**Feature 4: Mac Seed Script Fixed**
-- **Issue**: `seed-light-demo.ts` was empty, causing login failures after `./dap reset`.
-- **Fix**: Implemented proper seeding script that creates:
-  - `admin` / `DAP123!!!` (Administrator)
-  - `smeuser` / `DAP123` (SME User)
-  - `cssuser` / `DAP123` (CSS User)
-- **Files Changed**: `backend/scripts/seed-light-demo.ts`
-
----
-
-### Version 2.5.0 (December 8, 2025)
-
-#### Terminology Standardization: Assignments & Adoption Plans
-
-**Feature**: Unified terminology for product/solution assignments and adoption plans.
-
-The terms "Assignment" and "Adoption Plan" are now **interchangeable** throughout the application:
-- **"Product Assignment"** = **"Product Adoption Plan"** (same concept)
-- **"Solution Assignment"** = **"Solution Adoption Plan"** (same concept)
-
-When a product or solution is assigned to a customer, the result is an adoption plan that tracks their implementation progress.
-
-**Changes Made:**
-
-1. **Backend - AI Agent Context**:
-   - `SchemaContextManager.ts`: Added business rules explaining both terms are equivalent
-   - `DataContextManager.ts`: Added terminology note in LLM prompt
-   - `QueryTemplates.ts`: Added new templates for "adoption plans" and "assignments"
-   - `AIAgentService.ts`: Updated LLM examples to use both terms
-
-2. **Frontend - UI Labels**:
-   - `CustomerAdoptionPanelV4.tsx`: Section headers use "Product Assignments" / "Solution Assignments"
-   - `CustomerPreviewDialog.tsx`: Labels use "Product Assignments" / "Solution Assignments"
-   - Tooltips reference both terms: "Product assignment • Double-click to view adoption plan"
-
-3. **AI Agent Query Support**:
-   - Users can ask: "Show me all product assignments" or "List adoption plans for customer X"
-   - Both queries return the same data
-
-#### AI Agent Query Template Fixes
-
-**Bug Fix**: Queries like "List all tasks for Cisco Secure Access without telemetry" were failing.
-
-**Root Causes & Fixes:**
-
-1. **Prisma Syntax Issue**: `{ relation: { none: {} } }` doesn't work for checking empty relations
-   - **Fix**: Changed to `{ NOT: { relation: { some: {} } } }`
-   - Updated in: `QueryTemplates.ts`, `AIAgentService.ts`, `DataContextManager.ts`
-
-2. **Regex Pattern Issue**: Patterns didn't handle "all **the** tasks" (with article "the")
-   - **Fix**: Added `(?:the\s+)?` to patterns: `/(?:find|show|list|get)\s+(?:all\s+)?(?:the\s+)?tasks?\s+/`
-
-3. **Name Matching**: Using `equals` instead of `contains` for product names
-   - **Fix**: Changed to `contains` with `mode: 'insensitive'` for partial matching
-
-**Files Changed:**
-- `backend/src/services/ai/QueryTemplates.ts` - Fixed patterns, Prisma syntax, added debug logging
-- `backend/src/services/ai/AIAgentService.ts` - Updated LLM constraints and examples
-- `backend/src/services/ai/DataContextManager.ts` - Updated query pattern instructions
-
-**Debug Logging Added:**
-- Template matching now logs to console for debugging
-- Shows which templates match and with what confidence
-- Helps diagnose when queries fall through to LLM
-
-#### AI Agent User Account
-
-**Feature**: AI Agent uses a dedicated user account for query execution with admin fallback.
-
-**Implementation:**
-- AI Agent looks for `aiuser` account first
-- If `aiuser` doesn't exist, falls back to `admin` account
-- If neither exists:
-  - AI Assistant button is hidden from the GUI
-  - Queries return an error message
-- All AI queries execute with the AI user's RBAC permissions
-- Cache is used to minimize database lookups (1 minute TTL)
-
-**Priority Order:**
-1. `aiuser` (preferred - dedicated AI account)
-2. `admin` (fallback - uses admin permissions)
-
-**Files Changed:**
-- `backend/src/schema/resolvers/ai.ts` - Added AI user check with fallback, caching, availability query
-- `backend/src/schema/typeDefs.ts` - Added `isAIAgentAvailable` query and `AIAgentAvailability` type
-- `frontend/src/graphql/ai.ts` - Added availability query
-- `frontend/src/components/AuthBar.tsx` - Conditional rendering of AI button
-
-**Optional: Create Dedicated aiuser:**
-1. Create `aiuser` account via Admin > Users & Roles
-2. Assign appropriate role (recommend: `ADMIN` for full data access)
-3. Restart backend or wait for cache to expire (1 minute)
-
-**Note:** If only `admin` exists, AI Agent works but logs will indicate fallback mode.
-
----
-
-#### Database Connection Pool Management
-
-**Bug Fix**: "Too many database connections" error in production.
-
-**Root Cause:**
-- No explicit connection pool limits in Prisma configuration
-- PM2 cluster mode multiplied connection usage (4 instances × default pool = exhausted connections)
-- Multiple singleton patterns storing Prisma references
-
-**Fix:**
-- Added explicit `connection_limit=5` to DATABASE_URL in context.ts
-- Ensured all AI services use the shared Prisma client singleton
-- Added graceful shutdown handler to properly close connections
-- Simplified AI service Prisma handling to prevent connection leaks
-
-**Files Changed:**
-- `backend/src/context.ts` - Added connection pool limit and graceful shutdown
-- `backend/src/services/ai/AIAgentService.ts` - Uses shared Prisma client
-- `backend/src/services/ai/DataContextManager.ts` - Uses shared Prisma client
-- `backend/src/services/ai/QueryExecutor.ts` - Uses shared Prisma client
-
-**Connection Math:**
-- PostgreSQL default max connections: 100
-- Connection limit per instance: 5
-- PM2 instances: 4
-- Total connections: 4 × 5 = 20 (well under 100 limit)
-
----
-
-#### Entity Preview Dialogs
-
-**Feature**: Clicking on entities in AI chat results now opens preview dialogs.
-
-Previously only Tasks opened a preview dialog. Now all entities have preview dialogs:
-- `ProductPreviewDialog` - Shows product details, outcomes, licenses, releases
-- `SolutionPreviewDialog` - Shows solution details, products, outcomes
-- `CustomerPreviewDialog` - Shows customer details, product/solution assignments
-- `AdoptionPlanDialog` - Shows adoption plan progress and tasks
-
-**Files Created:**
-- `frontend/src/components/dialogs/ProductPreviewDialog.tsx`
-- `frontend/src/components/dialogs/SolutionPreviewDialog.tsx`
-- `frontend/src/components/dialogs/CustomerPreviewDialog.tsx`
-
-**Files Modified:**
-- `frontend/src/pages/App.tsx` - Added state and handlers for all preview dialogs
-- `frontend/src/components/AIChat.tsx` - Enhanced type detection for navigation
-
----
-
-### Version 2.2.0 (December 6, 2025)
-
-#### AI Agent Implementation (Phases 1 & 2 Complete)
-
-**Feature**: Core backend infrastructure for the new AI Assistant.
-- **Service Skeleton**: Created `AIAgentService` with initial processing logic.
-- **Schema Context**: Implemented `SchemaContextManager` to generate LLM-friendly database schema descriptions (tables, relationships, business rules).
-- **Query Templates**: Created 20+ regex-based safe query templates for common questions (e.g., "products without telemetry", "customers with low adoption").
-- **LLM Providers**: Implemented multi-provider support including:
-  - **Cisco AI Gateway** (Enterprise standard, OAuth2 + Basic Auth)
-  - **OpenAI** (GPT-4o)
-  - **Gemini** (1.5 Pro)
-  - **Anthropic** (Claude 3.5)
-- **Safe Execution**: Implemented `QueryExecutor` with read-only enforcement, row limits, and timeouts to safely run AI-generated Prisma queries.
-- **Testing**: Added comprehensive unit and integration tests (130+ tests) covering all AI components.
-
-### Version 2.1.3 (December 4, 2025)
-
-#### Viewer Role Security & Dev Environment Fixes
-
-**Feature 1: Strict Viewer Read-Only Access**
-- **Issue**: Viewer role potentially had write access in some edge cases.
-- **Fix**: 
-  - Implemented strict backend-side RBAC enforcement in all resolvers.
-  - Added `ensureRole` checks to block specified mutations for VIEWER role.
-  - Verified UI disables all edit/save/delete buttons for Viewers.
-  - See `docs/VIEWER_ROLE_VERIFICATION.md` for details.
-
-**Feature 2: Development Environment Stability**
-- **WebSocket Fix**: Resolved WebSocket connection failures for HMR via reverse proxy (`dev.rajarora.csslab`).
-- **DevTools Isolation**: Refactored development tools to prevent interference with main application.
-- **API Routing**: Fixed 404 errors in dev environment API calls.
-
-### Version 2.1.2 (December 3, 2025)
-
-#### Development Menu Enhancements
-
-**Enhancement 1: Fixed All Development Submenus**
-- **Issue**: "Docs" submenu was not loading documentation files
-- **Root Cause**: Backend API route regex pattern incorrect (`/^\/docs\/(.*)` → `/^\/docs(.*)`)
-- **Fix**:
-  - Corrected regex pattern in `/data/dap/backend/src/api/devTools.ts`
-  - Fixed project root path resolution (from `../..` to `../../..`)
-  - All 12 Development submenus now functional
-- **Files Changed**:
-  - `backend/src/api/devTools.ts` (lines  135-143)
-
-**Enhancement 2: Added Tooltips to All Development Menu Items**
-- **Feature**: All 12 Development menu items now have hover tooltips
-- **Implementation**: Wrapped each `ListItemButton` in Material-UI `Tooltip` component
-- **Tooltips Added**:
-  - Database: "Manage database migrations, seed data, and schema"
-  - Logs: "View real-time application logs and debugging output"
-  - Tests: "Run unit tests, integration tests, and view coverage reports"
-  - Build & Deploy: "Build frontend/backend and deploy to production environments"
-  - CI/CD: "View GitHub Actions workflows and pipeline status"
-  - Environment: "View and manage environment variables and configuration"
-  - API Testing: "Test GraphQL API endpoints and explore schema"
-  - Docs: "Browse project documentation, guides, and technical references"
-  - Quality: "View code quality metrics, linting results, and test coverage"
-  - Performance: "Monitor system performance, memory usage, and uptime"
-  - Git: "View Git repository status, branches, and commit history"
-  - Tasks: "Execute npm scripts and custom development tasks"
-- **Files Changed**:
-  - `frontend/src/pages/App.tsx` (lines 2334-2471)
-
-**Enhancement 3: Added Overview Sections to Development Panels**
-- **Feature**: Development panels now have overview sections explaining:
-  - Purpose and functionality
-  - Available operations/features
-  - Requirements to use the panel
-  - Step-by-step usage instructions
-- **Panels Enhanced** (3 of 12 complete):
-  1. **Tests Panel**: Overview + tooltips on all buttons (Run All Tests, individual Run buttons)
-  2. **Database Panel**: Overview + tooltips on all 5 buttons (Refresh, Run Migrations, Seed, Generate, Reset)
-  3. **Logs Viewer Panel**: Overview + tooltips on all 4 buttons (Pause/Resume, Refresh, Export, Clear)
-- **Files Changed**:
-  - `frontend/src/components/dev/DevelopmentTestsPanel.tsx`
-  - `frontend/src/components/dev/DatabaseManagementPanel.tsx`
-  - `frontend/src/components/dev/LogsViewerPanel.tsx`
-
-**Enhancement 4: Consolidated Documentation**
-- **Created**: Comprehensive Documentation Index (`DOCUMENTATION_INDEX.md`)
-- **Features**:
-  - 90+ documentation files indexed and categorized
-  - 7 main categories (Getting Started, User Guides, Technical, Deployment, Development, Operations, Archive)
-  - Direct links to all documents
-  - Quick navigation paths for different user types (New Users, Developers, DevOps, Troubleshooting)
-  - Professional formatting with tables and descriptions
-- **Updated**: README.md documentation section to prominently feature new index
-- **Files Created**:
-  - `/data/dap/DOCUMENTATION_INDEX.md`
-- **Files Modified**:
-  - `/data/dap/README.md` (documentation section)
-
-**Enhancement 5: Fixed Test Command Issues**
-- **Issue**: Tests were failing because `test:integration` npm script doesn't exist
-- **Fix**: Updated test commands to use actual available npm scripts from backend/package.json
-  - Changed "Integration Tests" to use `npm test` (same as unit tests)
-  - All test commands now match available scripts
-- **Files Changed**:
-  - `frontend/src/components/dev/DevelopmentTestsPanel.tsx`
-
-#### Documentation Created
-- `DEV_MENU_IMPROVEMENTS.md` - Summary of menu and docs fixes
-- `DEV_PANELS_ENHANCEMENT_PROGRESS.md` - Progress tracking for panel enhancements
-- `DEV_MENU_COMPLETE_SUMMARY.md` - Comprehensive status of all work
-- `REMAINING_PANELS_GUIDE.md` - Quick reference for remaining panel enhancements
-
-#### Benefits & Impact
-- **Better UX**: Users understand tools before using them (tooltips)
-- **Working Tools**: All Development submenus functional (Docs fix)
-- **Easy Discovery**: Documentation index makes finding docs effortless
-- **Self-Service**: Tooltips and overviews reduce need for support
-- **Consistent Design**: All panels following same pattern
-- **Developer Productivity**: Faster onboarding, less confusion
-
----
-
-### Version 2.1.1 (December 1, 2025)
-
-#### RBAC Bug Fixes
-
-**Issue 1: CSS Users Cannot See Products/Solutions in Dropdowns**
-- **Severity**: High
-- **Root Cause**: Missing READ permissions in database for CSS role + frontend rendering issues
-- **Fix**: 
-  - Updated database permissions for CSS role (READ access to PRODUCT and SOLUTION)
-  - Fixed backend `getUserAccessibleResources` to return null (all access) for CSS users
-  - Fixed frontend dialog layout to ensure dropdowns render properly
-  - Fixed authentication context to include `userId` field
-- **Files Changed**:
-  - `backend/src/lib/auth.ts` - Added userId to context
-  - `backend/src/lib/permissions.ts` - Fixed fallback admin handling
-  - `frontend/src/components/dialogs/AssignProductDialog.tsx` - Fixed dialog layout
-
-**Issue 2: SME Users Cannot Delete Tasks**
-- **Severity**: Medium
-- **Root Cause**: Task deletion mutations only allowed ADMIN role
-- **Fix**: Added SME to allowed roles for `queueTaskSoftDelete` and `processDeletionQueue` mutations
-- **Files Changed**: `backend/src/schema/resolvers/index.ts`
-
-**Issue 3: Dialog Buttons Covered by Dropdowns**
-- **Severity**: Medium
-- **Root Cause**: Material-UI dropdown menu overlapping dialog buttons
-- **Fix**: 
-  - Implemented sticky DialogActions layout
-  - Added proper overflow handling
-  - Set max dialog height to 90vh with scrolling
-- **Files Changed**: 
-  - `frontend/src/components/dialogs/AssignProductDialog.tsx`
-  - `frontend/src/components/dialogs/AssignSolutionDialog.tsx`
-
-**Issue 4: Debug Console Logs in Production**
-- **Severity**: Low
-- **Fix**: Removed all debug console.logs from backend and frontend
-- **Files Changed**: Multiple resolver and component files
-
-**Issue 5: Solution Sync Lag & Default Settings**
-- **Severity**: Low (UX)
-- **Problem 1**: Product progress in "Solution Assigned" tab not updating immediately after sync.
-- **Fix 1**: Updated `SYNC_SOLUTION_ADOPTION_PLAN` to return full product data, leveraging Apollo Cache automatic updates. Added `lastSyncedAt` prop to trigger child component refetch.
-- **Problem 2**: Default solution was alphabetical/creation-based, not "SASE".
-- **Fix 2**: Hardcoded logic to prioritize "SASE" for solution selection and "Cisco Secure Access" for product selection if available.
-- **Files Changed**:
-  - `frontend/src/components/CustomerSolutionPanel.tsx`
-  - `frontend/src/components/CustomerAdoptionPanelV4.tsx`
-  - `frontend/src/components/solution-adoption/SolutionAdoptionPlanView.tsx`
-  - `backend/src/seed-solutions.ts` (updated seed defaults)
-
-**Issue 6: Dev Environment Schema Sync**
-- **Type**: Tooling Improvement
-- **Problem**: Pulling code changes with schema updates (e.g., new columns) caused runtime errors on dev machines/VMs because `rebuild` didn't update the DB.
-- **Fix**: Updated `./dap rebuild` command to automatically run `npx prisma generate` and `npx prisma db push` during backend rebuild.
-- **Files Changed**: `dap` (CLI script)
-
-**Issue 7: AI Agent Tag Support**
-- **Type**: Feature/Enhancement
-- **Problem**: AI Agent could not filter Tasks, Products, or Solutions by tags (e.g., "tasks tagged AI Access") because the tag models and relationships were missing from the Schema Context.
-- **Fix**: Added `ProductTag`, `TaskTag`, `SolutionTag`, and their customer-specific variants to `SchemaContextManager.ts`. Added specific business rules to guide the LLM on how to query these many-to-many relationships.
-- **Files Changed**: `backend/src/services/ai/SchemaContextManager.ts`
-
-### Version 2.9.1 (December 20, 2025)
-
-#### AI Agent Tag Integration
-- Enabled AI Agent to understand and query tags on Products, Solutions, and Tasks.
-- Updated Schema Context with full tag model definitions and relationships.
-- Deployed schema updates to Dev (centos1), Staging (centos2), and Production (dapoc).
+### Version 2.9.5 (December 22, 2025)
+
+#### Frontend Modular Refactoring (Complete)
+
+**Overview**: The entire frontend codebase has been refactored from a monolithic `src/components` structure to a modern, Domain-Driven Design (DDD) **Feature-Based Architecture**.
+
+**Key Architectural Changes:**
+1.  **Feature Modules**: Code is now organized by business domain in `frontend/src/features/`. Each feature contains its own:
+    - `components/` - React components
+    - `hooks/` - Feature-specific hooks
+    - `graphql/` - GraphQL queries/mutations
+    - `types/` - TypeScript interfaces
+    - `index.ts` - Public API (Barrels)
+2.  **Shared Resources**: Truly reusable code lives in `frontend/src/shared/`.
+3.  **Strict Boundaries**: Features interact only via their public exports. Cross-feature dependencies are minimized and explicit.
+4.  **Type Safety**: All `any` types removed. Strictly typed interfaces for all components and logic.
+5.  **Global Aliases**: Clean imports using `@features/*`, `@shared/*`, `@/*`.
+
+**New Directory Structure:**
+```
+frontend/src/
+├── features/               # Feature modules
+│   ├── products/           # Product management
+│   ├── solutions/          # Solution management
+│   ├── customers/          # Customer & adoption
+│   ├── tasks/              # Task management
+│   ├── auth/               # Authentication
+│   ├── admin/              # User/System admin
+│   ├── ai-assistant/       # AI functionality
+│   ├── telemetry/          # Telemetry system
+│   └── ... (dev-tools, backups, audit, search)
+├── shared/                 # Reusable code
+│   ├── components/         # Shared UI (FAIcon, Dialogs)
+│   ├── types/              # Shared types
+│   └── utils/              # Shared utilities
+├── pages/                  # Route components
+├── providers/              # Global providers
+└── config/                 # Configuration
+```
+
+**Benefits:**
+- **Scalability**: New features can be added without cluttering a central folder.
+- **Maintainability**: Clear ownership and boundaries for every piece of code.
+- **Testing**: Easier to isolate and test features.
+- **Onboarding**: Developers can understand the system by looking at the folder structure.
 
 ---
 
@@ -1598,211 +1071,22 @@ Previously only Tasks opened a preview dialog. Now all entities have preview dia
 │   │   ├── schema.prisma      # Database schema
 │   │   └── migrations/        # Database migrations
 │   ├── dist/                  # Compiled JavaScript (production)
-│   └── package.json
-│
 ├── frontend/                   # Frontend React application
 │   ├── src/
-│   │   ├── components/        # React components
-│   │   │   ├── dialogs/       # Dialog components
-│   │   │   └── MenuBar.tsx    # Role-based menu
-│   │   ├── pages/             # Page components
-│   │   ├── graphql/           # GraphQL queries/mutations
-│   │   └── App.tsx            # Main app component
-│   ├── dist/                  # Built static files (production)
-│   └── package.json
-│
-├── deploy/                     # Production deployment
-│   ├── create-release.sh      # Create release package
-│   ├── release-to-prod.sh     # Deploy to production
-│   ├── RELEASE_PROCESS.md     # Complete workflow
-│   ├── QUICK_DEPLOY_GUIDE.md  # Quick reference
-│   ├── testing-checklist.md   # Pre-deploy tests
-│   └── scripts/               # Helper scripts
-│
-├── docs/                       # Technical documentation
-│   ├── ARCHITECTURE.md        # System architecture
-│   ├── FEATURES.md            # Feature documentation
-│   └── [various docs]         # Implementation guides
-│
-├── scripts/                    # Utility scripts
-│   ├── fix-rbac-permissions.js    # Fix database permissions
-│   └── test-with-real-user.js     # RBAC testing
-│
-├── CONTEXT.md                  # This file
-├── README.md                   # Main readme
-├── CHANGELOG.md                # Version history
-└── DEPLOYMENT_INDEX.md         # Deployment navigation
+│   │   ├── features/          # Feature modules (Domain-Driven)
+│   │   │   ├── products/
+│   │   │   ├── solutions/
+│   │   │   ├── customers/
+│   │   │   ├── auth/
+│   │   │   └── ...
+│   │   ├── shared/            # Shared components & utilities
+│   │   ├── pages/             # Top-level route pages
+│   │   ├── providers/         # Context providers
+│   │   ├── lib/               # 3rd party lib initialization
+│   │   └── main.tsx           # Entry point
+│   ├── public/                # Static assets
+│   └── dist/                  # Built assets (production)
+├── docs/                       # Documentation
+├── scripts/                    # Helper scripts
+└── deploy/                     # Deployment configuration
 ```
-
----
-
-## Quick Reference Commands
-
-### Development
-
-```bash
-# Start development
-cd /data/dap
-./dap start          # Start all services
-./dap status         # Check status
-./dap restart        # Restart services
-
-# Database
-cd /data/dap/backend
-npx prisma studio    # Visual database browser
-npx prisma migrate deploy  # Apply migrations
-npm run seed         # Add sample data
-```
-
-### Production Deployment
-
-```bash
-# Standard release
-cd /data/dap
-./deploy/create-release.sh
-./deploy/release-to-prod.sh releases/release-*.tar.gz
-
-# Quick patch
-./APPLY_RBAC_PATCH.sh
-
-# Monitoring
-tail -f /data/dap/backend.log
-sudo tail -f /var/log/httpd/error_log
-```
-
-### Testing RBAC
-
-```bash
-# Test with different users
-# Admin: admin / admin
-# SME: smeuser / smeuser
-# CSS: cssuser / cssuser
-
-# Verify permissions:
-# - Admin: Full access to all menus
-# - SME: Products, Solutions (full CRUD including task deletion)
-# - CSS: Customers (full CRUD), Products/Solutions (view only in dropdowns)
-```
-
----
-
-## Important Notes for AI Assistants
-
-### When Making Changes
-
-1. **Always check this CONTEXT.md first** for current state
-2. **Update CONTEXT.md** when making significant changes
-3. **Test in development** before deploying to production
-4. **Create backups** before major changes
-5. **Update documentation** for new features
-6. **Follow RBAC rules** when implementing features
-
-### Common Tasks
-
-**Adding a new feature:**
-1. Update database schema (if needed)
-2. Create/update GraphQL schema
-3. Implement resolvers with permission checks
-4. Create UI components with role-based visibility
-5. Test with all user roles
-6. Update documentation
-7. Deploy via standard release process
-
-**Fixing a bug:**
-1. Reproduce the issue
-2. Identify root cause
-3. Implement fix
-4. Test fix with all affected roles
-5. Document the fix in CHANGELOG.md
-6. Deploy via quick patch or standard release
-
-**Deploying to production:**
-1. Test in development (centos1)
-2. Deploy to staging: `./deploy-to-stage.sh` (centos2)
-3. Verify staging works correctly
-4. Deploy to production: `./deploy-to-production.sh` (dapoc)
-5. Monitor logs: `ssh root@dapoc "sudo -u dap pm2 logs"`
-6. Verify all roles work correctly
-7. Update CONTEXT.md if needed
-
-### Critical Paths
-
-**Authentication Flow:**
-`frontend/src/lib/auth.tsx` → `backend/src/lib/auth.ts` → JWT validation
-
-**Permission Check:**
-`backend/src/lib/permissions.ts::checkUserPermission` → Database lookup → Role/permission check
-
-**Task Status Update:**
-`frontend/src/components/CustomerAdoptionPanelV4.tsx` → `backend/src/schema/resolvers/customerAdoption.ts` → Database
-
-**Menu Visibility:**
-`frontend/src/components/MenuBar.tsx` → User role check → Conditional rendering
-
-**AI Agent Query Processing:**
-`frontend/src/components/AIChat.tsx` → GraphQL `askAI` → `backend/src/services/ai/AIAgentService.ts` → `QueryTemplates.findBestMatch()` (fast path) OR `LLMProvider` (slow path) → `QueryExecutor` → Prisma → Database
-
-### AI Agent Prisma Query Patterns
-
-**IMPORTANT: When writing Prisma queries for the AI Agent:**
-
-```javascript
-// To find records WITH related items:
-{ relation: { some: {} } }
-
-// To find records WITHOUT related items (empty relation):
-{ NOT: { relation: { some: {} } } }
-
-// NEVER use this (doesn't work correctly):
-{ relation: { none: {} } }  // ❌ WRONG
-
-// For partial name matching:
-{ name: { contains: "search term", mode: "insensitive" } }
-```
-
-### Terminology Reference
-
-| Term | Equivalent Term | Description |
-|------|----------------|-------------|
-| Product Assignment | Product Adoption Plan | A product assigned to a customer with tracked progress |
-| Solution Assignment | Solution Adoption Plan | A solution assigned to a customer with tracked progress |
-| CustomerProduct | Product Assignment/Adoption Plan | Database table for product-customer relationship |
-| CustomerSolution | Solution Assignment/Adoption Plan | Database table for solution-customer relationship |
-
----
-
-## Support & Resources
-
-### Documentation
-- **This Context**: `/data/dap/CONTEXT.md`
-- **Architecture**: `/data/dap/docs/ARCHITECTURE.md`
-- **Deployment**: `/data/dap/deploy/RELEASE_PROCESS.md`
-- **Password Security**: `/data/dap/PASSWORD_SECURITY_BACKUPS.md`
-
-### Access
-- **DEV**: http://dev.rajarora.csslab/dap/ (centos1)
-- **STAGING**: http://stage.rajarora.csslab/dap/ (or centos2.rajarora.csslab) 
-- **PRODUCTION**: https://dapoc.cisco.com/dap/ (SSL enabled)
-- **GraphQL Playground**: http://localhost:4000/graphql (dev only)
-
-### Default Credentials
-- **Admin**: admin / admin
-- **Users**: *(username)* / DAP123
-
-### Deployment Scripts
-- `./deploy-to-stage.sh` - Deploy to staging (centos2)
-- `./deploy-to-production.sh` - Deploy to production (dapoc)
-- `./dap` - Local development management script
-
-### Key People
-- **Developer**: AI Assistant + Human Operator
-- **SSH User**: rajarora (staging), root (production)
-- **App User**: dap (staging/production)
-
----
-
-**Last Updated:** December 21, 2025  
-**Version:** 2.9.2  
-**Status:** Production Ready (SSL Enabled)
-
-*This document should be updated whenever significant changes are made to the application.*
