@@ -28,6 +28,8 @@ The following tables will **restore as empty** (schema only):
 - `LockedEntity`
 - `UserRole`
 - `Permission`
+- `AuditLog`
+- `ChangeSet`
 
 **Implications:**
 - User management is handled via a separate dedicated script/process.
