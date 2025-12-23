@@ -47,6 +47,7 @@ cp backend/package-lock.json /tmp/dap-deploy/ 2>/dev/null || true
 cp backend/tsconfig.json /tmp/dap-deploy/
 cp backend/eslint.config.mjs /tmp/dap-deploy/ 2>/dev/null || true
 cp -r backend/dist /tmp/dap-deploy/backend-dist
+cp -r backend/scripts /tmp/dap-deploy/backend-scripts
 cp -r frontend/dist /tmp/dap-deploy/frontend-dist
 cp -r docs /tmp/dap-deploy/docs 2>/dev/null || true
 
@@ -191,6 +192,13 @@ cp -r $STAGING/backend-prisma/* "$DAP_ROOT/backend/prisma/"
 
 
 echo "✅ Backend files copied"
+
+echo "📝 Copying backend scripts..."
+mkdir -p "$DAP_ROOT/backend/scripts"
+rm -rf "$DAP_ROOT/backend/scripts"/* 2>/dev/null || true
+cp -r $STAGING/backend-scripts/* "$DAP_ROOT/backend/scripts/"
+chmod +x "$DAP_ROOT/backend/scripts/"*.sh 2>/dev/null || true
+echo "✅ Backend scripts copied"
 
 echo "📝 Copying backend dist..."
 # Remove old dist files
