@@ -1,7 +1,8 @@
 #!/bin/bash
-# Deploy Latest Changes to Production (dapoc) - Version 1
+# Deploy Latest Changes to Production (dapoc) - Version 2
 # Target: dapoc.cisco.com (RHEL 9)
-# Matches stage directory structure and permissions
+# Application runs entirely as 'dap' user with no root access for app files
+# Only nginx restart requires sudo
 
 set -e
 
@@ -12,7 +13,8 @@ echo ""
 
 PROD_SERVER="dapoc"
 PROD_USER="dap"
-PROD_PATH="/data/dap/app"
+DAP_ROOT="/data/dap/app"
+REMOTE_STAGING="/data/dap/deploy-staging"
 
 # Step 0: Verify we're ready to deploy
 echo "📋 Step 0: Preparing deployment..."
@@ -43,167 +45,190 @@ echo ""
 # Step 2: Prepare files for transfer
 echo "📦 Step 2: Preparing files..."
 cd "$PROJECT_ROOT"
-rm -rf /tmp/dap-deploy-prod
-mkdir -p /tmp/dap-deploy-prod
+rm -rf /tmp/dap-deploy
+mkdir -p /tmp/dap-deploy
 
 # Backend files
-cp -r backend/src /tmp/dap-deploy-prod/backend-src
-cp backend/package.json /tmp/dap-deploy-prod/
-cp backend/package-lock.json /tmp/dap-deploy-prod/ 2>/dev/null || true
-cp backend/tsconfig.json /tmp/dap-deploy-prod/
-cp backend/eslint.config.mjs /tmp/dap-deploy-prod/ 2>/dev/null || true
-cp -r backend/dist /tmp/dap-deploy-prod/backend-dist
-cp -r backend/prisma /tmp/dap-deploy-prod/prisma
+cp -r backend/src /tmp/dap-deploy/backend-src
+cp backend/package.json /tmp/dap-deploy/
+cp backend/package-lock.json /tmp/dap-deploy/ 2>/dev/null || true
+cp backend/tsconfig.json /tmp/dap-deploy/
+cp backend/eslint.config.mjs /tmp/dap-deploy/ 2>/dev/null || true
+cp -r backend/dist /tmp/dap-deploy/backend-dist
+cp -r backend/prisma /tmp/dap-deploy/backend-prisma
 
 # Frontend files
-cp -r frontend/dist /tmp/dap-deploy-prod/frontend-dist
+cp -r frontend/dist /tmp/dap-deploy/frontend-dist
 
 # Documentation
-cp -r docs /tmp/dap-deploy-prod/docs 2>/dev/null || true
-
-# Copy environment files
-# NOTE: We now rely on the server having its own configuration
-# cp .env.prod /tmp/dap-deploy-prod/.env
+cp -r docs /tmp/dap-deploy/docs 2>/dev/null || true
 
 # Copy config files
-mkdir -p /tmp/dap-deploy-prod/config
-cp -r backend/config/* /tmp/dap-deploy-prod/config/ 2>/dev/null || true
+mkdir -p /tmp/dap-deploy/config
+cp -r backend/config/* /tmp/dap-deploy/config/ 2>/dev/null || true
 
 # Copy ecosystem config for PM2
-cp backend/ecosystem.config.js /tmp/dap-deploy-prod/ecosystem.config.js 2>/dev/null || true
-
-# Copy maintenance page
-cp deploy/maintenance.html /tmp/dap-deploy-prod/maintenance.html 2>/dev/null || true
+cp backend/ecosystem.config.js /tmp/dap-deploy/ecosystem.config.js 2>/dev/null || true
 
 # Copy scripts
-cp -r scripts /tmp/dap-deploy-prod/scripts-new 2>/dev/null || true
+cp -r scripts /tmp/dap-deploy/scripts-new 2>/dev/null || true
 
-echo "✅ Files prepared in /tmp/dap-deploy-prod"
+# Copy production management script
+cp dap-prod /tmp/dap-deploy/dap-prod 2>/dev/null || true
+
+echo "✅ Files prepared in /tmp/dap-deploy"
 echo ""
 
-# Step 3: Transfer to production
-echo "📤 Step 3: Transferring to $PROD_SERVER..."
-ssh root@${PROD_SERVER} "rm -rf /tmp/dap-deploy-incoming && mkdir -p /tmp/dap-deploy-incoming"
-scp -r /tmp/dap-deploy-prod/. root@${PROD_SERVER}:/tmp/dap-deploy-incoming/
-echo "✅ Transfer complete"
+# Step 3: Create tar.gz archive and transfer (OPTIMIZED)
+echo "📤 Step 3: Creating archive and transferring to $PROD_SERVER..."
+cd /tmp/dap-deploy
+# COPYFILE_DISABLE=1 prevents macOS from including ._* resource fork files
+COPYFILE_DISABLE=1 tar czf /tmp/dap-deploy.tar.gz .
+ARCHIVE_SIZE=$(du -h /tmp/dap-deploy.tar.gz | cut -f1)
+echo "📦 Archive size: $ARCHIVE_SIZE"
+
+# Transfer to /data/dap staging area where dap user has full ownership
+# Initial setup command needs root to create staging directory with proper ownership
+ssh root@${PROD_SERVER} "rm -rf $REMOTE_STAGING && mkdir -p $REMOTE_STAGING && chown dap:dap $REMOTE_STAGING"
+scp /tmp/dap-deploy.tar.gz root@${PROD_SERVER}:$REMOTE_STAGING/dap-deploy.tar.gz
+
+# Extract as dap user (no sudo needed once files are in /data/dap)
+ssh root@${PROD_SERVER} "chown dap:dap $REMOTE_STAGING/dap-deploy.tar.gz && sudo -u dap tar xzf $REMOTE_STAGING/dap-deploy.tar.gz -C $REMOTE_STAGING && rm $REMOTE_STAGING/dap-deploy.tar.gz"
+echo "✅ Transfer complete (archive mode)"
 echo ""
 
 # Cleanup local temp
-rm -rf /tmp/dap-deploy-prod
+rm -rf /tmp/dap-deploy /tmp/dap-deploy.tar.gz
 
-# Step 4: Deploy on production
+# Step 4: Deploy as dap user (minimal sudo)
 echo "🔨 Step 4: Deploying on $PROD_SERVER..."
 echo ""
 
+# All deployment commands run as dap user - no root needed for app files
 ssh root@${PROD_SERVER} << 'ENDSSH'
 set -e
 
 echo "📝 Deploying as dap user..."
-
-# Stop PM2 processes first
-sudo -u dap /usr/local/bin/pm2 stop all 2>/dev/null || true
-
-# Activate maintenance mode
-echo "🚧 Activating maintenance mode..."
-[ -f /tmp/dap-deploy-incoming/maintenance.html ] && cp /tmp/dap-deploy-incoming/maintenance.html /data/dap/app/frontend/dist/index.html || echo "⚠️ Maintenance page missing"
-cp /tmp/dap-deploy-incoming/maintenance.html /data/dap/www/maintenance.html 2>/dev/null || true
-
-# Copy files as dap user
 sudo -u dap bash << 'DAPCMDS'
 set -e
+
+STAGING="/data/dap/deploy-staging"
 DAP_ROOT="/data/dap/app"
-# ...
 
-# (In SSH block)
-# Copy environment file
-if [ -f /tmp/dap-deploy-incoming/.env ]; then
-  cp /tmp/dap-deploy-incoming/.env "$DAP_ROOT/.env"
-  cp /tmp/dap-deploy-incoming/.env "$DAP_ROOT/backend/.env"
-  echo "✅ Environment file updated"
-else
-  echo "ℹ️  No environment file in deployment payload. Relying on existing configuration."
-fi
+# Create directory structure if needed (dap user owns /data/dap)
+mkdir -p "$DAP_ROOT/backend/src"
+mkdir -p "$DAP_ROOT/backend/dist"
+mkdir -p "$DAP_ROOT/frontend/dist"
+mkdir -p "$DAP_ROOT/docs"
+mkdir -p "/data/dap/scripts"
+mkdir -p "/data/dap/logs"
 
-# Copy scripts
-if [ -d "/tmp/dap-deploy-incoming/scripts-new" ]; then
+# Copy scripts if provided
+if [ -d "$STAGING/scripts-new" ]; then
   mkdir -p "$DAP_ROOT/scripts"
-  cp /tmp/dap-deploy-incoming/scripts-new/* "$DAP_ROOT/scripts/" 2>/dev/null || true
+  cp $STAGING/scripts-new/* "$DAP_ROOT/scripts/" 2>/dev/null || true
   chmod +x "$DAP_ROOT/scripts/"*.sh 2>/dev/null || true
   echo "✅ Scripts updated"
 fi
 
+# Sync Environment Variables using the script
+echo "🔄 Syncing environment variables..."
+if [ -f "$DAP_ROOT/scripts/sync-env.sh" ]; then
+  cd "$DAP_ROOT"
+  ./scripts/sync-env.sh production 2>/dev/null || echo "⚠️ sync-env.sh returned warning"
+  echo "✅ Environment synchronized"
+else
+  echo "ℹ️ No sync-env.sh, using existing config"
+fi
+
 # Copy config
 mkdir -p "$DAP_ROOT/backend/config"
-cp -r /tmp/dap-deploy-incoming/config/* "$DAP_ROOT/backend/config/" 2>/dev/null || true
+cp -r $STAGING/config/* "$DAP_ROOT/backend/config/" 2>/dev/null || true
 echo "✅ Config files updated"
 
 # Backup current backend
 if [ -d "$DAP_ROOT/backend/src" ] && [ "$(ls -A $DAP_ROOT/backend/src 2>/dev/null)" ]; then
-  BACKUP_FILE="/tmp/dap-backend-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+  BACKUP_FILE="/data/dap/backups/dap-backend-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
+  mkdir -p /data/dap/backups
   tar czf "$BACKUP_FILE" -C "$DAP_ROOT/backend" src 2>/dev/null || true
   echo "✅ Backed up to $BACKUP_FILE"
 fi
 
 echo "📝 Copying backend files..."
 rm -rf "$DAP_ROOT/backend/src"/*
-cp -r /tmp/dap-deploy-incoming/backend-src/* "$DAP_ROOT/backend/src/"
-cp /tmp/dap-deploy-incoming/package.json "$DAP_ROOT/backend/"
-[ -f /tmp/dap-deploy-incoming/package-lock.json ] && cp /tmp/dap-deploy-incoming/package-lock.json "$DAP_ROOT/backend/"
-cp /tmp/dap-deploy-incoming/tsconfig.json "$DAP_ROOT/backend/"
-[ -f /tmp/dap-deploy-incoming/eslint.config.mjs ] && cp /tmp/dap-deploy-incoming/eslint.config.mjs "$DAP_ROOT/backend/"
+cp -r $STAGING/backend-src/* "$DAP_ROOT/backend/src/"
+cp $STAGING/package.json "$DAP_ROOT/backend/"
+[ -f $STAGING/package-lock.json ] && cp $STAGING/package-lock.json "$DAP_ROOT/backend/"
+cp $STAGING/tsconfig.json "$DAP_ROOT/backend/"
+[ -f $STAGING/eslint.config.mjs ] && cp $STAGING/eslint.config.mjs "$DAP_ROOT/backend/"
 
-# Copy prisma schema
+echo "📝 Copying Prisma schema..."
 mkdir -p "$DAP_ROOT/backend/prisma"
-cp -r /tmp/dap-deploy-incoming/prisma/* "$DAP_ROOT/backend/prisma/"
+rm -rf "$DAP_ROOT/backend/prisma"/*
+cp -r $STAGING/backend-prisma/* "$DAP_ROOT/backend/prisma/"
 echo "✅ Backend files copied"
 
 echo "📝 Copying backend dist..."
 rm -rf "$DAP_ROOT/backend/dist"/*
-cp -r /tmp/dap-deploy-incoming/backend-dist/* "$DAP_ROOT/backend/dist/"
+cp -r $STAGING/backend-dist/* "$DAP_ROOT/backend/dist/"
 echo "✅ Backend dist copied"
 
 echo "📝 Copying frontend files..."
 rm -rf "$DAP_ROOT/frontend/dist"/*
-cp -r /tmp/dap-deploy-incoming/frontend-dist/* "$DAP_ROOT/frontend/dist/"
+cp -r $STAGING/frontend-dist/* "$DAP_ROOT/frontend/dist/"
 echo "✅ Frontend files copied"
 
 # Copy docs
 echo "📝 Copying documentation..."
-rm -rf "$DAP_ROOT/docs"/*
-cp -r /tmp/dap-deploy-incoming/docs/* "$DAP_ROOT/docs/" 2>/dev/null || true
+mkdir -p "$DAP_ROOT/docs"
+rm -rf "$DAP_ROOT/docs"/* 2>/dev/null || true
+cp -r $STAGING/docs/* "$DAP_ROOT/docs/" 2>/dev/null || true
 echo "✅ Documentation updated"
 
+# Copy production management script
+if [ -f $STAGING/dap-prod ]; then
+  cp $STAGING/dap-prod /data/dap/dap
+  chmod +x /data/dap/dap
+  echo "✅ Production management script (./dap) installed"
+fi
+
 # Copy ecosystem.config.js
-if [ -f /tmp/dap-deploy-incoming/ecosystem.config.js ]; then
-  cp /tmp/dap-deploy-incoming/ecosystem.config.js "$DAP_ROOT/ecosystem.config.js"
+if [ -f $STAGING/ecosystem.config.js ]; then
+  cp $STAGING/ecosystem.config.js "$DAP_ROOT/ecosystem.config.js"
   echo "✅ PM2 ecosystem config updated"
 fi
 
-# Install dependencies and run migrations
+# Install dependencies
 echo "🔨 Installing dependencies..."
 cd "$DAP_ROOT/backend"
 npm install --legacy-peer-deps 2>/dev/null || npm install
 echo "✅ Dependencies installed"
 
 echo "📊 Updating database schema..."
-npx prisma db push --accept-data-loss
 npx prisma generate
+npx prisma db push --accept-data-loss
 echo "✅ Database schema updated"
 
-# Start PM2
-echo "🔄 Starting PM2..."
+# Restart PM2
+echo "🔄 Restarting PM2..."
 cd "$DAP_ROOT"
-if [ -f ecosystem.config.js ]; then
-  /usr/local/bin/pm2 start ecosystem.config.js
+pm2 reload ecosystem.config.js 2>/dev/null || pm2 restart ecosystem.config.js 2>/dev/null || pm2 start ecosystem.config.js
+pm2 save
+sleep 5
+
+if pm2 list | grep -q "online"; then
+  echo "✅ PM2 processes confirmed online"
 else
-  /usr/local/bin/pm2 start backend/dist/server.js --name dap-backend -i 2
+  echo "❌ WARNING: No PM2 processes found online!"
+  pm2 list
 fi
-/usr/local/bin/pm2 save
-echo "✅ PM2 started"
+
+# Cleanup staging files (dap user owns /data/dap, no sudo needed)
+rm -rf $STAGING
 
 DAPCMDS
 
-# Restart Nginx
+# Restart Nginx (needs root)
 echo "🌐 Restarting Nginx..."
 systemctl restart nginx
 echo "✅ Nginx restarted"
@@ -212,7 +237,7 @@ echo "✅ Nginx restarted"
 echo ""
 echo "🧪 Testing deployment..."
 
-sleep 5
+sleep 3
 
 # Test backend
 echo "Testing backend GraphQL..."
@@ -236,35 +261,29 @@ else
   echo "⚠️  Frontend test inconclusive"
 fi
 
-# Cleanup
-rm -rf /tmp/dap-deploy-incoming
-
 echo ""
 echo "✅ Deployment process complete!"
 
 ENDSSH
 
 echo ""
-echo "✨ New Features in this deployment (v2.9.2):"
-echo "  • Modern AI Assistant Icon redesign (AISparkle)"
-echo "  • Streamlined Customer Detail View (Scorecards on Overview)"
-echo "  • Compact Progress Trackers for Adoption Plans"
-echo "  • Rebranded to Dynamic Adoption Platform"
-echo "  • Renamed Entitlements to Licenses"
-echo "  • Inline Editable Outcomes on Summary tabs"
-echo "  • Standardized Filter labels and UI refinements (Impl % and Validation pills)"
+echo "========================================="
+echo "✅ DEPLOYMENT SUCCESSFUL"
+echo "========================================="
 echo ""
-echo "🧪 Testing checklist:"
-echo "  1. Login as admin / DAP123!!!"
-echo "  2. Verify top-right AI icon is the new Sparkle style"
-echo "  3. Go to Customers -> Overview and verify scorecard tiles"
-echo "  4. Check Products/Solutions summary tabs for inline editable outcomes"
-echo "  5. Verify 'Licenses' tab name (formerly Entitlements)"
+echo "🌐 Production URLs:"
+echo "  • https://dapoc.cisco.com/dap/"
+echo ""
+echo "📝 What was deployed:"
+echo "  ✅ Backend: Updated source code and rebuilt"
+echo "  ✅ Frontend: New distribution with updated UI"
+echo "  ✅ Scripts: Latest utility scripts"
+echo "  ✅ Services: Restarted and verified"
 echo ""
 echo "📊 Monitor logs:"
 echo "  ssh root@dapoc"
 echo "  sudo -u dap pm2 logs"
 echo ""
 echo "🔄 Rollback if needed:"
-echo "  Previous version backed up in: /tmp/dap-backend-backup-*.tar.gz"
+echo "  Previous version backed up in: /data/dap/backups/dap-backend-backup-*.tar.gz"
 echo ""

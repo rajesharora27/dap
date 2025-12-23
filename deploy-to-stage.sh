@@ -39,6 +39,7 @@ echo ""
 # Step 2: Prepare files for transfer
 echo "📦 Step 2: Preparing files..."
 cd "$PROJECT_ROOT"
+rm -rf /tmp/dap-deploy /tmp/dap-deploy.tar.gz  # Clean any old files
 mkdir -p /tmp/dap-deploy
 cp -r backend/src /tmp/dap-deploy/backend-src
 cp backend/package.json /tmp/dap-deploy/
@@ -82,10 +83,14 @@ ARCHIVE_SIZE=$(du -h /tmp/dap-deploy.tar.gz | cut -f1)
 echo "📦 Archive size: $ARCHIVE_SIZE"
 
 # Transfer single archive (much faster than individual files)
-# Use sudo rm in case previous deploy left files owned by dap
-ssh rajarora@centos2.rajarora.csslab "sudo rm -rf /tmp/dap-deploy-prod && mkdir -p /tmp/dap-deploy-prod"
+# Transfer to /data/dap staging area where dap user has full ownership
+REMOTE_STAGING="/data/dap/deploy-staging"
+
+# SCP to /tmp first (rajarora can write there), then move as dap user
 scp /tmp/dap-deploy.tar.gz rajarora@centos2.rajarora.csslab:/tmp/dap-deploy.tar.gz
-ssh rajarora@centos2.rajarora.csslab "cd /tmp/dap-deploy-prod && tar xzf /tmp/dap-deploy.tar.gz && rm /tmp/dap-deploy.tar.gz"
+
+# Create staging dir, move archive there, extract as dap user
+ssh rajarora@centos2.rajarora.csslab "sudo rm -rf $REMOTE_STAGING && sudo mkdir -p $REMOTE_STAGING && sudo chown dap:dap $REMOTE_STAGING && sudo mv /tmp/dap-deploy.tar.gz $REMOTE_STAGING/ && sudo chown dap:dap $REMOTE_STAGING/dap-deploy.tar.gz && sudo -u dap tar xzf $REMOTE_STAGING/dap-deploy.tar.gz -C $REMOTE_STAGING && sudo rm $REMOTE_STAGING/dap-deploy.tar.gz"
 echo "✅ Transfer complete (archive mode)"
 echo ""
 
@@ -93,22 +98,19 @@ echo ""
 rm -rf /tmp/dap-deploy /tmp/dap-deploy.tar.gz
 
 
-# Step 4: Deploy on production
+# Step 4: Deploy as dap user (minimal sudo)
 echo "🔨 Step 4: Deploying on centos2..."
 echo ""
 
+# All deployment commands run as dap user - no root needed for app files
 ssh rajarora@centos2.rajarora.csslab << 'ENDSSH'
 set -e
-
-# Fix permissions before switching to dap user
-echo "🔧 Fixing permissions on transferred files..."
-chmod -R a+r /tmp/dap-deploy-prod
-sudo chown -R dap:dap /tmp/dap-deploy-prod
-echo "✅ Permissions fixed"
 
 echo "📝 Deploying as dap user..."
 sudo -u dap bash << 'DAPCMDS'
 set -e
+
+STAGING="/data/dap/deploy-staging"
 
 # Check which structure is in use
 if [ -d "/data/dap/app" ]; then
@@ -122,27 +124,28 @@ else
   exit 1
 fi
 
-# Create directory structure if needed
+# Create directory structure if needed (dap user owns /data/dap)
 mkdir -p "$DAP_ROOT/backend/src"
 mkdir -p "$DAP_ROOT/backend/dist"
 mkdir -p "$DAP_ROOT/frontend/dist"
 mkdir -p "$DAP_ROOT/docs"
 mkdir -p "/data/dap/scripts"
+mkdir -p "/data/dap/logs"
 
 # Copy environment files to root
-if [ -f /tmp/dap-deploy-prod/.env ]; then
-  cp /tmp/dap-deploy-prod/.env "$DAP_ROOT/.env"
-  cp /tmp/dap-deploy-prod/.env.development "$DAP_ROOT/.env.development" 2>/dev/null || true
-  cp /tmp/dap-deploy-prod/.env.stage "$DAP_ROOT/.env.stage" 2>/dev/null || true
+if [ -f $STAGING/.env ]; then
+  cp $STAGING/.env "$DAP_ROOT/.env"
+  cp $STAGING/.env.development "$DAP_ROOT/.env.development" 2>/dev/null || true
+  cp $STAGING/.env.stage "$DAP_ROOT/.env.stage" 2>/dev/null || true
   echo "✅ Environment files updated in root"
 else
   echo "ℹ️  No environment file in payload, keeping existing config"
 fi
 
 # Copy scripts if provided (Early copy to ensure sync-env is available)
-if [ -d "/tmp/dap-deploy-prod/scripts-new" ]; then
+if [ -d "$STAGING/scripts-new" ]; then
   mkdir -p "$DAP_ROOT/scripts"
-  cp /tmp/dap-deploy-prod/scripts-new/* "$DAP_ROOT/scripts/" 2>/dev/null || true
+  cp $STAGING/scripts-new/* "$DAP_ROOT/scripts/" 2>/dev/null || true
   chmod +x "$DAP_ROOT/scripts/"*.sh 2>/dev/null || true
   echo "✅ Scripts updated"
 fi
@@ -160,7 +163,7 @@ fi
 
 # Create directory structure for config
 mkdir -p "$DAP_ROOT/backend/config"
-cp -r /tmp/dap-deploy-prod/config/* "$DAP_ROOT/backend/config/" 2>/dev/null || true
+cp -r $STAGING/config/* "$DAP_ROOT/backend/config/" 2>/dev/null || true
 echo "✅ Config files updated"
 
 # Backup current backend source
@@ -175,16 +178,16 @@ echo "📝 Copying backend files..."
 rm -rf "$DAP_ROOT/backend/src"/*
 
 # Copy new files
-cp -r /tmp/dap-deploy-prod/backend-src/* "$DAP_ROOT/backend/src/"
-cp /tmp/dap-deploy-prod/package.json "$DAP_ROOT/backend/"
-[ -f /tmp/dap-deploy-prod/package-lock.json ] && cp /tmp/dap-deploy-prod/package-lock.json "$DAP_ROOT/backend/"
-cp /tmp/dap-deploy-prod/tsconfig.json "$DAP_ROOT/backend/"
-[ -f /tmp/dap-deploy-prod/eslint.config.mjs ] && cp /tmp/dap-deploy-prod/eslint.config.mjs "$DAP_ROOT/backend/"
+cp -r $STAGING/backend-src/* "$DAP_ROOT/backend/src/"
+cp $STAGING/package.json "$DAP_ROOT/backend/"
+[ -f $STAGING/package-lock.json ] && cp $STAGING/package-lock.json "$DAP_ROOT/backend/"
+cp $STAGING/tsconfig.json "$DAP_ROOT/backend/"
+[ -f $STAGING/eslint.config.mjs ] && cp $STAGING/eslint.config.mjs "$DAP_ROOT/backend/"
 
 echo "📝 Copying Prisma schema..."
 mkdir -p "$DAP_ROOT/backend/prisma"
 rm -rf "$DAP_ROOT/backend/prisma"/*
-cp -r /tmp/dap-deploy-prod/backend-prisma/* "$DAP_ROOT/backend/prisma/"
+cp -r $STAGING/backend-prisma/* "$DAP_ROOT/backend/prisma/"
 
 
 echo "✅ Backend files copied"
@@ -192,34 +195,34 @@ echo "✅ Backend files copied"
 echo "📝 Copying backend dist..."
 # Remove old dist files
 rm -rf "$DAP_ROOT/backend/dist"/*
-cp -r /tmp/dap-deploy-prod/backend-dist/* "$DAP_ROOT/backend/dist/"
+cp -r $STAGING/backend-dist/* "$DAP_ROOT/backend/dist/"
 echo "✅ Backend dist copied"
 
 echo "📝 Copying frontend files..."
 # Copy frontend dist
 rm -rf "$DAP_ROOT/frontend/dist"/*
-cp -r /tmp/dap-deploy-prod/frontend-dist/* "$DAP_ROOT/frontend/dist/"
+cp -r $STAGING/frontend-dist/* "$DAP_ROOT/frontend/dist/"
 echo "✅ Frontend files copied"
 
 # Copy docs
 echo "📝 Copying documentation..."
 rm -rf "$DAP_ROOT/docs"/*
-cp -r /tmp/dap-deploy-prod/docs/* "$DAP_ROOT/docs/" 2>/dev/null || true
+cp -r $STAGING/docs/* "$DAP_ROOT/docs/" 2>/dev/null || true
 echo "✅ Documentation updated"
 
 # Scripts already copied in earlier step
 echo "✅ Scripts already updated"
 
 # Copy production management scripts to /data/dap root
-if [ -f /tmp/dap-deploy-prod/dap-prod ]; then
-  cp /tmp/dap-deploy-prod/dap-prod /data/dap/dap
+if [ -f $STAGING/dap-prod ]; then
+  cp $STAGING/dap-prod /data/dap/dap
   chmod +x /data/dap/dap
   echo "✅ Production management script (./dap) installed"
 fi
 
 # Copy ecosystem.config.js
-if [ -f /tmp/dap-deploy-prod/ecosystem.config.js ]; then
-  cp /tmp/dap-deploy-prod/ecosystem.config.js "$DAP_ROOT/ecosystem.config.js"
+if [ -f $STAGING/ecosystem.config.js ]; then
+  cp $STAGING/ecosystem.config.js "$DAP_ROOT/ecosystem.config.js"
   echo "✅ PM2 ecosystem config updated"
 fi
 
@@ -380,8 +383,9 @@ else
   echo "⚠️  Public URL test inconclusive (may need cache clear)"
 fi
 
-# Cleanup (files are owned by dap after chown, need sudo)
-sudo rm -rf /tmp/dap-deploy-prod
+# Cleanup staging files (define path again since we're outside DAPCMDS)
+STAGING="/data/dap/deploy-staging"
+sudo rm -rf $STAGING
 
 echo ""
 echo "✅ Deployment process complete!"
