@@ -305,11 +305,11 @@ export class BackupRestoreService {
         // On macOS with local socket (no password), use simpler connection
         if (process.platform === 'darwin' && !dbConfig.password) {
           // macOS local socket connection (peer auth)
-          command = `${pgDumpCmd} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
+          command = `${pgDumpCmd} -d ${dbConfig.database} -F p --column-inserts --exclude-table-data='"User"' > "${filePath}" 2>&1`;
           console.log('Using macOS local socket connection for pg_dump');
         } else {
           // Standard connection with host/user/password
-          command = `${pgDumpCmd} -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
+          command = `${pgDumpCmd} -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --column-inserts --exclude-table-data='"User"' > "${filePath}" 2>&1`;
         }
       } else {
         // Containerized Postgres
@@ -320,49 +320,15 @@ export class BackupRestoreService {
           }
         }
 
-        command = `${containerRuntime} exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
+        command = `${containerRuntime} exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts --exclude-table-data='"User"' > "${filePath}" 2>&1`;
       }
 
       console.log('Executing backup command...');
       await execPromise(command, { maxBuffer: 50 * 1024 * 1024, env, timeout: 120000 }); // 50MB buffer, 2min timeout
 
-      // Now post-process the dump to remove password column from User table
-      console.log('Removing password hashes from backup for security...');
+      // Post-processing: Add header comment
       let backupContent = fs.readFileSync(filePath, 'utf-8');
-
-      // Replace INSERT statements for User table to exclude password column
-      // Pattern: INSERT INTO "User" (id, email, username, name, fullName, role, password, isAdmin, isActive, mustChangePassword, createdAt, updatedAt) VALUES (...)
-      // Replace with: INSERT INTO "User" (id, email, username, name, fullName, role, isAdmin, isActive, mustChangePassword, createdAt, updatedAt) VALUES (...) 
-      // And remove the password value from VALUES
-
-      backupContent = backupContent.replace(
-        /INSERT INTO "User" \([^)]*\bpassword\b[^)]*\) VALUES \(([^;]+)\);/gi,
-        (match) => {
-          // Find the password column position and remove it from both columns and values
-          const columnsMatch = match.match(/INSERT INTO "User" \(([^)]+)\)/);
-          const valuesMatch = match.match(/VALUES \(([^)]+)\)/);
-
-          if (columnsMatch && valuesMatch) {
-            const columns = columnsMatch[1].split(',').map(c => c.trim());
-            const values = valuesMatch[1].split(',').map(v => v.trim());
-
-            const passwordIndex = columns.findIndex(c => c === '"password"' || c === 'password');
-
-            if (passwordIndex !== -1 && values.length === columns.length) {
-              // Remove password column and its value
-              columns.splice(passwordIndex, 1);
-              values.splice(passwordIndex, 1);
-
-              return `INSERT INTO "User" (${columns.join(', ')}) VALUES (${values.join(', ')});`;
-            }
-          }
-
-          return match; // Return original if parsing fails
-        }
-      );
-
-      // Also add a comment to the backup file indicating passwords are excluded
-      backupContent = `-- DAP Backup (Passwords excluded for security - existing passwords will be preserved on restore)\n-- Generated: ${new Date().toISOString()}\n\n` + backupContent;
+      backupContent = `-- DAP Backup (User data excluded - restore users via separate script)\n-- Generated: ${new Date().toISOString()}\n\n` + backupContent;
 
       // Write back the modified content
       fs.writeFileSync(filePath, backupContent, 'utf-8');
@@ -471,25 +437,11 @@ export class BackupRestoreService {
 
       // IMPORTANT: Save existing user passwords before restore
       console.log('Saving existing user passwords...');
-      let existingPasswords: Map<string, string> = new Map();
-
-      try {
-        // Using prisma to get existing passwords
-        const users = await prisma.user.findMany({
-          select: {
-            username: true,
-            password: true
-          }
-        });
-
-        users.forEach((user: any) => {
-          existingPasswords.set(user.username, user.password);
-        });
-
-        console.log(`✅ Saved passwords for ${existingPasswords.size} user(s)`);
-      } catch (err) {
-        console.warn('⚠️  Could not save existing passwords, they may be reset:', (err as any).message);
-      }
+      // NOTE: User data is managed separately and excluded from this backup process
+      // Existing passwords are NOT preserved as the schema is dropped and Users are not restored here
+      console.log('Skipping password preservation (User data managed separately)...');
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const existingPasswords: Map<string, string> = new Map();
 
       // Fastest approach: Drop and recreate the public schema
       // This avoids all the CASCADE locking issues with TRUNCATE
@@ -624,30 +576,8 @@ export class BackupRestoreService {
       await prisma.$disconnect();
       await prisma.$connect();
 
-      // IMPORTANT: Restore existing user passwords after restore
-      if (existingPasswords.size > 0) {
-        console.log('Restoring user passwords...');
-
-        try {
-          let restoredCount = 0;
-
-          for (const [username, password] of existingPasswords.entries()) {
-            try {
-              await prisma.user.update({
-                where: { username },
-                data: { password }
-              });
-              restoredCount++;
-            } catch (err) {
-              console.warn(`⚠️  Could not restore password for user "${username}":`, (err as any).message);
-            }
-          }
-
-          console.log(`✅ Restored passwords for ${restoredCount} of ${existingPasswords.size} user(s)`);
-        } catch (err) {
-          console.error('⚠️  Error restoring passwords:', (err as any).message);
-        }
-      }
+      // NOTE: User passwords are not restored here as User data is excluded
+      console.log('Skipping password restore (User data managed separately)...');
 
       // Clear all sessions after restore to force re-authentication
       console.log('🔐 Clearing all sessions after restore...');
@@ -662,7 +592,7 @@ export class BackupRestoreService {
 
       return {
         success: true,
-        message: `Database restored successfully from ${filename}. Schema synced for compatibility. User passwords preserved.`,
+        message: `Database restored successfully from ${filename}. Schema synced. User data managed separately.`,
         recordsRestored,
       };
     } catch (error: any) {
