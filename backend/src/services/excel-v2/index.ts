@@ -32,8 +32,11 @@ export * from './diff';
 // Executors (to be implemented)
 // export * from './executors';
 
-// Cache (to be implemented)
-// export * from './cache';
+// Cache
+export * from './cache';
+
+// Import Service (main API)
+export * from './ImportService';
 
 // Export service (to be implemented)
 // export * from './export';
