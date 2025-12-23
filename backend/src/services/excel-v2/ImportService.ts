@@ -10,6 +10,7 @@ import {
     EntityType,
     DryRunResult,
     ValidationError,
+    ImportStats,
 } from './types';
 import { parseWorkbookFromBuffer, parseWorkbookFromBase64 } from './parsers';
 import { validateWorkbook } from './validators';
@@ -20,6 +21,7 @@ import {
     extendImportSession,
 } from './cache';
 import { executeImport } from './executors';
+import { ProgressService } from './progress';
 
 // ============================================================================
 // Types
@@ -37,6 +39,7 @@ export interface CommitResult {
     success: boolean;
     entityId?: string;
     entityName: string;
+    stats?: ImportStats;
     errors: ValidationError[];
     message: string;
 }
@@ -187,21 +190,34 @@ export async function commitImport(
     }
 
     // Execute the actual import with Prisma transaction
+    const progressService = ProgressService.getInstance();
+
+    // Initial progress
+    progressService.emitProgress(options.sessionId, 0, 'Starting import...');
+
     const result = await executeImport(prisma, {
         parsedData: session.parsedData,
         records: session.dryRunResult.records,
         existingEntityId: session.dryRunResult.entitySummary.existingId,
+        onProgress: (percent, message) => {
+            progressService.emitProgress(options.sessionId, percent, message);
+        }
     });
 
     // Remove session after successful commit
     if (result.success) {
+        progressService.emitComplete(options.sessionId);
         removeImportSession(options.sessionId);
+    } else {
+        // Send error event
+        progressService.emitError(options.sessionId, result.errors[0]?.message || 'Import failed');
     }
 
     return {
         success: result.success,
         entityId: result.entityId,
         entityName: result.entityName,
+        stats: result.stats,
         errors: result.errors,
         message: result.success
             ? `Successfully imported ${result.entityName}`

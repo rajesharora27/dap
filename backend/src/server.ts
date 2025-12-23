@@ -258,6 +258,24 @@ export async function createApp() {
     }
   });
 
+  // SSE endpoint for import progress
+  app.get('/api/import/progress/:sessionId', (req, res) => {
+    const { sessionId } = req.params;
+    if (!sessionId) {
+      res.status(400).send('Missing session ID');
+      return;
+    }
+
+    // Import dynamically to avoid circular dependencies if any (though unlikely here)
+    // or just use the imported service if available.
+    // Better to import along with others at top, but for replacing content block safely:
+    // I will assume specific import at top or import here using dynamic import if needed.
+    // Let's use dynamic import to be safe with tool usage without modifying top of file.
+    import('./services/excel-v2/progress/ProgressService').then(({ ProgressService }) => {
+      ProgressService.getInstance().addClient(sessionId, res);
+    });
+  });
+
   // Development Tools API (Dev mode only)
   app.use('/api/dev', devToolsRouter);
 

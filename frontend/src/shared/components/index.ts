@@ -21,3 +21,4 @@ export { TelemetryImportResultDialog } from './TelemetryImportResultDialog';
 
 // Dialogs
 export { CustomAttributeDialog } from './CustomAttributeDialog';
+export { BulkImportDialog } from './BulkImportDialog';

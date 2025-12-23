@@ -376,8 +376,6 @@ model Task {
   taskTags           TaskTag[]
   solutionTaskTags    SolutionTaskTag[]
 
-  @@unique([productId, sequenceNumber], name: "unique_product_sequence")
-  @@unique([solutionId, sequenceNumber], name: "unique_solution_sequence")
   @@index([productId, sequenceNumber])
   @@index([solutionId, sequenceNumber])
 }
@@ -610,7 +608,6 @@ model CustomAttribute {
   updatedAt      DateTime                @updatedAt
   
   @@unique([productId, attributeName])
-  @@unique([productId, displayOrder])
   @@index([productId])
 }
 
@@ -660,8 +657,8 @@ model Release {
   tasks         TaskRelease[]
   customerTasks CustomerTaskRelease[]
 
-  @@unique([productId, level], name: "unique_product_release_level")
-  @@unique([solutionId, level], name: "unique_solution_release_level")
+  @@index([productId, level])
+  @@index([solutionId, level])
 }
 
 model TaskRelease {

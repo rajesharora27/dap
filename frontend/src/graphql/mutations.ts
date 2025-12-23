@@ -231,39 +231,7 @@ export const REORDER_PRODUCTS_IN_SOLUTION = gql`
   }
 `;
 
-export const IMPORT_PRODUCT_FROM_EXCEL = gql`
-  mutation ImportProductFromExcel($content: String!, $mode: ImportMode!) {
-    importProductFromExcel(content: $content, mode: $mode) {
-      success
-      productId
-      productName
-      stats {
-        tasksImported
-        outcomesImported
-        releasesImported
-        licensesImported
-        customAttributesImported
-        telemetryAttributesImported
-      }
-      errors {
-        sheet
-        row
-        column
-        field
-        message
-        severity
-      }
-      warnings {
-        sheet
-        row
-        column
-        field
-        message
-        severity
-      }
-    }
-  }
-`;
+// Legacy IMPORT_PRODUCT_FROM_EXCEL removed. Use ImportV2 instead.
 
 export const CREATE_PRODUCT_TAG = gql`
   mutation CreateProductTag($input: ProductTagInput!) {

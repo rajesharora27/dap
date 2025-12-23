@@ -5,14 +5,14 @@ import {
     IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, List, ListItem, ListItemText, CircularProgress, Card, CardContent, Checkbox, OutlinedInput, Collapse, Alert, Divider
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2, Label, FilterList, ExpandMore, ExpandLess, VerifiedUser, NewReleases } from '@shared/components/FAIcon';
+import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2, Label, FilterList, ExpandMore, ExpandLess, VerifiedUser, NewReleases, FileUpload, FileDownload } from '@shared/components/FAIcon';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { DragIndicator } from '@shared/components/FAIcon';
 
-import { SOLUTIONS, SOLUTION, DELETE_SOLUTION, UPDATE_SOLUTION, SolutionDialog, SolutionSummaryDashboard } from '@features/solutions';
+import { SOLUTIONS, SOLUTION, DELETE_SOLUTION, UPDATE_SOLUTION, EXPORT_SOLUTION_V2, SolutionDialog, SolutionSummaryDashboard } from '@features/solutions';
 import { PRODUCTS } from '@features/products';
 import { TASKS_FOR_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, TaskDialog } from '@features/tasks';
 import { SOLUTION_TAGS, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS, TagDialog } from '@features/tags';
@@ -23,12 +23,14 @@ import { SortableTaskItem } from '@shared/components/SortableTaskItem';
 
 import { useAuth } from '@features/auth';
 import { InlineEditableText } from '@shared/components/InlineEditableText';
+import { BulkImportDialog } from '@shared/components/BulkImportDialog';
 
 export const SolutionsPage: React.FC = () => {
     // State
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [selectedSolution, setSelectedSolution] = useState<string | null>(localStorage.getItem('lastSelectedSolutionId'));
     const [selectedSubSection, setSelectedSubSection] = useState<'summary' | 'tasks' | 'products' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('summary');
+    const [isExporting, setIsExporting] = useState(false);
     const [taskTagFilter, setTaskTagFilter] = useState<string[]>([]);
     const [taskOutcomeFilter, setTaskOutcomeFilter] = useState<string[]>([]);
     const [taskReleaseFilter, setTaskReleaseFilter] = useState<string[]>([]);
@@ -36,6 +38,7 @@ export const SolutionsPage: React.FC = () => {
     const [showFilters, setShowFilters] = useState(false);
 
     // Dialog States - must be before any conditional returns
+    const [importDialog, setImportDialog] = useState(false);
     const [solutionDialog, setSolutionDialog] = useState(false);
     const [editingSolution, setEditingSolution] = useState<any>(null);
     const [solutionDialogInitialTab, setSolutionDialogInitialTab] = useState<'general' | 'products' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes'>('general');
@@ -57,7 +60,7 @@ export const SolutionsPage: React.FC = () => {
     const [inlineOutcomeName, setInlineOutcomeName] = useState('');
 
     // Queries - must be before any conditional returns (skip handles auth)
-    const { data: solutionsData, loading: solutionsLoading, error: solutionsError } = useQuery(SOLUTIONS, {
+    const { data: solutionsData, loading: solutionsLoading, error: solutionsError, refetch: refetchSolutions } = useQuery(SOLUTIONS, {
         fetchPolicy: 'cache-and-network',
         skip: !isAuthenticated || authLoading
     });
@@ -172,7 +175,7 @@ export const SolutionsPage: React.FC = () => {
         // Outcome filter (OR within outcomes)
         if (taskOutcomeFilter.length > 0) {
             const hasSpecificOutcomes = task.outcomes && task.outcomes.length > 0;
-            
+
             // Special case: "__ALL_OUTCOMES__" means show ONLY tasks with no specific outcomes
             if (taskOutcomeFilter.includes('__ALL_OUTCOMES__')) {
                 if (hasSpecificOutcomes) {
@@ -241,6 +244,45 @@ export const SolutionsPage: React.FC = () => {
         // setSelectedSubSection('dashboard'); // Removed to persist tab
         // Force refetch tasks when solution changes or tab is selected
         setTimeout(() => refetchTasks && refetchTasks(), 0);
+    };
+
+    const handleExport = async () => {
+        if (!selectedSolution) return;
+        setIsExporting(true);
+        try {
+            const { data } = await client.query({
+                query: EXPORT_SOLUTION_V2,
+                variables: { solutionId: selectedSolution },
+                fetchPolicy: 'network-only'
+            });
+
+            if (!data || !data.exportSolutionV2) {
+                console.error('No data returned from Export Solution V2');
+                return;
+            }
+
+            const { filename, content, mimeType } = data.exportSolutionV2;
+
+            // Convert base64 to blob and download
+            const binaryString = window.atob(content);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error('Export Solution V2 failed:', error);
+            alert('Export Solution V2 failed');
+        }
     };
 
     const handleDeleteSolution = async () => {
@@ -809,6 +851,23 @@ export const SolutionsPage: React.FC = () => {
                                     </Button>
                                     <Button
                                         variant="outlined"
+                                        startIcon={isExporting ? <CircularProgress size={20} /> : <FileDownload />}
+                                        size="small"
+                                        onClick={handleExport}
+                                        disabled={isExporting}
+                                    >
+                                        Export to Excel
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
+                                        startIcon={<FileUpload />}
+                                        size="small"
+                                        onClick={() => setImportDialog(true)}
+                                    >
+                                        Import from Excel
+                                    </Button>
+                                    <Button
+                                        variant="outlined"
                                         color="error"
                                         startIcon={<Delete />}
                                         size="small"
@@ -1074,7 +1133,7 @@ export const SolutionsPage: React.FC = () => {
                                         // Switch to tasks tab and set filter
                                         setSelectedSubSection('tasks');
                                         setShowFilters(true);
-                                        
+
                                         if (outcomeName === 'All Outcomes') {
                                             // Filter to show only tasks that have no specific outcomes
                                             // These tasks apply to ALL outcomes
@@ -1542,6 +1601,20 @@ export const SolutionsPage: React.FC = () => {
                 availableReleases={aggregatedReleases}
                 availableTags={displaySolution?.tags || []}
             />
+
+            {/* Bulk Import V2 Dialog */}
+            {importDialog && (
+                <BulkImportDialog
+                    open={importDialog}
+                    onClose={() => setImportDialog(false)}
+                    onSuccess={() => {
+                        refetchSolutionDetail && refetchSolutionDetail();
+                        refetchSolutions && refetchSolutions();
+                        refetchTasks && refetchTasks();
+                    }}
+                    entityType="SOLUTION"
+                />
+            )}
         </Box >
     );
 };

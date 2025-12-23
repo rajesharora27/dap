@@ -12,13 +12,13 @@ import { ColumnDefinition, SheetDefinition } from './types';
 // ============================================================================
 
 export const PRODUCT_INFO_COLUMNS: ColumnDefinition[] = [
-    { key: 'id', header: 'ID', width: 40, type: 'string' },
+    { key: 'id', header: 'ID', width: 40, type: 'string', hidden: true },
     { key: 'name', header: 'Product Name', width: 40, required: true, type: 'string' },
     { key: 'description', header: 'Description', width: 60, type: 'string' },
 ];
 
 export const SOLUTION_INFO_COLUMNS: ColumnDefinition[] = [
-    { key: 'id', header: 'ID', width: 40, type: 'string' },
+    { key: 'id', header: 'ID', width: 40, type: 'string', hidden: true },
     { key: 'name', header: 'Solution Name', width: 40, required: true, type: 'string' },
     { key: 'description', header: 'Description', width: 60, type: 'string' },
     { key: 'linkedProducts', header: 'Linked Products', width: 50, type: 'array', arraySeparator: ',' },
@@ -29,7 +29,7 @@ export const SOLUTION_INFO_COLUMNS: ColumnDefinition[] = [
 // ============================================================================
 
 export const TASK_COLUMNS: ColumnDefinition[] = [
-    { key: 'id', header: 'ID', width: 40, type: 'string' },
+    { key: 'id', header: 'ID', width: 40, type: 'string', hidden: true },
     { key: 'name', header: 'Task Name', width: 40, required: true, type: 'string' },
     { key: 'description', header: 'Description', width: 60, type: 'string' },
     { key: 'weight', header: 'Weight', width: 10, type: 'number' },
@@ -49,7 +49,7 @@ export const TASK_COLUMNS: ColumnDefinition[] = [
 // ============================================================================
 
 export const LICENSE_COLUMNS: ColumnDefinition[] = [
-    { key: 'id', header: 'ID', width: 40, type: 'string' },
+    { key: 'id', header: 'ID', width: 40, type: 'string', hidden: true },
     { key: 'name', header: 'License Name', width: 30, required: true, type: 'string' },
     { key: 'level', header: 'Level', width: 10, required: true, type: 'number' },
     { key: 'description', header: 'Description', width: 60, type: 'string' },
@@ -60,7 +60,7 @@ export const LICENSE_COLUMNS: ColumnDefinition[] = [
 // ============================================================================
 
 export const OUTCOME_COLUMNS: ColumnDefinition[] = [
-    { key: 'id', header: 'ID', width: 40, type: 'string' },
+    { key: 'id', header: 'ID', width: 40, type: 'string', hidden: true },
     { key: 'name', header: 'Outcome Name', width: 40, required: true, type: 'string' },
     { key: 'description', header: 'Description', width: 60, type: 'string' },
 ];
@@ -70,7 +70,7 @@ export const OUTCOME_COLUMNS: ColumnDefinition[] = [
 // ============================================================================
 
 export const RELEASE_COLUMNS: ColumnDefinition[] = [
-    { key: 'id', header: 'ID', width: 40, type: 'string' },
+    { key: 'id', header: 'ID', width: 40, type: 'string', hidden: true },
     { key: 'name', header: 'Release Name', width: 30, required: true, type: 'string' },
     { key: 'level', header: 'Level', width: 10, required: true, type: 'number' },
     { key: 'description', header: 'Description', width: 60, type: 'string' },
@@ -81,7 +81,7 @@ export const RELEASE_COLUMNS: ColumnDefinition[] = [
 // ============================================================================
 
 export const TAG_COLUMNS: ColumnDefinition[] = [
-    { key: 'id', header: 'ID', width: 40, type: 'string' },
+    { key: 'id', header: 'ID', width: 40, type: 'string', hidden: true },
     { key: 'name', header: 'Tag Name', width: 30, required: true, type: 'string' },
     { key: 'color', header: 'Color', width: 15, type: 'string' },
     { key: 'description', header: 'Description', width: 60, type: 'string' },
@@ -92,7 +92,7 @@ export const TAG_COLUMNS: ColumnDefinition[] = [
 // ============================================================================
 
 export const CUSTOM_ATTRIBUTE_COLUMNS: ColumnDefinition[] = [
-    { key: 'id', header: 'ID', width: 40, type: 'string' },
+    { key: 'id', header: 'ID', width: 40, type: 'string', hidden: true },
     { key: 'key', header: 'Attribute Key', width: 30, required: true, type: 'string' },
     { key: 'value', header: 'Attribute Value', width: 50, required: true, type: 'string' },
     { key: 'displayOrder', header: 'Display Order', width: 15, type: 'number' },
@@ -109,6 +109,7 @@ export const TELEMETRY_ATTRIBUTE_COLUMNS: ColumnDefinition[] = [
     { key: 'expectedValue', header: 'Expected Value', width: 30, type: 'string' },
     { key: 'operator', header: 'Operator', width: 15, type: 'string', enum: ['equals', 'contains', 'gt', 'gte', 'lt', 'lte'] },
     { key: 'apiEndpoint', header: 'API Endpoint', width: 50, type: 'string' },
+    { key: 'isRequired', header: 'Required', width: 10, type: 'boolean' },
 ];
 
 // ============================================================================
@@ -124,6 +125,7 @@ export const PRODUCT_WORKBOOK_SHEETS: SheetDefinition[] = [
     { name: 'Tags', columns: TAG_COLUMNS },
     { name: 'Custom Attributes', columns: CUSTOM_ATTRIBUTE_COLUMNS },
     { name: 'Telemetry', columns: TELEMETRY_ATTRIBUTE_COLUMNS },
+    { name: 'Instructions', columns: [] },
 ];
 
 export const SOLUTION_WORKBOOK_SHEETS: SheetDefinition[] = [
@@ -135,6 +137,7 @@ export const SOLUTION_WORKBOOK_SHEETS: SheetDefinition[] = [
     { name: 'Tags', columns: TAG_COLUMNS },
     { name: 'Custom Attributes', columns: CUSTOM_ATTRIBUTE_COLUMNS },
     { name: 'Telemetry', columns: TELEMETRY_ATTRIBUTE_COLUMNS },
+    { name: 'Instructions', columns: [] },
 ];
 
 // ============================================================================

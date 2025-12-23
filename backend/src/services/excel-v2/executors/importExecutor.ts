@@ -21,6 +21,7 @@ import {
     ValidatedReleaseRow,
     ValidatedTagRow,
     ValidatedCustomAttributeRow,
+    ValidatedTelemetryAttributeRow,
 } from '../types';
 
 // ============================================================================
@@ -31,6 +32,7 @@ export interface ExecuteOptions {
     parsedData: ParsedWorkbook;
     records: RecordsSummary;
     existingEntityId?: string;
+    onProgress?: (percent: number, message?: string) => void;
 }
 
 interface ExecutionContext {
@@ -41,6 +43,23 @@ interface ExecutionContext {
     stats: ImportStats;
     errors: ValidationError[];
     warnings: ValidationWarning[];
+    progress: {
+        total: number;
+        current: number;
+        callback?: (percent: number, message?: string) => void;
+    };
+}
+
+function updateProgress(ctx: ExecutionContext, message?: string) {
+    if (!ctx.progress.callback) return;
+    ctx.progress.current++;
+
+    // Throttle updates to avoid overwhelming the client/connection
+    // Update every 5 items or if it's the first few
+    if (ctx.progress.current <= 5 || ctx.progress.current % 5 === 0 || ctx.progress.current === ctx.progress.total) {
+        const percent = Math.min(99, Math.round((ctx.progress.current / ctx.progress.total) * 100));
+        ctx.progress.callback(percent, message);
+    }
 }
 
 // ============================================================================
@@ -56,27 +75,47 @@ export async function executeImport(
     options: ExecuteOptions
 ): Promise<ImportResult> {
     const startTime = Date.now();
-    const { parsedData, records, existingEntityId } = options;
+    const { parsedData, records, existingEntityId, onProgress } = options;
+
+    // Calculate total operations for progress bar
+    const totalOps = 1 + // Main entity
+        records.licenses.length +
+        records.outcomes.length +
+        records.releases.length +
+        records.tags.length +
+        records.tasks.length +
+        records.customAttributes.length +
+        records.telemetryAttributes.length;
 
     try {
+        // Report start
+        onProgress?.(0, 'Starting transaction...');
+
         // Use interactive transaction for atomicity
         const result = await prisma.$transaction(async (tx) => {
             const stats: ImportStats = {
                 tasksCreated: 0,
                 tasksUpdated: 0,
+                tasksDeleted: 0,
                 tasksSkipped: 0,
                 licensesCreated: 0,
                 licensesUpdated: 0,
+                licensesDeleted: 0,
                 outcomesCreated: 0,
                 outcomesUpdated: 0,
+                outcomesDeleted: 0,
                 releasesCreated: 0,
                 releasesUpdated: 0,
+                releasesDeleted: 0,
                 tagsCreated: 0,
                 tagsUpdated: 0,
+                tagsDeleted: 0,
                 customAttributesCreated: 0,
                 customAttributesUpdated: 0,
+                customAttributesDeleted: 0,
                 telemetryAttributesCreated: 0,
                 telemetryAttributesUpdated: 0,
+                telemetryAttributesDeleted: 0,
             };
 
             const errors: ValidationError[] = [];
@@ -100,19 +139,40 @@ export async function executeImport(
                 stats,
                 errors,
                 warnings,
+                progress: {
+                    total: totalOps,
+                    current: 0,
+                    callback: onProgress
+                }
             };
 
-            // Execute in order: licenses, outcomes, releases first (referenced by tasks)
+            updateProgress(ctx, `Processing ${parsedData.entityType}...`);
+
+            // Execute in order: licenses, outcomes, releases, tags first (referenced by tasks)
             await executeLicenses(ctx, records.licenses);
             await executeOutcomes(ctx, records.outcomes);
             await executeReleases(ctx, records.releases);
             await executeTags(ctx, records.tags);
 
-            // Then tasks (may reference the above)
-            await executeTasks(ctx, records.tasks);
+            // Build lookup maps for task relations
+            const [outcomes, releases, tags] = await Promise.all([
+                tx.outcome.findMany({ where: { OR: [{ productId: entityId }, { solutionId: entityId }] } }),
+                tx.release.findMany({ where: { OR: [{ productId: entityId }, { solutionId: entityId }] } }),
+                ctx.entityType === 'product'
+                    ? tx.productTag.findMany({ where: { productId: entityId } })
+                    : (tx as any).solutionTag.findMany({ where: { solutionId: entityId } }),
+            ]);
 
-            // Finally, custom attributes
+            const outcomeMap = new Map((outcomes as any[]).map(o => [o.name.toLowerCase(), o.id]));
+            const releaseMap = new Map((releases as any[]).map(r => [r.name.toLowerCase(), r.id]));
+            const tagMap = new Map((tags as any[]).map(t => [t.name.toLowerCase(), t.id]));
+
+            // Then tasks (may reference the above)
+            await executeTasks(ctx, records.tasks, { outcomeMap, releaseMap, tagMap });
+
+            // Finally, custom attributes and telemetry
             await executeCustomAttributes(ctx, records.customAttributes);
+            await executeTelemetryAttributes(ctx, records.telemetryAttributes);
 
             return {
                 entityId,
@@ -174,7 +234,7 @@ async function createEntity(
         const product = await tx.product.create({
             data: {
                 name: entity.name,
-                description: entity.description ?? null,
+                description: (entity as any).description ?? null,
             },
         });
         return product.id;
@@ -182,7 +242,7 @@ async function createEntity(
         const solution = await tx.solution.create({
             data: {
                 name: entity.name,
-                description: entity.description ?? null,
+                description: (entity as any).description ?? null,
             },
         });
         return solution.id;
@@ -200,7 +260,7 @@ async function updateEntity(
             where: { id: entityId },
             data: {
                 name: entity.name,
-                description: entity.description ?? null,
+                description: (entity as any).description ?? null,
             },
         });
     } else {
@@ -208,7 +268,7 @@ async function updateEntity(
             where: { id: entityId },
             data: {
                 name: entity.name,
-                description: entity.description ?? null,
+                description: (entity as any).description ?? null,
             },
         });
     }
@@ -220,9 +280,15 @@ async function updateEntity(
 
 async function executeTasks(
     ctx: ExecutionContext,
-    tasks: RecordPreview<ValidatedTaskRow>[]
+    tasks: RecordPreview<ValidatedTaskRow>[],
+    lookups: {
+        outcomeMap: Map<string, string>;
+        releaseMap: Map<string, string>;
+        tagMap: Map<string, string>;
+    }
 ): Promise<void> {
     for (const preview of tasks) {
+        updateProgress(ctx, 'Importing tasks...');
         if (preview.action === 'skip') {
             ctx.stats.tasksSkipped++;
             continue;
@@ -231,22 +297,38 @@ async function executeTasks(
         const task = preview.data;
 
         if (preview.action === 'create') {
-            await createTask(ctx, task);
+            await createTask(ctx, task, lookups);
             ctx.stats.tasksCreated++;
         } else if (preview.action === 'update' && preview.existingId) {
-            await updateTask(ctx, preview.existingId, task);
+            await updateTask(ctx, preview.existingId, task, lookups);
             ctx.stats.tasksUpdated++;
+        } else if (preview.action === 'delete' && preview.existingId) {
+            await ctx.prisma.task.delete({ where: { id: preview.existingId } });
+            ctx.stats.tasksDeleted++;
         }
     }
 }
 
 async function createTask(
     ctx: ExecutionContext,
-    task: ValidatedTaskRow
+    task: ValidatedTaskRow,
+    lookups: {
+        outcomeMap: Map<string, string>;
+        releaseMap: Map<string, string>;
+        tagMap: Map<string, string>;
+    }
 ): Promise<void> {
+    const isProduct = ctx.entityType === 'product';
+
+    // Resolve relation IDs
+    const outcomeIds = (task.outcomes || []).map(name => lookups.outcomeMap.get(name.toLowerCase())).filter((id): id is string => !!id);
+    const releaseIds = (task.releases || []).map(name => lookups.releaseMap.get(name.toLowerCase())).filter((id): id is string => !!id);
+    const tagIds = (task.tags || []).map(name => lookups.tagMap.get(name.toLowerCase())).filter((id): id is string => !!id);
+
     await ctx.prisma.task.create({
         data: {
-            productId: ctx.entityId,
+            productId: isProduct ? ctx.entityId : undefined,
+            solutionId: !isProduct ? ctx.entityId : undefined,
             name: task.name,
             description: task.description ?? null,
             weight: task.weight,
@@ -256,6 +338,9 @@ async function createTask(
             notes: task.notes ?? null,
             howToDoc: task.howToDoc,
             howToVideo: task.howToVideo,
+            outcomes: { create: outcomeIds.map(id => ({ outcomeId: id })) },
+            releases: { create: releaseIds.map(id => ({ releaseId: id })) },
+            [isProduct ? 'taskTags' : 'solutionTaskTags']: { create: tagIds.map(id => ({ tagId: id })) },
         },
     });
 }
@@ -263,8 +348,18 @@ async function createTask(
 async function updateTask(
     ctx: ExecutionContext,
     taskId: string,
-    task: ValidatedTaskRow
+    task: ValidatedTaskRow,
+    lookups: {
+        outcomeMap: Map<string, string>;
+        releaseMap: Map<string, string>;
+        tagMap: Map<string, string>;
+    }
 ): Promise<void> {
+    // Resolve relation IDs
+    const outcomeIds = (task.outcomes || []).map(name => lookups.outcomeMap.get(name.toLowerCase())).filter((id): id is string => !!id);
+    const releaseIds = (task.releases || []).map(name => lookups.releaseMap.get(name.toLowerCase())).filter((id): id is string => !!id);
+    const tagIds = (task.tags || []).map(name => lookups.tagMap.get(name.toLowerCase())).filter((id): id is string => !!id);
+
     await ctx.prisma.task.update({
         where: { id: taskId },
         data: {
@@ -277,6 +372,19 @@ async function updateTask(
             notes: task.notes ?? null,
             howToDoc: task.howToDoc,
             howToVideo: task.howToVideo,
+            // Clear and recreate relations
+            outcomes: {
+                deleteMany: {},
+                create: outcomeIds.map(id => ({ outcomeId: id }))
+            },
+            releases: {
+                deleteMany: {},
+                create: releaseIds.map(id => ({ releaseId: id }))
+            },
+            [ctx.entityType === 'product' ? 'taskTags' : 'solutionTaskTags']: {
+                deleteMany: {},
+                create: tagIds.map(id => ({ tagId: id }))
+            },
         },
     });
 }
@@ -290,14 +398,17 @@ async function executeLicenses(
     licenses: RecordPreview<ValidatedLicenseRow>[]
 ): Promise<void> {
     for (const preview of licenses) {
+        updateProgress(ctx, 'Importing licenses...');
         if (preview.action === 'skip') continue;
 
         const license = preview.data;
 
         if (preview.action === 'create') {
+            const isProduct = ctx.entityType === 'product';
             await ctx.prisma.license.create({
                 data: {
-                    productId: ctx.entityId,
+                    productId: isProduct ? ctx.entityId : undefined,
+                    solutionId: !isProduct ? ctx.entityId : undefined,
                     name: license.name,
                     level: license.level,
                     description: license.description ?? null,
@@ -314,6 +425,9 @@ async function executeLicenses(
                 },
             });
             ctx.stats.licensesUpdated++;
+        } else if (preview.action === 'delete' && preview.existingId) {
+            await ctx.prisma.license.delete({ where: { id: preview.existingId } });
+            ctx.stats.licensesDeleted++;
         }
     }
 }
@@ -327,14 +441,17 @@ async function executeOutcomes(
     outcomes: RecordPreview<ValidatedOutcomeRow>[]
 ): Promise<void> {
     for (const preview of outcomes) {
+        updateProgress(ctx, 'Importing outcomes...');
         if (preview.action === 'skip') continue;
 
         const outcome = preview.data;
 
         if (preview.action === 'create') {
+            const isProduct = ctx.entityType === 'product';
             await ctx.prisma.outcome.create({
                 data: {
-                    productId: ctx.entityId,
+                    productId: isProduct ? ctx.entityId : undefined,
+                    solutionId: !isProduct ? ctx.entityId : undefined,
                     name: outcome.name,
                     description: outcome.description ?? null,
                 },
@@ -349,6 +466,9 @@ async function executeOutcomes(
                 },
             });
             ctx.stats.outcomesUpdated++;
+        } else if (preview.action === 'delete' && preview.existingId) {
+            await ctx.prisma.outcome.delete({ where: { id: preview.existingId } });
+            ctx.stats.outcomesDeleted++;
         }
     }
 }
@@ -362,14 +482,17 @@ async function executeReleases(
     releases: RecordPreview<ValidatedReleaseRow>[]
 ): Promise<void> {
     for (const preview of releases) {
+        updateProgress(ctx, 'Importing releases...');
         if (preview.action === 'skip') continue;
 
         const release = preview.data;
 
         if (preview.action === 'create') {
+            const isProduct = ctx.entityType === 'product';
             await ctx.prisma.release.create({
                 data: {
-                    productId: ctx.entityId,
+                    productId: isProduct ? ctx.entityId : undefined,
+                    solutionId: !isProduct ? ctx.entityId : undefined,
                     name: release.name,
                     level: release.level,
                     description: release.description ?? null,
@@ -386,6 +509,9 @@ async function executeReleases(
                 },
             });
             ctx.stats.releasesUpdated++;
+        } else if (preview.action === 'delete' && preview.existingId) {
+            await ctx.prisma.release.delete({ where: { id: preview.existingId } });
+            ctx.stats.releasesDeleted++;
         }
     }
 }
@@ -399,30 +525,60 @@ async function executeTags(
     tags: RecordPreview<ValidatedTagRow>[]
 ): Promise<void> {
     for (const preview of tags) {
+        updateProgress(ctx, 'Importing tags...');
         if (preview.action === 'skip') continue;
 
         const tag = preview.data;
 
         if (preview.action === 'create') {
-            await ctx.prisma.productTag.create({
-                data: {
-                    productId: ctx.entityId,
-                    name: tag.name,
-                    color: tag.color,
-                    description: tag.description ?? null,
-                },
-            });
+            if (ctx.entityType === 'product') {
+                await ctx.prisma.productTag.create({
+                    data: {
+                        productId: ctx.entityId,
+                        name: tag.name,
+                        color: tag.color,
+                        description: tag.description ?? null,
+                    },
+                });
+            } else {
+                await (ctx.prisma as any).solutionTag.create({
+                    data: {
+                        solutionId: ctx.entityId,
+                        name: tag.name,
+                        color: tag.color,
+                        description: tag.description ?? null,
+                    },
+                });
+            }
             ctx.stats.tagsCreated++;
         } else if (preview.action === 'update' && preview.existingId) {
-            await ctx.prisma.productTag.update({
-                where: { id: preview.existingId },
-                data: {
-                    name: tag.name,
-                    color: tag.color,
-                    description: tag.description ?? null,
-                },
-            });
+            if (ctx.entityType === 'product') {
+                await ctx.prisma.productTag.update({
+                    where: { id: preview.existingId },
+                    data: {
+                        name: tag.name,
+                        color: tag.color,
+                        description: tag.description ?? null,
+                    },
+                });
+            } else {
+                await (ctx.prisma as any).solutionTag.update({
+                    where: { id: preview.existingId },
+                    data: {
+                        name: tag.name,
+                        color: tag.color,
+                        description: tag.description ?? null,
+                    },
+                });
+            }
             ctx.stats.tagsUpdated++;
+        } else if (preview.action === 'delete' && preview.existingId) {
+            if (ctx.entityType === 'product') {
+                await ctx.prisma.productTag.delete({ where: { id: preview.existingId } });
+            } else {
+                await (ctx.prisma as any).solutionTag.delete({ where: { id: preview.existingId } });
+            }
+            ctx.stats.tagsDeleted++;
         }
     }
 }
@@ -435,7 +591,11 @@ async function executeCustomAttributes(
     ctx: ExecutionContext,
     attributes: RecordPreview<ValidatedCustomAttributeRow>[]
 ): Promise<void> {
+    // Solutions store attributes in JSON on the model itself, not in this table
+    if (ctx.entityType !== 'product') return;
+
     for (const preview of attributes) {
+        updateProgress(ctx, 'Importing custom attributes...');
         if (preview.action === 'skip') continue;
 
         const attr = preview.data;
@@ -451,15 +611,162 @@ async function executeCustomAttributes(
             });
             ctx.stats.customAttributesCreated++;
         } else if (preview.action === 'update' && preview.existingId) {
-            await ctx.prisma.customAttribute.update({
-                where: { id: preview.existingId },
+            try {
+                await ctx.prisma.customAttribute.update({
+                    where: { id: preview.existingId },
+                    data: {
+                        attributeName: attr.key,
+                        attributeValue: attr.value,
+                        displayOrder: attr.displayOrder,
+                    },
+                });
+                ctx.stats.customAttributesUpdated++;
+            } catch (error) {
+                // If update fails because record doesn't exist, create it instead
+                if (String(error).includes('Record to update not found')) {
+                    await ctx.prisma.customAttribute.create({
+                        data: {
+                            productId: ctx.entityId,
+                            attributeName: attr.key,
+                            attributeValue: attr.value,
+                            displayOrder: attr.displayOrder,
+                        },
+                    });
+                    ctx.stats.customAttributesCreated++;
+                } else {
+                    throw error;
+                }
+            }
+        } else if (preview.action === 'delete' && preview.existingId) {
+            await ctx.prisma.customAttribute.delete({ where: { id: preview.existingId } });
+            ctx.stats.customAttributesDeleted++;
+        }
+    }
+}
+
+// ============================================================================
+// Telemetry Operations
+// ============================================================================
+
+async function executeTelemetryAttributes(
+    ctx: ExecutionContext,
+    telemetryAttributes: RecordPreview<ValidatedTelemetryAttributeRow>[]
+): Promise<void> {
+    // Cache task IDs to avoid repeated lookups
+    const taskCache = new Map<string, string>();
+
+    for (const preview of telemetryAttributes) {
+        updateProgress(ctx, 'Importing telemetry...');
+        if (preview.action === 'skip') continue;
+
+        const row = preview.data;
+
+        // Resolve Task ID
+        let taskId = taskCache.get(row.taskName);
+        if (!taskId) {
+            // Find task by name within this product/solution
+            const task = await ctx.prisma.task.findFirst({
+                where: {
+                    OR: [
+                        { productId: ctx.entityId, name: row.taskName },
+                        { solutionId: ctx.entityId, name: row.taskName }
+                    ]
+                },
+                select: { id: true }
+            });
+
+            if (!task) {
+                ctx.warnings.push({
+                    sheet: 'Telemetry',
+                    row: preview.rowNumber,
+                    column: 'taskName',
+                    field: 'taskName',
+                    message: `Task "${row.taskName}" not found. skipping telemetry attribute.`,
+                    code: 'TASK_NOT_FOUND',
+                    severity: 'warning'
+                });
+                continue;
+            }
+            taskId = task.id;
+            taskCache.set(row.taskName, taskId);
+        }
+
+        // Prepare Success Criteria JSON
+        let successCriteria: any = {
+            operator: row.operator,
+        };
+
+        if (row.expectedValue) {
+            const trimmed = row.expectedValue.trim();
+            let isComplex = false;
+
+            // 1. Try to detect and parse Complex Criteria Object (starting with {)
+            if (trimmed.startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(trimmed);
+                    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+                        successCriteria = {
+                            ...parsed,
+                            operator: row.operator // Ensure operator from column takes precedence
+                        };
+                        isComplex = true;
+                    }
+                } catch {
+                    // Ignore parse error, treat as scalar string
+                }
+            }
+
+            // 2. If not complex, handle as scalar value with type coercion
+            if (!isComplex) {
+                let value: any = trimmed;
+
+                if (row.attributeType === 'boolean') {
+                    // Handle Excel "TRUE"/"FALSE" case-insensitively
+                    const lower = trimmed.toLowerCase();
+                    if (lower === 'true') value = true;
+                    else if (lower === 'false') value = false;
+                } else if (row.attributeType === 'number') {
+                    // Force number
+                    const num = Number(trimmed);
+                    if (!isNaN(num)) value = num;
+                } else if (row.attributeType === 'json') {
+                    // Try parsing JSON value
+                    try { value = JSON.parse(trimmed); } catch { }
+                } else {
+                    // Default / String: Try JSON parsing (handles "quoted strings", numbers, booleans)
+                    // but fallback to raw string if it fails
+                    try { value = JSON.parse(trimmed); } catch { }
+                }
+
+                successCriteria.value = value;
+            }
+        }
+
+        if (preview.action === 'create') {
+            await ctx.prisma.telemetryAttribute.create({
                 data: {
-                    attributeName: attr.key,
-                    attributeValue: attr.value,
-                    displayOrder: attr.displayOrder,
+                    taskId,
+                    name: row.attributeName,
+                    dataType: row.attributeType.toUpperCase() as any,
+                    isRequired: row.isRequired ?? true,
+                    successCriteria,
                 },
             });
-            ctx.stats.customAttributesUpdated++;
+            ctx.stats.telemetryAttributesCreated++;
+        } else if (preview.action === 'update' && preview.existingId) {
+            await ctx.prisma.telemetryAttribute.update({
+                where: { id: preview.existingId },
+                data: {
+                    name: row.attributeName,
+                    dataType: row.attributeType.toUpperCase() as any,
+                    isRequired: row.isRequired ?? true,
+                    successCriteria,
+                },
+            });
+            ctx.stats.telemetryAttributesUpdated++;
+        } else if (preview.action === 'delete' && preview.existingId) {
+            await ctx.prisma.telemetryAttribute.delete({ where: { id: preview.existingId } });
+            ctx.stats.telemetryAttributesDeleted++;
         }
     }
 }
@@ -472,18 +779,25 @@ function createEmptyStats(): ImportStats {
     return {
         tasksCreated: 0,
         tasksUpdated: 0,
+        tasksDeleted: 0,
         tasksSkipped: 0,
         licensesCreated: 0,
         licensesUpdated: 0,
+        licensesDeleted: 0,
         outcomesCreated: 0,
         outcomesUpdated: 0,
+        outcomesDeleted: 0,
         releasesCreated: 0,
         releasesUpdated: 0,
+        releasesDeleted: 0,
         tagsCreated: 0,
         tagsUpdated: 0,
+        tagsDeleted: 0,
         customAttributesCreated: 0,
         customAttributesUpdated: 0,
+        customAttributesDeleted: 0,
         telemetryAttributesCreated: 0,
         telemetryAttributesUpdated: 0,
+        telemetryAttributesDeleted: 0,
     };
 }

@@ -38,5 +38,8 @@ export * from './cache';
 // Import Service (main API)
 export * from './ImportService';
 
-// Export service (to be implemented)
-// export * from './export';
+// Progress
+export * from './progress';
+
+// Export service
+export * from './export';

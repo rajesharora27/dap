@@ -1,8 +1,7 @@
 import { GraphQLScalarType, Kind } from 'graphql';
 import { ConnectionArguments, connectionFromArraySlice, cursorToOffset } from 'graphql-relay';
 import { prisma, fallbackActive } from '../../shared/graphql/context';
-import { ExcelExportService, ExcelImportService, ImportMode } from '../../services/excel';
-// (removed earlier simpler import replaced by extended import below)
+// Removed Legacy Excel Service
 import { updateProduct as fbUpdateProduct, softDeleteProduct as fbDeleteProduct, createProduct as fbCreateProduct, createTask as fbCreateTask, updateTask as fbUpdateTask, softDeleteTask as fbSoftDeleteTask, createSolution as fbCreateSolution, updateSolution as fbUpdateSolution, softDeleteSolution as fbDeleteSolution, createCustomer as fbCreateCustomer, updateCustomer as fbUpdateCustomer, softDeleteCustomer as fbDeleteCustomer, listCustomers as fbListCustomers, listLicenses, createLicense as fbCreateLicense, updateLicense as fbUpdateLicense, softDeleteLicense as fbDeleteLicense, createOutcome as fbCreateOutcome, updateOutcome as fbUpdateOutcome, softDeleteOutcome as fbSoftDeleteOutcome, listOutcomes as fbListOutcomes, listOutcomesForProduct as fbListOutcomesForProduct, getOutcomesForTask as fbGetOutcomesForTask, addProductToSolution as fbAddProductToSolution, removeProductFromSolution as fbRemoveProductFromSolution, addProductToCustomer as fbAddProductToCustomer, removeProductFromCustomer as fbRemoveProductFromCustomer, addSolutionToCustomer as fbAddSolutionToCustomer, removeSolutionFromCustomer as fbRemoveSolutionFromCustomer, reorderTasks as fbReorderTasks, fallbackConnections } from '../../shared/utils/fallbackStore';
 import { acquireLock, releaseLock } from '../../shared/utils/lock';
 import { createChangeSet, recordChange, commitChangeSet, undoChangeSet, listChangeSets, getChangeSet, revertChangeSet } from '../../shared/utils/changes';
@@ -39,6 +38,7 @@ import { BackupQueryResolvers, BackupMutationResolvers } from './backup';
 import { AuthQueryResolvers, AuthMutationResolvers } from './auth';
 import { AIQueryResolvers, AIMutationResolvers } from './ai';
 import { ImportV2MutationResolvers } from './importV2';
+import { ExcelExportServiceV2 } from '../../services/excel-v2';
 import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../shared/utils/pagination';
 import { logAudit } from '../../shared/utils/audit';
 import { ensureRole, requireUser } from '../../shared/auth/auth-helpers';
@@ -591,16 +591,26 @@ export const resolvers = {
     , askAI: AIQueryResolvers.askAI
     , aiDataContextStatus: AIQueryResolvers.aiDataContextStatus
 
-    // Excel Export
-    , exportProductToExcel: async (_: any, { productName }: any) => {
-      const excelService = new ExcelExportService();
-      const result = await excelService.exportProduct(productName);
-
+    // Excel Export V2
+    , exportProductV2: async (_: any, { productId }: any) => {
+      const excelService = new ExcelExportServiceV2();
+      const result = await excelService.exportProduct(productId);
       return {
         filename: result.filename,
         content: result.buffer.toString('base64'),
-        mimeType: result.mimeType,
         size: result.size,
+        mimeType: result.mimeType,
+        stats: result.stats
+      };
+    }
+    , exportSolutionV2: async (_: any, { solutionId }: any) => {
+      const excelService = new ExcelExportServiceV2();
+      const result = await excelService.exportSolution(solutionId);
+      return {
+        filename: result.filename,
+        content: result.buffer.toString('base64'),
+        size: result.size,
+        mimeType: result.mimeType,
         stats: result.stats
       };
     }
@@ -2374,66 +2384,8 @@ export const resolvers = {
     reorderProductsInSolution: SolutionAdoptionMutationResolvers.reorderProductsInSolution,
     migrateProductNamesToNewFormat: SolutionAdoptionMutationResolvers.migrateProductNamesToNewFormat,
 
-    // Excel Import
-    importProductFromExcel: async (_: any, { content, mode }: any, ctx: any) => {
-      ensureRole(ctx, 'ADMIN');
-
-      try {
-        const buffer = Buffer.from(content, 'base64');
-        const excelService = new ExcelImportService();
-
-        // Map string mode to enum
-        let importMode: ImportMode;
-        switch (mode) {
-          case 'CREATE_NEW':
-            importMode = ImportMode.CREATE_NEW;
-            break;
-          case 'UPDATE_EXISTING':
-            importMode = ImportMode.UPDATE_EXISTING;
-            break;
-          case 'CREATE_OR_UPDATE':
-          default:
-            importMode = ImportMode.CREATE_OR_UPDATE;
-            break;
-        }
-
-        const result = await excelService.importProduct(buffer, importMode);
-
-        await logAudit('IMPORT_PRODUCT', 'Product', result.productId, {
-          productName: result.productName,
-          mode: mode,
-          success: result.success,
-          stats: result.stats
-        });
-
-        return result;
-      } catch (error: any) {
-        console.error('Import failed:', error);
-        return {
-          success: false,
-          productName: 'Unknown',
-          stats: {
-            tasksImported: 0,
-            outcomesImported: 0,
-            releasesImported: 0,
-            licensesImported: 0,
-            customAttributesImported: 0,
-            telemetryAttributesImported: 0
-          },
-          errors: [
-            {
-              sheet: 'Import',
-              message: error.message || 'Unknown error occurred during import',
-              severity: 'error'
-            }
-          ],
-          warnings: []
-        };
-      }
-    }
-
     // Backup mutations
-    , createBackup: BackupMutationResolvers.createBackup
+    createBackup: BackupMutationResolvers.createBackup
     , restoreBackup: BackupMutationResolvers.restoreBackup
     , deleteBackup: BackupMutationResolvers.deleteBackup
     , updateAutoBackupConfig: BackupMutationResolvers.updateAutoBackupConfig

@@ -76,23 +76,26 @@ export const PRODUCT = gql`
   }
 `;
 
-export const EXPORT_PRODUCT_TO_EXCEL = gql`
-  query ExportProductToExcel($productName: String!) {
-    exportProductToExcel(productName: $productName) {
-      filename
-      content
-      mimeType
-      size
+// Removed legacy EXPORT_PRODUCT_TO_EXCEL query. Use EXPORT_PRODUCT_V2 instead.
+
+
+export const EXPORT_PRODUCT_V2 = gql`
+  query ExportProductV2($productId: ID!) {
+  exportProductV2(productId: $productId) {
+    filename
+    content
+    mimeType
+    size
       stats {
-        tasksExported
-        customAttributesExported
-        licensesExported
-        outcomesExported
-        releasesExported
-        telemetryAttributesExported
-      }
+      tasksExported
+      customAttributesExported
+      licensesExported
+      outcomesExported
+      releasesExported
+      telemetryAttributesExported
     }
   }
+}
 `;
 
 // Aliases for transition
@@ -101,13 +104,13 @@ export const GET_PRODUCT = PRODUCT;
 
 export const OUTCOMES = gql`
   query Outcomes($productId: ID) {
-    outcomes(productId: $productId) {
+  outcomes(productId: $productId) {
+    id
+    name
+      product {
       id
       name
-      product {
-        id
-        name
-      }
     }
   }
+}
 `;

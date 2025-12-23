@@ -1,31 +1,37 @@
 import { useState } from 'react';
 import { useApolloClient } from '@apollo/client';
-import { EXPORT_PRODUCT_TO_EXCEL } from '../graphql/queries';
-
-import { importProductData, ImportStats } from '@/utils/productImport';
+import { EXPORT_PRODUCT_V2 } from '../graphql/queries';
 
 export const useProductImportExport = (
     selectedProduct: string | null,
     products: any[],
-    tasks: any[],
-    refetchQueries: () => Promise<any>
+    _tasks: any[],
+    _refetchQueries: () => Promise<any>
 ) => {
     const client = useApolloClient();
-    const [isImporting, setIsImporting] = useState(false);
-    const [importProgress, setImportProgress] = useState('');
+    const [isExporting, setIsExporting] = useState(false);
 
     const handleExport = async () => {
         if (!selectedProduct) return;
+        // Verify product exists in list
         const product = products.find(p => p.id === selectedProduct);
+        console.log('Exporting Product:', product?.name, selectedProduct);
         if (!product) return;
+
+        setIsExporting(true);
         try {
             const { data } = await client.query({
-                query: EXPORT_PRODUCT_TO_EXCEL,
-                variables: { productName: product.name },
-                fetchPolicy: 'network-only' // Ensure fresh data
+                query: EXPORT_PRODUCT_V2,
+                variables: { productId: selectedProduct },
+                fetchPolicy: 'network-only'
             });
 
-            const { filename, content, mimeType } = data.exportProductToExcel;
+            if (!data || !data.exportProductV2) {
+                console.error('No data returned from Export');
+                return;
+            }
+
+            const { filename, content, mimeType } = data.exportProductV2;
 
             // Convert base64 to blob and download
             const binaryString = window.atob(content);
@@ -46,55 +52,10 @@ export const useProductImportExport = (
         } catch (error) {
             console.error('Export failed:', error);
             alert('Export failed');
-        }
-    };
-
-    const handleImport = async (event: any) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        const product = selectedProduct ? products.find(p => p.id === selectedProduct) : null;
-
-        setIsImporting(true);
-        try {
-            const stats: ImportStats = await importProductData(
-                file,
-                client,
-                selectedProduct,
-                product,
-                setImportProgress
-            );
-
-            // Build detailed success message
-            const action = stats.isNewProduct ? 'Created new product' : 'Updated product';
-            const lines = [
-                `✓ ${action}: "${stats.productName}"`,
-                '',
-                'Import Summary:',
-                `  • Tasks: ${stats.tasksImported}`,
-                `  • Outcomes: ${stats.outcomesImported}`,
-                `  • Releases: ${stats.releasesImported}`,
-                `  • Licenses: ${stats.licensesImported}`,
-                `  • Custom Attributes: ${stats.customAttributesImported}`,
-                `  • Telemetry Attributes: ${stats.telemetryAttributesImported}`
-            ];
-
-            if (stats.warnings.length > 0) {
-                lines.push('', 'Warnings:');
-                stats.warnings.forEach((w: string) => lines.push(`  ⚠ ${w}`));
-            }
-
-            alert(lines.join('\n'));
-            await refetchQueries();
-
-        } catch (error: any) {
-            console.error('Import failed:', error);
-            alert(`Import failed: ${error.message}`);
         } finally {
-            setIsImporting(false);
-            setImportProgress('');
-            event.target.value = '';
+            setIsExporting(false);
         }
     };
 
-    return { handleExport, handleImport, isImporting, importProgress };
+    return { handleExport, isExporting };
 };

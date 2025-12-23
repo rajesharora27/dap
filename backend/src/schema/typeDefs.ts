@@ -412,8 +412,11 @@ type CustomerSolutionTaskTag {
     solutionAdoptionReport(solutionAdoptionPlanId: ID!): SolutionAdoptionReport!
     solutionComparisonReport(solutionId: ID!): SolutionComparisonReport!
     
-    # Excel Export
-    exportProductToExcel(productName: String!): ExcelExportResult!
+    # Excel Export V2
+    
+    # Excel Export V2
+    exportProductV2(productId: ID!): ExcelExportResult!
+    exportSolutionV2(solutionId: ID!): ExcelExportResult!
   }
 
   type ExcelExportResult {
@@ -433,30 +436,7 @@ type CustomerSolutionTaskTag {
     telemetryAttributesExported: Int!
   }
 
-  enum ImportMode {
-    CREATE_NEW
-    UPDATE_EXISTING
-    CREATE_OR_UPDATE
-  }
-
-  type ImportResult {
-    success: Boolean!
-    productId: String
-    productName: String!
-    stats: ImportStats!
-    errors: [ValidationError!]!
-    warnings: [ValidationError!]!
-  }
-
-  type ImportStats {
-    tasksImported: Int!
-    outcomesImported: Int!
-    releasesImported: Int!
-    licensesImported: Int!
-    customAttributesImported: Int!
-    tagsImported: Int!
-    telemetryAttributesImported: Int!
-  }
+  # Legacy ImportResult and ImportMode removed. Using ImportV2 instead.
 
   type CustomerAdoptionImportResult {
     success: Boolean!
@@ -549,10 +529,36 @@ type CustomerSolutionTaskTag {
     warningCount: Int!
   }
 
+  type ImportV2Stats {
+    tasksCreated: Int!
+    tasksUpdated: Int!
+    tasksDeleted: Int!
+    tasksSkipped: Int!
+    licensesCreated: Int!
+    licensesUpdated: Int!
+    licensesDeleted: Int!
+    outcomesCreated: Int!
+    outcomesUpdated: Int!
+    outcomesDeleted: Int!
+    releasesCreated: Int!
+    releasesUpdated: Int!
+    releasesDeleted: Int!
+    tagsCreated: Int!
+    tagsUpdated: Int!
+    tagsDeleted: Int!
+    customAttributesCreated: Int!
+    customAttributesUpdated: Int!
+    customAttributesDeleted: Int!
+    telemetryAttributesCreated: Int!
+    telemetryAttributesUpdated: Int!
+    telemetryAttributesDeleted: Int!
+  }
+
   type ImportV2CommitResult {
     success: Boolean!
     entityId: String
     entityName: String!
+    stats: ImportV2Stats
     errors: [ImportValidationError!]!
     message: String!
   }
@@ -793,7 +799,6 @@ type CustomerSolutionTaskTag {
   processDeletionQueue(limit: Int = 50): Int!
   
   # Excel Import/Export mutations
-  importProductFromExcel(content: String!, mode: ImportMode!): ImportResult!
   exportCustomerAdoptionToExcel(customerId: ID!, customerProductId: ID!): ExcelExportResult!
   importCustomerAdoptionFromExcel(content: String!): CustomerAdoptionImportResult!
   

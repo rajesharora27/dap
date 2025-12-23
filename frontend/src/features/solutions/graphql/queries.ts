@@ -180,3 +180,22 @@ export const SOLUTION_TAGS = gql`
     }
   }
 `;
+
+export const EXPORT_SOLUTION_V2 = gql`
+  query ExportSolutionV2($solutionId: ID!) {
+    exportSolutionV2(solutionId: $solutionId) {
+      filename
+      content
+      mimeType
+      size
+      stats {
+        tasksExported
+        customAttributesExported
+        licensesExported
+        outcomesExported
+        releasesExported
+        telemetryAttributesExported
+      }
+    }
+  }
+`;

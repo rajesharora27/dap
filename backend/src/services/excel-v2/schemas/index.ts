@@ -11,20 +11,7 @@ import { z } from 'zod';
 // Common Schemas
 // ============================================================================
 
-/**
- * UUID schema - accepts standard UUIDs or CUIDs
- */
-export const IdSchema = z.string()
-    .refine(
-        (val) => {
-            // Accept UUIDs (v4 format) or CUIDs (starts with 'c')
-            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-            const cuidRegex = /^c[a-z0-9]{20,}$/i;
-            return uuidRegex.test(val) || cuidRegex.test(val);
-        },
-        { message: 'Invalid ID format (must be UUID or CUID)' }
-    )
-    .optional();
+export const IdSchema = z.string().optional().nullable();
 
 /**
  * URL schema with custom error messages
@@ -46,9 +33,12 @@ export const NonEmptyString = z.string()
 /**
  * License level enum (matches Prisma enum)
  */
-export const LicenseLevelSchema = z.enum(['ESSENTIAL', 'ADVANTAGE', 'SIGNATURE'], {
-    message: 'License level must be Essential, Advantage, or Signature',
-});
+export const LicenseLevelSchema = z.preprocess(
+    (val) => (typeof val === 'string' ? val.toUpperCase() : val),
+    z.enum(['ESSENTIAL', 'ADVANTAGE', 'SIGNATURE'], {
+        message: 'License level must be Essential, Advantage, or Signature',
+    })
+);
 
 // ============================================================================
 // Product Schema
@@ -187,13 +177,27 @@ export type CustomAttributeRow = z.infer<typeof CustomAttributeRowSchema>;
 // Telemetry Attribute Schema
 // ============================================================================
 
-export const TelemetryOperatorSchema = z.enum(['equals', 'contains', 'gt', 'gte', 'lt', 'lte'], {
-    message: 'Operator must be: equals, contains, gt, gte, lt, or lte',
-});
+export const TelemetryOperatorSchema = z.preprocess(
+    (val) => {
+        if (typeof val !== 'string') return val;
+        const normalized = val.toLowerCase().trim();
+        const mapping: Record<string, string> = {
+            'greater_than': 'gt',
+            'greater_than_or_equal': 'gte',
+            'less_than': 'lt',
+            'less_than_or_equal': 'lte',
+            'equal': 'equals',
+            'not_equal': 'not_equals' // strictly speaking not in enum but might be useful future proofing, strictly restricting to enum below anyway
+        };
+        return mapping[normalized] || normalized;
+    },
+    z.string().default('equals')
+);
 
-export const TelemetryTypeSchema = z.enum(['string', 'number', 'boolean', 'json'], {
-    message: 'Type must be: string, number, boolean, or json',
-});
+export const TelemetryTypeSchema = z.preprocess(
+    (val) => (typeof val === 'string' ? val.toLowerCase() : val),
+    z.enum(['string', 'number', 'boolean', 'json', 'timestamp'])
+);
 
 export const TelemetryAttributeRowSchema = z.object({
     taskName: NonEmptyString.describe('Task name is required'),
@@ -202,6 +206,7 @@ export const TelemetryAttributeRowSchema = z.object({
     expectedValue: z.string().optional().nullable(),
     operator: TelemetryOperatorSchema.default('equals'),
     apiEndpoint: UrlSchema.optional().nullable(),
+    isRequired: z.boolean().default(true),
 });
 
 export type TelemetryAttributeRow = z.infer<typeof TelemetryAttributeRowSchema>;

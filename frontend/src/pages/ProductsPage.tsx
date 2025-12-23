@@ -24,6 +24,7 @@ import { TagDialog, ProductTag, CREATE_PRODUCT_TAG, UPDATE_PRODUCT_TAG, DELETE_P
 import { useAuth } from '@features/auth';
 import { useProductImportExport } from '@features/products';
 import { InlineEditableText } from '@shared/components/InlineEditableText';
+import { BulkImportDialog } from '@shared/components/BulkImportDialog';
 
 interface ProductsPageProps {
     onEditProduct: (product: any) => void;
@@ -34,9 +35,9 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
     const [selectedSubSection, setSelectedSubSection] = useState<'summary' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('summary');
-    const importFileRef = useRef<HTMLInputElement>(null);
 
     // Dialog States - must be before any conditional returns
+    const [importDialog, setImportDialog] = useState(false);
     const [taskDialog, setTaskDialog] = useState(false);
     const [editingTask, setEditingTask] = useState<any>(null);
     const [outcomeDialog, setOutcomeDialog] = useState(false);
@@ -108,7 +109,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const theme = useTheme();
 
     // Import/Export Hook
-    const { handleExport, handleImport, isImporting, importProgress } = useProductImportExport(
+    const { handleExport, isExporting } = useProductImportExport(
         selectedProduct,
         products,
         tasks,
@@ -167,7 +168,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         // Outcome filter (OR within outcomes)
         if (taskOutcomeFilter.length > 0) {
             const hasSpecificOutcomes = task.outcomes && task.outcomes.length > 0;
-            
+
             // Special case: "__ALL_OUTCOMES__" means show ONLY tasks with no specific outcomes
             if (taskOutcomeFilter.includes('__ALL_OUTCOMES__')) {
                 if (hasSpecificOutcomes) {
@@ -798,27 +799,21 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                     </Button>
                                     <Button
                                         variant="outlined"
-                                        startIcon={<FileDownload />}
+                                        startIcon={isExporting ? <CircularProgress size={20} /> : <FileDownload />}
                                         size="small"
                                         onClick={handleExport}
+                                        disabled={isExporting}
                                     >
-                                        Export
+                                        Export to Excel
                                     </Button>
                                     <Button
                                         variant="outlined"
                                         startIcon={<FileUpload />}
                                         size="small"
-                                        onClick={() => importFileRef.current?.click()}
+                                        onClick={() => setImportDialog(true)}
                                     >
-                                        Import
+                                        Import from Excel
                                     </Button>
-                                    <input
-                                        ref={importFileRef}
-                                        type="file"
-                                        accept=".xlsx"
-                                        style={{ display: 'none' }}
-                                        onChange={handleImport}
-                                    />
                                     <Button
                                         variant="outlined"
                                         color="error"
@@ -922,7 +917,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                     // Switch to tasks tab and set filter
                                     setSelectedSubSection('tasks');
                                     setShowFilters(true);
-                                    
+
                                     if (outcomeName === 'All Outcomes') {
                                         // Filter to show only tasks that have no specific outcomes
                                         // These tasks apply to ALL outcomes
@@ -1463,17 +1458,6 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 onSave={handleSaveLicense}
             />
 
-            {/* Import Progress Dialog */}
-            <Dialog open={isImporting} disableEscapeKeyDown>
-                <DialogTitle>Importing Product Data</DialogTitle>
-                <DialogContent>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, py: 2, minWidth: 300 }}>
-                        <CircularProgress />
-                        <Typography>{importProgress || 'Processing...'}</Typography>
-                    </Box>
-                </DialogContent>
-            </Dialog>
-
             {/* Add/Edit Product Dialog */}
             <ProductDialog
                 open={productDialog}
@@ -1545,6 +1529,18 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 tag={editingTag}
                 existingNames={displayProduct?.tags?.map((t: any) => t.name) || []}
             />
+            {/* Bulk Import V2 Dialog */}
+            {importDialog && (
+                <BulkImportDialog
+                    open={importDialog}
+                    onClose={() => setImportDialog(false)}
+                    onSuccess={() => {
+                        refetchProducts();
+                        refetchProductDetail();
+                    }}
+                    entityType="PRODUCT"
+                />
+            )}
         </React.Fragment>
     );
 };

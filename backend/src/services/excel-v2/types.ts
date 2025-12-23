@@ -182,6 +182,7 @@ export interface ValidatedTelemetryAttributeRow {
     attributeType: string;
     expectedValue?: string;
     operator: string;
+    isRequired: boolean;
     apiEndpoint?: string;
 }
 
@@ -307,19 +308,26 @@ export interface DryRunResult {
 export interface ImportStats {
     tasksCreated: number;
     tasksUpdated: number;
+    tasksDeleted: number;
     tasksSkipped: number;
     licensesCreated: number;
     licensesUpdated: number;
+    licensesDeleted: number;
     outcomesCreated: number;
     outcomesUpdated: number;
+    outcomesDeleted: number;
     releasesCreated: number;
     releasesUpdated: number;
+    releasesDeleted: number;
     tagsCreated: number;
     tagsUpdated: number;
+    tagsDeleted: number;
     customAttributesCreated: number;
     customAttributesUpdated: number;
+    customAttributesDeleted: number;
     telemetryAttributesCreated: number;
     telemetryAttributesUpdated: number;
+    telemetryAttributesDeleted: number;
 }
 
 export interface ImportResult {
@@ -372,6 +380,7 @@ export interface ColumnDefinition {
     type?: 'string' | 'number' | 'boolean' | 'array';
     enum?: readonly string[];
     arraySeparator?: string;
+    hidden?: boolean;
 }
 
 export interface SheetDefinition {

@@ -33,39 +33,7 @@ export const DELETE_PRODUCT = gql`
   }
 `;
 
-export const IMPORT_PRODUCT_FROM_EXCEL = gql`
-  mutation ImportProductFromExcel($content: String!, $mode: ImportMode!) {
-    importProductFromExcel(content: $content, mode: $mode) {
-      success
-      productId
-      productName
-      stats {
-        tasksImported
-        outcomesImported
-        releasesImported
-        licensesImported
-        customAttributesImported
-        telemetryAttributesImported
-      }
-      errors {
-        sheet
-        row
-        column
-        field
-        message
-        severity
-      }
-      warnings {
-        sheet
-        row
-        column
-        field
-        message
-        severity
-      }
-    }
-  }
-`;
+// Removed legacy IMPORT_PRODUCT_FROM_EXCEL mutation. Using ImportV2 system instead.
 
 // Product Tag Mutations
 export const CREATE_PRODUCT_TAG = gql`

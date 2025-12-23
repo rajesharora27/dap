@@ -309,13 +309,14 @@ export class WorkbookParser {
         message: string,
         code: string
     ): void {
+        const valueStr = value !== undefined && value !== null ? ` (Value: "${value}")` : '';
         this.errors.push({
             sheet,
             row,
-            column,
+            column: column || field,
             field,
             value,
-            message,
+            message: `${message} for column "${column || field}"${valueStr}`,
             code,
             severity: 'error',
         });

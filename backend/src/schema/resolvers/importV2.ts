@@ -97,6 +97,7 @@ export const ImportV2MutationResolvers = {
                 success: result.success,
                 entityId: result.entityId,
                 entityName: result.entityName,
+                stats: result.stats,
                 errors: result.errors,
                 message: result.message,
             };
