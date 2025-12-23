@@ -475,6 +475,88 @@ type CustomerSolutionTaskTag {
     attributesCreated: Int!
   }
 
+  # ============================================================================
+  # Excel Import V2 Types
+  # ============================================================================
+  
+  enum EntityType {
+    PRODUCT
+    SOLUTION
+  }
+
+  type ImportV2DryRunResult {
+    sessionId: String!
+    isValid: Boolean!
+    entityType: EntityType!
+    entitySummary: EntitySummary!
+    records: RecordsSummary!
+    errors: [ImportValidationError!]!
+    warnings: [ImportValidationError!]!
+    summary: ImportV2Summary!
+  }
+
+  type EntitySummary {
+    name: String!
+    action: String!
+    existingId: String
+  }
+
+  type RecordsSummary {
+    tasks: [RecordPreview!]!
+    licenses: [RecordPreview!]!
+    outcomes: [RecordPreview!]!
+    releases: [RecordPreview!]!
+    tags: [RecordPreview!]!
+    customAttributes: [RecordPreview!]!
+    telemetryAttributes: [RecordPreview!]!
+  }
+
+  type RecordPreview {
+    rowNumber: Int!
+    action: String!
+    data: JSON!
+    existingData: JSON
+    existingId: String
+    changes: [FieldDiff!]
+  }
+
+  type FieldDiff {
+    field: String!
+    oldValue: JSON
+    newValue: JSON
+    displayOld: String!
+    displayNew: String!
+  }
+
+  type ImportValidationError {
+    sheet: String!
+    row: Int!
+    column: String
+    field: String
+    value: JSON
+    message: String!
+    code: String!
+    severity: String!
+  }
+
+  type ImportV2Summary {
+    totalRecords: Int!
+    toCreate: Int!
+    toUpdate: Int!
+    toDelete: Int!
+    toSkip: Int!
+    errorCount: Int!
+    warningCount: Int!
+  }
+
+  type ImportV2CommitResult {
+    success: Boolean!
+    entityId: String
+    entityName: String!
+    errors: [ImportValidationError!]!
+    message: String!
+  }
+
   type CustomerTelemetryRecord {
     customerId: ID!
     customerName: String!
@@ -714,6 +796,28 @@ type CustomerSolutionTaskTag {
   importProductFromExcel(content: String!, mode: ImportMode!): ImportResult!
   exportCustomerAdoptionToExcel(customerId: ID!, customerProductId: ID!): ExcelExportResult!
   importCustomerAdoptionFromExcel(content: String!): CustomerAdoptionImportResult!
+  
+  # Excel Import V2 mutations (two-phase workflow)
+  """
+  Validate an Excel file and return a preview of changes.
+  Returns a sessionId to be used with importV2Commit.
+  """
+  importV2DryRun(content: String!, entityType: EntityType): ImportV2DryRunResult!
+  
+  """
+  Commit a previously validated import using the sessionId from importV2DryRun.
+  """
+  importV2Commit(sessionId: String!): ImportV2CommitResult!
+  
+  """
+  Extend the session timeout for a pending import (user is still reviewing).
+  """
+  importV2ExtendSession(sessionId: String!): Boolean!
+  
+  """
+  Cancel a pending import session.
+  """
+  importV2CancelSession(sessionId: String!): Boolean!
   
   # Customer Adoption mutations
   assignProductToCustomer(input: AssignProductToCustomerInput!): CustomerProductWithPlan!

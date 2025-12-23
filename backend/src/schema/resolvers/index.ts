@@ -38,6 +38,7 @@ import { solutionReportingService } from '../../services/solutionReportingServic
 import { BackupQueryResolvers, BackupMutationResolvers } from './backup';
 import { AuthQueryResolvers, AuthMutationResolvers } from './auth';
 import { AIQueryResolvers, AIMutationResolvers } from './ai';
+import { ImportV2MutationResolvers } from './importV2';
 import { fetchProductsPaginated, fetchTasksPaginated, fetchSolutionsPaginated } from '../../shared/utils/pagination';
 import { logAudit } from '../../shared/utils/audit';
 import { ensureRole, requireUser } from '../../shared/auth/auth-helpers';
@@ -2460,6 +2461,12 @@ export const resolvers = {
 
     // AI Agent mutations
     , refreshAIDataContext: AIMutationResolvers.refreshAIDataContext
+
+    // Excel Import V2 mutations
+    , importV2DryRun: ImportV2MutationResolvers.importV2DryRun
+    , importV2Commit: ImportV2MutationResolvers.importV2Commit
+    , importV2ExtendSession: ImportV2MutationResolvers.importV2ExtendSession
+    , importV2CancelSession: ImportV2MutationResolvers.importV2CancelSession
   },
   Subscription: {
     productUpdated: {
