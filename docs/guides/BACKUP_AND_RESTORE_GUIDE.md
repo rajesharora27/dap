@@ -18,8 +18,13 @@ The backup system captures all application data including:
 - **Customers** and all customer-specific data
 - **Adoption Plans** (both product and solution)
 - **Customer Tasks** with status and progress tracking
-- **User accounts** and authentication data
 - **Telemetry data** and custom attributes
+
+### ⚠️ User Data Excluded
+**IMPORTANT**: As of v2.9.2, **User accounts** and authentication data are **EXCLUDED** from the automated backup process.
+- User management is handled via a separate dedicated script/process.
+- Restoring a backup will **delete all existing users** (due to schema reset) and will **NOT restore them**.
+- You must run your user restoration script immediately after a system restore to regain access.
 
 ### ✅ Easy Restore
 - List all available backups with metadata
@@ -393,6 +398,10 @@ For issues or questions:
   - Web UI and GraphQL API
   - Container-based PostgreSQL tools
   - Metadata tracking and record counts
+- **v2.9.2** (2025-12-23): User Data Exclusion & Telemetry
+  - User table data excluded from backups (managed separately)
+  - Telemetry tables included in metadata tracking
+  - Strict error checking during restore (fails on SQL errors)
 
 ---
 
