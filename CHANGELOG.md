@@ -5,7 +5,19 @@ All notable changes to the DAP (Digital Adoption Platform) project will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.4.0] - 2025-12-08
+## [2.9.3] - 2025-12-23
+
+### Added
+- **Scripts**: New User Database Backup/Restore scripts (`backend/scripts/backup-users.sh`, `restore-users.sh`)
+- **Scripts**: Support for audit-history preservation during user restore (requires `replica` role or postgres superuser)
+- **Deployment**: Automatic inclusion of backend scripts in staging/production deployments
+
+### Changed
+- **DevOps**: Switched Mac Light Mode deployment to use `prisma db push` (matching Production behavior) to resolve restore incompatibilities
+- **Scripts**: Hardened restore scripts with error checking and PostgreSQL version auto-detection
+- **Docs**: Updated documentation to reflect new backup tools
+
+## [2.9.2] - 2025-12-23
 
 ### Added
 - **AI Agent**: Enhanced AI Assistant with improved navigation and link generation for Products, Customers, and Solutions
