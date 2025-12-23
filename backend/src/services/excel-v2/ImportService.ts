@@ -19,6 +19,7 @@ import {
     removeImportSession,
     extendImportSession,
 } from './cache';
+import { executeImport } from './executors';
 
 // ============================================================================
 // Types
@@ -150,7 +151,6 @@ export function getSessionDetails(sessionId: string) {
 
 /**
  * Commit an import using a previously validated session
- * NOTE: The actual execution will be implemented in Phase 5
  */
 export async function commitImport(
     prisma: PrismaClient,
@@ -186,22 +186,26 @@ export async function commitImport(
         };
     }
 
-    // TODO: Phase 5 - Execute the actual import with Prisma transaction
-    // For now, return a placeholder
+    // Execute the actual import with Prisma transaction
+    const result = await executeImport(prisma, {
+        parsedData: session.parsedData,
+        records: session.dryRunResult.records,
+        existingEntityId: session.dryRunResult.entitySummary.existingId,
+    });
+
+    // Remove session after successful commit
+    if (result.success) {
+        removeImportSession(options.sessionId);
+    }
+
     return {
-        success: false,
-        entityName: session.parsedData.entity.name,
-        errors: [{
-            sheet: 'System',
-            row: 0,
-            column: '',
-            field: '',
-            value: null,
-            message: 'Import execution not yet implemented',
-            code: 'NOT_IMPLEMENTED',
-            severity: 'error',
-        }],
-        message: 'Import execution will be implemented in Phase 5',
+        success: result.success,
+        entityId: result.entityId,
+        entityName: result.entityName,
+        errors: result.errors,
+        message: result.success
+            ? `Successfully imported ${result.entityName}`
+            : `Import failed: ${result.errors[0]?.message ?? 'Unknown error'}`,
     };
 }
 

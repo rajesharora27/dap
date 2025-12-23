@@ -29,8 +29,8 @@ export * from './validators';
 // Diff utilities
 export * from './diff';
 
-// Executors (to be implemented)
-// export * from './executors';
+// Executors
+export * from './executors';
 
 // Cache
 export * from './cache';
