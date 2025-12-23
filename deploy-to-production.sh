@@ -214,15 +214,22 @@ echo "✅ Database schema updated"
 # Restart PM2
 echo "🔄 Restarting PM2..."
 cd "$DAP_ROOT"
-pm2 reload ecosystem.config.js 2>/dev/null || pm2 restart ecosystem.config.js 2>/dev/null || pm2 start ecosystem.config.js
-pm2 save
+# Try to find pm2 or use npx
+PM2_CMD="pm2"
+if ! command -v pm2 &> /dev/null; then
+  echo "⚠️  PM2 not found in PATH, trying npx pm2..."
+  PM2_CMD="npx pm2"
+fi
+
+$PM2_CMD reload ecosystem.config.js 2>/dev/null || $PM2_CMD restart ecosystem.config.js 2>/dev/null || $PM2_CMD start ecosystem.config.js
+$PM2_CMD save
 sleep 5
 
-if pm2 list | grep -q "online"; then
+if $PM2_CMD list | grep -q "online"; then
   echo "✅ PM2 processes confirmed online"
 else
   echo "❌ WARNING: No PM2 processes found online!"
-  pm2 list
+  $PM2_CMD list
 fi
 
 # Cleanup staging files (dap user owns /data/dap, no sudo needed)
@@ -232,7 +239,7 @@ DAPCMDS
 
 # Restart Nginx (needs root)
 echo "🌐 Restarting Nginx..."
-systemctl restart nginx
+sudo systemctl restart nginx
 echo "✅ Nginx restarted"
 
 # Verify deployment
