@@ -154,7 +154,21 @@ if [ -d "$DAP_ROOT/backend/src" ] && [ "$(ls -A $DAP_ROOT/backend/src 2>/dev/nul
   BACKUP_FILE="/data/dap/backups/dap-backend-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
   mkdir -p /data/dap/backups
   tar czf "$BACKUP_FILE" -C "$DAP_ROOT/backend" src 2>/dev/null || true
-  echo "✅ Backed up to $BACKUP_FILE"
+  echo "✅ Backed up source to $BACKUP_FILE"
+fi
+
+# Backup Database
+echo "📦 Backing up database..."
+DB_BACKUP_FILE="/data/dap/backups/dap-db-backup-$(date +%Y%m%d-%H%M%S).sql.gz"
+mkdir -p /data/dap/backups
+if pg_dump -U dap dap | gzip > "$DB_BACKUP_FILE"; then
+  echo "✅ Database backed up to $DB_BACKUP_FILE"
+else
+  echo "⚠️  Database backup failed! Check logs/permissions."
+  # We warn but continue? User said "should be backuped".
+  # If it fails, we should probably stop?
+  # But if it fails due to transient issue, stopping deploy prevents fix?
+  # I'll WARN for now to avoid locking them out, but visibly.
 fi
 
 echo "📝 Copying backend files..."

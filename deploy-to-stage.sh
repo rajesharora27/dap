@@ -171,7 +171,17 @@ echo "✅ Config files updated"
 if [ -d "$DAP_ROOT/backend/src" ] && [ "$(ls -A $DAP_ROOT/backend/src)" ]; then
   BACKUP_FILE="/tmp/dap-backend-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
   tar czf "$BACKUP_FILE" -C "$DAP_ROOT/backend" src 2>/dev/null || true
-  echo "✅ Backed up to $BACKUP_FILE"
+  echo "✅ Backed up source to $BACKUP_FILE"
+fi
+
+# Backup Database
+echo "📦 Backing up database..."
+DB_BACKUP_FILE="/data/dap/backups/dap-db-backup-$(date +%Y%m%d-%H%M%S).sql.gz"
+mkdir -p /data/dap/backups
+if pg_dump -U dap dap | gzip > "$DB_BACKUP_FILE"; then
+  echo "✅ Database backed up to $DB_BACKUP_FILE"
+else
+  echo "⚠️  Database backup failed!"
 fi
 
 echo "📝 Copying backend files..."
