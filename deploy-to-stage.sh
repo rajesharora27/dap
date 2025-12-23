@@ -21,6 +21,10 @@ echo ""
 # Step 1: Build frontend
 echo "📦 Step 1: Building frontend..."
 cd "$PROJECT_ROOT/frontend"
+# Set VITE environment variables for staging/production build
+# These are baked into the bundle at build time
+export VITE_GRAPHQL_ENDPOINT=/dap/graphql
+export VITE_BASE_PATH=/dap/
 npm run build -- --base=/dap/
 echo "✅ Frontend built"
 echo ""
@@ -382,7 +386,7 @@ echo "  ✅ Frontend: New distribution with updated UI"
 echo "  ✅ Scripts: Latest utility scripts"
 echo "  ✅ Services: Restarted and verified"
 echo ""
-echo "✨ New Features in this deployment (v2.9.1):"
+echo "✨ New Features in this deployment (v2.9.2):"
 echo "  • ✅ FIXED: Tag Import/Export functionality"
 echo "  • ✅ NEW: Tags tab in Excel export"
 echo "  • ✅ NEW: Automatic default selection of 'Cisco Secure Access'"

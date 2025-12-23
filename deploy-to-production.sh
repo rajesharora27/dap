@@ -25,6 +25,10 @@ echo ""
 # Step 1: Build frontend
 echo "📦 Step 1: Building frontend..."
 cd "$PROJECT_ROOT/frontend"
+# Set VITE environment variables for production build
+# These are baked into the bundle at build time
+export VITE_GRAPHQL_ENDPOINT=/dap/graphql
+export VITE_BASE_PATH=/dap/
 npm run build -- --base=/dap/
 echo "✅ Frontend built"
 echo ""
@@ -241,7 +245,7 @@ echo "✅ Deployment process complete!"
 ENDSSH
 
 echo ""
-echo "✨ New Features in this deployment (v2.9.1):"
+echo "✨ New Features in this deployment (v2.9.2):"
 echo "  • Modern AI Assistant Icon redesign (AISparkle)"
 echo "  • Streamlined Customer Detail View (Scorecards on Overview)"
 echo "  • Compact Progress Trackers for Adoption Plans"

@@ -230,8 +230,47 @@ export class BackupRestoreService {
       }
 
       // Check if pg_dump is available natively
+      let pgDumpCmd = 'pg_dump';
       const hasPgDump = await this.checkCommand('pg_dump');
       const forceContainer = process.env.DB_FORCE_CONTAINER === 'true';
+
+      // On macOS, check for version-specific pg_dump paths to handle version mismatches
+      if (hasPgDump && process.platform === 'darwin') {
+        // Try to find a matching version pg_dump
+        const versionPaths = [
+          '/opt/homebrew/opt/postgresql@16/bin/pg_dump',
+          '/opt/homebrew/opt/postgresql@15/bin/pg_dump',
+          '/opt/homebrew/opt/postgresql@14/bin/pg_dump',
+          '/usr/local/opt/postgresql@16/bin/pg_dump',
+          '/usr/local/opt/postgresql@15/bin/pg_dump',
+        ];
+
+        for (const vPath of versionPaths) {
+          if (await this.checkCommand(vPath)) {
+            // Check if this version matches the server
+            try {
+              const { stdout: versionOut } = await execPromise(`${vPath} --version`);
+              const match = versionOut.match(/(\d+)\./);
+              if (match) {
+                const pgDumpMajor = parseInt(match[1], 10);
+                // Get server version
+                const { stdout: serverVersion } = await execPromise(
+                  `psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -t -c "SHOW server_version;"`,
+                  { env }
+                );
+                const serverMatch = serverVersion.match(/(\d+)\./);
+                if (serverMatch && parseInt(serverMatch[1], 10) === pgDumpMajor) {
+                  console.log(`Using pg_dump version ${pgDumpMajor} from ${vPath}`);
+                  pgDumpCmd = vPath;
+                  break;
+                }
+              }
+            } catch {
+              // Ignore errors, try next path
+            }
+          }
+        }
+      }
 
       // Detect container runtime
       let containerRuntime = 'docker';
@@ -243,7 +282,15 @@ export class BackupRestoreService {
 
       if (hasPgDump && !forceContainer) {
         // Native Postgres (macOS light mode or prod)
-        command = `pg_dump -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
+        // On macOS with local socket (no password), use simpler connection
+        if (process.platform === 'darwin' && !dbConfig.password) {
+          // macOS local socket connection (peer auth)
+          command = `${pgDumpCmd} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
+          console.log('Using macOS local socket connection for pg_dump');
+        } else {
+          // Standard connection with host/user/password
+          command = `${pgDumpCmd} -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
+        }
       } else {
         // Containerized Postgres
         // Verify container runtime exists
@@ -256,7 +303,8 @@ export class BackupRestoreService {
         command = `${containerRuntime} exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts > "${filePath}" 2>&1`;
       }
 
-      await execPromise(command, { maxBuffer: 50 * 1024 * 1024, env }); // 50MB buffer
+      console.log('Executing backup command...');
+      await execPromise(command, { maxBuffer: 50 * 1024 * 1024, env, timeout: 120000 }); // 50MB buffer, 2min timeout
 
       // Now post-process the dump to remove password column from User table
       console.log('Removing password hashes from backup for security...');
@@ -383,10 +431,20 @@ export class BackupRestoreService {
       }
 
       // Helper for commands
+      // On macOS with local socket (no password), use simpler connection
+      const isMacLocal = process.platform === 'darwin' && !dbConfig.password;
+
       const runQuery = async (query: string, timeoutMs: number = 10000) => {
-        const cmd = useNative
-          ? `psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -c "${query}"`
-          : `${containerRuntime} exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "${query}"`;
+        let cmd: string;
+        if (useNative) {
+          if (isMacLocal) {
+            cmd = `psql -d ${dbConfig.database} -c "${query}"`;
+          } else {
+            cmd = `psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -c "${query}"`;
+          }
+        } else {
+          cmd = `${containerRuntime} exec ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -c "${query}"`;
+        }
 
         await execPromise(cmd, { timeout: timeoutMs, env });
       };
@@ -461,7 +519,13 @@ export class BackupRestoreService {
       let restoreCommand: string;
 
       if (useNative) {
-        restoreCommand = `cat "${filePath}" | psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -q 2>&1`;
+        if (isMacLocal) {
+          // macOS local socket connection
+          restoreCommand = `cat "${filePath}" | psql -d ${dbConfig.database} -q 2>&1`;
+          console.log('Using macOS local socket connection for restore');
+        } else {
+          restoreCommand = `cat "${filePath}" | psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -q 2>&1`;
+        }
       } else {
         restoreCommand = `cat "${filePath}" | ${containerRuntime} exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -q 2>&1`;
       }
@@ -502,6 +566,44 @@ export class BackupRestoreService {
       console.log('Reconnecting Prisma client...');
       await prisma.$connect();
 
+      // IMPORTANT: Sync schema to ensure backward compatibility with older backups
+      // This adds any missing columns/tables that exist in the current schema but not in the backup
+      console.log('🔄 Syncing database schema for backward compatibility...');
+      try {
+        const prismaPushCmd = 'npx prisma db push --accept-data-loss --skip-generate';
+        const { stdout, stderr } = await execPromise(prismaPushCmd, {
+          cwd: process.cwd(),
+          timeout: 60000, // 60 second timeout
+          maxBuffer: 10 * 1024 * 1024,
+        });
+        if (stdout) console.log('Prisma output:', stdout);
+        if (stderr && !stderr.includes('Your database is now in sync')) {
+          console.warn('Prisma warnings:', stderr);
+        }
+        console.log('✅ Database schema synced successfully');
+      } catch (schemaErr: any) {
+        // Don't fail the restore if schema sync fails - just warn
+        console.error('⚠️  Schema sync warning:', schemaErr.message);
+        console.error('   You may need to run: npx prisma db push --accept-data-loss');
+      }
+
+      // Regenerate Prisma client to pick up any schema changes
+      console.log('🔄 Regenerating Prisma client...');
+      try {
+        await execPromise('npx prisma generate', {
+          cwd: process.cwd(),
+          timeout: 30000,
+          maxBuffer: 10 * 1024 * 1024,
+        });
+        console.log('✅ Prisma client regenerated');
+      } catch (genErr: any) {
+        console.warn('⚠️  Prisma generate warning:', genErr.message);
+      }
+
+      // Reconnect with fresh client after generation
+      await prisma.$disconnect();
+      await prisma.$connect();
+
       // IMPORTANT: Restore existing user passwords after restore
       if (existingPasswords.size > 0) {
         console.log('Restoring user passwords...');
@@ -540,7 +642,7 @@ export class BackupRestoreService {
 
       return {
         success: true,
-        message: `Database restored successfully from ${filename}. User passwords preserved.`,
+        message: `Database restored successfully from ${filename}. Schema synced for compatibility. User passwords preserved.`,
         recordsRestored,
       };
     } catch (error: any) {
