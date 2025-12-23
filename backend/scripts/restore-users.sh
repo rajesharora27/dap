@@ -44,7 +44,7 @@ DATABASE_URL=$(echo "$DATABASE_URL" | cut -d '?' -f1)
 echo "1. clearing existing user data (preserving audit history)..."
 # We use DELETE instead of TRUNCATE CASCADE to avoid deleting dependent AuditLogs/ChangeSets
 # We use session_replication_role = replica to bypass FK constraints during deletion/insertion
-psql "$DATABASE_URL" <<EOF
+psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<EOF
 BEGIN;
 
 -- Disable triggers and foreign key checks
