@@ -29,6 +29,10 @@ export interface BackupMetadata {
     solutionTags: number;
     taskTags: number;
     solutionTaskTags: number;
+    // Telemetry tables
+    telemetryAttributes?: number;
+    customerTelemetryAttributes?: number;
+    telemetrySubmissions?: number;
   };
 }
 
@@ -172,6 +176,19 @@ export class BackupRestoreService {
       console.log('[Backup] Tag tables not found, using 0 counts');
     }
 
+    // Telemetry tables - may not exist in older backups
+    let telemetryAttributes = 0, customerTelemetryAttributes = 0, telemetrySubmissions = 0;
+    try {
+      [telemetryAttributes, customerTelemetryAttributes, telemetrySubmissions] = await Promise.all([
+        prisma.telemetryAttribute.count(),
+        prisma.customerTelemetryAttribute.count(),
+        prisma.telemetrySubmission.count(),
+      ]);
+    } catch (err) {
+      // Telemetry tables may not exist in older databases
+      console.log('[Backup] Telemetry tables not found, using 0 counts');
+    }
+
     return {
       users,
       products,
@@ -188,6 +205,9 @@ export class BackupRestoreService {
       solutionTags,
       taskTags,
       solutionTaskTags,
+      telemetryAttributes,
+      customerTelemetryAttributes,
+      telemetrySubmissions,
     };
   }
 
