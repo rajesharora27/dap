@@ -21,9 +21,17 @@ The backup system captures all application data including:
 - **Telemetry data** and custom attributes
 
 ### ⚠️ User Data Excluded
-**IMPORTANT**: As of v2.9.2, **User accounts** and authentication data are **EXCLUDED** from the automated backup process.
+**IMPORTANT**: As of v2.9.2, user and authentication data are **EXCLUDED** from the automated backup process.
+The following tables will **restore as empty** (schema only):
+- `User`
+- `Session`
+- `LockedEntity`
+- `UserRole`
+- `Permission`
+
+**Implications:**
 - User management is handled via a separate dedicated script/process.
-- Restoring a backup will **delete all existing users** (due to schema reset) and will **NOT restore them**.
+- Restoring a backup will **delete all existing users** (due to schema reset).
 - You must run your user restoration script immediately after a system restore to regain access.
 
 ### ✅ Easy Restore
