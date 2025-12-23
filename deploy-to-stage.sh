@@ -73,15 +73,25 @@ cp -r scripts /tmp/dap-deploy/scripts-new 2>/dev/null || true
 echo "✅ Files prepared in /tmp/dap-deploy"
 echo ""
 
-# Step 3: Transfer to production
-echo "📤 Step 3: Transferring to centos2..."
-ssh rajarora@centos2.rajarora.csslab "rm -rf /tmp/dap-deploy-prod && mkdir -p /tmp/dap-deploy-prod"
-scp -r /tmp/dap-deploy/. rajarora@centos2.rajarora.csslab:/tmp/dap-deploy-prod/
-echo "✅ Transfer complete"
+# Step 3: Create tar.gz archive and transfer (OPTIMIZED)
+echo "📤 Step 3: Creating archive and transferring to centos2..."
+cd /tmp/dap-deploy
+# COPYFILE_DISABLE=1 prevents macOS from including ._* resource fork files
+COPYFILE_DISABLE=1 tar czf /tmp/dap-deploy.tar.gz .
+ARCHIVE_SIZE=$(du -h /tmp/dap-deploy.tar.gz | cut -f1)
+echo "📦 Archive size: $ARCHIVE_SIZE"
+
+# Transfer single archive (much faster than individual files)
+# Use sudo rm in case previous deploy left files owned by dap
+ssh rajarora@centos2.rajarora.csslab "sudo rm -rf /tmp/dap-deploy-prod && mkdir -p /tmp/dap-deploy-prod"
+scp /tmp/dap-deploy.tar.gz rajarora@centos2.rajarora.csslab:/tmp/dap-deploy.tar.gz
+ssh rajarora@centos2.rajarora.csslab "cd /tmp/dap-deploy-prod && tar xzf /tmp/dap-deploy.tar.gz && rm /tmp/dap-deploy.tar.gz"
+echo "✅ Transfer complete (archive mode)"
 echo ""
 
 # Cleanup local temp
-rm -rf /tmp/dap-deploy
+rm -rf /tmp/dap-deploy /tmp/dap-deploy.tar.gz
+
 
 # Step 4: Deploy on production
 echo "🔨 Step 4: Deploying on centos2..."
@@ -89,6 +99,12 @@ echo ""
 
 ssh rajarora@centos2.rajarora.csslab << 'ENDSSH'
 set -e
+
+# Fix permissions before switching to dap user
+echo "🔧 Fixing permissions on transferred files..."
+chmod -R a+r /tmp/dap-deploy-prod
+sudo chown -R dap:dap /tmp/dap-deploy-prod
+echo "✅ Permissions fixed"
 
 echo "📝 Deploying as dap user..."
 sudo -u dap bash << 'DAPCMDS'
@@ -364,8 +380,8 @@ else
   echo "⚠️  Public URL test inconclusive (may need cache clear)"
 fi
 
-# Cleanup
-rm -rf /tmp/dap-deploy-prod
+# Cleanup (files are owned by dap after chown, need sudo)
+sudo rm -rf /tmp/dap-deploy-prod
 
 echo ""
 echo "✅ Deployment process complete!"
