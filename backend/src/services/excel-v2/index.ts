@@ -23,20 +23,17 @@ export * from './schemas';
 // Parsers
 export * from './parsers';
 
-// Validators (to be implemented)
-// export * from './validators';
+// Validators
+export * from './validators';
 
-// Validators (to be implemented)
-// export * from './validators';
+// Diff utilities
+export * from './diff';
 
 // Executors (to be implemented)
 // export * from './executors';
 
 // Cache (to be implemented)
 // export * from './cache';
-
-// Diff utilities (to be implemented)
-// export * from './diff';
 
 // Export service (to be implemented)
 // export * from './export';
