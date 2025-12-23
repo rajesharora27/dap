@@ -300,16 +300,24 @@ export class BackupRestoreService {
         containerRuntime = 'docker';
       }
 
+      const excludeTables = [
+        'User',
+        'Session',
+        'LockedEntity',
+        'UserRole',
+        'Permission'
+      ].map(t => `--exclude-table-data='"${t}"'`).join(' ');
+
       if (hasPgDump && !forceContainer) {
         // Native Postgres (macOS light mode or prod)
         // On macOS with local socket (no password), use simpler connection
         if (process.platform === 'darwin' && !dbConfig.password) {
           // macOS local socket connection (peer auth)
-          command = `${pgDumpCmd} -d ${dbConfig.database} -F p --column-inserts --exclude-table-data='"User"' > "${filePath}" 2>&1`;
+          command = `${pgDumpCmd} -d ${dbConfig.database} -F p --column-inserts ${excludeTables} > "${filePath}" 2>&1`;
           console.log('Using macOS local socket connection for pg_dump');
         } else {
           // Standard connection with host/user/password
-          command = `${pgDumpCmd} -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --column-inserts --exclude-table-data='"User"' > "${filePath}" 2>&1`;
+          command = `${pgDumpCmd} -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --column-inserts ${excludeTables} > "${filePath}" 2>&1`;
         }
       } else {
         // Containerized Postgres
@@ -320,7 +328,7 @@ export class BackupRestoreService {
           }
         }
 
-        command = `${containerRuntime} exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts --exclude-table-data='"User"' > "${filePath}" 2>&1`;
+        command = `${containerRuntime} exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts ${excludeTables} > "${filePath}" 2>&1`;
       }
 
       console.log('Executing backup command...');
