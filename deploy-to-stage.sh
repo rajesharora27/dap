@@ -167,21 +167,41 @@ mkdir -p "$DAP_ROOT/backend/config"
 cp -r $STAGING/config/* "$DAP_ROOT/backend/config/" 2>/dev/null || true
 echo "✅ Config files updated"
 
-# Backup current backend source
-if [ -d "$DAP_ROOT/backend/src" ] && [ "$(ls -A $DAP_ROOT/backend/src)" ]; then
-  BACKUP_FILE="/tmp/dap-backend-backup-$(date +%Y%m%d-%H%M%S).tar.gz"
-  tar czf "$BACKUP_FILE" -C "$DAP_ROOT/backend" src 2>/dev/null || true
-  echo "✅ Backed up source to $BACKUP_FILE"
+# FULL SYSTEM BACKUP
+echo "📦 Performing Pre-Deployment Backups..."
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+
+# 1. Code Backup
+if [ -d "$DAP_ROOT" ]; then
+  CODE_BACKUP="/data/dap/backups/dap-code-backup-$TIMESTAMP.tar.gz"
+  mkdir -p /data/dap/backups
+  tar czf "$CODE_BACKUP" --exclude="node_modules" --exclude="logs" --exclude="backups" --exclude=".git" -C "$DAP_ROOT" . 2>/dev/null || true
+  echo "✅ Code backup: $CODE_BACKUP"
 fi
 
-# Backup Database
-echo "📦 Backing up database..."
-DB_BACKUP_FILE="/data/dap/backups/dap-db-backup-$(date +%Y%m%d-%H%M%S).sql.gz"
-mkdir -p /data/dap/backups
-if pg_dump -U dap dap | gzip > "$DB_BACKUP_FILE"; then
-  echo "✅ Database backed up to $DB_BACKUP_FILE"
+# 2. Database Backup
+echo "   Backing up database..."
+DB_BACKUP="/data/dap/backups/dap-db-backup-$TIMESTAMP.sql.gz"
+
+DB_URL=""
+if [ -f "$DAP_ROOT/backend/.env" ]; then
+   DB_URL=$(grep "^DATABASE_URL=" "$DAP_ROOT/backend/.env" | cut -d '=' -f2- | tr -d '"' | cut -d '?' -f1)
+fi
+
+if [ -n "$DB_URL" ]; then
+  if pg_dump "$DB_URL" | gzip > "$DB_BACKUP"; then
+    echo "✅ Database backup: $DB_BACKUP"
+  else
+    echo "❌ Database backup FAILED. Aborting deployment."
+    exit 1
+  fi
 else
-  echo "⚠️  Database backup failed!"
+  if pg_dump -U dap dap | gzip > "$DB_BACKUP"; then
+    echo "✅ Database backup: $DB_BACKUP"
+  else
+    echo "❌ Database backup FAILED. Aborting deployment."
+    exit 1
+  fi
 fi
 
 echo "📝 Copying backend files..."
