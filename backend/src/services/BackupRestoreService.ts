@@ -315,11 +315,11 @@ export class BackupRestoreService {
         // On macOS with local socket (no password), use simpler connection
         if (process.platform === 'darwin' && !dbConfig.password) {
           // macOS local socket connection (peer auth)
-          command = `${pgDumpCmd} -d ${dbConfig.database} -F p --column-inserts ${excludeTables} > "${filePath}" 2>&1`;
+          command = `${pgDumpCmd} -d ${dbConfig.database} -F p --column-inserts --no-owner --no-acl ${excludeTables} > "${filePath}" 2>&1`;
           console.log('Using macOS local socket connection for pg_dump');
         } else {
           // Standard connection with host/user/password
-          command = `${pgDumpCmd} -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --column-inserts ${excludeTables} > "${filePath}" 2>&1`;
+          command = `${pgDumpCmd} -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --column-inserts --no-owner --no-acl ${excludeTables} > "${filePath}" 2>&1`;
         }
       } else {
         // Containerized Postgres
@@ -330,7 +330,7 @@ export class BackupRestoreService {
           }
         }
 
-        command = `${containerRuntime} exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts ${excludeTables} > "${filePath}" 2>&1`;
+        command = `${containerRuntime} exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts --no-owner --no-acl ${excludeTables} > "${filePath}" 2>&1`;
       }
 
       console.log('Executing backup command...');

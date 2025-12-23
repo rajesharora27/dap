@@ -412,6 +412,7 @@ For issues or questions:
   - User table data excluded from backups (managed separately)
   - Telemetry tables included in metadata tracking
   - Strict error checking during restore (fails on SQL errors)
+  - **Portable Backups**: Excludes ownership/ACL info for cross-environment compatibility
 
 ---
 
