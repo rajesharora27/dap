@@ -305,7 +305,9 @@ export class BackupRestoreService {
         'Session',
         'LockedEntity',
         'UserRole',
-        'Permission'
+        'Permission',
+        'AuditLog',
+        'ChangeSet'
       ].map(t => `--exclude-table-data='"${t}"'`).join(' ');
 
       if (hasPgDump && !forceContainer) {
