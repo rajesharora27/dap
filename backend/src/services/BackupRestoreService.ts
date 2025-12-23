@@ -599,6 +599,16 @@ export class BackupRestoreService {
       // Ensure Prisma is reconnected even if restore failed
       try { await prisma.$connect(); } catch (e) { console.error('Failed to reconnect Prisma:', e); }
 
+      // Try to recover schema so the app remains functional (even if data is missing)
+      console.log('⚠️ Restore failed. Attempting to recover schema to prevent crash loop...');
+      try {
+        const prismaPushCmd = 'npx prisma db push --accept-data-loss --skip-generate';
+        await execPromise(prismaPushCmd, { timeout: 60000 });
+        console.log('✅ Schema recovered (tables created empty)');
+      } catch (schemaErr: any) {
+        console.error('❌ Failed to recover schema:', schemaErr.message);
+      }
+
       console.error('Restore error:', error);
       console.error('Error message:', error.message);
       console.error('Error stack:', error.stack);
