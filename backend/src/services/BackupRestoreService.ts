@@ -541,13 +541,13 @@ export class BackupRestoreService {
       if (useNative) {
         if (isMacLocal) {
           // macOS local socket connection
-          restoreCommand = `cat "${filePath}" | psql -d ${dbConfig.database} -q 2>&1`;
+          restoreCommand = `cat "${filePath}" | psql -d ${dbConfig.database} -v ON_ERROR_STOP=1 -q 2>&1`;
           console.log('Using macOS local socket connection for restore');
         } else {
-          restoreCommand = `cat "${filePath}" | psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -q 2>&1`;
+          restoreCommand = `cat "${filePath}" | psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -v ON_ERROR_STOP=1 -q 2>&1`;
         }
       } else {
-        restoreCommand = `cat "${filePath}" | ${containerRuntime} exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -q 2>&1`;
+        restoreCommand = `cat "${filePath}" | ${containerRuntime} exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -v ON_ERROR_STOP=1 -q 2>&1`;
       }
 
       console.log('Starting restore execution...');
