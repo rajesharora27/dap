@@ -186,40 +186,12 @@ export class ExcelExportServiceV2 {
         const telemetryData: any[] = [];
         product.tasks.forEach((t: any) => {
             t.telemetryAttributes.forEach((ta: any) => {
-                const criteria = ta.successCriteria as any;
-                let expectedValue: string = '';
-                let operator: string = 'equals';
-
-                if (criteria && typeof criteria === 'object') {
-                    operator = normalizeOperator(criteria.operator);
-
-                    // Extract the actual value - prioritize simple values
-                    // Look for common value field names in order of priority
-                    const valueField = criteria.value ?? criteria.threshold ?? criteria.target;
-
-                    if (valueField !== undefined && valueField !== null) {
-                        // We have a simple value - use it directly
-                        if (typeof valueField === 'object') {
-                            expectedValue = stableStringify(valueField);
-                        } else {
-                            expectedValue = String(valueField);
-                        }
-                    } else {
-                        // No recognizable value field - serialize remaining fields (minus operator)
-                        const { operator: _op, ...rest } = criteria;
-                        if (Object.keys(rest).length > 0) {
-                            expectedValue = stableStringify(rest);
-                        }
-                    }
-                }
-
                 telemetryData.push({
                     taskName: t.name,
                     attributeName: ta.name,
                     attributeType: (ta.dataType || 'string').toLowerCase(),
-                    expectedValue,
-                    operator,
-                    apiEndpoint: undefined,
+                    expectedValue: this.getTelemetryValue(ta.successCriteria),
+                    operator: this.getTelemetryOperator(ta.successCriteria),
                     isRequired: ta.isRequired ?? true
                 });
             });
@@ -321,40 +293,12 @@ export class ExcelExportServiceV2 {
         const telemetryData: any[] = [];
         solution.tasks.forEach((t: any) => {
             t.telemetryAttributes.forEach((ta: any) => {
-                const criteria = ta.successCriteria as any;
-                let expectedValue: string = '';
-                let operator: string = 'equals';
-
-                if (criteria && typeof criteria === 'object') {
-                    operator = normalizeOperator(criteria.operator);
-
-                    // Extract the actual value - prioritize simple values
-                    // Look for common value field names in order of priority
-                    const valueField = criteria.value ?? criteria.threshold ?? criteria.target;
-
-                    if (valueField !== undefined && valueField !== null) {
-                        // We have a simple value - use it directly
-                        if (typeof valueField === 'object') {
-                            expectedValue = stableStringify(valueField);
-                        } else {
-                            expectedValue = String(valueField);
-                        }
-                    } else {
-                        // No recognizable value field - serialize remaining fields (minus operator)
-                        const { operator: _op, ...rest } = criteria;
-                        if (Object.keys(rest).length > 0) {
-                            expectedValue = stableStringify(rest);
-                        }
-                    }
-                }
-
                 telemetryData.push({
                     taskName: t.name,
                     attributeName: ta.name,
                     attributeType: (ta.dataType || 'string').toLowerCase(),
-                    expectedValue,
-                    operator,
-                    apiEndpoint: undefined,
+                    expectedValue: this.getTelemetryValue(ta.successCriteria),
+                    operator: this.getTelemetryOperator(ta.successCriteria),
                     isRequired: ta.isRequired ?? true
                 });
             });
@@ -498,5 +442,42 @@ export class ExcelExportServiceV2 {
                 row.font = { bold: true };
             }
         });
+    }
+    private getTelemetryOperator(criteria: any): string {
+        if (!criteria) return 'equals';
+        if (typeof criteria === 'string') {
+            try { criteria = JSON.parse(criteria); } catch { return 'equals'; }
+        }
+
+        if (criteria.operator && !criteria.type) return normalizeOperator(criteria.operator);
+
+        switch (criteria.type) {
+            case 'boolean_flag': return 'equals';
+            case 'number_threshold': return normalizeOperator(criteria.operator);
+            case 'string_match': return criteria.mode === 'exact' ? 'equals' : 'contains';
+            case 'string_not_null': return 'not_null';
+            case 'timestamp_not_null': return 'not_null';
+            case 'timestamp_comparison': return 'within_days';
+            default: return 'equals';
+        }
+    }
+
+    private getTelemetryValue(criteria: any): string {
+        if (!criteria) return '';
+        if (typeof criteria === 'string') {
+            try { criteria = JSON.parse(criteria); } catch { return ''; }
+        }
+
+        if (criteria.value !== undefined && !criteria.type) {
+            return typeof criteria.value === 'object' ? stableStringify(criteria.value) : String(criteria.value);
+        }
+
+        switch (criteria.type) {
+            case 'boolean_flag': return String(criteria.expectedValue);
+            case 'number_threshold': return String(criteria.threshold);
+            case 'string_match': return String(criteria.pattern);
+            case 'timestamp_comparison': return String(criteria.withinDays);
+            default: return '';
+        }
     }
 }

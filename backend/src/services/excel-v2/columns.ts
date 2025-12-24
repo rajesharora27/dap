@@ -108,7 +108,6 @@ export const TELEMETRY_ATTRIBUTE_COLUMNS: ColumnDefinition[] = [
     { key: 'attributeType', header: 'Type', width: 15, required: true, type: 'string' },
     { key: 'expectedValue', header: 'Expected Value', width: 30, type: 'string' },
     { key: 'operator', header: 'Operator', width: 15, type: 'string', enum: ['equals', 'contains', 'gt', 'gte', 'lt', 'lte'] },
-    { key: 'apiEndpoint', header: 'API Endpoint', width: 50, type: 'string' },
     { key: 'isRequired', header: 'Required', width: 10, type: 'boolean' },
 ];
 

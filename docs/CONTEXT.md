@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 2.9.5
-**Last Updated:** December 22, 2025 (15:30 EST)
+**Version:** 3.0.0
+**Last Updated:** December 24, 2025 (13:40 EST)
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -328,6 +328,12 @@ The tagging system allows categorizing tasks within products and solutions to he
 - **Multi-tag Filtering**: Users can filter task lists by one or more tags using OR logic.
 - **Theme Integration**: Tags use standardized colors from the MUI theme palette.
 - **Future-Proof Sync**: A generic field-copying mechanism ensures that any new task fields added in the future are automatically synchronized.
+
+### 10. Scoped Task Locking
+The task locking system protects master task metadata in Product and Solution modeling views while maintaining flexibility for customer adoption plans.
+- **Product/Solution Scoping**: Locking is exclusively applied to the source modeling views to prevent accidental changes to shared task definitions (names, weights, descriptions).
+- **Flexible Customer Plans**: Adoption plans in the Customer view are always unlocked, allowing CSS and customers to update statuses and sync data freely.
+- **Visual Indicators**: Clear Lock/LockOpen icons in the modeling toolbar communicate the current protection state.
 
 ### 9. Advanced Features
 - Drag-and-drop task reordering
@@ -984,6 +990,18 @@ All DAP data is stored on `/data` partition (not root):
 ---
 
 ## Recent Changes & Fixes
+
+### Version 3.0.0 (December 24, 2025)
+
+#### Theme Alignment & Help Refresh
+- **Universal Theme Alignment**: Replaced all hardcoded colors (navy, slate) with theme-aware variables (`primary.main`, `divider`, `alpha()`).
+- **Modernized Login & Header**: The entire user journey—from login through navigation—now adapts to the active brand theme.
+- **Help Documentation Overhaul**: Introduced a 3-step tile-based "Getting Started" guide and added documentation for Tags and Task Locking.
+
+#### Feature Scoping & Logic Improvements
+- **Scoped Task Locking**: Restricted task locking to Product and Solution modeling views, unblocking all Customer-side operations.
+- **Consistent Telemetry Support**: Standardized telemetry import/export operations across all views with improved authentication.
+- **Dashboard Metric Fixes**: Corrected customer summary dashboard statistics (Velocity, Completion) and improved dynamic coloring.
 
 ### Version 2.9.5 (December 22, 2025)
 

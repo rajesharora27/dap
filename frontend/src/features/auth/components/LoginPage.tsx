@@ -11,7 +11,9 @@ import {
   Fade,
   CircularProgress,
   InputAdornment,
-  IconButton
+  IconButton,
+  alpha,
+  useTheme
 } from '@mui/material';
 import {
   Visibility,
@@ -29,6 +31,7 @@ const LOGIN = gql`
 `;
 
 export const LoginPage: React.FC = () => {
+  const theme = useTheme();
   const { setToken, setUser } = useAuth();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -90,7 +93,7 @@ export const LoginPage: React.FC = () => {
     <Box sx={{
       minHeight: '100vh',
       display: 'flex',
-      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%)',
+      background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${alpha(theme.palette.primary.dark, 0.8)} 50%, ${theme.palette.primary.main} 100%)`,
       position: 'relative',
       overflow: 'hidden'
     }}>
@@ -134,11 +137,11 @@ export const LoginPage: React.FC = () => {
                 width: 56,
                 height: 56,
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                background: theme.palette.primary.main,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 8px 32px rgba(59,130,246,0.3)'
+                boxShadow: `0 8px 32px ${alpha(theme.palette.primary.main, 0.3)}`
               }}>
                 <Typography sx={{ fontSize: '1.5rem', fontWeight: 800, color: 'white' }}>
                   DAP
@@ -175,7 +178,7 @@ export const LoginPage: React.FC = () => {
                     width: 8,
                     height: 8,
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)'
+                    bgcolor: 'primary.main'
                   }} />
                   <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '1rem' }}>
                     {feature}
@@ -211,7 +214,7 @@ export const LoginPage: React.FC = () => {
                 width: 48,
                 height: 48,
                 borderRadius: 2,
-                background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                background: theme.palette.primary.main,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center'
@@ -278,9 +281,9 @@ export const LoginPage: React.FC = () => {
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: '#f8fafc',
                       borderRadius: 2,
-                      '& fieldset': { borderColor: '#e2e8f0' },
-                      '&:hover fieldset': { borderColor: '#cbd5e1' },
-                      '&.Mui-focused fieldset': { borderColor: '#3b82f6', borderWidth: 2 },
+                      '& fieldset': { borderColor: 'divider' },
+                      '&:hover fieldset': { borderColor: 'action.hover' },
+                      '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: 2 },
                     },
                     '& .MuiInputBase-input': {
                       color: '#1e293b',
@@ -322,9 +325,9 @@ export const LoginPage: React.FC = () => {
                     '& .MuiOutlinedInput-root': {
                       backgroundColor: '#f8fafc',
                       borderRadius: 2,
-                      '& fieldset': { borderColor: '#e2e8f0' },
-                      '&:hover fieldset': { borderColor: '#cbd5e1' },
-                      '&.Mui-focused fieldset': { borderColor: '#3b82f6', borderWidth: 2 },
+                      '& fieldset': { borderColor: 'divider' },
+                      '&:hover fieldset': { borderColor: 'action.hover' },
+                      '&.Mui-focused fieldset': { borderColor: 'primary.main', borderWidth: 2 },
                     },
                     '& .MuiInputBase-input': {
                       color: '#1e293b',
@@ -347,17 +350,17 @@ export const LoginPage: React.FC = () => {
                     fontSize: '1rem',
                     fontWeight: 600,
                     borderRadius: 2,
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                    boxShadow: '0 4px 14px rgba(59,130,246,0.4)',
+                    bgcolor: 'primary.main',
+                    boxShadow: `0 4px 14px ${alpha(theme.palette.primary.main, 0.4)}`,
                     transition: 'all 0.2s ease',
                     '&:hover': {
-                      background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                      boxShadow: '0 6px 20px rgba(59,130,246,0.5)',
+                      bgcolor: 'primary.dark',
+                      boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.5)}`,
                       transform: 'translateY(-1px)'
                     },
                     '&.Mui-disabled': {
-                      background: '#cbd5e1',
-                      color: '#94a3b8'
+                      bgcolor: 'action.disabledBackground',
+                      color: 'action.disabled'
                     }
                   }}
                 >

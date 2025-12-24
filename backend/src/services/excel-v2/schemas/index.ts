@@ -205,7 +205,6 @@ export const TelemetryAttributeRowSchema = z.object({
     attributeType: TelemetryTypeSchema.default('string'),
     expectedValue: z.string().optional().nullable(),
     operator: TelemetryOperatorSchema.default('equals'),
-    apiEndpoint: UrlSchema.optional().nullable(),
     isRequired: z.boolean().default(true),
 });
 

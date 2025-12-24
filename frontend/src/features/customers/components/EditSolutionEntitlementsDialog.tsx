@@ -126,7 +126,7 @@ export function EditSolutionEntitlementsDialog({
     if (data?.customerSolution && open) {
       setLicenseLevel(data.customerSolution.licenseLevel);
       setName(data.customerSolution.name);
-      
+
       // Handle selected outcomes - extract IDs from objects
       const currentOutcomes = data.customerSolution.selectedOutcomes || [];
       const currentOutcomeIds = currentOutcomes.map((o: any) => o.id);
@@ -135,7 +135,7 @@ export function EditSolutionEntitlementsDialog({
       } else {
         setSelectedOutcomeIds(currentOutcomeIds);
       }
-      
+
       // Handle selected releases - extract IDs from objects
       const currentReleases = data.customerSolution.selectedReleases || [];
       const currentReleaseIds = currentReleases.map((r: any) => r.id);
@@ -193,7 +193,7 @@ export function EditSolutionEntitlementsDialog({
     // Filter out special "All" markers before sending to backend
     const filteredOutcomeIds = selectedOutcomeIds.filter(id => id !== ALL_OUTCOMES_ID);
     const filteredReleaseIds = selectedReleaseIds.filter(id => id !== ALL_RELEASES_ID);
-    
+
     updateSolution({
       variables: {
         id: customerSolutionId,
@@ -210,10 +210,10 @@ export function EditSolutionEntitlementsDialog({
   const hasChanges = data?.customerSolution && (
     licenseLevel !== data.customerSolution.licenseLevel ||
     name !== data.customerSolution.name ||
-    JSON.stringify(selectedOutcomeIds.filter(id => id !== ALL_OUTCOMES_ID).sort()) !== 
-      JSON.stringify((data.customerSolution.selectedOutcomes || []).map((o: any) => o.id).sort()) ||
-    JSON.stringify(selectedReleaseIds.filter(id => id !== ALL_RELEASES_ID).sort()) !== 
-      JSON.stringify((data.customerSolution.selectedReleases || []).map((r: any) => r.id).sort())
+    JSON.stringify(selectedOutcomeIds.filter(id => id !== ALL_OUTCOMES_ID).sort()) !==
+    JSON.stringify((data.customerSolution.selectedOutcomes || []).map((o: any) => o.id).sort()) ||
+    JSON.stringify(selectedReleaseIds.filter(id => id !== ALL_RELEASES_ID).sort()) !==
+    JSON.stringify((data.customerSolution.selectedReleases || []).map((r: any) => r.id).sort())
   );
 
   const isFormValid = name.trim() !== '';
@@ -233,7 +233,7 @@ export function EditSolutionEntitlementsDialog({
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>Edit Solution Assignment</DialogTitle>
-      
+
       <DialogContent>
         {/* Assignment Name */}
         <TextField
@@ -276,7 +276,7 @@ export function EditSolutionEntitlementsDialog({
                   }
                   label={<Typography fontWeight="bold">All Outcomes</Typography>}
                 />
-                <Box sx={{ pl: 3, borderLeft: '2px solid #e0e0e0', ml: 1.5, mt: 1 }}>
+                <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', ml: 1.5, mt: 1 }}>
                   {data.customerSolution.solution.outcomes.map((outcome: any) => (
                     <FormControlLabel
                       key={outcome.id}
@@ -326,7 +326,7 @@ export function EditSolutionEntitlementsDialog({
                   }
                   label={<Typography fontWeight="bold">All Releases</Typography>}
                 />
-                <Box sx={{ pl: 3, borderLeft: '2px solid #e0e0e0', ml: 1.5, mt: 1 }}>
+                <Box sx={{ pl: 3, borderLeft: '2px solid', borderColor: 'divider', ml: 1.5, mt: 1 }}>
                   {data.customerSolution.solution.releases.map((release: any) => (
                     <FormControlLabel
                       key={release.id}
@@ -362,9 +362,9 @@ export function EditSolutionEntitlementsDialog({
 
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button 
-          onClick={handleSave} 
-          variant="contained" 
+        <Button
+          onClick={handleSave}
+          variant="contained"
           disabled={updating || !hasChanges || !isFormValid}
         >
           {updating ? 'Saving...' : 'Save Changes'}

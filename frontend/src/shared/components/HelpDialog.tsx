@@ -34,6 +34,8 @@ import {
     Settings,
     Security,
     AISparkle,
+    LocalOffer,
+    Lock,
 } from '@shared/components/FAIcon';
 
 interface HelpDialogProps {
@@ -54,6 +56,8 @@ const tocItems: TocItem[] = [
     { id: 'customers', title: 'Customers', icon: <Business fontSize="small" /> },
     { id: 'adoption', title: 'Adoption Plans', icon: <TrendingUp fontSize="small" /> },
     { id: 'telemetry', title: 'Telemetry & Tracking', icon: <TrendingUp fontSize="small" /> },
+    { id: 'tags', title: 'Tags', icon: <LocalOffer fontSize="small" /> },
+    { id: 'locking', title: 'Task Locking', icon: <Lock fontSize="small" /> },
     { id: 'import-export', title: 'Import & Export', icon: <CloudUpload fontSize="small" /> },
     { id: 'ai-assistant', title: 'AI Assistant', icon: <AISparkle fontSize="small" /> },
     { id: 'roles', title: 'User Roles', icon: <People fontSize="small" /> },
@@ -88,7 +92,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                bgcolor: '#0D274D',
+                bgcolor: 'primary.dark',
                 color: 'white'
             }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -157,7 +161,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                 >
                     {/* Executive Overview */}
                     <Box id="help-section-overview">
-                        <Typography variant="h4" gutterBottom sx={{ color: '#0D274D', fontWeight: 600 }}>
+                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
                             Executive Overview
                         </Typography>
                         <Paper elevation={0} sx={{ p: 3, bgcolor: 'primary.50', borderRadius: 2, mb: 3, border: '1px solid', borderColor: 'primary.100' }}>
@@ -184,22 +188,19 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                             </Typography>
                         </Paper>
 
-                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>Key Capabilities</Typography>
-                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 2, mb: 3 }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>Get Started in 3 Steps</Typography>
+                        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 2, mb: 3 }}>
                             {[
-                                { icon: <Assignment />, title: 'Product & Task Management', desc: 'Define products with adoption tasks, weights, and success criteria' },
-                                { icon: <Lightbulb />, title: 'Solution Bundling', desc: 'Combine multiple products into cohesive solutions' },
-                                { icon: <Business />, title: 'Customer Management', desc: 'Track customers and their product/solution assignments' },
-                                { icon: <TrendingUp />, title: 'Adoption Tracking', desc: 'Monitor progress through tasks and telemetry' },
-                                { icon: <CloudUpload />, title: 'Import/Export', desc: 'Bulk data management via Excel files' },
-                                { icon: <AISparkle />, title: 'AI Assistant', desc: 'Natural language queries for quick insights' },
+                                { icon: <Assignment />, title: '1. Model Your Portfolio', desc: 'Define your Products, adoption Tasks, and business Outcomes to create a standardized success framework.' },
+                                { icon: <Lightbulb />, title: '2. Create Solutions', desc: 'Bundle multiple products into cohesive Solutions to track complex cross-product adoption journeys.' },
+                                { icon: <Business />, title: '3. Track Customers', desc: 'Assign plans to Customers, monitor their real-time health, and use AI to uncover deep adoption insights.' },
                             ].map((item, i) => (
-                                <Paper key={i} elevation={0} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, color: 'primary.main' }}>
+                                <Paper key={i} elevation={0} sx={{ p: 2.5, border: '1px solid', borderColor: 'primary.100', bgcolor: 'primary.50', borderRadius: 2 }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, color: 'primary.main' }}>
                                         {item.icon}
-                                        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{item.title}</Typography>
+                                        <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>{item.title}</Typography>
                                     </Box>
-                                    <Typography variant="body2" color="text.secondary">{item.desc}</Typography>
+                                    <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.6 }}>{item.desc}</Typography>
                                 </Paper>
                             ))}
                         </Box>
@@ -209,7 +210,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                     {/* Products & Tasks */}
                     <Box id="help-section-products">
-                        <Typography variant="h4" gutterBottom sx={{ color: '#0D274D', fontWeight: 600 }}>
+                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
                             <Assignment sx={{ mr: 1, verticalAlign: 'middle' }} />
                             Products & Tasks
                         </Typography>
@@ -265,7 +266,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                     {/* Solutions */}
                     <Box id="help-section-solutions">
-                        <Typography variant="h4" gutterBottom sx={{ color: '#0D274D', fontWeight: 600 }}>
+                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
                             <Lightbulb sx={{ mr: 1, verticalAlign: 'middle' }} />
                             Solutions
                         </Typography>
@@ -309,7 +310,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                     {/* Customers */}
                     <Box id="help-section-customers">
-                        <Typography variant="h4" gutterBottom sx={{ color: '#0D274D', fontWeight: 600 }}>
+                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
                             <Business sx={{ mr: 1, verticalAlign: 'middle' }} />
                             Customers
                         </Typography>
@@ -351,7 +352,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                     {/* Adoption Plans */}
                     <Box id="help-section-adoption">
-                        <Typography variant="h4" gutterBottom sx={{ color: '#0D274D', fontWeight: 600 }}>
+                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
                             <TrendingUp sx={{ mr: 1, verticalAlign: 'middle' }} />
                             Adoption Plans
                         </Typography>
@@ -407,7 +408,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                     {/* Telemetry */}
                     <Box id="help-section-telemetry">
-                        <Typography variant="h4" gutterBottom sx={{ color: '#0D274D', fontWeight: 600 }}>
+                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
                             <TrendingUp sx={{ mr: 1, verticalAlign: 'middle' }} />
                             Telemetry & Tracking
                         </Typography>
@@ -457,9 +458,68 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                     <Divider sx={{ my: 4 }} />
 
-                    {/* Import/Export */}
+                    {/* Tags Section */}
+                    <Box id="help-section-tags">
+                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
+                            <LocalOffer sx={{ mr: 1, verticalAlign: 'middle' }} />
+                            Tags
+                        </Typography>
+                        <Typography paragraph>
+                            Tags are a flexible way to categorize and filter tasks, products, and solutions across the platform.
+                            They help you organize your adoption portfolio by technology, difficulty, or business unit.
+                        </Typography>
+                        <Accordion defaultExpanded>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
+                                <Typography variant="h6">Using Tags</Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <ul>
+                                    <li><strong>Create Tags</strong>: Found in the "Tags" tab under Products or Solutions. Give them a name and a custom color.</li>
+                                    <li><strong>Assign to Tasks</strong>: In the task editing dialog, you can pick one or more tags.</li>
+                                    <li><strong>Filter by Tag</strong>: Use the Tag filter at the top of task lists to quickly focus on specific categories (e.g., "Security" or "AI").</li>
+                                    <li><strong>AI Search</strong>: You can ask the AI Assistant things like "Show me security tasks" to leverage tag metadata seamlessly.</li>
+                                </ul>
+                            </AccordionDetails>
+                        </Accordion>
+                    </Box>
+
+                    <Divider sx={{ my: 4 }} />
+
+                    {/* Task Locking Section */}
+                    <Box id="help-section-locking">
+                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
+                            <Lock sx={{ mr: 1, verticalAlign: 'middle' }} />
+                            Task Locking
+                        </Typography>
+                        <Typography paragraph>
+                            To prevent accidental changes to adoption plans during critical phases, you can use the <strong>Task Locking</strong> feature.
+                        </Typography>
+                        <Accordion>
+                            <AccordionSummary expandIcon={<ExpandMore />}>
+                                <Typography variant="h6">Locking Capabilities</Typography>
+                            </AccordionSummary>
+                            <AccordionDetails>
+                                <Typography paragraph>
+                                    When an adoption plan is locked:
+                                </Typography>
+                                <ul>
+                                    <li><strong>Metadata is Read-Only</strong>: You cannot add, delete, or reorder tasks.</li>
+                                    <li><strong>Sync is Disabled</strong>: Prevents pulling in changes from the source product unexpectedly.</li>
+                                    <li><strong>Import/Export Restricted</strong>: Protects the integrity of the current plan state.</li>
+                                    <li><strong>Progress remains editable</strong>: You can still update task statuses (Not Started → Completed) while the layout is locked.</li>
+                                </ul>
+                                <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary', fontStyle: 'italic' }}>
+                                    Note: Task locking is easily toggled via the Lock icon in the panel toolbar.
+                                </Typography>
+                            </AccordionDetails>
+                        </Accordion>
+                    </Box>
+
+                    <Divider sx={{ my: 4 }} />
+
+                    {/* Import & Export */}
                     <Box id="help-section-import-export">
-                        <Typography variant="h4" gutterBottom sx={{ color: '#0D274D', fontWeight: 600 }}>
+                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
                             <CloudUpload sx={{ mr: 1, verticalAlign: 'middle' }} />
                             Import & Export
                         </Typography>
@@ -502,7 +562,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                     {/* AI Assistant */}
                     <Box id="help-section-ai-assistant">
-                        <Typography variant="h4" gutterBottom sx={{ color: '#0D274D', fontWeight: 600 }}>
+                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
                             <AISparkle sx={{ mr: 1, verticalAlign: 'middle' }} />
                             AI Assistant
                         </Typography>
@@ -524,6 +584,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                                     <li>"Show me customers with low adoption"</li>
                                     <li>"Which tasks are incomplete for [Customer Name]?"</li>
                                     <li>"What is the adoption progress for [Product Name]?"</li>
+                                    <li>"Show me all tasks tagged with 'Security'"</li>
                                     <li>"List solutions with security outcomes"</li>
                                 </ul>
                                 <Typography paragraph sx={{ mt: 2 }}>
@@ -537,7 +598,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                     {/* User Roles */}
                     <Box id="help-section-roles">
-                        <Typography variant="h4" gutterBottom sx={{ color: '#0D274D', fontWeight: 600 }}>
+                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
                             <Security sx={{ mr: 1, verticalAlign: 'middle' }} />
                             User Roles
                         </Typography>

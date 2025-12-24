@@ -212,6 +212,8 @@ import {
     faUnlockKeyhole,
     faPaintBrush,
     faWandSparkles,
+    faLockOpen,
+    faBox,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Brand icons
@@ -367,6 +369,7 @@ export const Sort = createIcon(faSort, 'Sort');
 export const Settings = createIcon(faGear, 'Settings');
 export const SettingsApplications = createIcon(faCogs, 'SettingsApplications');
 export const Lock = createIcon(faLock, 'Lock');
+export const LockOpen = createIcon(faLockOpen, 'LockOpen');
 export const VpnKey = createIcon(faKey, 'VpnKey');
 export const Security = createIcon(faShieldHalved, 'Security');
 export const Shield = createIcon(faShield, 'Shield');
@@ -445,6 +448,7 @@ export const Rocket = createIcon(faRocket, 'Rocket');
 export const NewReleases = createIcon(faRocket, 'NewReleases');
 export const EmojiEvents = createIcon(faAward, 'EmojiEvents');
 export const WorkspacePremium = createIcon(faCertificate, 'WorkspacePremium');
+export const BoxIcon = createIcon(faBox, 'BoxIcon');
 
 // ==========================================
 // Theme/Style Icons
@@ -687,6 +691,7 @@ export const Icons = {
     Assessment,
     Speed,
     Rocket,
+    BoxIcon,
     Palette,
     Star,
     Backup,

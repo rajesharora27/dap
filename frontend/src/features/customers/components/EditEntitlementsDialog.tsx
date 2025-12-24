@@ -278,7 +278,7 @@ export function EditEntitlementsDialog({
                   />
                 }
                 label={
-                  <Box sx={{ borderBottom: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? '2px solid #4caf50' : '2px solid #e0e0e0', pb: 1 }}>
+                  <Box sx={{ borderBottom: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? '2px solid' : '2px solid', borderColor: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'success.main' : 'divider', pb: 1 }}>
                     <Typography variant="body1" fontWeight={700} color={selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'success.main' : 'text.primary'}>
                       All Outcomes
                     </Typography>
@@ -343,7 +343,7 @@ export function EditEntitlementsDialog({
                   />
                 }
                 label={
-                  <Box sx={{ borderBottom: selectedReleaseIds.includes(ALL_RELEASES_ID) ? '2px solid #1976d2' : '2px solid #e0e0e0', pb: 1 }}>
+                  <Box sx={{ borderBottom: selectedReleaseIds.includes(ALL_RELEASES_ID) ? '2px solid' : '2px solid', borderColor: selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'primary.main' : 'divider', pb: 1 }}>
                     <Typography variant="body1" fontWeight={700} color={selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'primary.main' : 'text.primary'}>
                       All Releases
                     </Typography>

@@ -14,12 +14,13 @@ import {
     DragIndicator,
     Edit,
     Delete,
-    Add
+    Add,
+    Lock
 } from '@shared/components/FAIcon';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChange, onSequenceChange, onTagChange, availableTags, disableDrag }: any) {
+export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChange, onSequenceChange, onTagChange, availableTags, disableDrag, locked = false }: any) {
     const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
     const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
     const [tagMenuAnchor, setTagMenuAnchor] = useState<{ el: HTMLElement; task: any } | null>(null);
@@ -31,7 +32,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
         transform,
         transition,
         isDragging,
-    } = useSortable({ id: task.id, disabled: disableDrag });
+    } = useSortable({ id: task.id, disabled: disableDrag || locked });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -45,9 +46,9 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 ref={setNodeRef}
                 style={style}
                 hover
-                onDoubleClick={() => onDoubleClick(task)}
+                onDoubleClick={() => !locked && onDoubleClick(task)}
                 sx={{
-                    cursor: 'pointer',
+                    cursor: locked ? 'default' : 'pointer',
                     transition: 'all 0.2s ease-in-out',
                     '& td': { py: 0.5, px: 1 }, // Ultra compact padding
                     bgcolor: task.telemetryAttributes?.length > 0 ? 'rgba(76, 175, 80, 0.02)' : 'inherit',
@@ -57,8 +58,12 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 }}
             >
                 {/* Drag handle */}
-                <TableCell sx={{ width: 30, minWidth: 30, padding: '4px 2px', cursor: disableDrag ? 'default' : 'grab' }} {...(!disableDrag ? attributes : {})} {...(!disableDrag ? listeners : {})}>
-                    {!disableDrag && <DragIndicator sx={{ color: 'text.secondary', fontSize: '1rem' }} />}
+                <TableCell sx={{ width: 30, minWidth: 30, padding: '4px 2px', cursor: (disableDrag || locked) ? 'default' : 'grab' }} {...(!(disableDrag || locked) ? attributes : {})} {...(!(disableDrag || locked) ? listeners : {})}>
+                    {!(disableDrag || locked) ? (
+                        <DragIndicator sx={{ color: 'text.secondary', fontSize: '1rem' }} />
+                    ) : (
+                        locked && <Lock sx={{ color: 'text.disabled', fontSize: '0.9rem', opacity: 0.5 }} />
+                    )}
                 </TableCell>
 
                 {/* Sequence number - editable */}
@@ -67,6 +72,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                         <input
                             key={`seq-${task.id}-${task.sequenceNumber}`}
                             type="number"
+                            disabled={locked}
                             defaultValue={task.sequenceNumber || 0}
                             onBlur={(e) => {
                                 e.stopPropagation();
@@ -99,16 +105,16 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                             style={{
                                 width: '40px',
                                 padding: '2px 4px',
-                                border: '1px solid #e0e0e0',
+                                border: locked ? 'none' : '1px solid #e0e0e0',
                                 borderRadius: '4px',
                                 textAlign: 'center',
                                 fontSize: '0.875rem',
                                 fontWeight: 500,
-                                color: '#333',
+                                color: locked ? 'text.secondary' : '#333',
                                 backgroundColor: 'transparent',
-                                cursor: 'text'
+                                cursor: locked ? 'default' : 'text'
                             }}
-                            title="Click to edit sequence (≥1), press Enter to save"
+                            title={locked ? "Locked" : "Click to edit sequence (≥1), press Enter to save"}
                         />
                     )}
                 </TableCell>
@@ -146,7 +152,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                                         <Chip
                                             label={tag.name}
                                             size="small"
-                                            onDelete={(e) => {
+                                            onDelete={locked ? undefined : (e) => {
                                                 e.stopPropagation();
                                                 // Call the new onTagChange handler to remove this tag
                                                 // This requires the parent component to pass onTagChange
@@ -176,16 +182,18 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                             });
                         })()}
                         {/* Dropdown to add tags */}
-                        <IconButton
-                            size="small"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setTagMenuAnchor({ el: e.currentTarget, task });
-                            }}
-                            sx={{ padding: 0.5, marginLeft: 0.5 }}
-                        >
-                            <Add sx={{ fontSize: '1rem' }} />
-                        </IconButton>
+                        {!locked && (
+                            <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setTagMenuAnchor({ el: e.currentTarget, task });
+                                }}
+                                sx={{ padding: 0.5, marginLeft: 0.5 }}
+                            >
+                                <Add sx={{ fontSize: '1rem' }} />
+                            </IconButton>
+                        )}
                     </Box>
                 </TableCell>
 
@@ -256,6 +264,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                     <input
                         key={`weight-${task.id}-${task.weight}`}
                         type="number"
+                        disabled={locked}
                         defaultValue={task.weight || 0}
                         onBlur={(e) => {
                             e.stopPropagation();
@@ -290,20 +299,20 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                         style={{
                             width: '60px',
                             padding: '2px 4px',
-                            border: '1px solid #e0e0e0',
+                            border: locked ? 'none' : '1px solid #e0e0e0',
                             borderRadius: '4px',
                             textAlign: 'center',
                             fontSize: '0.875rem',
                             fontWeight: 500,
-                            color: '#333',
+                            color: locked ? 'text.secondary' : '#333',
                             backgroundColor: 'transparent',
-                            cursor: 'text',
+                            cursor: locked ? 'default' : 'text',
                             // Hide number input spinners
                             MozAppearance: 'textfield',
                             WebkitAppearance: 'none',
                             appearance: 'textfield'
                         } as React.CSSProperties}
-                        title="Click to edit weight (0-100), press Enter to save"
+                        title={locked ? "Locked" : "Click to edit weight (0-100), press Enter to save"}
                     />
                     <style>{`
                         input[type="number"]::-webkit-inner-spin-button,
@@ -364,12 +373,16 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
 
                 {/* Actions */}
                 <TableCell sx={{ width: 100, minWidth: 100, whiteSpace: 'nowrap', textAlign: 'left' }}>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
-                        <Edit fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} color="error">
-                        <Delete fontSize="small" />
-                    </IconButton>
+                    {!locked && (
+                        <>
+                            <IconButton size="small" onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
+                                <Edit fontSize="small" />
+                            </IconButton>
+                            <IconButton size="small" onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} color="error">
+                                <Delete fontSize="small" />
+                            </IconButton>
+                        </>
+                    )}
                 </TableCell>
             </TableRow>
 

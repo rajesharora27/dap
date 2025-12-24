@@ -13,6 +13,7 @@ import {
   ListItemText,
   Tooltip,
   Badge,
+  alpha,
 } from '@mui/material';
 import {
   Dashboard,
@@ -101,10 +102,9 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
       elevation={2}
       sx={{
         zIndex: 1400,
-        background: '#0D274D',
+        background: (theme) => theme.palette.primary.dark,
         backdropFilter: 'blur(10px)',
-        boxShadow: '0 4px 20px rgba(13, 39, 77, 0.25)',
-        // Enterprise Professional theme - updated
+        boxShadow: (theme) => `0 4px 20px ${alpha(theme.palette.primary.dark, 0.25)}`,
       }}
     >
       <Toolbar sx={{ py: { xs: 0.5, sm: 1 } }}>
@@ -211,8 +211,8 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
                   invisible={false}
                   sx={{
                     '& .MuiBadge-badge': {
-                      bgcolor: '#4caf50',
-                      boxShadow: '0 0 6px rgba(76, 175, 80, 0.6)',
+                      bgcolor: (theme) => theme.palette.success.main,
+                      boxShadow: (theme) => `0 0 6px ${alpha(theme.palette.success.main, 0.6)}`,
                     },
                   }}
                 >

@@ -344,7 +344,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                                         '&:last-child td': { borderBottom: 0 },
                                         ...(onRowClick && {
                                             '&:hover': {
-                                                backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                                                backgroundColor: alpha(theme.palette.primary.main, 0.08),
                                             },
                                         }),
                                     }}
@@ -403,7 +403,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                                                                                     e.stopPropagation();
                                                                                     window.open(urlStr, '_blank', 'noopener,noreferrer,width=1200,height=800');
                                                                                 }}
-                                                                                style={{ color: '#1976d2', textDecoration: 'none', fontWeight: 500, cursor: 'pointer' }}
+                                                                                style={{ color: theme.palette.primary.main, textDecoration: 'none', fontWeight: 500, cursor: 'pointer' }}
                                                                             >
                                                                                 {displayText}
                                                                             </a>
@@ -427,7 +427,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
                                                                     onClick={(e) => e.stopPropagation()}
-                                                                    style={{ color: '#1976d2', textDecoration: 'none', fontWeight: 500 }}
+                                                                    style={{ color: theme.palette.primary.main, textDecoration: 'none', fontWeight: 500 }}
                                                                 >
                                                                     {match[1]}
                                                                 </a>
@@ -449,7 +449,7 @@ export const DataTable: React.FC<DataTableProps> = ({
                                                                                         target="_blank"
                                                                                         rel="noopener noreferrer"
                                                                                         onClick={(e) => e.stopPropagation()}
-                                                                                        style={{ color: '#1976d2', textDecoration: 'none', fontWeight: 500 }}
+                                                                                        style={{ color: theme.palette.primary.main, textDecoration: 'none', fontWeight: 500 }}
                                                                                     >
                                                                                         {m[1]}
                                                                                     </a>

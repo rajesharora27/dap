@@ -83,6 +83,18 @@ export const typeDefs = gql`
     updatedAt: DateTime!
     products: [CustomerProductWithPlan!]!
     solutions: [CustomerSolutionWithPlan!]!
+    overviewMetrics: CustomerMetrics!
+  }
+
+  type CustomerMetrics {
+    adoption: Float!
+    velocity: Int!
+    totalTasks: Int!
+    completedTasks: Int!
+    productsCount: Int!
+    solutionsCount: Int!
+    directProductsCount: Int!
+    solutionProductsCount: Int!
   }
 
   type Task implements Node {

@@ -325,7 +325,7 @@ What would you like to know?`,
       .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, text, href) => {
         const isInternal = href.startsWith('#navigate:');
         const targetAttr = isInternal ? '' : ' target="_blank" rel="noopener noreferrer"';
-        return `<a href="${href}"${targetAttr} style="color: #1976d2; text-decoration: none; font-weight: 500;">${text}</a>`;
+        return `<a href="${href}"${targetAttr} style="color: ${theme.palette.primary.main}; text-decoration: none; font-weight: 500;">${text}</a>`;
       })
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/`([^`]+)`/g, '<code style="background: rgba(0,0,0,0.1); padding: 2px 6px; border-radius: 4px; font-family: monospace;">$1</code>')
@@ -386,7 +386,7 @@ What would you like to know?`,
       {/* Header */}
       <DialogTitle
         sx={{
-          background: 'linear-gradient(135deg, #0D274D 0%, #1a3a5c 100%)',
+          background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${alpha(theme.palette.primary.dark, 0.8)} 100%)`,
           color: 'white',
           display: 'flex',
           alignItems: 'center',
@@ -498,8 +498,8 @@ What would you like to know?`,
                   maxWidth: '85%',
                   p: 2,
                   borderRadius: 2,
-                  bgcolor: message.role === 'user' ? '#0D274D' : 'white',
-                  color: message.role === 'user' ? 'white' : 'text.primary',
+                  bgcolor: message.role === 'user' ? 'primary.main' : 'background.paper',
+                  color: message.role === 'user' ? 'primary.contrastText' : 'text.primary',
                 }}
               >
                 {/* Message Content */}
@@ -786,10 +786,10 @@ What would you like to know?`,
             onClick={handleSend}
             disabled={!input.trim() || loading}
             sx={{
-              bgcolor: '#0D274D',
-              color: 'white',
-              '&:hover': { bgcolor: '#1a3a5c' },
-              '&:disabled': { bgcolor: 'grey.300' },
+              bgcolor: 'primary.main',
+              color: 'primary.contrastText',
+              '&:hover': { bgcolor: 'primary.dark' },
+              '&:disabled': { bgcolor: 'action.disabledBackground' },
             }}
           >
             <Send />

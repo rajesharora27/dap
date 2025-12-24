@@ -41,7 +41,7 @@ export const TagDialog: React.FC<TagDialogProps> = ({
 
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
-    const [color, setColor] = useState('#1976d2'); // default MUI primary colour
+    const [color, setColor] = useState('#049FD9'); // Cisco brand blue
     const [nameError, setNameError] = useState('');
 
     // Populate fields when editing or when dialog opens
@@ -49,11 +49,11 @@ export const TagDialog: React.FC<TagDialogProps> = ({
         if (tag) {
             setName(tag.name);
             setDescription(tag.description || '');
-            setColor(tag.color ?? '#1976d2');
+            setColor(tag.color ?? '#049FD9');
         } else {
             setName('');
             setDescription('');
-            setColor('#1976d2');
+            setColor('#049FD9');
         }
         setNameError('');
     }, [tag, open]);

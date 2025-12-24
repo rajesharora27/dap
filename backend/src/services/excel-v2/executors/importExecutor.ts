@@ -696,48 +696,56 @@ async function executeTelemetryAttributes(
             operator: row.operator,
         };
 
-        if (row.expectedValue) {
-            const trimmed = row.expectedValue.trim();
-            let isComplex = false;
+        if (row.expectedValue !== undefined && row.expectedValue !== null) {
+            const trimmed = String(row.expectedValue).trim();
+            const type = (row.attributeType || 'string').toLowerCase();
 
-            // 1. Try to detect and parse Complex Criteria Object (starting with {)
-            if (trimmed.startsWith('{')) {
-                try {
-                    const parsed = JSON.parse(trimmed);
-                    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-                        successCriteria = {
-                            ...parsed,
-                            operator: row.operator // Ensure operator from column takes precedence
-                        };
-                        isComplex = true;
-                    }
-                } catch {
-                    // Ignore parse error, treat as scalar string
-                }
-            }
-
-            // 2. If not complex, handle as scalar value with type coercion
-            if (!isComplex) {
-                let value: any = trimmed;
-
-                if (row.attributeType === 'boolean') {
-                    // Handle Excel "TRUE"/"FALSE" case-insensitively
-                    const lower = trimmed.toLowerCase();
-                    if (lower === 'true') value = true;
-                    else if (lower === 'false') value = false;
-                } else if (row.attributeType === 'number') {
-                    // Force number
-                    const num = Number(trimmed);
-                    if (!isNaN(num)) value = num;
-                } else if (row.attributeType === 'json') {
-                    // Try parsing JSON value
-                    try { value = JSON.parse(trimmed); } catch { }
+            // Handle reconstruction based on type
+            if (type === 'boolean') {
+                const val = trimmed.toLowerCase() === 'true' || trimmed === '1';
+                successCriteria = {
+                    type: 'boolean_flag',
+                    expectedValue: val
+                };
+            } else if (type === 'number') {
+                const num = Number(trimmed);
+                successCriteria = {
+                    type: 'number_threshold',
+                    operator: row.operator,
+                    threshold: isNaN(num) ? 0 : num
+                };
+            } else if (type === 'timestamp') {
+                const days = parseInt(trimmed, 10);
+                if (row.operator === 'within_days' || row.operator === 'withinDays') {
+                    successCriteria = {
+                        type: 'timestamp_comparison',
+                        operator: 'lte', // internal op for comparison
+                        withinDays: isNaN(days) ? 30 : days
+                    };
+                } else if (row.operator === 'not_null') {
+                    successCriteria = {
+                        type: 'timestamp_not_null'
+                    };
                 } else {
-                    // Default / String: Try JSON parsing (handles "quoted strings", numbers, booleans)
-                    // but fallback to raw string if it fails
-                    try { value = JSON.parse(trimmed); } catch { }
+                    // Fallback for timestamp
+                    successCriteria.value = trimmed;
                 }
-
+            } else if (type === 'string') {
+                if (row.operator === 'not_null') {
+                    successCriteria = {
+                        type: 'string_not_null'
+                    };
+                } else {
+                    successCriteria = {
+                        type: 'string_match',
+                        mode: row.operator === 'contains' ? 'contains' : 'exact',
+                        pattern: trimmed
+                    };
+                }
+            } else {
+                // Generic / JSON / Legacy fallback
+                let value: any = trimmed;
+                try { value = JSON.parse(trimmed); } catch { }
                 successCriteria.value = value;
             }
         }

@@ -98,9 +98,9 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
   onUpdateTaskStatus,
   title = 'Tasks',
   titleIcon = '📋',
-  titleColor = '#1976d2',
-  bgColor = '#e3f2fd',
-  borderColor = '#1976d2',
+  titleColor = '#049FD9',
+  bgColor = 'rgba(4, 159, 217, 0.08)',
+  borderColor = '#049FD9',
   filterInfo,
   showHeader = true,
   defaultExpanded = true,
@@ -149,7 +149,7 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
     <TableContainer>
       <Table size="small">
         <TableHead>
-          <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+          <TableRow sx={{ backgroundColor: 'action.hover' }}>
             <TableCell width={50}>
               <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>#</Typography>
             </TableCell>
@@ -488,7 +488,7 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
       sx={{
         mb: 2,
         border: '1.5px solid',
-        borderColor: '#E0E0E0',
+        borderColor: 'divider',
         borderRadius: 2,
         overflow: 'hidden'
       }}

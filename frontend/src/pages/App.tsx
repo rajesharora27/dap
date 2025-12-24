@@ -270,7 +270,7 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
           cursor: 'pointer',
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
-            backgroundColor: 'rgba(25, 118, 210, 0.08)',
+            backgroundColor: 'rgba(4, 159, 217, 0.08)',
           }
         }}
       >
@@ -444,12 +444,13 @@ function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChang
             style={{
               width: '70px',
               padding: '4px 6px',
-              border: '1px solid #1976d2',
+              border: '1px solid',
+              borderColor: 'primary.main',
               borderRadius: '4px',
               textAlign: 'center',
               fontSize: '0.875rem',
               fontWeight: 'bold',
-              color: '#1976d2',
+              color: 'primary.main',
               backgroundColor: 'transparent',
               cursor: 'text'
             }}
@@ -604,7 +605,7 @@ function SortableDevMenuItem({ item, selected, onClick, onContextMenu, icon }: a
     <div ref={setNodeRef} style={style} onContextMenu={(e) => onContextMenu(e, item.id)}>
       <Tooltip title={item.tooltip} placement="right" arrow>
         <ListItemButton
-          sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(156, 39, 176, 0.08)' } }}
+          sx={{ pl: 4, '&.Mui-selected': { backgroundColor: 'rgba(4, 159, 217, 0.08)' } }}
           selected={selected}
           onClick={onClick}
         >

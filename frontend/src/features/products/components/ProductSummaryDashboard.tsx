@@ -19,7 +19,7 @@ interface MetricCardProps {
 
 const MetricCard: React.FC<MetricCardProps> = ({ title, icon, iconBgColor, iconColor, children }) => {
     const theme = useTheme();
-    
+
     return (
         <Paper
             elevation={0}
@@ -28,7 +28,7 @@ const MetricCard: React.FC<MetricCardProps> = ({ title, icon, iconBgColor, iconC
                 height: '100%',
                 borderRadius: 2.5,
                 border: `1px solid ${alpha(theme.palette.divider, 0.12)}`,
-                background: theme.palette.mode === 'dark' 
+                background: theme.palette.mode === 'dark'
                     ? alpha(theme.palette.background.paper, 0.6)
                     : theme.palette.background.paper,
                 boxShadow: theme.palette.mode === 'dark'
@@ -82,15 +82,15 @@ interface CircularMetricProps {
 
 const CircularMetric: React.FC<CircularMetricProps> = ({ value, label, sublabel, colorScheme }) => {
     const theme = useTheme();
-    
+
     const colors = {
         success: { main: theme.palette.success.main },
         warning: { main: theme.palette.warning.main },
         error: { main: theme.palette.error.main }
     };
-    
+
     const strokeColor = colors[colorScheme].main;
-    
+
     return (
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Box sx={{ position: 'relative', width: 56, height: 56, flexShrink: 0 }}>
@@ -198,9 +198,9 @@ export const ProductSummaryDashboard: React.FC<ProductSummaryDashboardProps> = (
     }, [metrics.outcomeDistribution]);
 
     const maxOutcomeCount = sortedOutcomes.length > 0 ? sortedOutcomes[0][1] : 0;
-    
+
     const telemetryColor = metrics.telemetryCoverage > 70 ? 'success' : metrics.telemetryCoverage > 40 ? 'warning' : 'error';
-    
+
     // Get only active licenses
     const activeLicenses = useMemo(() => {
         return (product.licenses || []).filter(license => license.isActive);
@@ -232,9 +232,9 @@ export const ProductSummaryDashboard: React.FC<ProductSummaryDashboardProps> = (
                         sublabel="Tasks with telemetry"
                         colorScheme={telemetryColor}
                     />
-                    
+
                     <Box sx={{ height: '1px', bgcolor: 'divider', opacity: 0.4, mx: -0.5 }} />
-                    
+
                     {/* Documentation Status - Dynamic based on gaps */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                         <Box
@@ -262,8 +262,8 @@ export const ProductSummaryDashboard: React.FC<ProductSummaryDashboardProps> = (
                                 {isFullyDocumented ? 'Fully Documented' : 'Resource Gaps'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>
-                                {isFullyDocumented 
-                                    ? 'All tasks have docs or video' 
+                                {isFullyDocumented
+                                    ? 'All tasks have docs or video'
                                     : `${metrics.resourceGaps} task${metrics.resourceGaps > 1 ? 's' : ''} missing resources`
                                 }
                             </Typography>
@@ -272,7 +272,105 @@ export const ProductSummaryDashboard: React.FC<ProductSummaryDashboardProps> = (
                 </Box>
             </MetricCard>
 
-            {/* Card 2: Scope & Constraints */}
+            {/* Card 2: Outcome Distribution */}
+            <MetricCard
+                title="Outcome Distribution"
+                icon={<FlagIcon />}
+                iconBgColor={alpha(theme.palette.success.main, 0.1)}
+                iconColor={theme.palette.success.main}
+            >
+                {sortedOutcomes.length > 0 ? (
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                        {sortedOutcomes.slice(0, 5).map(([name, count]) => {
+                            const isAllOutcomes = name === 'All Outcomes';
+                            const barColor = isAllOutcomes
+                                ? theme.palette.info.main  // Blue for "All Outcomes"
+                                : theme.palette.success.main;  // Green for specific outcomes
+
+                            return (
+                                <Box
+                                    key={name}
+                                    onClick={() => onOutcomeClick?.(name)}
+                                    sx={{
+                                        cursor: onOutcomeClick ? 'pointer' : 'default',
+                                        p: 0.75,
+                                        mx: -0.75,
+                                        borderRadius: 1,
+                                        transition: 'background-color 0.15s ease',
+                                        '&:hover': onOutcomeClick ? {
+                                            bgcolor: alpha(theme.palette.action.hover, 0.5),
+                                        } : {}
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                        <Typography
+                                            variant="caption"
+                                            fontWeight={500}
+                                            color={isAllOutcomes ? 'info.main' : 'text.secondary'}
+                                            sx={{
+                                                maxWidth: '75%',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                                fontSize: '0.7rem',
+                                                fontStyle: isAllOutcomes ? 'italic' : 'normal'
+                                            }}
+                                            title={isAllOutcomes ? 'Tasks that apply to all outcomes' : name}
+                                        >
+                                            {name}
+                                        </Typography>
+                                        <Typography
+                                            variant="caption"
+                                            fontWeight={600}
+                                            color={isAllOutcomes ? 'info.main' : 'text.primary'}
+                                            sx={{ fontSize: '0.7rem' }}
+                                        >
+                                            {count}
+                                        </Typography>
+                                    </Box>
+                                    <LinearProgress
+                                        variant="determinate"
+                                        value={(count / maxOutcomeCount) * 100}
+                                        sx={{
+                                            height: 5,
+                                            borderRadius: 2.5,
+                                            bgcolor: alpha(barColor, 0.12),
+                                            '& .MuiLinearProgress-bar': {
+                                                borderRadius: 2.5,
+                                                bgcolor: barColor,
+                                                transition: 'transform 0.6s ease-out'
+                                            }
+                                        }}
+                                    />
+                                </Box>
+                            );
+                        })}
+                        {sortedOutcomes.length > 5 && (
+                            <Typography variant="caption" color="text.disabled" textAlign="center" sx={{ fontSize: '0.65rem', mt: 0.5 }}>
+                                +{sortedOutcomes.length - 5} more
+                            </Typography>
+                        )}
+                    </Box>
+                ) : (
+                    <Box
+                        sx={{
+                            height: 100,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'text.disabled'
+                        }}
+                    >
+                        <FlagIcon sx={{ fontSize: 28, opacity: 0.3, mb: 0.75 }} />
+                        <Typography variant="caption" fontStyle="italic" sx={{ fontSize: '0.7rem' }}>
+                            No outcome data
+                        </Typography>
+                    </Box>
+                )}
+            </MetricCard>
+
+            {/* Card 3: Scope & Constraints */}
             <MetricCard
                 title="Scope & Constraints"
                 icon={<CategoryIcon />}
@@ -352,104 +450,6 @@ export const ProductSummaryDashboard: React.FC<ProductSummaryDashboardProps> = (
                         </Box>
                     </Box>
                 </Box>
-            </MetricCard>
-
-            {/* Card 3: Outcome Distribution */}
-            <MetricCard
-                title="Outcome Distribution"
-                icon={<FlagIcon />}
-                iconBgColor={alpha(theme.palette.success.main, 0.1)}
-                iconColor={theme.palette.success.main}
-            >
-                {sortedOutcomes.length > 0 ? (
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                        {sortedOutcomes.slice(0, 5).map(([name, count]) => {
-                            const isAllOutcomes = name === 'All Outcomes';
-                            const barColor = isAllOutcomes 
-                                ? theme.palette.info.main  // Blue for "All Outcomes"
-                                : theme.palette.success.main;  // Green for specific outcomes
-                            
-                            return (
-                                <Box 
-                                    key={name}
-                                    onClick={() => onOutcomeClick?.(name)}
-                                    sx={{ 
-                                        cursor: onOutcomeClick ? 'pointer' : 'default',
-                                        p: 0.75,
-                                        mx: -0.75,
-                                        borderRadius: 1,
-                                        transition: 'background-color 0.15s ease',
-                                        '&:hover': onOutcomeClick ? {
-                                            bgcolor: alpha(theme.palette.action.hover, 0.5),
-                                        } : {}
-                                    }}
-                                >
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                                        <Typography
-                                            variant="caption"
-                                            fontWeight={500}
-                                            color={isAllOutcomes ? 'info.main' : 'text.secondary'}
-                                            sx={{
-                                                maxWidth: '75%',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap',
-                                                fontSize: '0.7rem',
-                                                fontStyle: isAllOutcomes ? 'italic' : 'normal'
-                                            }}
-                                            title={isAllOutcomes ? 'Tasks that apply to all outcomes' : name}
-                                        >
-                                            {name}
-                                        </Typography>
-                                        <Typography 
-                                            variant="caption" 
-                                            fontWeight={600} 
-                                            color={isAllOutcomes ? 'info.main' : 'text.primary'}
-                                            sx={{ fontSize: '0.7rem' }}
-                                        >
-                                            {count}
-                                        </Typography>
-                                    </Box>
-                                    <LinearProgress
-                                        variant="determinate"
-                                        value={(count / maxOutcomeCount) * 100}
-                                        sx={{
-                                            height: 5,
-                                            borderRadius: 2.5,
-                                            bgcolor: alpha(barColor, 0.12),
-                                            '& .MuiLinearProgress-bar': {
-                                                borderRadius: 2.5,
-                                                bgcolor: barColor,
-                                                transition: 'transform 0.6s ease-out'
-                                            }
-                                        }}
-                                    />
-                                </Box>
-                            );
-                        })}
-                        {sortedOutcomes.length > 5 && (
-                            <Typography variant="caption" color="text.disabled" textAlign="center" sx={{ fontSize: '0.65rem', mt: 0.5 }}>
-                                +{sortedOutcomes.length - 5} more
-                            </Typography>
-                        )}
-                    </Box>
-                ) : (
-                    <Box
-                        sx={{
-                            height: 100,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'text.disabled'
-                        }}
-                    >
-                        <FlagIcon sx={{ fontSize: 28, opacity: 0.3, mb: 0.75 }} />
-                        <Typography variant="caption" fontStyle="italic" sx={{ fontSize: '0.7rem' }}>
-                            No outcome data
-                        </Typography>
-                    </Box>
-                )}
             </MetricCard>
         </Box>
     );

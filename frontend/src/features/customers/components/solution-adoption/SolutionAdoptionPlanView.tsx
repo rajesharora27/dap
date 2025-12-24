@@ -287,6 +287,8 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
   }, [lastSyncedAt, refetch]);
 
   const [updateSolutionTaskStatus] = useMutation(UPDATE_CUSTOMER_SOLUTION_TASK_STATUS, {
+    refetchQueries: ['GetCustomers', 'GetSolutionAdoptionPlan'],
+    awaitRefetchQueries: true,
     onCompleted: () => {
       refetch();
       setSuccess('Solution task status updated successfully');
@@ -295,7 +297,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
   });
 
   const [updateProductTaskStatus] = useMutation(UPDATE_CUSTOMER_TASK_STATUS, {
-    refetchQueries: ['GetSolutionAdoptionPlan'],
+    refetchQueries: ['GetCustomers', 'GetSolutionAdoptionPlan'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       refetch();
@@ -304,13 +306,17 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     onError: (err) => setError(err.message)
   });
 
+
   const [syncPlan, { loading: syncLoading }] = useMutation(SYNC_SOLUTION_ADOPTION_PLAN, {
+    refetchQueries: ['GetCustomers', 'GetSolutionAdoptionPlan'],
+    awaitRefetchQueries: true,
     onCompleted: () => {
       refetch();
       setSuccess('Solution adoption plan synced successfully');
     },
     onError: (err) => setError(err.message)
   });
+
 
   // Export product telemetry template mutation
   const [exportProductTelemetryTemplate] = useMutation(EXPORT_PRODUCT_TELEMETRY_TEMPLATE, {

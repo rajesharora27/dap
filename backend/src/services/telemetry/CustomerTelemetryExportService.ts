@@ -56,6 +56,7 @@ export class CustomerTelemetryExportService {
     workbook.created = new Date();
 
     // Add worksheet
+    console.log(`[TelemetryExport] Generating template with Extra Columns (Required, Criteria) for plan ${adoptionPlanId}`);
     const worksheet = workbook.addWorksheet('Telemetry_Data');
 
     // Set up columns
@@ -63,6 +64,10 @@ export class CustomerTelemetryExportService {
       { header: 'Task Name', key: 'taskName', width: 30 },
       { header: 'Attribute Name', key: 'attributeName', width: 25 },
       { header: 'Data Type', key: 'dataType', width: 15 },
+      { header: 'Required', key: 'required', width: 10 },
+      { header: 'Operator', key: 'operator', width: 15 },
+      { header: 'Expected Value', key: 'expectedValue', width: 20 },
+      { header: 'Criteria', key: 'criteria', width: 25 },
       { header: 'Current Value', key: 'currentValue', width: 20 },
       { header: 'Date', key: 'date', width: 15 },
       { header: 'Notes', key: 'notes', width: 30 }
@@ -92,12 +97,44 @@ export class CustomerTelemetryExportService {
       for (const attribute of task.telemetryAttributes) {
         const row = worksheet.getRow(rowIndex);
 
+        // Get current value (handle JSON or simple string)
+        // Fetch explicitly to be robust
+        const latestValueObj = await prisma.customerTelemetryValue.findFirst({
+          where: { customerAttributeId: attribute.id },
+          orderBy: { createdAt: 'desc' }
+        });
+        let currentValue = '';
+        if (latestValueObj) {
+          // If value is stored as stringified JSON but dataType is not string, or vice versa, handle it?
+          // The value field is JSON type in Prisma or String?
+          // In import, we see: currentValue: latestValue?.value || ''
+          // In generateSolutionTelemetryTemplate, line 383: currentValue = latestValue?.value || ''
+          // Let's rely on .value.
+          // However, if it's an object/array, we might need to stringify it if we want it in one cell?
+          // The excel export expects a string or number.
+          // If it's a JSON object, ExcelJS might default to [object Object].
+          // Let's assume it's a primitive or we verify.
+          // In customerAdoption.ts exportCustomerAdoptionToExcel: JSON.stringify(latestValue.value)
+          // Let's match that safety.
+          try {
+            currentValue = typeof latestValueObj.value === 'object'
+              ? JSON.stringify(latestValueObj.value)
+              : String(latestValueObj.value);
+          } catch {
+            currentValue = String(latestValueObj.value);
+          }
+        }
+
         row.values = {
           taskName: task.name,
           attributeName: attribute.name,
           dataType: attribute.dataType,
-          currentValue: '', // User will fill this
-          date: today,
+          required: attribute.isRequired ? 'Yes' : 'No',
+          operator: this.getOperator(attribute.successCriteria),
+          expectedValue: this.getValue(attribute.successCriteria),
+          criteria: this.formatCriteria(attribute.successCriteria),
+          currentValue: currentValue,
+          date: latestValueObj ? new Date(latestValueObj.createdAt).toISOString().split('T')[0] : today, // Use entry date if exists
           notes: ''
         };
 
@@ -130,6 +167,16 @@ export class CustomerTelemetryExportService {
           fgColor: { argb: 'FFF2F2F2' }
         };
         row.getCell('dataType').fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF2F2F2' }
+        };
+        row.getCell('required').fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF2F2F2' }
+        };
+        row.getCell('criteria').fill = {
           type: 'pattern',
           pattern: 'solid',
           fgColor: { argb: 'FFF2F2F2' }
@@ -232,7 +279,7 @@ export class CustomerTelemetryExportService {
     instructions.forEach((text, index) => {
       const row = instructionsSheet.getRow(index + 1);
       row.values = { text };
-      
+
       // Style different types of rows
       if (text.includes('═══')) {
         row.font = { bold: true, color: { argb: 'FF4472C4' } };
@@ -250,7 +297,7 @@ export class CustomerTelemetryExportService {
 
     // Note: Instructions sheet added second, so Telemetry_Data is first tab
     // This is intentional - users should see the data sheet first
-    
+
     // Generate buffer
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer);
@@ -345,6 +392,10 @@ export class CustomerTelemetryExportService {
       { header: 'Task Name', key: 'taskName', width: 30 },
       { header: 'Attribute Name', key: 'attributeName', width: 25 },
       { header: 'Data Type', key: 'dataType', width: 15 },
+      { header: 'Required', key: 'required', width: 10 },
+      { header: 'Operator', key: 'operator', width: 15 },
+      { header: 'Expected Value', key: 'expectedValue', width: 20 },
+      { header: 'Criteria', key: 'criteria', width: 25 },
       { header: 'Current Value', key: 'currentValue', width: 20 },
       { header: 'Date', key: 'date', width: 15 },
       { header: 'Notes', key: 'notes', width: 30 }
@@ -380,12 +431,25 @@ export class CustomerTelemetryExportService {
           orderBy: { createdAt: 'desc' }
         });
 
-        const currentValue = latestValue?.value || '';
-        
+        let currentValue = '';
+        if (latestValue) {
+          try {
+            currentValue = typeof latestValue.value === 'object'
+              ? JSON.stringify(latestValue.value)
+              : String(latestValue.value);
+          } catch {
+            currentValue = String(latestValue.value);
+          }
+        }
+
         worksheet.addRow({
           taskName: task.name,
           attributeName: attr.name,
           dataType: attr.dataType,
+          required: attr.isRequired ? 'Yes' : 'No',
+          operator: this.getOperator(attr.successCriteria),
+          expectedValue: this.getValue(attr.successCriteria),
+          criteria: this.formatCriteria(attr.successCriteria),
           currentValue: currentValue,
           date: today,
           notes: ''
@@ -400,6 +464,24 @@ export class CustomerTelemetryExportService {
           bottom: { style: 'thin' },
           right: { style: 'thin' }
         };
+
+        // Color read-only columns (A-G)
+        ['A', 'B', 'C', 'D', 'E', 'F', 'G'].forEach(col => {
+          row.getCell(col).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF2F2F2' }
+          };
+        });
+
+        // Color input columns (H-J)
+        ['H', 'I', 'J'].forEach(col => {
+          row.getCell(col).fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFFEF2CB' }
+          };
+        });
 
         rowIndex++;
       }
@@ -483,7 +565,7 @@ export class CustomerTelemetryExportService {
     instructions.forEach((text, index) => {
       const row = instructionsSheet.getRow(index + 1);
       row.values = { text };
-      
+
       // Style different types of rows
       if (text.includes('═══')) {
         row.font = { bold: true, color: { argb: 'FF4472C4' } };
@@ -503,4 +585,100 @@ export class CustomerTelemetryExportService {
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(buffer);
   }
+
+  /**
+   * Format success criteria into a readable string
+   */
+  private static formatCriteria(criteria: any): string {
+    if (!criteria) return '';
+
+    // Parse JSON if needed
+    if (typeof criteria === 'string') {
+      try {
+        criteria = JSON.parse(criteria);
+      } catch {
+        return criteria;
+      }
+    }
+
+    if (!criteria.type) return JSON.stringify(criteria);
+
+    switch (criteria.type) {
+      case 'boolean_flag':
+        return criteria.expectedValue === true ? 'true' : 'false';
+
+      case 'number_threshold':
+        const opMap: Record<string, string> = {
+          'greater_than': '>',
+          'greater_than_or_equal': '>=',
+          'less_than': '<',
+          'less_than_or_equal': '<=',
+          'equals': '=',
+          'not_equals': '!='
+        };
+        return `${opMap[criteria.operator] || criteria.operator} ${criteria.threshold}`;
+
+      case 'string_match':
+        if (criteria.mode === 'exact') return `Equals "${criteria.pattern}"`;
+        return `Contains "${criteria.pattern}"`;
+
+      case 'string_not_null':
+        return 'Not Null';
+
+      case 'timestamp_not_null':
+        return 'Not Null';
+
+      case 'timestamp_comparison':
+        return `Within ${criteria.withinDays} days`;
+
+      case 'string_contains': // Legacy check
+        return `Contains "${criteria.expectedValue}"`;
+
+      case 'string_equals': // Legacy check
+        return `Equals "${criteria.expectedValue}"`;
+
+      case 'boolean_equals': // Legacy check
+        return criteria.expectedValue === true ? 'true' : 'false';
+
+      default:
+        return JSON.stringify(criteria);
+    }
+  }
+
+  private static getOperator(criteria: any): string {
+    if (!criteria) return '';
+    if (typeof criteria === 'string') {
+      try { criteria = JSON.parse(criteria); } catch { return ''; }
+    }
+
+    if (criteria.operator && !criteria.type) return criteria.operator; // Legacy
+
+    switch (criteria.type) {
+      case 'boolean_flag': return 'equals';
+      case 'number_threshold': return criteria.operator || '';
+      case 'string_match': return criteria.mode || 'exact';
+      case 'string_not_null': return 'not_null';
+      case 'timestamp_not_null': return 'not_null';
+      case 'timestamp_comparison': return 'within_days';
+      default: return '';
+    }
+  }
+
+  private static getValue(criteria: any): string {
+    if (!criteria) return '';
+    if (typeof criteria === 'string') {
+      try { criteria = JSON.parse(criteria); } catch { return ''; }
+    }
+
+    if (criteria.value !== undefined && !criteria.type) return String(criteria.value); // Legacy
+
+    switch (criteria.type) {
+      case 'boolean_flag': return String(criteria.expectedValue);
+      case 'number_threshold': return String(criteria.threshold);
+      case 'string_match': return String(criteria.pattern);
+      case 'timestamp_comparison': return String(criteria.withinDays);
+      default: return '';
+    }
+  }
 }
+

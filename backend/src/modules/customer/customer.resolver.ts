@@ -44,8 +44,72 @@ export const CustomerFieldResolvers = {
             where: { customerId: parent.id },
             include: { solution: true, customer: true, adoptionPlan: true }
         });
+    },
+
+    overviewMetrics: async (parent: any) => {
+        const [products, solutions] = await Promise.all([
+            prisma.customerProduct.findMany({
+                where: { customerId: parent.id },
+                include: { adoptionPlan: true }
+            }),
+            prisma.customerSolution.findMany({
+                where: { customerId: parent.id },
+                include: { adoptionPlan: true }
+            })
+        ]);
+
+        // Calculate average adoption across ALL products
+        const totalProgress = products.reduce((acc: number, p: any) => acc + (Number(p.adoptionPlan?.progressPercentage || 0)), 0);
+        const avgAdoption = products.length > 0 ? totalProgress / products.length : 0;
+
+        // Total Tasks: sum of all product tasks + all solution-specific tasks
+        const totalTasksAcrossPlans =
+            products.reduce((acc: number, p: any) => acc + (p.adoptionPlan?.totalTasks || 0), 0) +
+            solutions.reduce((acc: number, s: any) => acc + (s.adoptionPlan?.solutionTasksTotal || 0), 0);
+
+        const completedTasksAcrossPlans =
+            products.reduce((acc: number, p: any) => acc + (p.adoptionPlan?.completedTasks || 0), 0) +
+            solutions.reduce((acc: number, s: any) => acc + (s.adoptionPlan?.solutionTasksComplete || 0), 0);
+
+        // Velocity: Tasks completed in last 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        // Fetch count across both CustomerTask and CustomerSolutionTask
+        const [productVelocity, solutionVelocity] = await Promise.all([
+            prisma.customerTask.count({
+                where: {
+                    adoptionPlan: {
+                        customerProduct: { customerId: parent.id }
+                    },
+                    OR: [{ status: 'DONE' }, { status: 'COMPLETED' }],
+                    statusUpdatedAt: { gte: thirtyDaysAgo }
+                }
+            }),
+            prisma.customerSolutionTask.count({
+                where: {
+                    solutionAdoptionPlan: {
+                        customerSolution: { customerId: parent.id }
+                    },
+                    OR: [{ status: 'DONE' }, { status: 'COMPLETED' }],
+                    statusUpdatedAt: { gte: thirtyDaysAgo }
+                }
+            })
+        ]);
+
+        return {
+            adoption: avgAdoption,
+            velocity: productVelocity + solutionVelocity,
+            totalTasks: totalTasksAcrossPlans,
+            completedTasks: completedTasksAcrossPlans,
+            productsCount: products.length,
+            solutionsCount: solutions.length,
+            directProductsCount: products.filter((p: any) => !p.customerSolutionId).length,
+            solutionProductsCount: products.filter((p: any) => !!p.customerSolutionId).length
+        };
     }
 };
+
 
 /**
  * Customer Query Resolvers

@@ -7,7 +7,7 @@ import {
     Checkbox, OutlinedInput, Collapse, Divider
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension, FilterList, ExpandMore, ExpandLess } from '@shared/components/FAIcon';
+import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension, FilterList, ExpandMore, ExpandLess, Lock, LockOpen } from '@shared/components/FAIcon';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -57,6 +57,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const [taskReleaseFilter, setTaskReleaseFilter] = useState<string[]>([]);
     const [taskLicenseFilter, setTaskLicenseFilter] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
+    const [isTasksLocked, setIsTasksLocked] = useState(false);
     const [inlineEditingOutcome, setInlineEditingOutcome] = useState<string | null>(null);
     const [inlineOutcomeName, setInlineOutcomeName] = useState('');
 
@@ -802,18 +803,23 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                         startIcon={isExporting ? <CircularProgress size={20} /> : <FileDownload />}
                                         size="small"
                                         onClick={handleExport}
-                                        disabled={isExporting}
+                                        disabled={isExporting || (selectedSubSection === 'tasks' && isTasksLocked)}
+                                        title={selectedSubSection === 'tasks' && isTasksLocked ? "Unlock Tasks to Export" : ""}
                                     >
                                         Export to Excel
                                     </Button>
+
                                     <Button
                                         variant="outlined"
                                         startIcon={<FileUpload />}
                                         size="small"
                                         onClick={() => setImportDialog(true)}
+                                        disabled={selectedSubSection === 'tasks' && isTasksLocked}
+                                        title={selectedSubSection === 'tasks' && isTasksLocked ? "Unlock Tasks to Import" : ""}
                                     >
                                         Import from Excel
                                     </Button>
+
                                     <Button
                                         variant="outlined"
                                         color="error"
@@ -858,6 +864,16 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                 {/* Filters Button - Only show for tasks tab */}
                                 {selectedSubSection === 'tasks' && (
                                     <>
+                                        <Tooltip title={isTasksLocked ? "Unlock Tasks to Edit" : "Lock Tasks"}>
+                                            <IconButton
+                                                size="small"
+                                                onClick={() => setIsTasksLocked(!isTasksLocked)}
+                                                sx={{ mr: 1, color: isTasksLocked ? 'text.secondary' : 'primary.main', border: `1px solid ${isTasksLocked ? 'divider' : 'primary.main'}`, borderRadius: 1 }}
+                                            >
+                                                {isTasksLocked ? <Lock /> : <LockOpen />}
+                                            </IconButton>
+                                        </Tooltip>
+
                                         <Button
                                             size="small"
                                             startIcon={<FilterList />}
@@ -885,6 +901,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                     variant="contained"
                                     startIcon={<Add />}
                                     size="small"
+                                    disabled={selectedSubSection === 'tasks' && isTasksLocked}
                                     onClick={() => {
                                         switch (selectedSubSection) {
                                             case 'tasks': setEditingTask(null); setTaskDialog(true); break;
@@ -895,6 +912,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                             case 'tags': setEditingTag(null); setTagDialog(true); break;
                                         }
                                     }}
+                                    title={selectedSubSection === 'tasks' && isTasksLocked ? "Unlock Tasks to Add" : ""}
                                 >
                                     {selectedSubSection === 'tasks' ? 'Add Task' :
                                         selectedSubSection === 'outcomes' ? 'Add Outcome' :
@@ -1103,6 +1121,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         onTagChange={handleTagChange}
                                                         availableTags={displayProduct?.tags || []}
                                                         disableDrag={hasActiveFilters}
+                                                        locked={isTasksLocked}
                                                     />
                                                 ))}
                                                 {filteredTasks.length === 0 && !tasksLoading && (

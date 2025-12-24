@@ -5,7 +5,7 @@ import {
 import { useTheme, alpha } from '@mui/material/styles';
 import { Edit, Delete, Add } from '@shared/components/FAIcon';
 import { useQuery } from '@apollo/client';
-import { CustomersPanel, CUSTOMERS } from '@features/customers';
+import { CustomersPanel, CustomerDetailView, CUSTOMERS } from '@features/customers';
 
 
 import { useAuth } from '@features/auth';

@@ -14,9 +14,9 @@ export const getBasePath = (): string => {
 export const downloadFileFromUrl = async (url: string, filename: string): Promise<void> => {
   const basePath = getBasePath();
   const fileUrl = basePath === '' ? url : `${basePath}${url}`;
-  
+
   console.log('Downloading file from:', fileUrl);
-  
+
   const response = await fetch(fileUrl, {
     credentials: 'include',
   });
@@ -27,20 +27,20 @@ export const downloadFileFromUrl = async (url: string, filename: string): Promis
 
   // Get as arrayBuffer to ensure binary data is preserved
   const arrayBuffer = await response.arrayBuffer();
-  
+
   // Check first few bytes to verify it's a valid Excel file (should start with PK)
   const firstBytes = new Uint8Array(arrayBuffer.slice(0, 4));
   const header = Array.from(firstBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-  
+
   if (header !== '504b0304' && header !== '504b0506') {
     console.error('Invalid Excel file header! Expected PK signature, got:', header);
     throw new Error('Downloaded file is not a valid Excel file');
   }
 
-  const blob = new Blob([arrayBuffer], { 
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+  const blob = new Blob([arrayBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   });
-  
+
   const downloadUrl = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = downloadUrl;
@@ -58,27 +58,29 @@ export const downloadFileFromUrl = async (url: string, filename: string): Promis
  * Import telemetry data for a product adoption plan (REST API)
  */
 export const importProductTelemetry = async (
-  adoptionPlanId: string, 
+  adoptionPlanId: string,
   file: File
 ): Promise<{ success: boolean; summary?: any; taskResults?: any[]; error?: string }> => {
   const basePath = getBasePath();
   const url = `${basePath}/api/telemetry/import/${adoptionPlanId}`;
-  
+
   const formData = new FormData();
   formData.append('file', file);
-  
+
+  const token = localStorage.getItem('token');
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': 'admin',
+      'Authorization': token ? `Bearer ${token}` : 'admin', // Fallback to admin for dev/backward compatibility if needed, but primarily token
     },
     body: formData,
   });
-  
+
   if (!response.ok) {
     throw new Error(`Import failed: ${response.statusText}`);
   }
-  
+
   return await response.json();
 };
 
@@ -86,27 +88,29 @@ export const importProductTelemetry = async (
  * Import telemetry data for a solution adoption plan (REST API)
  */
 export const importSolutionTelemetry = async (
-  solutionAdoptionPlanId: string, 
+  solutionAdoptionPlanId: string,
   file: File
 ): Promise<{ success: boolean; summary?: any; taskResults?: any[]; error?: string }> => {
   const basePath = getBasePath();
   const url = `${basePath}/api/solution-telemetry/import/${solutionAdoptionPlanId}`;
-  
+
   const formData = new FormData();
   formData.append('file', file);
-  
+
+  const token = localStorage.getItem('token');
+
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': 'admin',
+      'Authorization': token ? `Bearer ${token}` : 'admin',
     },
     body: formData,
   });
-  
+
   if (!response.ok) {
     throw new Error(`Import failed: ${response.statusText}`);
   }
-  
+
   return await response.json();
 };
 

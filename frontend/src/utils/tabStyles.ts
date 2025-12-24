@@ -29,7 +29,7 @@ export const getTabsStyles = (): SxProps<Theme> => ({
     transition: 'all 0.2s ease',
     '&.Mui-selected': {
       color: 'primary.main',
-      backgroundColor: 'rgba(25, 118, 210, 0.1)',
+      backgroundColor: 'rgba(4, 159, 217, 0.08)',
     },
     '&:hover': {
       backgroundColor: 'rgba(0, 0, 0, 0.04)',
@@ -49,15 +49,15 @@ export const adoptionPlanColors = {
     titleIcon: '📦',
   },
   solution: {
-    titleColor: '#7B1FA2',
-    bgColor: '#F3E5F5',
-    borderColor: '#7B1FA2',
+    titleColor: 'primary.main',
+    bgColor: 'rgba(4, 159, 217, 0.05)',
+    borderColor: 'primary.main',
     titleIcon: '🎯',
   },
   default: {
-    titleColor: '#1976d2',
-    bgColor: '#e3f2fd',
-    borderColor: '#1976d2',
+    titleColor: 'primary.main',
+    bgColor: 'rgba(4, 159, 217, 0.08)',
+    borderColor: 'primary.main',
     titleIcon: '📋',
   },
 };

@@ -122,7 +122,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
   const [step, setStep] = useState(1); // 1: Select Product, 2: Configure, 3: Confirm
 
   const { data: productsData, loading: productsLoading, error: productsError } = useQuery(GET_PRODUCTS_AND_OUTCOMES);
-  
+
   const { data: outcomesData, loading: outcomesLoading } = useQuery(GET_OUTCOMES_FOR_PRODUCT, {
     variables: { productId: selectedProductId },
     skip: !selectedProductId,
@@ -163,7 +163,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
       console.log('⚠️ No products data found');
       return [];
     }
-    
+
     // Handle connection-style response (edges with nodes)
     if (productsData.products.edges) {
       const mapped = productsData.products.edges
@@ -199,17 +199,17 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
       }
       return mapped;
     }
-    
+
     // Handle direct array response (fallback)
     if (Array.isArray(productsData.products)) {
       console.log('📦 Products is direct array, count:', productsData.products.length);
       return productsData.products.filter((p: any) => p && p.id);
     }
-    
+
     console.warn('⚠️ Unknown products data structure:', productsData.products);
     return [];
   }, [productsData]);
-  
+
   // Additional debug effect
   useEffect(() => {
     if (products.length > 0) {
@@ -218,7 +218,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
   const outcomes = outcomesData?.outcomes || [];
   const releases = releasesData?.releases || [];
   const selectedProduct = products.find((p: any) => p.id === selectedProductId);
-  
+
   // Get available licenses for selected product
   const availableLicenses = selectedProduct?.licenses?.filter((l: any) => l.isActive) || [];
 
@@ -242,7 +242,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
       setStep(1);
     }
   }, [open]);
-  
+
   // Reset license level when product changes
   useEffect(() => {
     if (selectedProductId && availableLicenses.length > 0) {
@@ -311,7 +311,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
       // If "All" is selected, send empty array (backend treats this as "applies to all")
       const filteredOutcomes = selectedOutcomeIds.filter(id => id !== ALL_OUTCOMES_ID);
       const filteredReleases = selectedReleaseIds.filter(id => id !== ALL_RELEASES_ID);
-      
+
       // Step 1: Assign product to customer
       const { data } = await assignProduct({
         variables: {
@@ -343,10 +343,10 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
   };
 
   return (
-    <Dialog 
-      open={open} 
-      onClose={onClose} 
-      maxWidth="md" 
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
       fullWidth
       sx={{
         '& .MuiDialog-paper': {
@@ -363,8 +363,8 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
         </Typography>
       </DialogTitle>
 
-      <DialogContent 
-        sx={{ 
+      <DialogContent
+        sx={{
           flex: 1,
           overflowY: 'auto', // Allow scrolling
           overflowX: 'hidden',
@@ -397,7 +397,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                 <Alert severity="success" icon={false} sx={{ mb: 2, py: 0.5 }}>
                   ✅ {products.length} products available
                 </Alert>
-                
+
                 {/* Simple Select Dropdown with forced visibility */}
                 <FormControl fullWidth required>
                   <InputLabel id="product-label">Product</InputLabel>
@@ -428,8 +428,8 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                   >
                     {products.map((product: any) => {
                       return (
-                        <MenuItem 
-                          key={product.id} 
+                        <MenuItem
+                          key={product.id}
                           value={product.id}
                         >
                           <Box sx={{ width: '100%' }}>
@@ -555,7 +555,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                       />
                     }
                     label={
-                      <Box sx={{ borderBottom: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? '2px solid #4caf50' : '2px solid #e0e0e0', pb: 1, mb: 1 }}>
+                      <Box sx={{ borderBottom: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? '2px solid' : '2px solid', borderColor: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'success.main' : 'divider', pb: 1, mb: 1 }}>
                         <Typography variant="body2" fontWeight={700} color={selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'success.main' : 'text.primary'}>
                           All Outcomes
                         </Typography>
@@ -565,7 +565,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                       </Box>
                     }
                   />
-                  
+
                   {/* Individual outcomes */}
                   {outcomes.map((outcome: any) => (
                     <FormControlLabel
@@ -597,8 +597,8 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                   {selectedOutcomeIds.includes(ALL_OUTCOMES_ID)
                     ? 'All outcomes selected (wildcard)'
                     : selectedOutcomeIds.length === 0
-                    ? 'No outcomes selected - all tasks will be included'
-                    : `${selectedOutcomeIds.length} outcome(s) selected`}
+                      ? 'No outcomes selected - all tasks will be included'
+                      : `${selectedOutcomeIds.length} outcome(s) selected`}
                 </Typography>
               </Paper>
             )}
@@ -630,7 +630,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                       />
                     }
                     label={
-                      <Box sx={{ borderBottom: selectedReleaseIds.includes(ALL_RELEASES_ID) ? '2px solid #1976d2' : '2px solid #e0e0e0', pb: 1, mb: 1 }}>
+                      <Box sx={{ borderBottom: selectedReleaseIds.includes(ALL_RELEASES_ID) ? '2px solid' : '2px solid', borderColor: selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'primary.main' : 'divider', pb: 1, mb: 1 }}>
                         <Typography variant="body2" fontWeight={700} color={selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'primary.main' : 'text.primary'}>
                           All Releases
                         </Typography>
@@ -640,7 +640,7 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                       </Box>
                     }
                   />
-                  
+
                   {/* Individual releases */}
                   {releases.map((release: any) => (
                     <FormControlLabel
@@ -672,8 +672,8 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                   {selectedReleaseIds.includes(ALL_RELEASES_ID)
                     ? 'All releases selected (wildcard)'
                     : selectedReleaseIds.length === 0
-                    ? 'No releases selected - all tasks will be included'
-                    : `${selectedReleaseIds.length} release(s) selected`}
+                      ? 'No releases selected - all tasks will be included'
+                      : `${selectedReleaseIds.length} release(s) selected`}
                 </Typography>
               </Paper>
             )}
@@ -797,9 +797,9 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
         )}
       </DialogContent>
 
-      <DialogActions 
-        sx={{ 
-          borderTop: 1, 
+      <DialogActions
+        sx={{
+          borderTop: 1,
           borderColor: 'divider',
           px: 3,
           py: 2,

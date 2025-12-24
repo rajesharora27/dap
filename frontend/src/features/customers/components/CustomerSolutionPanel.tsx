@@ -24,6 +24,7 @@ import { gql, useQuery, useMutation } from '@apollo/client';
 import { AssignSolutionDialog } from './AssignSolutionDialog';
 import { EditSolutionEntitlementsDialog } from './EditSolutionEntitlementsDialog';
 import { SolutionAdoptionPlanView } from './solution-adoption/SolutionAdoptionPlanView';
+import { importSolutionTelemetry, downloadFileFromUrl } from '@/utils/telemetryOperations';
 
 
 const GET_CUSTOMER_SOLUTIONS = gql`
@@ -213,7 +214,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   });
 
   const [syncPlan, { loading: syncLoading }] = useMutation(SYNC_SOLUTION_ADOPTION_PLAN, {
-    refetchQueries: ['GetCustomerSolutions'],
+    refetchQueries: ['GetCustomers', 'GetCustomerSolutions'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       refetch();
@@ -224,6 +225,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
       alert('Failed to sync: ' + err.message);
     }
   });
+
 
 
   const [removeSolution, { loading: removeLoading }] = useMutation(REMOVE_SOLUTION_FROM_CUSTOMER, {
@@ -249,29 +251,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
       const { url, filename } = data.exportSolutionAdoptionPlanTelemetryTemplate;
 
       try {
-        // Prepend base path if deployed at subpath (e.g., /dap/)
-        const basePath = import.meta.env.BASE_URL || '/';
-        const fileUrl = basePath === '/' ? url : `${basePath.replace(/\/$/, '')}${url}`;
-
-        // Use relative path for download - works with Vite proxy and production reverse proxy
-        const response = await fetch(fileUrl, {
-          credentials: 'include',
-        });
-
-        if (!response.ok) {
-          throw new Error(`Failed to download file: ${response.statusText}`);
-        }
-
-        // Get the blob and create download
-        const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(downloadUrl);
+        await downloadFileFromUrl(url, filename);
       } catch (err: any) {
         console.error('Download error:', err);
         alert('Failed to download telemetry template: ' + err.message);
@@ -310,29 +290,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
     }
 
     try {
-      // Use REST API for file upload (simpler than GraphQL file uploads)
-      const formData = new FormData();
-      formData.append('file', file);
-
-      // Prepend BASE_URL for subpath deployment support
-      const basePath = import.meta.env.BASE_URL || '/';
-      const uploadUrl = basePath === '/'
-        ? `/api/solution-telemetry/import/${adoptionPlanId}`
-        : `${basePath.replace(/\/$/, '')}/api/solution-telemetry/import/${adoptionPlanId}`;
-
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': 'admin',
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Upload failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
+      const result = await importSolutionTelemetry(adoptionPlanId, file);
 
       if (result.success) {
         refetch();
@@ -444,9 +402,9 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
                   startIcon={<Edit />}
                   onClick={() => setEditEntitlementsDialogOpen(true)}
                   sx={{
-                    backgroundColor: '#0070D2',
+                    backgroundColor: 'primary.main',
                     '&:hover': {
-                      backgroundColor: '#005FB2'
+                      backgroundColor: 'primary.dark'
                     }
                   }}
                 >

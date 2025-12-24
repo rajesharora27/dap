@@ -5,7 +5,7 @@ import {
     IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, List, ListItem, ListItemText, CircularProgress, Card, CardContent, Checkbox, OutlinedInput, Collapse, Alert, Divider
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2, Label, FilterList, ExpandMore, ExpandLess, VerifiedUser, NewReleases, FileUpload, FileDownload } from '@shared/components/FAIcon';
+import { Edit, Delete, Add, Description, CheckCircle, Extension, Inventory2, Label, FilterList, ExpandMore, ExpandLess, VerifiedUser, NewReleases, FileUpload, FileDownload, Lock, LockOpen } from '@shared/components/FAIcon';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -36,6 +36,7 @@ export const SolutionsPage: React.FC = () => {
     const [taskReleaseFilter, setTaskReleaseFilter] = useState<string[]>([]);
     const [taskLicenseFilter, setTaskLicenseFilter] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
+    const [isTasksLocked, setIsTasksLocked] = useState(false);
 
     // Dialog States - must be before any conditional returns
     const [importDialog, setImportDialog] = useState(false);
@@ -854,18 +855,23 @@ export const SolutionsPage: React.FC = () => {
                                         startIcon={isExporting ? <CircularProgress size={20} /> : <FileDownload />}
                                         size="small"
                                         onClick={handleExport}
-                                        disabled={isExporting}
+                                        disabled={isExporting || (selectedSubSection === 'tasks' && isTasksLocked)}
+                                        title={selectedSubSection === 'tasks' && isTasksLocked ? "Unlock Tasks to Export" : ""}
                                     >
                                         Export to Excel
                                     </Button>
+
                                     <Button
                                         variant="outlined"
                                         startIcon={<FileUpload />}
                                         size="small"
                                         onClick={() => setImportDialog(true)}
+                                        disabled={selectedSubSection === 'tasks' && isTasksLocked}
+                                        title={selectedSubSection === 'tasks' && isTasksLocked ? "Unlock Tasks to Import" : ""}
                                     >
                                         Import from Excel
                                     </Button>
+
                                     <Button
                                         variant="outlined"
                                         color="error"
@@ -912,6 +918,16 @@ export const SolutionsPage: React.FC = () => {
                                     {/* Filters Button - Only show for tasks tab */}
                                     {selectedSubSection === 'tasks' && (
                                         <>
+                                            <Tooltip title={isTasksLocked ? "Unlock Tasks to Edit" : "Lock Tasks"}>
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={() => setIsTasksLocked(!isTasksLocked)}
+                                                    sx={{ mr: 1, color: isTasksLocked ? 'text.secondary' : 'primary.main', border: `1px solid ${isTasksLocked ? 'divider' : 'primary.main'}`, borderRadius: 1 }}
+                                                >
+                                                    {isTasksLocked ? <Lock /> : <LockOpen />}
+                                                </IconButton>
+                                            </Tooltip>
+
                                             <Button
                                                 size="small"
                                                 startIcon={<FilterList />}
@@ -942,8 +958,9 @@ export const SolutionsPage: React.FC = () => {
                                     )}
                                     <Button
                                         variant="contained"
-                                        startIcon={selectedSubSection === 'tasks' || selectedSubSection === 'tags' || selectedSubSection === 'licenses' || selectedSubSection === 'releases' ? <Add /> : <Edit />}
+                                        startIcon={<Add />}
                                         size="small"
+                                        disabled={selectedSubSection === 'tasks' && isTasksLocked}
                                         onClick={() => {
                                             if (selectedSubSection === 'tasks') {
                                                 setEditingTask(null);
@@ -958,13 +975,14 @@ export const SolutionsPage: React.FC = () => {
                                                 setEditingRelease(null);
                                                 setReleaseDialog(true);
                                             } else {
-                                                setEditingSolution(currentSolution);
+                                                setEditingSolution(displaySolution); // Updated from currentSolution to displaySolution based on file context
                                                 setSolutionDialog(true);
                                                 if (selectedSubSection === 'products') setSolutionDialogInitialTab('products');
                                                 else if (selectedSubSection === 'outcomes') setSolutionDialogInitialTab('outcomes');
                                                 else if (selectedSubSection === 'customAttributes') setSolutionDialogInitialTab('customAttributes');
                                             }
                                         }}
+                                        title={selectedSubSection === 'tasks' && isTasksLocked ? "Unlock Tasks to Add" : ""}
                                     >
                                         {selectedSubSection === 'tasks' ? 'Add Task' :
                                             selectedSubSection === 'products' ? 'Manage Products' :
@@ -1527,6 +1545,7 @@ export const SolutionsPage: React.FC = () => {
                                                             onTagChange={handleTagChange}
                                                             availableTags={displaySolution?.tags || []}
                                                             disableDrag={hasActiveFilters}
+                                                            locked={isTasksLocked}
                                                         />
                                                     ))}
                                                     {filteredTasks.length === 0 && !tasksLoading && (
