@@ -30,8 +30,9 @@ if [ -z "$DATABASE_URL" ]; then
 fi
 
 if [ -z "$DATABASE_URL" ]; then
-    echo "⚠️  DATABASE_URL not found, using default 'postgresql://localhost:5432/dap'"
-    DATABASE_URL="postgresql://localhost:5432/dap"
+    echo "⚠️  DATABASE_URL not found, using default 'postgresql://dap@localhost:5432/dap'"
+    echo "ℹ️  Ensure your user has access, or run: sudo ./setup-permissions.sh"
+    DATABASE_URL="postgresql://dap@localhost:5432/dap"
 fi
 
 echo "========================================="
@@ -41,29 +42,62 @@ echo "========================================="
 # Strip query parameters for psql connection
 DATABASE_URL=$(echo "$DATABASE_URL" | cut -d '?' -f1)
 
-echo "1. clearing existing user data (preserving audit history)..."
-# We use DELETE instead of TRUNCATE CASCADE to avoid deleting dependent AuditLogs/ChangeSets
-# We use session_replication_role = replica to bypass FK constraints during deletion/insertion
+# psql execution
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 <<EOF
+-- Verify superuser status for informative warning
+DO \$\$
+DECLARE
+  is_sup bool;
+BEGIN
+  SELECT rolsuper INTO is_sup FROM pg_roles WHERE rolname = current_user;
+  IF NOT is_sup THEN
+    RAISE WARNING 'Current user % is NOT a superuser. Restore might fail on foreign key constraints.', current_user;
+  END IF;
+END \$\$;
+
 BEGIN;
 
--- Disable triggers and foreign key checks
-SET session_replication_role = replica;
+-- Attempt to disable triggers and foreign key checks using set_config (safer in PL/pgSQL)
+DO \$\$
+DECLARE
+    is_superuser boolean;
+BEGIN
+    SELECT rolsuper INTO is_superuser FROM pg_roles WHERE rolname = current_user;
+    
+    IF is_superuser THEN
+        PERFORM set_config('session_replication_role', 'replica', false);
+    ELSE
+        RAISE WARNING 'User % is not a superuser. Skipping session_replication_role configuration. Foreign key constraints will remain active.', current_user;
+    END IF;
+END \$\$;
 
--- Clear tables in reverse dependency order (just to be clean, though replica mode handles it)
-DELETE FROM "Permission";
+-- Clear tables in reverse dependency order
 DELETE FROM "RolePermission";
 DELETE FROM "UserRole";
-DELETE FROM "Role";
+DELETE FROM "Permission";
+DELETE FROM "AuditLog";
+DELETE FROM "ChangeSet";
 DELETE FROM "LockedEntity";
 DELETE FROM "Session";
 DELETE FROM "User";
+DELETE FROM "Role";
 
 -- Restore data from backup
 \i '$BACKUP_FILE'
 
--- Re-enable triggers and foreign key checks
-SET session_replication_role = origin;
+-- Attempt to reset session_replication_role
+DO \$\$
+DECLARE
+    is_superuser boolean;
+BEGIN
+    SELECT rolsuper INTO is_superuser FROM pg_roles WHERE rolname = current_user;
+
+    IF is_superuser THEN
+        PERFORM set_config('session_replication_role', 'origin', false);
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    NULL;
+END \$\$;
 
 COMMIT;
 EOF

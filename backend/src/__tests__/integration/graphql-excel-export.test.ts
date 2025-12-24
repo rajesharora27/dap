@@ -95,8 +95,8 @@ describe('GraphQL API - Excel Export Integration', () => {
             .set('Authorization', `Bearer ${authToken}`)
             .send({
                 query: `
-          query ExportProductToExcel($productName: String!) {
-            exportProductToExcel(productName: $productName) {
+          query ExportProductToExcel($productId: ID!) {
+            exportProductV2(productId: $productId) {
               filename
               content
               mimeType
@@ -105,15 +105,15 @@ describe('GraphQL API - Excel Export Integration', () => {
           }
         `,
                 variables: {
-                    productName: product.name
+                    productId: product.id
                 }
             });
 
         // 3. Verify Response Structure
         expect(response.status).toBe(200);
-        const data = response.body.data.exportProductToExcel;
+        const data = response.body.data.exportProductV2;
         expect(data).toBeDefined();
-        expect(data.filename).toContain('Export_Tags_Test_Product');
+        expect(data.filename).toContain('Export Tags Test Product');
         expect(data.content).toBeDefined();
 
         // 4. Decode and Verify Excel Content
@@ -126,7 +126,7 @@ describe('GraphQL API - Excel Export Integration', () => {
         expect(tagsSheet).toBeDefined();
         if (tagsSheet) {
             expect(tagsSheet.rowCount).toBeGreaterThan(1); // Header + 1 row
-            const firstTag = tagsSheet.getRow(2).getCell(1).value;
+            const firstTag = tagsSheet.getRow(2).getCell(2).value;
             expect(firstTag).toBe('Critical Feature');
         }
 

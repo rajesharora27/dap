@@ -107,31 +107,30 @@ echo ""
 ssh rajarora@centos2.rajarora.csslab << 'ENDSSH'
 set -e
 
-echo "📝 Deploying as dap user..."
+echo "📝 preparing directory structure and permissions..."
+# 1. Ensure Directories Exist (Run as root via sudo) #
+sudo mkdir -p "/data/dap/app/backend/src"
+sudo mkdir -p "/data/dap/app/backend/dist"
+sudo mkdir -p "/data/dap/app/frontend/dist"
+sudo mkdir -p "/data/dap/app/docs"
+sudo mkdir -p "/data/dap/scripts"
+sudo mkdir -p "/data/dap/logs"
+sudo mkdir -p "/data/dap/app/backend/config"
+sudo mkdir -p "/data/dap/app/backend/scripts"
+
+# 2. Enforce Ownership (dap:dap) on ALL runtime directories #
+echo "🔒 Enforcing 'dap' ownership on /data/dap..."
+sudo chown -R dap:dap /data/dap
+
+# 3. Switch to 'dap' user for Application Logic #
+echo "🚀 Switching to 'dap' user for deployment..."
 sudo -u dap bash << 'DAPCMDS'
 set -e
 
+# Directories already created and chowned by sudo wrapper above
+# Just setting variables
+DAP_ROOT="/data/dap/app"
 STAGING="/data/dap/deploy-staging"
-
-# Check which structure is in use
-if [ -d "/data/dap/app" ]; then
-  DAP_ROOT="/data/dap/app"
-  echo "Using app directory structure: $DAP_ROOT"
-elif [ -d "/data/dap/backend" ]; then
-  DAP_ROOT="/data/dap"
-  echo "Using standard directory structure: $DAP_ROOT"
-else
-  echo "❌ Cannot find DAP installation"
-  exit 1
-fi
-
-# Create directory structure if needed (dap user owns /data/dap)
-mkdir -p "$DAP_ROOT/backend/src"
-mkdir -p "$DAP_ROOT/backend/dist"
-mkdir -p "$DAP_ROOT/frontend/dist"
-mkdir -p "$DAP_ROOT/docs"
-mkdir -p "/data/dap/scripts"
-mkdir -p "/data/dap/logs"
 
 # Copy environment files to root
 if [ -f $STAGING/.env ]; then
@@ -444,12 +443,13 @@ echo "  ✅ Frontend: New distribution with updated UI"
 echo "  ✅ Scripts: Latest utility scripts"
 echo "  ✅ Services: Restarted and verified"
 echo ""
-echo "✨ New Features in this deployment (v2.9.2):"
-echo "  • ✅ FIXED: Tag Import/Export functionality"
-echo "  • ✅ NEW: Tags tab in Excel export"
-echo "  • ✅ NEW: Automatic default selection of 'Cisco Secure Access'"
-echo "  • Modern AI Assistant Icon redesign (AISparkle)"
-echo "  • Streamlined Customer Detail View (Scorecards on Overview)"
+echo "✨ New Features in this deployment (v2.9.4):"
+echo "  • ✅ FIXED: Critical credentials corruption on macOS (UTF-8 enforcement)"
+echo "  • ✅ FIXED: Missing AuditLog/ChangeSet data during project restores"
+echo "  • ✅ NEW: Robust 'dap' user ownership model across all platforms"
+echo "  • ✅ NEW: E2E Backup & Restore Test (`./dap-test backup-restore`)"
+echo "  • ✅ NEW: User Database Backup/Restore scripts with audit preservation"
+echo "  • ✅ NEW: System-wide Permissions Setup tool (backend/scripts/setup-permissions.sh)"
 echo "  • Rebranded to Dynamic Adoption Platform"
 echo "  • Renamed Entitlements to Licenses"
 echo ""

@@ -72,9 +72,8 @@ describe('GraphQL API - Excel Import Tags Integration', () => {
 
         // Product Info
         const infoSheet = workbook.addWorksheet('Product Info');
-        infoSheet.addRow(['Field', 'Value']);
-        infoSheet.addRow(['Product Name', 'Imported Tags Product']);
-        infoSheet.addRow(['Description', 'Test product for tags import']);
+        infoSheet.addRow(['Product Name', 'Description']);
+        infoSheet.addRow(['Imported Tags Product', 'Test product for tags import']);
 
         // Tags Sheet (Crucial)
         const tagsSheet = workbook.addWorksheet('Tags');
@@ -83,7 +82,7 @@ describe('GraphQL API - Excel Import Tags Integration', () => {
 
         // Tasks Sheet (Assigning the tag)
         const tasksSheet = workbook.addWorksheet('Tasks');
-        tasksSheet.addRow(['Task Name', 'Description', 'Sequence Number', 'License Level', 'Weight', 'Estimated Minutes', 'Tags']);
+        tasksSheet.addRow(['Task Name', 'Description', 'Sequence', 'License Level', 'Weight', 'Est. Minutes', 'Tags']);
         tasksSheet.addRow(['Task with Tag', 'Description', 1, 'Essential', 1, 60, 'New Import Tag']);
 
         // Other required sheets (minimum valid structure)
@@ -103,51 +102,90 @@ describe('GraphQL API - Excel Import Tags Integration', () => {
         const buffer = await workbook.xlsx.writeBuffer();
         const base64Content = Buffer.from(buffer).toString('base64');
 
-        // 2. Execute GraphQL Mutation
-        const response = await request(app)
+        // 2. Execute V2 Dry Run
+        const dryRunResponse = await request(app)
             .post('/graphql')
             .set('Authorization', `Bearer ${authToken}`)
             .send({
                 query: `
-          mutation ImportProductFromExcel($content: String!, $mode: ImportMode!) {
-            importProductFromExcel(content: $content, mode: $mode) {
-              success
-              productName
-              productId
-              stats {
-                tagsImported
-                tasksImported
+          mutation ImportV2DryRun($content: String!, $entityType: EntityType) {
+            importV2DryRun(content: $content, entityType: $entityType) {
+              sessionId
+              isValid
+              summary {
+                totalRecords
+                toCreate
+                errorCount
               }
               errors {
                 message
                 sheet
+                row
               }
             }
           }
         `,
                 variables: {
                     content: base64Content,
-                    mode: 'CREATE_NEW'
+                    entityType: 'PRODUCT'
                 }
             });
 
-        // 3. Verify Response
-        if (response.status !== 200) {
-            console.error('Response Status:', response.status);
-            console.error('Response Body:', JSON.stringify(response.body, null, 2));
+        if (dryRunResponse.status !== 200) {
+            console.error('Dry Run Status:', dryRunResponse.status);
+            console.error('Dry Run Body:', JSON.stringify(dryRunResponse.body, null, 2));
         }
-        expect(response.status).toBe(200);
-        const result = response.body.data.importProductFromExcel;
-        if (result.errors && result.errors.length > 0) {
-            console.error('Import Errors:', result.errors);
+        expect(dryRunResponse.status).toBe(200);
+
+        const dryRunResult = dryRunResponse.body.data.importV2DryRun;
+        if (dryRunResult.errors && dryRunResult.errors.length > 0) {
+            console.error('Dry Run Errors:', dryRunResult.errors);
         }
-        expect(result.success).toBe(true);
-        expect(result.stats.tagsImported).toBe(1);
-        expect(result.stats.tasksImported).toBe(1);
+        expect(dryRunResult.isValid).toBe(true);
+        expect(dryRunResult.sessionId).toBeDefined();
+
+        // 3. Execute V2 Commit
+        const commitResponse = await request(app)
+            .post('/graphql')
+            .set('Authorization', `Bearer ${authToken}`)
+            .send({
+                query: `
+          mutation ImportV2Commit($sessionId: String!) {
+            importV2Commit(sessionId: $sessionId) {
+              success
+              entityId
+              stats {
+                tagsCreated
+                tasksCreated
+              }
+              errors {
+                message
+              }
+            }
+          }
+        `,
+                variables: {
+                    sessionId: dryRunResult.sessionId
+                }
+            });
+
+        if (commitResponse.status !== 200) {
+            console.error('Commit Status:', commitResponse.status);
+            console.error('Commit Body:', JSON.stringify(commitResponse.body, null, 2));
+        }
+        expect(commitResponse.status).toBe(200);
+
+        const commitResult = commitResponse.body.data.importV2Commit;
+        expect(commitResult.success).toBe(true);
+        expect(commitResult.stats.tagsCreated).toBe(1);
+        expect(commitResult.stats.tasksCreated).toBe(1);
+
+        // Use the returned entityId for verification
+        const productId = commitResult.entityId;
 
         // 4. Verify Database State
         const product = await prisma.product.findUnique({
-            where: { id: result.productId },
+            where: { id: productId },
             include: {
                 tags: true,
                 tasks: {

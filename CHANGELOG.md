@@ -5,17 +5,29 @@ All notable changes to the DAP (Digital Adoption Platform) project will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.4] - 2025-12-23
+
+### Fixed
+- **Restore**: Resolved critical "Corrupted Credentials" issue on macOS by enforcing UTF-8 encoding and schema-qualified table names during identity restoration.
+- **Restore**: Fixed missing `AuditLog` and activity history during project restoration by refining `pg_dump` table selection quoting.
+- **Restore**: Improved robustness of identity restoration with explicit database flushing and admin-user existence verification.
+- **Permissions**: Standardized 'dap' user ownership for application files and databases across Mac, Linux, and Docker.
+- **Permissions**: Fixed `eDSRecordAlreadyExists` error in `setup-permissions.sh` on macOS by improving Directory Services user existence checks.
+
 ## [2.9.3] - 2025-12-23
 
 ### Added
 - **Scripts**: New User Database Backup/Restore scripts (`backend/scripts/backup-users.sh`, `restore-users.sh`)
+- **Scripts**: New system-wide permissions setup utility (`backend/scripts/setup-permissions.sh`)
 - **Scripts**: Support for audit-history preservation during user restore (requires `replica` role or postgres superuser)
+- **Testing**: Implemented comprehensive E2E Backup & Restore test (`backend/src/__tests__/e2e/backup-restore.test.ts`)
 - **Deployment**: Automatic inclusion of backend scripts in staging/production deployments
 
 ### Changed
 - **DevOps**: Switched Mac Light Mode deployment to use `prisma db push` (matching Production behavior) to resolve restore incompatibilities
 - **Scripts**: Hardened restore scripts with error checking and PostgreSQL version auto-detection
 - **Docs**: Updated documentation to reflect new backup tools
+- **Fixed**: Resolved `ReferenceError` in `BackupRestoreService` that prevented proper user preservation during in-app restore operations
 
 ## [2.9.2] - 2025-12-23
 

@@ -282,7 +282,7 @@ manage_docker() {
             local attempt=1
             
             while [ $attempt -le $max_attempts ]; do
-                if docker exec $DB_CONTAINER pg_isready -U postgres >/dev/null 2>&1; then
+                if docker exec $DB_CONTAINER pg_isready -U dap >/dev/null 2>&1; then
                     log_success "Database is ready"
                     break
                 fi
@@ -311,7 +311,7 @@ manage_docker() {
         status)
             if docker ps --format "table {{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
                 log_success "Database container is running"
-                docker exec $DB_CONTAINER pg_isready -U postgres >/dev/null 2>&1 && log_success "Database is accepting connections"
+                docker exec $DB_CONTAINER pg_isready -U dap >/dev/null 2>&1 && log_success "Database is accepting connections"
             elif docker ps -a --format "table {{.Names}}" | grep -q "^${DB_CONTAINER}$"; then
                 log_warning "Database container exists but is not running"
             else
@@ -330,7 +330,7 @@ manage_docker() {
                 local max_attempts=30
                 local attempt=1
                 while [ $attempt -le $max_attempts ]; do
-                    if docker exec $DB_CONTAINER pg_isready -U postgres >/dev/null 2>&1; then
+                    if docker exec $DB_CONTAINER pg_isready -U dap >/dev/null 2>&1; then
                         log_success "Database is ready and accepting new connections"
                         break
                     fi
@@ -492,9 +492,9 @@ show_status() {
     fi
     
     echo -e "\n${CYAN}Quick Database Check:${NC}"
-    if check_port $BACKEND_PORT && docker exec $DB_CONTAINER pg_isready -U postgres >/dev/null 2>&1; then
-        local product_count=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Product\";" 2>/dev/null | tr -d ' ')
-        local task_count=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\";" 2>/dev/null | tr -d ' ')
+    if check_port $BACKEND_PORT && docker exec $DB_CONTAINER pg_isready -U dap >/dev/null 2>&1; then
+        local product_count=$(docker exec $DB_CONTAINER psql -U dap -d dap -t -c "SELECT COUNT(*) FROM \"Product\";" 2>/dev/null | tr -d ' ')
+        local task_count=$(docker exec $DB_CONTAINER psql -U dap -d dap -t -c "SELECT COUNT(*) FROM \"Task\";" 2>/dev/null | tr -d ' ')
         log_info "Database contains: $product_count products, $task_count tasks"
     else
         log_warning "Cannot check database content (database not accessible)"
@@ -521,20 +521,20 @@ clean_database() {
     local max_attempts=30
     local attempt=1
     while [ $attempt -le $max_attempts ]; do
-        if docker exec $DB_CONTAINER pg_isready -U postgres >/dev/null 2>&1; then
+        if docker exec $DB_CONTAINER pg_isready -U dap >/dev/null 2>&1; then
             break
         fi
         sleep 1
         ((attempt++))
     done
-    if ! docker exec $DB_CONTAINER pg_isready -U postgres >/dev/null 2>&1; then
+    if ! docker exec $DB_CONTAINER pg_isready -U dap >/dev/null 2>&1; then
         log_error "Database is not ready after waiting. Please check the container logs."
         return 1
     fi
 
     # Clean tables (in proper order to handle foreign key constraints)
     # Based on actual Prisma schema models - deleting from most dependent to least
-    docker exec $DB_CONTAINER psql -U postgres -d dap -c "
+    docker exec $DB_CONTAINER psql -U dap -d dap -c "
       -- Level 1: Deepest dependencies (telemetry values, task relationships)
       DELETE FROM \"CustomerTelemetryValue\";
       DELETE FROM \"TelemetryValue\";
@@ -595,7 +595,7 @@ clean_database() {
     log_info "Loading enhanced Cisco sample data from SQL file..."
     
     # Execute the comprehensive sample data SQL file (showing errors for debugging)
-    if ! docker exec -i $DB_CONTAINER psql -U postgres -d dap < "$PROJECT_DIR/create-complete-sample-data.sql" 2>&1 | tee /tmp/dap_sample_load.log; then
+    if ! docker exec -i $DB_CONTAINER psql -U dap -d dap < "$PROJECT_DIR/create-complete-sample-data.sql" 2>&1 | tee /tmp/dap_sample_load.log; then
         log_error "Failed to create complete sample data."
         log_error "Check /tmp/dap_sample_load.log for details"
         cat /tmp/dap_sample_load.log
@@ -612,12 +612,12 @@ clean_database() {
     log_success "Complete sample data created successfully!"
 
     # Verify what was created
-    local products=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Product\";" 2>/dev/null | tr -d ' ')
-    local tasks=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Task\";" 2>/dev/null | tr -d ' ')
-    local licenses=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"License\";" 2>/dev/null | tr -d ' ')
-    local outcomes=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Outcome\";" 2>/dev/null | tr -d ' ')
-    local solutions=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Solution\";" 2>/dev/null | tr -d ' ')
-    local customers=$(docker exec $DB_CONTAINER psql -U postgres -d dap -t -c "SELECT COUNT(*) FROM \"Customer\";" 2>/dev/null | tr -d ' ')
+    local products=$(docker exec $DB_CONTAINER psql -U dap -d dap -t -c "SELECT COUNT(*) FROM \"Product\";" 2>/dev/null | tr -d ' ')
+    local tasks=$(docker exec $DB_CONTAINER psql -U dap -d dap -t -c "SELECT COUNT(*) FROM \"Task\";" 2>/dev/null | tr -d ' ')
+    local licenses=$(docker exec $DB_CONTAINER psql -U dap -d dap -t -c "SELECT COUNT(*) FROM \"License\";" 2>/dev/null | tr -d ' ')
+    local outcomes=$(docker exec $DB_CONTAINER psql -U dap -d dap -t -c "SELECT COUNT(*) FROM \"Outcome\";" 2>/dev/null | tr -d ' ')
+    local solutions=$(docker exec $DB_CONTAINER psql -U dap -d dap -t -c "SELECT COUNT(*) FROM \"Solution\";" 2>/dev/null | tr -d ' ')
+    local customers=$(docker exec $DB_CONTAINER psql -U dap -d dap -t -c "SELECT COUNT(*) FROM \"Customer\";" 2>/dev/null | tr -d ' ')
     
     log_info "Created comprehensive Cisco sample data:"
     log_info "  📦 $products Products (Duo, SD-WAN, Secure Firewall, ISE, Secure Access Sample)"

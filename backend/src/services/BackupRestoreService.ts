@@ -259,10 +259,10 @@ export class BackupRestoreService {
         // Try to find a matching version pg_dump
         const versionPaths = [
           '/opt/homebrew/opt/postgresql@16/bin/pg_dump',
-          '/opt/homebrew/opt/postgresql@15/bin/pg_dump',
-          '/opt/homebrew/opt/postgresql@14/bin/pg_dump',
           '/usr/local/opt/postgresql@16/bin/pg_dump',
-          '/usr/local/opt/postgresql@15/bin/pg_dump',
+          '/opt/homebrew/opt/postgresql@15/bin/pg_dump',
+          '/opt/homebrew/bin/pg_dump',
+          '/usr/local/bin/pg_dump',
         ];
 
         for (const vPath of versionPaths) {
@@ -302,10 +302,12 @@ export class BackupRestoreService {
 
       const excludeTables = [
         'User',
-        'Session',
-        'LockedEntity',
+        'Role',
         'UserRole',
         'Permission',
+        'RolePermission',
+        'Session',
+        'LockedEntity',
         'AuditLog',
         'ChangeSet'
       ].map(t => `--exclude-table-data='"${t}"'`).join(' ');
@@ -374,7 +376,7 @@ export class BackupRestoreService {
         message: `Backup created successfully: ${filename}`,
       };
     } catch (error: any) {
-      console.error('Backup creation error:', error);
+      console.error('Backup creation error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
       return {
         success: false,
         filename: '',
@@ -382,7 +384,7 @@ export class BackupRestoreService {
         size: 0,
         url: '',
         metadata: undefined,
-        error: error.message || 'Backup creation failed',
+        error: error.message || 'Backup creation failed (Unknown error)',
       };
     }
   }
@@ -408,8 +410,9 @@ export class BackupRestoreService {
       const dbConfig = this.parseDatabaseUrl();
       const containerName = process.env.DB_CONTAINER_NAME || 'dap_db_1';
 
-      // Check if psql is available natively
+      // Check if psql and pg_dump are available natively
       const hasPsql = await this.checkCommand('psql');
+      const hasPgDump = await this.checkCommand('pg_dump');
       const forceContainer = process.env.DB_FORCE_CONTAINER === 'true';
       const useNative = hasPsql && !forceContainer;
 
@@ -424,6 +427,17 @@ export class BackupRestoreService {
       const env: NodeJS.ProcessEnv = { ...process.env };
       if (dbConfig.password) {
         env.PGPASSWORD = dbConfig.password;
+      }
+
+      // On macOS, try to add common homebrew pg bin paths to avoid version mismatch
+      if (process.platform === 'darwin') {
+        const pgPaths = [
+          '/opt/homebrew/opt/postgresql@16/bin',
+          '/opt/homebrew/opt/postgresql@15/bin',
+          '/opt/homebrew/bin',
+          '/usr/local/bin'
+        ];
+        env.PATH = `${pgPaths.join(':')}:${process.env.PATH}`;
       }
 
       // Helper for commands
@@ -445,11 +459,66 @@ export class BackupRestoreService {
         await execPromise(cmd, { timeout: timeoutMs, env });
       };
 
-      // IMPORTANT: Save existing user passwords before restore
-      console.log('Saving existing user passwords...');
-      // NOTE: User data is managed separately and excluded from this backup process
-      // Existing passwords are NOT preserved as the schema is dropped and Users are not restored here
-      console.log('Skipping password preservation (User data managed separately)...');
+      // IMPORTANT: Save existing user passwords/identity before restore
+      console.log('Preserving existing Identity data (Users, Roles, Permissions)...');
+
+      const identityTables = [
+        'User',
+        'Role',
+        'UserRole',
+        'Permission',
+        'RolePermission',
+        'AuditLog',
+        'ChangeSet',
+        'Session',
+        'LockedEntity'
+      ];
+      const preserveFilePath = filePath + '.identity.sql';
+
+      try {
+        // Construct pg_dump command for identity tables
+        // Use the same connection logic as backup
+        // Need to replicate pgCommand logic slightly or assume psql connection params suffice?
+        // We have dbConfig.
+
+        // Flush any pending Prisma writes before dumping
+        await prisma.$executeRawUnsafe('CHECKPOINT;');
+
+        let preserveCmd: string;
+        // The most robust way to quote for pg_dump across shells: -t '"TableName"'
+        const tableArgs = identityTables.map(t => `-t '"${t}"'`).join(' ');
+        const pgDumpBin = hasPgDump ? 'pg_dump' : 'pg_dump'; // fallback
+
+        // Note: We use data-only, column-inserts. 
+        // Quotes around table names require careful shell escaping. 
+        if (useNative) {
+          if (isMacLocal) {
+            preserveCmd = `pg_dump -d ${dbConfig.database} --data-only --column-inserts ${tableArgs} > "${preserveFilePath}"`;
+          } else {
+            preserveCmd = `pg_dump -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} --data-only --column-inserts ${tableArgs} > "${preserveFilePath}"`;
+          }
+        } else {
+          preserveCmd = `${containerRuntime} exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} --data-only --column-inserts ${tableArgs} > "${preserveFilePath}"`;
+        }
+
+        // Execute preservation
+        if (process.platform === 'win32') {
+          // Windows escaping is hard, skipping complex logic or assuming native psql works
+          console.log('Skipping preservation on Windows (not supported automatically yet).');
+        } else {
+          console.log(`Executing identity preservation: ${preserveCmd}`);
+          await execPromise(preserveCmd, { timeout: 30000, env });
+          console.log(`Identity data preserved to ${preserveFilePath}`);
+        }
+      } catch (err: any) {
+        console.error('Failed to preserve identity data:', err.message);
+        if (err.stderr) console.error('Preservation stderr:', err.stderr);
+        if (err.stdout) console.error('Preservation stdout:', err.stdout);
+
+        // If preservation fails, we lose users. ABORT is safer.
+        throw new Error(`Failed to preserve existing users (${err.message}). Aborting restore to prevent data loss.`);
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const existingPasswords: Map<string, string> = new Map();
 
@@ -595,6 +664,111 @@ export class BackupRestoreService {
         await SessionManager.clearAllSessions();
       } catch (err) {
         console.warn('⚠️  Could not clear sessions:', (err as any).message);
+      }
+
+      // Get record counts after restore
+      console.log('Main restore completed.');
+
+      // Restore Preserved Identity Data
+      if (fs.existsSync(preserveFilePath)) {
+        console.log('Restoring preserved Identity data...');
+        try {
+          // We must use session_replication_role = replica to avoid FK issues during insert (unordered)?
+          // Actually pg_dump orders them? Or maybe not if -t arguments passed.
+          // Safer to use replica role wrapping.
+
+          // Read SQL content
+          const identitySql = fs.readFileSync(preserveFilePath, 'utf-8');
+
+          // Wrap in transaction. Try to use replica role but fallback if no permission
+          const wrappedSql = `
+             -- Ensure UTF8 for bcrypt hashes and special characters
+             SET client_encoding = 'UTF8';
+             SET search_path = public;
+             
+             BEGIN;
+             DO $$ 
+             BEGIN
+                SET session_replication_role = replica;
+             EXCEPTION WHEN OTHERS THEN
+                RAISE NOTICE 'Skipping session_replication_role due to lack of permissions';
+             END $$;
+
+             -- Clear any data that might have been seeded or restored from a non-exclusive backup
+             -- This prevents "Duplicate Key" errors during the following INSERTs
+             DELETE FROM "RolePermission";
+             DELETE FROM "UserRole";
+             DELETE FROM "Permission";
+             DELETE FROM "AuditLog";
+             DELETE FROM "ChangeSet";
+             DELETE FROM "LockedEntity";
+             DELETE FROM "Session";
+             DELETE FROM "User";
+             DELETE FROM "Role";
+             
+             ${identitySql}
+             
+             COMMIT;
+           `;
+
+          // Write to temp file for execution (to avoid shell limit)
+          const wrapperPath = preserveFilePath + '.run.sql';
+          const sqlContent = Buffer.from(wrappedSql, 'utf-8');
+          fs.writeFileSync(wrapperPath, sqlContent);
+          // Count inserts per table for verification
+          const insertCounts: Record<string, number> = {};
+          const insertRegex = /INSERT INTO public\."([^"]+)"/g;
+          let match;
+          while ((match = insertRegex.exec(identitySql)) !== null) {
+            const table = match[1];
+            insertCounts[table] = (insertCounts[table] || 0) + 1;
+          }
+          console.log('Restoring Identity data:', JSON.stringify(insertCounts));
+
+          if (identitySql.includes('$2a$10$')) {
+            console.log('✅ Found bcrypt-like signatures in identity data.');
+          } else {
+            console.warn('⚠️  No bcrypt-like signatures found in identity data (passwords might be missing!)');
+          }
+
+          // Execute psql
+          let restoreIdentityCmd: string;
+          if (useNative) {
+            if (isMacLocal) {
+              restoreIdentityCmd = `psql -d ${dbConfig.database} -v ON_ERROR_STOP=1 -f "${wrapperPath}"`;
+            } else {
+              restoreIdentityCmd = `psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -v ON_ERROR_STOP=1 -f "${wrapperPath}"`;
+            }
+          } else {
+            restoreIdentityCmd = `cat "${wrapperPath}" | ${containerRuntime} exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -v ON_ERROR_STOP=1`;
+          }
+
+          const { stderr } = await execPromise(restoreIdentityCmd, { timeout: 30000, env });
+          if (stderr) console.warn('Identity restore warnings:', stderr);
+          console.log('Identity data restored successfully.');
+
+          // Post-restore verification: Check if admin user exists and log found IDs
+          try {
+            const adminCheck = await prisma.user.findUnique({ where: { username: 'admin' } });
+            if (adminCheck) {
+              console.log(`✅ Verified: Admin user exists after restore (ID: ${adminCheck.id})`);
+            } else {
+              console.warn('⚠️  CRITICAL: Admin user MISSING after identity restoration!');
+            }
+          } catch (verifyErr) {
+            console.warn('Could not verify admin user status:', (verifyErr as any).message);
+          }
+
+          // Cleanup
+          fs.unlinkSync(preserveFilePath);
+          fs.unlinkSync(wrapperPath);
+
+        } catch (err: any) {
+          console.error('Failed to restore identity data:', err);
+          // Non-fatal? Users might be missing.
+          // We should throw to warn user.
+          throw new Error(`Main restore succeeded but User restoration failed: ${err.message}`);
+        }
       }
 
       // Get record counts after restore

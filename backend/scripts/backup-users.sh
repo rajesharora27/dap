@@ -6,7 +6,7 @@ BACKUP_DIR="${BACKUP_DIR:-./backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 OUTPUT_FILE="$BACKUP_DIR/users_backup_$TIMESTAMP.sql"
 
-# Tables to backup (User, Roles, Permissions, Sessions)
+# Tables to backup (User, Roles, Permissions, Sessions, and Activity History)
 TABLES=(
   "User"
   "Session" 
@@ -15,11 +15,15 @@ TABLES=(
   "UserRole"
   "RolePermission"
   "Permission"
+  "AuditLog"
+  "ChangeSet"
 )
 
 # Ensure correct Postgres version (v16) in PATH
 if [ -d "/opt/homebrew/opt/postgresql@16/bin" ]; then
     export PATH="/opt/homebrew/opt/postgresql@16/bin:$PATH"
+elif [ -d "/usr/pgsql-16/bin" ]; then
+    export PATH="/usr/pgsql-16/bin:$PATH"
 elif [ -d "/usr/local/opt/postgresql@16/bin" ]; then
     export PATH="/usr/local/opt/postgresql@16/bin:$PATH"
 fi
@@ -46,8 +50,9 @@ if [ -z "$DATABASE_URL" ]; then
 fi
 
 if [ -z "$DATABASE_URL" ]; then
-    echo "⚠️  DATABASE_URL not found, using default 'postgresql://localhost:5432/dap'"
-    DATABASE_URL="postgresql://localhost:5432/dap"
+    echo "⚠️  DATABASE_URL not found, using default 'postgresql://dap@localhost:5432/dap'"
+    echo "ℹ️  Ensure your user has access, or run: sudo ./setup-permissions.sh"
+    DATABASE_URL="postgresql://dap@localhost:5432/dap"
 fi
 
 # Build -t arguments for pg_dump

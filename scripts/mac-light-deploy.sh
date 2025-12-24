@@ -15,6 +15,9 @@ FRONTEND_DIR="${ROOT_DIR}/frontend"
 LOG_DIR="${ROOT_DIR}/tmp"
 mkdir -p "${LOG_DIR}"
 
+BACKEND_PID_FILE="${LOG_DIR}/mac-backend.pid"
+FRONTEND_PID_FILE="${LOG_DIR}/mac-frontend.pid"
+
 # Environment file location
 MAC_ENV_FILE="${ROOT_DIR}/.env"
 
@@ -23,12 +26,9 @@ FRONTEND_PORT="${FRONTEND_PORT:-5173}"
 DATABASE_URL="${DATABASE_URL:-}"
 
 # PostgreSQL settings for local install
-PG_USER="${PG_USER:-postgres}"
+PG_USER="${PG_USER:-dap}"
 PG_DB="${PG_DB:-dap}"
 PG_PORT="${PG_PORT:-5432}"
-
-BACKEND_PID_FILE="${LOG_DIR}/mac-backend.pid"
-FRONTEND_PID_FILE="${LOG_DIR}/mac-frontend.pid"
 
 require() {
   local dep=$1
@@ -148,6 +148,13 @@ ensure_postgres() {
     fi
   fi
   
+  # Verification of 'dap' user role
+  if ! psql -h localhost -p "${PG_PORT}" -U "${PG_USER}" -d postgres -c "SELECT 1" >/dev/null 2>&1; then
+    echo "[WARN] Could not connect as '${PG_USER}'. Please run:"
+    echo "       sudo ./backend/scripts/setup-permissions.sh"
+    echo ""
+  fi
+  
   if [ -z "$pg_version" ]; then
     pg_version=$(detect_postgres_version)
   fi
@@ -237,6 +244,8 @@ ensure_postgres() {
   local current_user=$(whoami)
   
   # Try to create database (will fail silently if exists)
+  # Use PG_USER instead of current user for ownership consistency
+  createdb -h localhost -p "${PG_PORT}" -U "${PG_USER}" "${PG_DB}" 2>/dev/null || \
   createdb -h localhost -p "${PG_PORT}" "${PG_DB}" 2>/dev/null || true
   
   # Check if database exists
@@ -304,9 +313,10 @@ resolve_database_url() {
     fi
   fi
 
-  # Fallback: construct URL with current user
-  DATABASE_URL="postgresql://${current_user}@localhost:${PG_PORT}/${PG_DB}?schema=public&connection_limit=5"
-  echo "[INFO] Using local PostgreSQL as user '${current_user}': ${PG_DB}@localhost:${PG_PORT}"
+  # Fallback: construct URL with standard dap user
+  # We assume setup-permissions.sh has been run or will be run
+  DATABASE_URL="postgresql://${PG_USER}:DAP123!!!@localhost:${PG_PORT}/${PG_DB}?schema=public&connection_limit=5"
+  echo "[INFO] Using local PostgreSQL as user '${PG_USER}': ${PG_DB}@localhost:${PG_PORT}"
 }
 
 install_deps() {
@@ -321,8 +331,8 @@ install_deps() {
 }
 
 run_migrations() {
-  echo "[INFO] Running database migrations..."
-  (cd "${BACKEND_DIR}" && DATABASE_URL="${DATABASE_URL}" npx prisma migrate deploy)
+  echo "[INFO] Syncing database schema (matching production behavior)..."
+  (cd "${BACKEND_DIR}" && DATABASE_URL="${DATABASE_URL}" npx prisma db push --accept-data-loss)
 }
 
 seed_light_data() {
@@ -351,6 +361,8 @@ build_frontend() {
 
   (cd "${FRONTEND_DIR}" && VITE_BASE_PATH=/ VITE_GRAPHQL_ENDPOINT=/graphql VITE_FRONTEND_URL="${fe_url}" VITE_SHOW_DEV_MENU="${show_dev}" npm run build >/dev/null)
 }
+
+
 
 stop_process() {
   local pid_file=$1
@@ -387,7 +399,9 @@ start_backend() {
     return
   fi
   echo "[INFO] Starting backend on ${BACKEND_PORT}..."
-  # Use node directly instead of npm run start:prod (which tries to copy non-existent .env.production)
+  
+  # Run as current user (developer)
+  # Standardize on using 'node' from the current PATH which includes the user's environment
   (cd "${BACKEND_DIR}" && DATABASE_URL="${DATABASE_URL}" NODE_ENV=production nohup node dist/server.js > "${LOG_DIR}/mac-backend.log" 2>&1 & echo $! > "${BACKEND_PID_FILE}")
   
   # Wait for backend to start

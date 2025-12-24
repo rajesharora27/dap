@@ -565,6 +565,41 @@ list_tests() {
     ls -1 "$TESTS_DIR/"*.js 2>/dev/null | xargs -n1 basename || echo "  (none)"
 }
 
+# Run Backup & Restore tests
+run_backup_restore_test() {
+    log_header "BACKUP & RESTORE TESTS (Shadow Database)"
+    
+    echo ""
+    log_info "📁 Working Directory: $BACKEND_DIR"
+    log_info "🗃️  Database: dap_test (shadow copy - dev data protected!)"
+    log_info "🔧 NODE_ENV: test"
+    log_info "🔍 Test: backup-restore"
+    echo ""
+    
+    ensure_test_database
+    
+    cd "$BACKEND_DIR"
+    run_migrations_on_test_db
+    
+    export NODE_ENV="test"
+    export CI="true"
+    
+    echo ""
+    log_info "💻 Running Backup/Restore tests..."
+    echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
+    echo ""
+    
+    if npm test -- --runInBand --passWithNoTests --testPathPattern="backup-restore"; then
+        echo ""
+        log_success "🎉 BACKUP & RESTORE TESTS PASSED!"
+        return 0
+    else
+        echo ""
+        log_error "❌ BACKUP & RESTORE TESTS FAILED!"
+        return 1
+    fi
+}
+
 # ================================
 # Main
 # ================================
@@ -577,6 +612,9 @@ main() {
             ;;
         e2e|crud|comprehensive)
             run_comprehensive_test
+            ;;
+        backup-restore)
+            run_backup_restore_test
             ;;
         unit)
             shift
