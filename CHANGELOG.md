@@ -5,6 +5,25 @@ All notable changes to the DAP (Digital Adoption Platform) project will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2025-12-24
+
+### Added
+- **UI**: Universal Theme Alignment - Replaced hardcoded colors with theme variables (`primary.main`, `divider`, `alpha()`) across all features.
+- **Docs**: Refreshed "Getting Started" help guide with tile-based navigation and clear 3-step onboarding.
+- **Docs**: Added comprehensive help sections for Task Tagging and Scoped Task Locking.
+- **Auth**: Fully theme-aligned Login page and dynamic brand header.
+
+### Changed
+- **Features**: Scoped Task Locking exclusively to Product and Solution modeling views.
+- **UX**: Unblocked all Customer Adoption Plan operations (status updates, sync, telemetry) - no locking required.
+- **UI**: Standardized all `Grid` components to use modern brand-consistent sizing (MUI Grid2 style).
+- **Telemetry**: Standardized telemetry import/export logic with consistent authentication and shared utility usage.
+
+### Fixed
+- **Dashboard**: Corrected Customer Summary statistics calculation (Velocity, Completed Tasks, Total Tasks).
+- **UI**: Resolved duplicate icon imports and missing `Security` icons in the help system.
+- **Layout**: Fixed scorecard tile layouts and improved responsive behavior in the customer panel.
+
 ## [2.9.4] - 2025-12-23
 
 ### Fixed
