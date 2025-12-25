@@ -123,6 +123,28 @@ export class TelemetryEvaluationEngine {
         if (opMap[c.operator]) {
           c.operator = opMap[c.operator];
         }
+      } else if (dataType) {
+        // Use the dataType parameter to infer criteria type for STRING/TIMESTAMP
+        const dt = dataType.toString().toUpperCase();
+        if (dt === 'STRING') {
+          // For STRING without explicit type, default to string_not_null
+          // This means: if there's a value, criteria is met
+          type = SuccessCriteriaType.STRING_NOT_NULL;
+        } else if (dt === 'TIMESTAMP' || dt === 'DATE') {
+          // For TIMESTAMP without explicit type, default to timestamp_not_null
+          type = SuccessCriteriaType.TIMESTAMP_NOT_NULL;
+        } else if (dt === 'BOOLEAN') {
+          // Fallback for BOOLEAN with string 'true'/'false' value
+          type = SuccessCriteriaType.BOOLEAN_FLAG;
+          if (c.expectedValue === undefined) {
+            c.expectedValue = c.value === 'true' || c.value === true;
+          }
+        } else if (dt === 'NUMBER' || dt === 'PERCENTAGE') {
+          // Fallback for NUMBER without operator - treat as equals
+          type = SuccessCriteriaType.NUMBER_THRESHOLD;
+          if (c.threshold === undefined) c.threshold = c.value;
+          if (!c.operator) c.operator = 'equals';
+        }
       }
     }
 

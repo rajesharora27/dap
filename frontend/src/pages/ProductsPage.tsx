@@ -20,6 +20,7 @@ import { ReleaseDialog, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE } from '@
 import { LicenseDialog, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
 import { TASKS_FOR_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, TaskDialog } from '@features/tasks';
 import { SortableTaskItem } from '@shared/components/SortableTaskItem';
+import { ColumnVisibilityToggle, DEFAULT_VISIBLE_COLUMNS } from '@shared/components/ColumnVisibilityToggle';
 import { TagDialog, ProductTag, CREATE_PRODUCT_TAG, UPDATE_PRODUCT_TAG, DELETE_PRODUCT_TAG } from '@features/tags';
 import { useAuth } from '@features/auth';
 import { useProductImportExport } from '@features/products';
@@ -33,6 +34,26 @@ interface ProductsPageProps {
 export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => {
     // State
     const { isAuthenticated, isLoading: authLoading } = useAuth();
+
+    // Column visibility state with localStorage persistence
+    const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
+        const saved = localStorage.getItem('dap_product_task_columns');
+        return saved ? JSON.parse(saved) : DEFAULT_VISIBLE_COLUMNS;
+    });
+
+    // Persist column visibility to localStorage
+    useEffect(() => {
+        localStorage.setItem('dap_product_task_columns', JSON.stringify(visibleColumns));
+    }, [visibleColumns]);
+
+    // Handle column toggle
+    const handleToggleColumn = (columnKey: string) => {
+        setVisibleColumns(prev =>
+            prev.includes(columnKey)
+                ? prev.filter(k => k !== columnKey)
+                : [...prev, columnKey]
+        );
+    };
     const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
     const [selectedSubSection, setSelectedSubSection] = useState<'summary' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('summary');
 
@@ -895,6 +916,12 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                 sx={{ height: 24, fontSize: '0.75rem' }}
                                             />
                                         )}
+
+                                        {/* Column Visibility Toggle */}
+                                        <ColumnVisibilityToggle
+                                            visibleColumns={visibleColumns}
+                                            onToggleColumn={handleToggleColumn}
+                                        />
                                     </>
                                 )}
                                 <Button
@@ -1099,10 +1126,10 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                 <TableCell width={40}></TableCell>
                                                 <TableCell width={80} align="left">Order</TableCell>
                                                 <TableCell align="left">Name</TableCell>
-                                                <TableCell align="left">Tags</TableCell>
-                                                <TableCell align="left">Resources</TableCell>
-                                                <TableCell width={80} align="center">Impl %</TableCell>
-                                                <TableCell align="center">Validation Criteria</TableCell>
+                                                {visibleColumns.includes('tags') && <TableCell align="left">Tags</TableCell>}
+                                                {visibleColumns.includes('resources') && <TableCell align="left">Resources</TableCell>}
+                                                {visibleColumns.includes('implPercent') && <TableCell width={80} align="center">Impl %</TableCell>}
+                                                {visibleColumns.includes('validationCriteria') && <TableCell align="center">Validation Criteria</TableCell>}
                                                 <TableCell width={100} align="left">Actions</TableCell>
                                             </TableRow>
                                         </TableHead>
@@ -1122,11 +1149,12 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                         availableTags={displayProduct?.tags || []}
                                                         disableDrag={hasActiveFilters}
                                                         locked={isTasksLocked}
+                                                        visibleColumns={visibleColumns}
                                                     />
                                                 ))}
                                                 {filteredTasks.length === 0 && !tasksLoading && (
                                                     <TableRow>
-                                                        <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>
+                                                        <TableCell colSpan={4 + visibleColumns.length} sx={{ textAlign: 'center', py: 4 }}>
                                                             <Typography color="text.secondary">
                                                                 {hasActiveFilters ? 'No tasks match the selected filters' : 'No tasks found for this product'}
                                                             </Typography>

@@ -9,6 +9,8 @@ export { default as FAIcon } from './FAIcon';
 export { InlineEditableText } from './InlineEditableText';
 export { default as ErrorBoundary } from './ErrorBoundary';
 export { ThemeSelector } from './ThemeSelector';
+export { ColumnVisibilityToggle, TASK_COLUMNS, DEFAULT_VISIBLE_COLUMNS } from './ColumnVisibilityToggle';
+export { ADOPTION_TASK_COLUMNS, DEFAULT_ADOPTION_VISIBLE_COLUMNS } from './AdoptionTaskTable';
 
 // Sortable/DnD
 export { SortableAttributeItem } from './SortableAttributeItem';
@@ -22,3 +24,4 @@ export { TelemetryImportResultDialog } from './TelemetryImportResultDialog';
 // Dialogs
 export { CustomAttributeDialog } from './CustomAttributeDialog';
 export { BulkImportDialog } from './BulkImportDialog';
+

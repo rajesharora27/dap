@@ -64,6 +64,7 @@ interface SolutionTasksGroupProps {
   onExportTelemetry?: () => void;
   onImportTelemetry?: (file: File) => void;
   filterInfo?: string;
+  visibleColumns?: string[];
 }
 
 export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
@@ -75,6 +76,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
   onExportTelemetry,
   onImportTelemetry,
   filterInfo,
+  visibleColumns,
 }) => {
   const [expanded, setExpanded] = useState(true);
   const colors = adoptionPlanColors.solution;
@@ -139,7 +141,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
               <Typography variant="h6" sx={{ color: colors.titleColor, fontWeight: 600 }}>
                 Solution Tasks
               </Typography>
-              
+
               {/* Progress bar with stats */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, maxWidth: 300 }}>
                 <LinearProgress
@@ -160,11 +162,11 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                   {Math.round(progress)}%
                 </Typography>
               </Box>
-              
+
               <Typography variant="body2" sx={{ color: colors.titleColor, opacity: 0.8 }}>
                 {completedTasks} of {totalTasks} tasks
               </Typography>
-              
+
               {/* Telemetry buttons */}
               <Box sx={{ display: 'flex', gap: 0.5, ml: 'auto' }} onClick={(e) => e.stopPropagation()}>
                 <Tooltip title="Export Telemetry Template">
@@ -215,6 +217,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
             tasks={taskData}
             onUpdateTaskStatus={onUpdateTaskStatus}
             showHeader={false}
+            visibleColumns={visibleColumns}
           />
         </Box>
       </Collapse>

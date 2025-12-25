@@ -20,10 +20,16 @@ import {
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChange, onSequenceChange, onTagChange, availableTags, disableDrag, locked = false }: any) {
+// Default visible columns (all visible)
+const DEFAULT_VISIBLE_COLUMNS = ['tags', 'resources', 'implPercent', 'validationCriteria'];
+
+export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChange, onSequenceChange, onTagChange, availableTags, disableDrag, locked = false, visibleColumns = DEFAULT_VISIBLE_COLUMNS }: any) {
     const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
     const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
     const [tagMenuAnchor, setTagMenuAnchor] = useState<{ el: HTMLElement; task: any } | null>(null);
+
+    // Helper function to check if a column is visible
+    const isColumnVisible = (columnKey: string) => visibleColumns.includes(columnKey);
 
     const {
         attributes,
@@ -132,244 +138,253 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                     </Tooltip>
                 </TableCell>
 
-                <TableCell sx={{ minWidth: 150, textAlign: 'left' }}>
-                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-                        {(() => {
-                            const allTags = [...(task.tags || []), ...(task.solutionTags || [])];
-                            return allTags.map((tagRef: any) => {
-                                const tag = tagRef.tag || tagRef;
-                                return (
-                                    <Tooltip
-                                        key={tag.id}
-                                        title={
-                                            <Box>
-                                                <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>Tag: {tag.name}</Typography>
-                                                {tag.description && <Typography variant="caption" display="block">{tag.description}</Typography>}
-                                            </Box>
-                                        }
-                                        arrow
-                                    >
-                                        <Chip
-                                            label={tag.name}
-                                            size="small"
-                                            onDelete={locked ? undefined : (e) => {
-                                                e.stopPropagation();
-                                                // Call the new onTagChange handler to remove this tag
-                                                // This requires the parent component to pass onTagChange
-                                                if (onTagChange) {
-                                                    const currentTagIds = (task.tags || []).map((t: any) => t.id);
-                                                    const newTagIds = currentTagIds.filter((id: string) => id !== tag.id);
-                                                    onTagChange(task.id, newTagIds);
-                                                }
-                                            }}
-                                            sx={{
-                                                height: 20,
-                                                fontSize: '0.7rem',
-                                                backgroundColor: tag.color || '#888',
-                                                color: '#fff',
-                                                fontWeight: 600,
-                                                '& .MuiChip-deleteIcon': {
-                                                    color: 'rgba(255, 255, 255, 0.7)',
-                                                    fontSize: '12px',
-                                                    '&:hover': {
-                                                        color: '#fff'
+                {/* Tags column - hideable */}
+                {isColumnVisible('tags') && (
+                    <TableCell sx={{ minWidth: 150, textAlign: 'left' }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
+                            {(() => {
+                                const allTags = [...(task.tags || []), ...(task.solutionTags || [])];
+                                return allTags.map((tagRef: any) => {
+                                    const tag = tagRef.tag || tagRef;
+                                    return (
+                                        <Tooltip
+                                            key={tag.id}
+                                            title={
+                                                <Box>
+                                                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>Tag: {tag.name}</Typography>
+                                                    {tag.description && <Typography variant="caption" display="block">{tag.description}</Typography>}
+                                                </Box>
+                                            }
+                                            arrow
+                                        >
+                                            <Chip
+                                                label={tag.name}
+                                                size="small"
+                                                onDelete={locked ? undefined : (e) => {
+                                                    e.stopPropagation();
+                                                    // Call the new onTagChange handler to remove this tag
+                                                    // This requires the parent component to pass onTagChange
+                                                    if (onTagChange) {
+                                                        const currentTagIds = (task.tags || []).map((t: any) => t.id);
+                                                        const newTagIds = currentTagIds.filter((id: string) => id !== tag.id);
+                                                        onTagChange(task.id, newTagIds);
                                                     }
-                                                }
-                                            }}
-                                        />
-                                    </Tooltip>
-                                );
-                            });
-                        })()}
-                        {/* Dropdown to add tags */}
-                        {!locked && (
-                            <IconButton
-                                size="small"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setTagMenuAnchor({ el: e.currentTarget, task });
-                                }}
-                                sx={{ padding: 0.5, marginLeft: 0.5 }}
-                            >
-                                <Add sx={{ fontSize: '1rem' }} />
-                            </IconButton>
-                        )}
-                    </Box>
-                </TableCell>
+                                                }}
+                                                sx={{
+                                                    height: 20,
+                                                    fontSize: '0.7rem',
+                                                    backgroundColor: tag.color || '#888',
+                                                    color: '#fff',
+                                                    fontWeight: 600,
+                                                    '& .MuiChip-deleteIcon': {
+                                                        color: 'rgba(255, 255, 255, 0.7)',
+                                                        fontSize: '12px',
+                                                        '&:hover': {
+                                                            color: '#fff'
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                        </Tooltip>
+                                    );
+                                });
+                            })()}
+                            {/* Dropdown to add tags */}
+                            {!locked && (
+                                <IconButton
+                                    size="small"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setTagMenuAnchor({ el: e.currentTarget, task });
+                                    }}
+                                    sx={{ padding: 0.5, marginLeft: 0.5 }}
+                                >
+                                    <Add sx={{ fontSize: '1rem' }} />
+                                </IconButton>
+                            )}
+                        </Box>
+                    </TableCell>
+                )}
 
-                {/* Resources */}
-                <TableCell sx={{ minWidth: 100, textAlign: 'left' }}>
-                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'flex-start' }}>
-                        {task.howToDoc && task.howToDoc.length > 0 && (
-                            <Chip
-                                size="small"
-                                label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
-                                color="primary"
-                                variant="outlined"
-                                sx={{
-                                    fontSize: '0.7rem',
-                                    height: '20px',
-                                    cursor: 'pointer',
-                                    '&:hover': { backgroundColor: 'primary.light' }
-                                }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (task.howToDoc.length === 1) {
-                                        window.open(task.howToDoc[0], '_blank');
-                                    } else {
-                                        setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
+                {/* Resources column - hideable */}
+                {isColumnVisible('resources') && (
+                    <TableCell sx={{ minWidth: 100, textAlign: 'left' }}>
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'flex-start' }}>
+                            {task.howToDoc && task.howToDoc.length > 0 && (
+                                <Chip
+                                    size="small"
+                                    label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
+                                    color="primary"
+                                    variant="outlined"
+                                    sx={{
+                                        fontSize: '0.7rem',
+                                        height: '20px',
+                                        cursor: 'pointer',
+                                        '&:hover': { backgroundColor: 'primary.light' }
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (task.howToDoc.length === 1) {
+                                            window.open(task.howToDoc[0], '_blank');
+                                        } else {
+                                            setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
+                                        }
+                                    }}
+                                    title={task.howToDoc.length === 1
+                                        ? `Documentation: ${task.howToDoc[0]}`
+                                        : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
                                     }
-                                }}
-                                title={task.howToDoc.length === 1
-                                    ? `Documentation: ${task.howToDoc[0]}`
-                                    : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
-                                }
-                            />
-                        )}
+                                />
+                            )}
 
-                        {task.howToVideo && task.howToVideo.length > 0 && (
-                            <Chip
-                                size="small"
-                                label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
-                                color="error"
-                                variant="outlined"
-                                sx={{
-                                    fontSize: '0.7rem',
-                                    height: '20px',
-                                    cursor: 'pointer',
-                                    '&:hover': { backgroundColor: 'error.light' }
-                                }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (task.howToVideo.length === 1) {
-                                        window.open(task.howToVideo[0], '_blank');
-                                    } else {
-                                        setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
+                            {task.howToVideo && task.howToVideo.length > 0 && (
+                                <Chip
+                                    size="small"
+                                    label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
+                                    color="error"
+                                    variant="outlined"
+                                    sx={{
+                                        fontSize: '0.7rem',
+                                        height: '20px',
+                                        cursor: 'pointer',
+                                        '&:hover': { backgroundColor: 'error.light' }
+                                    }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (task.howToVideo.length === 1) {
+                                            window.open(task.howToVideo[0], '_blank');
+                                        } else {
+                                            setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
+                                        }
+                                    }}
+                                    title={task.howToVideo.length === 1
+                                        ? `Video: ${task.howToVideo[0]}`
+                                        : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
                                     }
-                                }}
-                                title={task.howToVideo.length === 1
-                                    ? `Video: ${task.howToVideo[0]}`
-                                    : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
-                                }
-                            />
-                        )}
-                        {!task.howToDoc && !task.howToVideo && (
-                            <Typography variant="caption" color="text.secondary">-</Typography>
-                        )}
-                    </Box>
-                </TableCell>
+                                />
+                            )}
+                            {!task.howToDoc && !task.howToVideo && (
+                                <Typography variant="caption" color="text.secondary">-</Typography>
+                            )}
+                        </Box>
+                    </TableCell>
+                )}
 
-                {/* Impl % */}
-                <TableCell sx={{ width: 80, minWidth: 80, whiteSpace: 'nowrap', textAlign: 'center' }}>
-                    <input
-                        key={`weight-${task.id}-${task.weight}`}
-                        type="number"
-                        disabled={locked}
-                        defaultValue={task.weight || 0}
-                        onBlur={(e) => {
-                            e.stopPropagation();
-                            const newWeight = parseFloat(e.target.value) || 0;
-                            if (newWeight >= 0 && newWeight <= 100) {
-                                if (Math.abs(newWeight - task.weight) > 0.001) {
-                                    if (onWeightChange) {
-                                        onWeightChange(task.id, task.name, newWeight);
+                {/* Impl % column - hideable */}
+                {isColumnVisible('implPercent') && (
+                    <TableCell sx={{ width: 80, minWidth: 80, whiteSpace: 'nowrap', textAlign: 'center' }}>
+                        <input
+                            key={`weight-${task.id}-${task.weight}`}
+                            type="number"
+                            disabled={locked}
+                            defaultValue={task.weight || 0}
+                            onBlur={(e) => {
+                                e.stopPropagation();
+                                const newWeight = parseFloat(e.target.value) || 0;
+                                if (newWeight >= 0 && newWeight <= 100) {
+                                    if (Math.abs(newWeight - task.weight) > 0.001) {
+                                        if (onWeightChange) {
+                                            onWeightChange(task.id, task.name, newWeight);
+                                        }
                                     }
+                                } else {
+                                    e.target.value = task.weight.toString();
                                 }
-                            } else {
-                                e.target.value = task.weight.toString();
-                            }
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                                e.currentTarget.blur();
-                            }
-                            if (e.key === 'Escape') {
-                                e.currentTarget.value = task.weight.toString();
-                                e.currentTarget.blur();
-                            }
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        onFocus={(e) => {
-                            e.stopPropagation();
-                            e.target.select();
-                        }}
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        style={{
-                            width: '60px',
-                            padding: '2px 4px',
-                            border: locked ? 'none' : '1px solid #e0e0e0',
-                            borderRadius: '4px',
-                            textAlign: 'center',
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            color: locked ? 'text.secondary' : '#333',
-                            backgroundColor: 'transparent',
-                            cursor: locked ? 'default' : 'text',
-                            // Hide number input spinners
-                            MozAppearance: 'textfield',
-                            WebkitAppearance: 'none',
-                            appearance: 'textfield'
-                        } as React.CSSProperties}
-                        title={locked ? "Locked" : "Click to edit weight (0-100), press Enter to save"}
-                    />
-                    <style>{`
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                    e.currentTarget.blur();
+                                }
+                                if (e.key === 'Escape') {
+                                    e.currentTarget.value = task.weight.toString();
+                                    e.currentTarget.blur();
+                                }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            onFocus={(e) => {
+                                e.stopPropagation();
+                                e.target.select();
+                            }}
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            style={{
+                                width: '60px',
+                                padding: '2px 4px',
+                                border: locked ? 'none' : '1px solid #e0e0e0',
+                                borderRadius: '4px',
+                                textAlign: 'center',
+                                fontSize: '0.875rem',
+                                fontWeight: 500,
+                                color: locked ? 'text.secondary' : '#333',
+                                backgroundColor: 'transparent',
+                                cursor: locked ? 'default' : 'text',
+                                // Hide number input spinners
+                                MozAppearance: 'textfield',
+                                WebkitAppearance: 'none',
+                                appearance: 'textfield'
+                            } as React.CSSProperties}
+                            title={locked ? "Locked" : "Click to edit weight (0-100), press Enter to save"}
+                        />
+                        <style>{`
                         input[type="number"]::-webkit-inner-spin-button,
                         input[type="number"]::-webkit-outer-spin-button {
                             -webkit-appearance: none;
                             margin: 0;
                         }
                     `}</style>
-                </TableCell>
+                    </TableCell>
+                )}
 
-                {/* Validation Criteria */}
-                <TableCell sx={{ minWidth: 80, textAlign: 'center' }}>
-                    {(() => {
-                        const totalAttributes = task.telemetryAttributes?.length || 0;
-                        const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) =>
-                            attr.successCriteria && attr.successCriteria !== null
-                        ).length || 0;
+                {/* Validation Criteria column - hideable */}
+                {isColumnVisible('validationCriteria') && (
+                    <TableCell sx={{ minWidth: 80, textAlign: 'center' }}>
+                        {(() => {
+                            const totalAttributes = task.telemetryAttributes?.length || 0;
+                            const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) =>
+                                attr.successCriteria && attr.successCriteria !== null
+                            ).length || 0;
 
-                        if (totalAttributes === 0) {
-                            return <Typography variant="caption" color="text.secondary">-</Typography>;
-                        }
+                            if (totalAttributes === 0) {
+                                return <Typography variant="caption" color="text.secondary">-</Typography>;
+                            }
 
-                        return (
-                            <Tooltip
-                                title={
-                                    <Box>
-                                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Validation Criteria</Typography>
-                                        <Typography variant="caption" display="block">
-                                            {attributesWithCriteria} of {totalAttributes} attributes have success criteria configured
-                                        </Typography>
-                                    </Box>
-                                }
-                            >
-                                <Chip
-                                    label={`${attributesWithCriteria}/${totalAttributes}`}
-                                    size="small"
-                                    sx={{
-                                        fontSize: '0.7rem',
-                                        height: 20,
-                                        borderRadius: '6px',
-                                        fontWeight: 600,
-                                        backgroundColor:
-                                            attributesWithCriteria === totalAttributes ? '#e8f5e9' : // Success light green
-                                                attributesWithCriteria > 0 ? '#fff3e0' : // Warning light amber
-                                                    '#f5f5f5', // Default light gray
-                                        color:
-                                            attributesWithCriteria === totalAttributes ? '#2e7d32' : // Dark green
-                                                attributesWithCriteria > 0 ? '#ef6c00' : // Dark amber
-                                                    '#757575', // Dark gray
-                                        border: '1px solid currentColor',
-                                        '& .MuiChip-label': { px: 1 }
-                                    }}
-                                />
-                            </Tooltip>
-                        );
-                    })()}
-                </TableCell>
+                            return (
+                                <Tooltip
+                                    title={
+                                        <Box>
+                                            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Validation Criteria</Typography>
+                                            <Typography variant="caption" display="block">
+                                                {attributesWithCriteria} of {totalAttributes} attributes have success criteria configured
+                                            </Typography>
+                                        </Box>
+                                    }
+                                >
+                                    <Chip
+                                        label={`${attributesWithCriteria}/${totalAttributes}`}
+                                        size="small"
+                                        sx={{
+                                            fontSize: '0.7rem',
+                                            height: 20,
+                                            borderRadius: '6px',
+                                            fontWeight: 600,
+                                            backgroundColor:
+                                                attributesWithCriteria === totalAttributes ? '#e8f5e9' : // Success light green
+                                                    attributesWithCriteria > 0 ? '#fff3e0' : // Warning light amber
+                                                        '#f5f5f5', // Default light gray
+                                            color:
+                                                attributesWithCriteria === totalAttributes ? '#2e7d32' : // Dark green
+                                                    attributesWithCriteria > 0 ? '#ef6c00' : // Dark amber
+                                                        '#757575', // Dark gray
+                                            border: '1px solid currentColor',
+                                            '& .MuiChip-label': { px: 1 }
+                                        }}
+                                    />
+                                </Tooltip>
+                            );
+                        })()}
+                    </TableCell>
+                )}
 
                 {/* Actions */}
                 <TableCell sx={{ width: 100, minWidth: 100, whiteSpace: 'nowrap', textAlign: 'left' }}>

@@ -67,7 +67,6 @@ export class CustomerTelemetryExportService {
       { header: 'Required', key: 'required', width: 10 },
       { header: 'Operator', key: 'operator', width: 15 },
       { header: 'Expected Value', key: 'expectedValue', width: 20 },
-      { header: 'Criteria', key: 'criteria', width: 25 },
       { header: 'Current Value', key: 'currentValue', width: 20 },
       { header: 'Date', key: 'date', width: 15 },
       { header: 'Notes', key: 'notes', width: 30 }
@@ -95,6 +94,11 @@ export class CustomerTelemetryExportService {
       }
 
       for (const attribute of task.telemetryAttributes) {
+        // Only export attributes that have success criteria configured
+        if (!attribute.successCriteria) {
+          continue;
+        }
+
         const row = worksheet.getRow(rowIndex);
 
         // Get current value (handle JSON or simple string)
@@ -132,9 +136,8 @@ export class CustomerTelemetryExportService {
           required: attribute.isRequired ? 'Yes' : 'No',
           operator: this.getOperator(attribute.successCriteria),
           expectedValue: this.getValue(attribute.successCriteria),
-          criteria: this.formatCriteria(attribute.successCriteria),
           currentValue: currentValue,
-          date: latestValueObj ? new Date(latestValueObj.createdAt).toISOString().split('T')[0] : today, // Use entry date if exists
+          date: latestValueObj ? new Date(latestValueObj.createdAt).toISOString().split('T')[0] : today,
           notes: ''
         };
 
@@ -176,7 +179,12 @@ export class CustomerTelemetryExportService {
           pattern: 'solid',
           fgColor: { argb: 'FFF2F2F2' }
         };
-        row.getCell('criteria').fill = {
+        row.getCell('operator').fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFF2F2F2' }
+        };
+        row.getCell('expectedValue').fill = {
           type: 'pattern',
           pattern: 'solid',
           fgColor: { argb: 'FFF2F2F2' }
@@ -395,7 +403,6 @@ export class CustomerTelemetryExportService {
       { header: 'Required', key: 'required', width: 10 },
       { header: 'Operator', key: 'operator', width: 15 },
       { header: 'Expected Value', key: 'expectedValue', width: 20 },
-      { header: 'Criteria', key: 'criteria', width: 25 },
       { header: 'Current Value', key: 'currentValue', width: 20 },
       { header: 'Date', key: 'date', width: 15 },
       { header: 'Notes', key: 'notes', width: 30 }
@@ -423,6 +430,11 @@ export class CustomerTelemetryExportService {
       }
 
       for (const attr of task.telemetryAttributes) {
+        // Only export attributes that have success criteria configured
+        if (!attr.successCriteria) {
+          continue;
+        }
+
         // Get current value from latest telemetry value if it exists
         const latestValue = await prisma.customerTelemetryValue.findFirst({
           where: {
@@ -449,7 +461,6 @@ export class CustomerTelemetryExportService {
           required: attr.isRequired ? 'Yes' : 'No',
           operator: this.getOperator(attr.successCriteria),
           expectedValue: this.getValue(attr.successCriteria),
-          criteria: this.formatCriteria(attr.successCriteria),
           currentValue: currentValue,
           date: today,
           notes: ''
@@ -465,8 +476,8 @@ export class CustomerTelemetryExportService {
           right: { style: 'thin' }
         };
 
-        // Color read-only columns (A-G)
-        ['A', 'B', 'C', 'D', 'E', 'F', 'G'].forEach(col => {
+        // Color read-only columns (A-F)
+        ['A', 'B', 'C', 'D', 'E', 'F'].forEach(col => {
           row.getCell(col).fill = {
             type: 'pattern',
             pattern: 'solid',
@@ -474,8 +485,8 @@ export class CustomerTelemetryExportService {
           };
         });
 
-        // Color input columns (H-J)
-        ['H', 'I', 'J'].forEach(col => {
+        // Color input columns (G-I)
+        ['G', 'H', 'I'].forEach(col => {
           row.getCell(col).fill = {
             type: 'pattern',
             pattern: 'solid',

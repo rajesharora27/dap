@@ -1,6 +1,6 @@
 # Local Development Context
 
-**Updated:** December 22, 2025  
+**Updated:** December 25, 2025  
 **Purpose:** Cross-platform development, deployment, and environment-specific configurations.
 
 ---
@@ -318,6 +318,21 @@ Tabs in Products and Solutions pages are ordered consistently across all environ
 
 - Products Page: Outcomes → Releases → Licenses → Custom Attributes → **Tasks** (last)
 - Solutions Page: Products → Outcomes → Releases → Custom Attributes → **Tasks** (last)
+
+---
+
+## Column Visibility (UI)
+
+Task tables support hideable columns with localStorage persistence:
+
+| Page | Hideable Columns | localStorage Key |
+|------|-----------------|------------------|
+| Products → Tasks | Tags, Resources, Impl %, Validation Criteria | `dap_product_task_columns` |
+| Solutions → Tasks | Tags, Resources, Impl %, Validation Criteria | `dap_solution_task_columns` |
+| Customers → Products Assigned | Tags, Resources, Impl %, Validation Criteria | `dap_customer_product_columns` |
+| Customers → Solutions Assigned | Resources, Weight, Telemetry, Updated Via | `dap_adoption_plan_columns` |
+
+**Filter Order (Adoption Plans):** Tags → Outcomes → Releases (consistent in both tabs)
 
 ---
 

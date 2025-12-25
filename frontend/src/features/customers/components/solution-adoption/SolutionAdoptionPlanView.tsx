@@ -19,6 +19,8 @@ import {
   Tooltip
 } from '@mui/material';
 import { Sync, Assessment, FilterList } from '@shared/components/FAIcon';
+import { ColumnVisibilityToggle } from '@shared/components/ColumnVisibilityToggle';
+import { ADOPTION_TASK_COLUMNS, DEFAULT_ADOPTION_VISIBLE_COLUMNS } from '@shared/components/AdoptionTaskTable';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { ProductAdoptionGroup } from './ProductAdoptionGroup';
 import { SolutionTasksGroup } from './SolutionTasksGroup';
@@ -273,6 +275,26 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
   const [filterReleases, setFilterReleases] = useState<string[]>([]);
   const [filterOutcomes, setFilterOutcomes] = useState<string[]>([]);
   const [filterTags, setFilterTags] = useState<string[]>([]);
+
+  // Column visibility state with localStorage persistence
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dap_adoption_plan_columns');
+    return saved ? JSON.parse(saved) : DEFAULT_ADOPTION_VISIBLE_COLUMNS;
+  });
+
+  // Persist column visibility to localStorage
+  React.useEffect(() => {
+    localStorage.setItem('dap_adoption_plan_columns', JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
+
+  // Handle column toggle
+  const handleToggleColumn = (columnKey: string) => {
+    setVisibleColumns(prev =>
+      prev.includes(columnKey)
+        ? prev.filter(k => k !== columnKey)
+        : [...prev, columnKey]
+    );
+  };
 
   const { data, loading, error: queryError, refetch } = useQuery(GET_SOLUTION_ADOPTION_PLAN, {
     variables: { id: solutionAdoptionPlanId },
@@ -655,52 +677,6 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
           </Box>
 
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
-            {/* Releases Filter */}
-            {availableReleases.length > 0 ? (
-              <FormControl sx={{ minWidth: 250 }} size="small">
-                <InputLabel>Releases</InputLabel>
-                <Select
-                  multiple
-                  value={filterReleases}
-                  onChange={(e) => {
-                    const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
-                    if (value.includes(ALL_RELEASES_ID)) {
-                      if (filterReleases.includes(ALL_RELEASES_ID)) {
-                        setFilterReleases([]);
-                      } else {
-                        setFilterReleases([ALL_RELEASES_ID]);
-                      }
-                    } else {
-                      setFilterReleases(value);
-                    }
-                  }}
-                  input={<OutlinedInput label="Releases" />}
-                  renderValue={(selected) => {
-                    if (selected.includes(ALL_RELEASES_ID)) return 'All Releases';
-                    if (selected.length === 0) return 'All Releases';
-                    return `${selected.length} selected`;
-                  }}
-                >
-                  <MenuItem value={ALL_RELEASES_ID}>
-                    <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID) || filterReleases.length === 0} />
-                    <ListItemText primary="All Releases" />
-                  </MenuItem>
-                  {availableReleases.map((release: any) => (
-                    <MenuItem key={release.id} value={release.id}>
-                      <Checkbox checked={filterReleases.includes(release.id)} disabled={filterReleases.includes(ALL_RELEASES_ID)} />
-                      <ListItemText primary={`${release.name} (v${release.level})`} />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            ) : (
-              <Alert severity="info" sx={{ flex: 1 }}>
-                <Typography variant="caption">
-                  No releases tagged on solution tasks. Add releases to tasks to enable release filtering.
-                </Typography>
-              </Alert>
-            )}
-
             {/* Tags Filter */}
             {availableTags.length > 0 ? (
               <FormControl sx={{ minWidth: 250 }} size="small">
@@ -822,6 +798,52 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
               </Alert>
             )}
 
+            {/* Releases Filter */}
+            {availableReleases.length > 0 ? (
+              <FormControl sx={{ minWidth: 250 }} size="small">
+                <InputLabel>Releases</InputLabel>
+                <Select
+                  multiple
+                  value={filterReleases}
+                  onChange={(e) => {
+                    const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                    if (value.includes(ALL_RELEASES_ID)) {
+                      if (filterReleases.includes(ALL_RELEASES_ID)) {
+                        setFilterReleases([]);
+                      } else {
+                        setFilterReleases([ALL_RELEASES_ID]);
+                      }
+                    } else {
+                      setFilterReleases(value);
+                    }
+                  }}
+                  input={<OutlinedInput label="Releases" />}
+                  renderValue={(selected) => {
+                    if (selected.includes(ALL_RELEASES_ID)) return 'All Releases';
+                    if (selected.length === 0) return 'All Releases';
+                    return `${selected.length} selected`;
+                  }}
+                >
+                  <MenuItem value={ALL_RELEASES_ID}>
+                    <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID) || filterReleases.length === 0} />
+                    <ListItemText primary="All Releases" />
+                  </MenuItem>
+                  {availableReleases.map((release: any) => (
+                    <MenuItem key={release.id} value={release.id}>
+                      <Checkbox checked={filterReleases.includes(release.id)} disabled={filterReleases.includes(ALL_RELEASES_ID)} />
+                      <ListItemText primary={`${release.name} (v${release.level})`} />
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ) : (
+              <Alert severity="info" sx={{ flex: 1 }}>
+                <Typography variant="caption">
+                  No releases tagged on solution tasks. Add releases to tasks to enable release filtering.
+                </Typography>
+              </Alert>
+            )}
+
             {/* Clear Filters Button */}
             {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) ||
               (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID)) ||
@@ -839,6 +861,13 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
                   Clear Filters
                 </Button>
               )}
+
+            {/* Column Visibility Toggle */}
+            <ColumnVisibilityToggle
+              visibleColumns={visibleColumns}
+              onToggleColumn={handleToggleColumn}
+              columns={ADOPTION_TASK_COLUMNS}
+            />
           </Box>
         </Paper>
       )}
@@ -853,6 +882,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
           onUpdateTaskStatus={handleUpdateSolutionTaskStatus}
           onExportTelemetry={handleExportSolutionTelemetry}
           onImportTelemetry={handleImportSolutionTelemetry}
+          visibleColumns={visibleColumns}
         />
       )}
 
@@ -872,6 +902,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
           }}
           onExportTelemetry={handleExportProductTelemetry}
           onImportTelemetry={handleImportProductTelemetry}
+          visibleColumns={visibleColumns}
         />
       ))}
 

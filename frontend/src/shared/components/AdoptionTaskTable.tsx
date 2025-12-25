@@ -91,7 +91,18 @@ interface AdoptionTaskTableProps {
   filterInfo?: string;
   showHeader?: boolean;
   defaultExpanded?: boolean;
+  visibleColumns?: string[];
 }
+
+// Default visible columns for adoption task tables
+export const ADOPTION_TASK_COLUMNS = [
+  { key: 'resources', label: 'Resources', alwaysVisible: false },
+  { key: 'weight', label: 'Weight', alwaysVisible: false },
+  { key: 'telemetry', label: 'Telemetry', alwaysVisible: false },
+  { key: 'updatedVia', label: 'Updated Via', alwaysVisible: false },
+];
+
+export const DEFAULT_ADOPTION_VISIBLE_COLUMNS = ADOPTION_TASK_COLUMNS.map(c => c.key);
 
 export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
   tasks,
@@ -104,7 +115,10 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
   filterInfo,
   showHeader = true,
   defaultExpanded = true,
+  visibleColumns = DEFAULT_ADOPTION_VISIBLE_COLUMNS,
 }) => {
+  // Helper function to check if a column is visible
+  const isColumnVisible = (columnKey: string) => visibleColumns.includes(columnKey);
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [statusDialog, setStatusDialog] = useState<StatusDialogState>({
     open: false,
@@ -156,18 +170,26 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
             <TableCell>
               <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Task</Typography>
             </TableCell>
-            <TableCell width={120}>
-              <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
-            </TableCell>
-            <TableCell width={80} sx={{ whiteSpace: 'nowrap' }}>
-              <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Weight</Typography>
-            </TableCell>
-            <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
-              <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Telemetry</Typography>
-            </TableCell>
-            <TableCell width={100}>
-              <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Updated Via</Typography>
-            </TableCell>
+            {isColumnVisible('resources') && (
+              <TableCell width={120}>
+                <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
+              </TableCell>
+            )}
+            {isColumnVisible('weight') && (
+              <TableCell width={80} sx={{ whiteSpace: 'nowrap' }}>
+                <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Weight</Typography>
+              </TableCell>
+            )}
+            {isColumnVisible('telemetry') && (
+              <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
+                <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Telemetry</Typography>
+              </TableCell>
+            )}
+            {isColumnVisible('updatedVia') && (
+              <TableCell width={100}>
+                <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Updated Via</Typography>
+              </TableCell>
+            )}
             <TableCell width={160}>
               <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Action</Typography>
             </TableCell>
@@ -176,7 +198,7 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
         <TableBody>
           {tasks.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={7} align="center">
+              <TableCell colSpan={3 + visibleColumns.length} align="center">
                 <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
                   No tasks found
                 </Typography>
@@ -207,155 +229,125 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
                     {task.name}
                   </Typography>
                 </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', gap: 0.5 }}>
-                    {task.howToDoc && task.howToDoc.length > 0 && (
-                      <Tooltip
-                        title={
-                          <Box>
-                            <Typography variant="caption" fontWeight="bold">Documentation</Typography>
-                            {task.howToDoc.map((link, i) => (
-                              <Typography key={i} variant="caption" display="block" sx={{ wordBreak: 'break-all' }}>
-                                {link}
-                              </Typography>
-                            ))}
-                          </Box>
-                        }
-                        arrow
-                      >
-                        <Chip
-                          size="small"
-                          label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
-                          color="primary"
-                          variant="outlined"
-                          sx={{
-                            fontSize: '0.7rem',
-                            height: '22px',
-                            cursor: 'pointer',
-                            '&:hover': { backgroundColor: 'primary.light', color: 'white' }
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (task.howToDoc!.length === 1) {
-                              window.open(task.howToDoc![0], '_blank');
-                            } else {
-                              setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc! });
-                            }
-                          }}
-                        />
-                      </Tooltip>
-                    )}
-                    {task.howToVideo && task.howToVideo.length > 0 && (
-                      <Tooltip
-                        title={
-                          <Box>
-                            <Typography variant="caption" fontWeight="bold">Video Resources</Typography>
-                            {task.howToVideo.map((link, i) => (
-                              <Typography key={i} variant="caption" display="block" sx={{ wordBreak: 'break-all' }}>
-                                {link}
-                              </Typography>
-                            ))}
-                          </Box>
-                        }
-                        arrow
-                      >
-                        <Chip
-                          size="small"
-                          label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
-                          color="error"
-                          variant="outlined"
-                          sx={{
-                            fontSize: '0.7rem',
-                            height: '22px',
-                            cursor: 'pointer',
-                            '&:hover': { backgroundColor: 'error.light', color: 'white' }
-                          }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (task.howToVideo!.length === 1) {
-                              window.open(task.howToVideo![0], '_blank');
-                            } else {
-                              setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo! });
-                            }
-                          }}
-                        />
-                      </Tooltip>
-                    )}
-                    {(!task.howToDoc || task.howToDoc.length === 0) && (!task.howToVideo || task.howToVideo.length === 0) && (
-                      <Typography variant="caption" color="text.secondary">-</Typography>
-                    )}
-                  </Box>
-                </TableCell>
-                <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.weight ? `${task.weight}%` : '-'}</TableCell>
-                <TableCell>
-                  {(() => {
-                    const totalAttributes = task.telemetryAttributes?.length || 0;
-                    const attributesWithValues = task.telemetryAttributes?.filter((attr: any) =>
-                      attr.values && attr.values.length > 0
-                    ).length || 0;
-
-                    const attributesWithCriteriaMet = task.telemetryAttributes?.filter((attr: any) =>
-                      attr.isMet === true
-                    ).length || 0;
-
-                    const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) =>
-                      attr.successCriteria && attr.successCriteria !== 'No criteria'
-                    ).length || 0;
-
-                    if (totalAttributes === 0) {
-                      return <Typography variant="caption" color="text.secondary">-</Typography>;
-                    }
-
-                    const hasData = attributesWithValues > 0;
-                    const percentage = attributesWithCriteria > 0 ? Math.round((attributesWithCriteriaMet / attributesWithCriteria) * 100) : 0;
-
-                    return (
-                      <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap' }}>
+                {isColumnVisible('resources') && (
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      {task.howToDoc && task.howToDoc.length > 0 && (
                         <Tooltip
                           title={
                             <Box>
-                              <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Telemetry Values Filled</Typography>
-                              <Typography variant="caption" display="block">
-                                {attributesWithValues} out of {totalAttributes} telemetry attributes have imported values
-                              </Typography>
-                              {!hasData && (
-                                <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
-                                  No telemetry data imported yet
+                              <Typography variant="caption" fontWeight="bold">Documentation</Typography>
+                              {task.howToDoc.map((link, i) => (
+                                <Typography key={i} variant="caption" display="block" sx={{ wordBreak: 'break-all' }}>
+                                  {link}
                                 </Typography>
-                              )}
+                              ))}
                             </Box>
                           }
                           arrow
                         >
                           <Chip
-                            label={`${attributesWithValues}/${totalAttributes}`}
                             size="small"
+                            label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
+                            color="primary"
                             variant="outlined"
-                            color={hasData ? 'info' : 'default'}
-                            sx={{ fontSize: '0.7rem', height: 20 }}
+                            sx={{
+                              fontSize: '0.7rem',
+                              height: '22px',
+                              cursor: 'pointer',
+                              '&:hover': { backgroundColor: 'primary.light', color: 'white' }
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (task.howToDoc!.length === 1) {
+                                window.open(task.howToDoc![0], '_blank');
+                              } else {
+                                setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc! });
+                              }
+                            }}
                           />
                         </Tooltip>
-                        {attributesWithCriteria > 0 && (
+                      )}
+                      {task.howToVideo && task.howToVideo.length > 0 && (
+                        <Tooltip
+                          title={
+                            <Box>
+                              <Typography variant="caption" fontWeight="bold">Video Resources</Typography>
+                              {task.howToVideo.map((link, i) => (
+                                <Typography key={i} variant="caption" display="block" sx={{ wordBreak: 'break-all' }}>
+                                  {link}
+                                </Typography>
+                              ))}
+                            </Box>
+                          }
+                          arrow
+                        >
+                          <Chip
+                            size="small"
+                            label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
+                            color="error"
+                            variant="outlined"
+                            sx={{
+                              fontSize: '0.7rem',
+                              height: '22px',
+                              cursor: 'pointer',
+                              '&:hover': { backgroundColor: 'error.light', color: 'white' }
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (task.howToVideo!.length === 1) {
+                                window.open(task.howToVideo![0], '_blank');
+                              } else {
+                                setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo! });
+                              }
+                            }}
+                          />
+                        </Tooltip>
+                      )}
+                      {(!task.howToDoc || task.howToDoc.length === 0) && (!task.howToVideo || task.howToVideo.length === 0) && (
+                        <Typography variant="caption" color="text.secondary">-</Typography>
+                      )}
+                    </Box>
+                  </TableCell>
+                )}
+                {isColumnVisible('weight') && (
+                  <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.weight ? `${task.weight}%` : '-'}</TableCell>
+                )}
+                {isColumnVisible('telemetry') && (
+                  <TableCell>
+                    {(() => {
+                      const totalAttributes = task.telemetryAttributes?.length || 0;
+                      const attributesWithValues = task.telemetryAttributes?.filter((attr: any) =>
+                        attr.values && attr.values.length > 0
+                      ).length || 0;
+
+                      const attributesWithCriteriaMet = task.telemetryAttributes?.filter((attr: any) =>
+                        attr.isMet === true
+                      ).length || 0;
+
+                      const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) =>
+                        attr.successCriteria && attr.successCriteria !== 'No criteria'
+                      ).length || 0;
+
+                      if (totalAttributes === 0) {
+                        return <Typography variant="caption" color="text.secondary">-</Typography>;
+                      }
+
+                      const hasData = attributesWithValues > 0;
+                      const percentage = attributesWithCriteria > 0 ? Math.round((attributesWithCriteriaMet / attributesWithCriteria) * 100) : 0;
+
+                      return (
+                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap' }}>
                           <Tooltip
                             title={
                               <Box>
-                                <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Success Criteria Met</Typography>
+                                <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Telemetry Values Filled</Typography>
                                 <Typography variant="caption" display="block">
-                                  {attributesWithCriteriaMet} out of {attributesWithCriteria} success criteria are currently met
+                                  {attributesWithValues} out of {totalAttributes} telemetry attributes have imported values
                                 </Typography>
-                                {percentage === 100 && (
-                                  <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'success.light' }}>
-                                    ✓ All criteria met! Task can be marked as "Done via Telemetry"
-                                  </Typography>
-                                )}
-                                {percentage < 100 && percentage > 0 && (
+                                {!hasData && (
                                   <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
-                                    {percentage}% complete - Some criteria still need to be met
-                                  </Typography>
-                                )}
-                                {percentage === 0 && (
-                                  <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'error.light' }}>
-                                    No criteria met yet
+                                    No telemetry data imported yet
                                   </Typography>
                                 )}
                               </Box>
@@ -363,31 +355,69 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
                             arrow
                           >
                             <Chip
-                              label={`${attributesWithCriteriaMet}/${attributesWithCriteria} ✓`}
+                              label={`${attributesWithValues}/${totalAttributes}`}
                               size="small"
                               variant="outlined"
-                              color={percentage === 100 ? 'success' : percentage > 0 ? 'warning' : 'default'}
+                              color={hasData ? 'info' : 'default'}
                               sx={{ fontSize: '0.7rem', height: 20 }}
                             />
                           </Tooltip>
-                        )}
-                      </Box>
-                    );
-                  })()}
-                </TableCell>
-                <TableCell>
-                  {task.statusUpdateSource ? (
-                    <Chip
-                      label={task.statusUpdateSource}
-                      size="small"
-                      variant="outlined"
-                      color={getUpdateSourceChipColor(task.statusUpdateSource)}
-                      sx={{ fontSize: '0.7rem', height: '22px' }}
-                    />
-                  ) : (
-                    <Typography variant="caption" color="text.secondary">-</Typography>
-                  )}
-                </TableCell>
+                          {attributesWithCriteria > 0 && (
+                            <Tooltip
+                              title={
+                                <Box>
+                                  <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Success Criteria Met</Typography>
+                                  <Typography variant="caption" display="block">
+                                    {attributesWithCriteriaMet} out of {attributesWithCriteria} success criteria are currently met
+                                  </Typography>
+                                  {percentage === 100 && (
+                                    <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'success.light' }}>
+                                      ✓ All criteria met! Task can be marked as "Done via Telemetry"
+                                    </Typography>
+                                  )}
+                                  {percentage < 100 && percentage > 0 && (
+                                    <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
+                                      {percentage}% complete - Some criteria still need to be met
+                                    </Typography>
+                                  )}
+                                  {percentage === 0 && (
+                                    <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'error.light' }}>
+                                      No criteria met yet
+                                    </Typography>
+                                  )}
+                                </Box>
+                              }
+                              arrow
+                            >
+                              <Chip
+                                label={`${attributesWithCriteriaMet}/${attributesWithCriteria} ✓`}
+                                size="small"
+                                variant="outlined"
+                                color={percentage === 100 ? 'success' : percentage > 0 ? 'warning' : 'default'}
+                                sx={{ fontSize: '0.7rem', height: 20 }}
+                              />
+                            </Tooltip>
+                          )}
+                        </Box>
+                      );
+                    })()}
+                  </TableCell>
+                )}
+                {isColumnVisible('updatedVia') && (
+                  <TableCell>
+                    {task.statusUpdateSource ? (
+                      <Chip
+                        label={task.statusUpdateSource}
+                        size="small"
+                        variant="outlined"
+                        color={getUpdateSourceChipColor(task.statusUpdateSource)}
+                        sx={{ fontSize: '0.7rem', height: '22px' }}
+                      />
+                    ) : (
+                      <Typography variant="caption" color="text.secondary">-</Typography>
+                    )}
+                  </TableCell>
+                )}
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <FormControl size="small" sx={{ minWidth: 130 }}>
                     <Select

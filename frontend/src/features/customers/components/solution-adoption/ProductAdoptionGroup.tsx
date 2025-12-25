@@ -87,6 +87,7 @@ interface ProductAdoptionGroupProps {
   onExportTelemetry?: (adoptionPlanId: string) => void;
   onImportTelemetry?: (adoptionPlanId: string, file: File) => void;
   filterInfo?: string;
+  visibleColumns?: string[];
 }
 
 export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
@@ -96,6 +97,7 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
   onExportTelemetry,
   onImportTelemetry,
   filterInfo,
+  visibleColumns,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -509,6 +511,7 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
             bgColor="transparent"
             borderColor="transparent"
             showHeader={false}
+            visibleColumns={visibleColumns}
           />
         </Box>
       </Collapse>

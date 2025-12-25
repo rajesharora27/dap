@@ -81,6 +81,7 @@ import { getApiUrl } from '@/config/frontend.config';
 import { getStatusBackgroundColor, getStatusColor, getStatusChipColor, getUpdateSourceChipColor, formatStatus } from '@/utils/statusStyles';
 import { formatSuccessCriteria } from '@/utils/criteriaFormatter';
 import { TaskDetailsDialog, TaskDetailsData } from '@shared/components/TaskDetailsDialog';
+import { ColumnVisibilityToggle, TASK_COLUMNS, DEFAULT_VISIBLE_COLUMNS } from '@shared/components';
 import { useAuth } from '@features/auth';
 import { importProductTelemetry, downloadFileFromUrl } from '@/utils/telemetryOperations';
 
@@ -689,6 +690,29 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
   const [filterOutcomes, setFilterOutcomes] = useState<string[]>([]);
   const [filterTags, setFilterTags] = useState<string[]>([]);
 
+  // Column visibility state for Products Assigned tab with localStorage persistence
+  const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
+    const saved = localStorage.getItem('dap_customer_product_columns');
+    return saved ? JSON.parse(saved) : DEFAULT_VISIBLE_COLUMNS;
+  });
+
+  // Persist column visibility to localStorage
+  React.useEffect(() => {
+    localStorage.setItem('dap_customer_product_columns', JSON.stringify(visibleColumns));
+  }, [visibleColumns]);
+
+  // Handle column toggle
+  const handleToggleColumn = (columnKey: string) => {
+    setVisibleColumns(prev =>
+      prev.includes(columnKey)
+        ? prev.filter(k => k !== columnKey)
+        : [...prev, columnKey]
+    );
+  };
+
+  // Helper function to check if a column is visible
+  const isColumnVisible = (columnKey: string) => visibleColumns.includes(columnKey);
+
   const [statusDialog, setStatusDialog] = useState<StatusDialogState>({
     open: false,
     taskId: '',
@@ -1062,80 +1086,7 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
   });
 
   const [exportTelemetryTemplate] = useMutation(EXPORT_TELEMETRY_TEMPLATE, {
-    onCompleted: async (data) => {
-      console.log('Export mutation completed:', data);
-      const { url, filename } = data.exportAdoptionPlanTelemetryTemplate;
-      console.log('Export URL:', url, 'Filename:', filename);
-
-      try {
-        // For file downloads, prepend base path if deployed at subpath (e.g., /dap/)
-        // In development: url = /api/downloads/... (Vite proxy forwards to backend)
-        // In production with subpath: url = /dap/api/downloads/... (Apache proxy forwards to backend)
-        const basePath = import.meta.env.BASE_URL || '/';
-        const fileUrl = basePath === '/' ? url : `${basePath.replace(/\/$/, '')}${url}`;
-        console.log('File URL:', fileUrl, 'Base Path:', basePath);
-
-        const response = await fetch(fileUrl, {
-          credentials: 'include',
-        });
-
-        console.log('Fetch response status:', response.status, response.statusText);
-
-        if (!response.ok) {
-          throw new Error(`Failed to download file: ${response.status} ${response.statusText}`);
-        }
-
-        console.log('Response headers:', {
-          contentType: response.headers.get('content-type'),
-          contentLength: response.headers.get('content-length'),
-          contentDisposition: response.headers.get('content-disposition'),
-        });
-
-        // Get as arrayBuffer to ensure binary data is preserved
-        const arrayBuffer = await response.arrayBuffer();
-        console.log('Downloaded bytes:', arrayBuffer.byteLength);
-
-        // Check first few bytes to verify it's a valid Excel file (should start with PK)
-        const firstBytes = new Uint8Array(arrayBuffer.slice(0, Math.min(100, arrayBuffer.byteLength)));
-        const header = Array.from(firstBytes.slice(0, 4)).map(b => b.toString(16).padStart(2, '0')).join('');
-        console.log('File header (first 4 bytes):', header, 'Expected: 504b0304');
-
-        // Log first 100 bytes as string to see if it's HTML/JSON
-        const textDecoder = new TextDecoder();
-        const previewText = textDecoder.decode(firstBytes);
-        console.log('Content preview (first 100 chars):', previewText);
-
-        if (header !== '504b0304' && header !== '504b0506') {
-          console.error('Invalid Excel file header! File may be corrupted or wrong content type');
-          console.error('This might be an HTML error page or JSON response instead of an Excel file');
-          throw new Error('Downloaded file is not a valid Excel file');
-        }
-
-        const blob = new Blob([arrayBuffer], {
-          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        });
-
-        console.log('Creating download link...');
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = downloadUrl;
-        link.download = filename || 'telemetry_template.xlsx';
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        console.log('Triggering download...');
-        link.click();
-        document.body.removeChild(link);
-        window.setTimeout(() => {
-          window.URL.revokeObjectURL(downloadUrl);
-          console.log('Download URL revoked');
-        }, 5000);
-
-        setSuccess(`Telemetry template exported: ${filename}`);
-      } catch (err: any) {
-        console.error('Telemetry export download failed:', err);
-        setError(`Failed to download template: ${err.message}`);
-      }
-    },
+    // Note: Download is handled by handleExportTelemetry which calls downloadFileFromUrl
     onError: (err) => {
       console.error('Export mutation error:', err);
       setError(`Failed to export telemetry template: ${err.message}`);
@@ -1436,8 +1387,10 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
       });
 
       if (result.success) {
+        // Force network refetch to update customer summary stats
         refetchPlan();
-        refetch();
+        await refetch();
+        setSuccess('Telemetry imported successfully - summary stats updated');
       }
     } catch (err: any) {
       console.error('Import error:', err);
@@ -2243,79 +2196,52 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                 <Typography variant="h6">Tasks</Typography>
                                 <Box sx={{ display: 'flex', gap: 2 }}>
-                                  {/* Releases - Multi-select */}
-                                  <FormControl size="small" sx={{ minWidth: 200 }}>
-                                    <InputLabel>Releases</InputLabel>
+                                  {/* Tags - Multi-select */}
+                                  <FormControl size="small" sx={{ minWidth: 200, maxWidth: 350 }}>
+                                    <InputLabel>Tags</InputLabel>
                                     <Select
                                       multiple
-                                      value={filterReleases}
+                                      value={filterTags}
                                       onChange={(e) => {
-                                        const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
-                                        // If "All" is clicked, toggle between "All" and empty
-                                        if (value.includes(ALL_RELEASES_ID)) {
-                                          if (filterReleases.includes(ALL_RELEASES_ID)) {
-                                            // Was "All", now deselect
-                                            setFilterReleases([]);
-                                          } else {
-                                            // Select "All" only
-                                            setFilterReleases([ALL_RELEASES_ID]);
-                                          }
-                                        } else {
-                                          // Regular selection - remove "All" if present
-                                          setFilterReleases(value.filter(id => id !== ALL_RELEASES_ID));
-                                        }
+                                        const value = e.target.value;
+                                        setFilterTags(typeof value === 'string' ? value.split(',') : value);
                                       }}
-                                      input={<OutlinedInput label="Releases" />}
+                                      input={<OutlinedInput label="Tags" />}
                                       renderValue={(selected) => (
                                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                          {selected.length === 0 || selected.includes(ALL_RELEASES_ID) ? (
-                                            <em>All Releases</em>
-                                          ) : (
-                                            selected.map((id) => {
-                                              const release = availableReleases.find((r: any) => r.id === id);
-                                              return (
+                                          {selected.map((value) => {
+                                            const tag = availableTags.find((t: any) => t.id === value);
+                                            return (
+                                              <Tooltip key={value} title={tag?.description || tag?.name || value} arrow>
                                                 <Chip
-                                                  key={id}
-                                                  label={release?.name || id}
+                                                  label={tag?.name || value}
                                                   size="small"
-                                                  variant="outlined"
+                                                  sx={{
+                                                    bgcolor: tag?.color || '#888',
+                                                    color: '#fff',
+                                                    '& .MuiChip-label': { fontWeight: 500 }
+                                                  }}
                                                 />
-                                              );
-                                            })
-                                          )}
+                                              </Tooltip>
+                                            );
+                                          })}
                                         </Box>
                                       )}
                                     >
-                                      {[
-                                        // Always show "All Releases" option
-                                        <MenuItem
-                                          key={ALL_RELEASES_ID}
-                                          value={ALL_RELEASES_ID}
-                                          sx={{
-                                            backgroundColor: filterReleases.includes(ALL_RELEASES_ID) ? 'rgba(33, 150, 243, 0.08)' : 'inherit',
-                                            borderBottom: '1px solid',
-                                            borderColor: 'divider',
-                                            '&:hover': {
-                                              backgroundColor: 'rgba(33, 150, 243, 0.12)',
-                                            },
-                                          }}
-                                        >
-                                          <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID)} sx={{ color: 'primary.main' }} />
-                                          <ListItemText
-                                            primary="All Releases"
-                                            primaryTypographyProps={{
-                                              fontWeight: 600,
-                                              color: 'primary.main'
-                                            }}
-                                          />
-                                        </MenuItem>,
-                                        ...availableReleases.map((release: any) => (
-                                          <MenuItem key={release.id} value={release.id}>
-                                            <Checkbox checked={filterReleases.includes(release.id)} />
-                                            <ListItemText primary={`${release.name}${release.version ? ` (${release.version})` : ''}`} />
-                                          </MenuItem>
-                                        ))
-                                      ]}
+                                      {availableTags.map((tag: any) => (
+                                        <MenuItem key={tag.id} value={tag.id}>
+                                          <Checkbox checked={filterTags.includes(tag.id)} />
+                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Label sx={{ color: tag.color, fontSize: 20 }} />
+                                            <ListItemText primary={tag.name} secondary={tag.description} />
+                                          </Box>
+                                        </MenuItem>
+                                      ))}
+                                      {availableTags.length === 0 && (
+                                        <MenuItem disabled>
+                                          <ListItemText primary="No tags available" />
+                                        </MenuItem>
+                                      )}
                                     </Select>
                                   </FormControl>
 
@@ -2392,56 +2318,83 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
                                     </Select>
                                   </FormControl>
 
-                                  {/* Tags - Multi-select */}
-                                  <FormControl size="small" sx={{ minWidth: 200, maxWidth: 350 }}>
-                                    <InputLabel>Tags</InputLabel>
+                                  {/* Releases - Multi-select */}
+                                  <FormControl size="small" sx={{ minWidth: 200 }}>
+                                    <InputLabel>Releases</InputLabel>
                                     <Select
                                       multiple
-                                      value={filterTags}
+                                      value={filterReleases}
                                       onChange={(e) => {
-                                        const value = e.target.value;
-                                        setFilterTags(typeof value === 'string' ? value.split(',') : value);
+                                        const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
+                                        // If "All" is clicked, toggle between "All" and empty
+                                        if (value.includes(ALL_RELEASES_ID)) {
+                                          if (filterReleases.includes(ALL_RELEASES_ID)) {
+                                            // Was "All", now deselect
+                                            setFilterReleases([]);
+                                          } else {
+                                            // Select "All" only
+                                            setFilterReleases([ALL_RELEASES_ID]);
+                                          }
+                                        } else {
+                                          // Regular selection - remove "All" if present
+                                          setFilterReleases(value.filter(id => id !== ALL_RELEASES_ID));
+                                        }
                                       }}
-                                      input={<OutlinedInput label="Tags" />}
+                                      input={<OutlinedInput label="Releases" />}
                                       renderValue={(selected) => (
                                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                          {selected.map((value) => {
-                                            const tag = availableTags.find((t: any) => t.id === value);
-                                            return (
-                                              <Tooltip key={value} title={tag?.description || tag?.name || value} arrow>
+                                          {selected.length === 0 || selected.includes(ALL_RELEASES_ID) ? (
+                                            <em>All Releases</em>
+                                          ) : (
+                                            selected.map((id) => {
+                                              const release = availableReleases.find((r: any) => r.id === id);
+                                              return (
                                                 <Chip
-                                                  label={tag?.name || value}
+                                                  key={id}
+                                                  label={release?.name || id}
                                                   size="small"
-                                                  sx={{
-                                                    bgcolor: tag?.color || '#888',
-                                                    color: '#fff',
-                                                    '& .MuiChip-label': { fontWeight: 500 }
-                                                  }}
+                                                  variant="outlined"
                                                 />
-                                              </Tooltip>
-                                            );
-                                          })}
+                                              );
+                                            })
+                                          )}
                                         </Box>
                                       )}
                                     >
-                                      {availableTags.map((tag: any) => (
-                                        <MenuItem key={tag.id} value={tag.id}>
-                                          <Checkbox checked={filterTags.includes(tag.id)} />
-                                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Label sx={{ color: tag.color, fontSize: 20 }} />
-                                            <ListItemText primary={tag.name} secondary={tag.description} />
-                                          </Box>
-                                        </MenuItem>
-                                      ))}
-                                      {availableTags.length === 0 && (
-                                        <MenuItem disabled>
-                                          <ListItemText primary="No tags available" />
-                                        </MenuItem>
-                                      )}
+                                      {[
+                                        // Always show "All Releases" option
+                                        <MenuItem
+                                          key={ALL_RELEASES_ID}
+                                          value={ALL_RELEASES_ID}
+                                          sx={{
+                                            backgroundColor: filterReleases.includes(ALL_RELEASES_ID) ? 'rgba(33, 150, 243, 0.08)' : 'inherit',
+                                            borderBottom: '1px solid',
+                                            borderColor: 'divider',
+                                            '&:hover': {
+                                              backgroundColor: 'rgba(33, 150, 243, 0.12)',
+                                            },
+                                          }}
+                                        >
+                                          <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID)} sx={{ color: 'primary.main' }} />
+                                          <ListItemText
+                                            primary="All Releases"
+                                            primaryTypographyProps={{
+                                              fontWeight: 600,
+                                              color: 'primary.main'
+                                            }}
+                                          />
+                                        </MenuItem>,
+                                        ...availableReleases.map((release: any) => (
+                                          <MenuItem key={release.id} value={release.id}>
+                                            <Checkbox checked={filterReleases.includes(release.id)} />
+                                            <ListItemText primary={`${release.name}${release.version ? ` (${release.version})` : ''}`} />
+                                          </MenuItem>
+                                        ))
+                                      ]}
                                     </Select>
                                   </FormControl>
 
-                                  {(filterReleases.length > 0 || filterOutcomes.length > 0 || filterTags.length > 0) && ( // Added filterTags to condition
+                                  {(filterReleases.length > 0 || filterOutcomes.length > 0 || filterTags.length > 0) && (
                                     <Button
                                       size="small"
                                       variant="outlined"
@@ -2454,6 +2407,12 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
                                       Clear Filters
                                     </Button>
                                   )}
+
+                                  {/* Column Visibility Toggle */}
+                                  <ColumnVisibilityToggle
+                                    visibleColumns={visibleColumns}
+                                    onToggleColumn={handleToggleColumn}
+                                  />
                                 </Box>
                               </Box>
                               <TableContainer component={Paper} variant="outlined">
@@ -2469,19 +2428,27 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
                                       <TableCell sx={{ minWidth: 200, maxWidth: 300 }}>
                                         <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Task Name</Typography>
                                       </TableCell>
-                                      <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
-                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
-                                      </TableCell>
-                                      <TableCell width={80} sx={{ whiteSpace: 'nowrap' }}>
-                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Impl %</Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ minWidth: 120 }}>
-                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Tags</Typography>
-                                      </TableCell>
+                                      {isColumnVisible('resources') && (
+                                        <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
+                                          <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
+                                        </TableCell>
+                                      )}
+                                      {isColumnVisible('implPercent') && (
+                                        <TableCell width={80} sx={{ whiteSpace: 'nowrap' }}>
+                                          <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Impl %</Typography>
+                                        </TableCell>
+                                      )}
+                                      {isColumnVisible('tags') && (
+                                        <TableCell sx={{ minWidth: 120 }}>
+                                          <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Tags</Typography>
+                                        </TableCell>
+                                      )}
 
-                                      <TableCell width={160} sx={{ whiteSpace: 'nowrap' }}>
-                                        <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Validation Criteria</Typography>
-                                      </TableCell>
+                                      {isColumnVisible('validationCriteria') && (
+                                        <TableCell width={160} sx={{ whiteSpace: 'nowrap' }}>
+                                          <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Validation Criteria</Typography>
+                                        </TableCell>
+                                      )}
                                       <TableCell width={130} sx={{ whiteSpace: 'nowrap' }}>
                                         <Typography variant="caption" fontWeight="bold" color="text.primary" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Updated Via</Typography>
                                       </TableCell>
@@ -2538,167 +2505,139 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
                                               {task.name}
                                             </Typography>
                                           </TableCell>
-                                          <TableCell>
-                                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'center' }}>
-                                              {/* How-to documentation links */}
-                                              {task.howToDoc && task.howToDoc.length > 0 && (
-                                                <Chip
-                                                  size="small"
-                                                  label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
-                                                  color="primary"
-                                                  variant="outlined"
-                                                  sx={{
-                                                    fontSize: '0.7rem',
-                                                    height: '20px',
-                                                    cursor: 'pointer',
-                                                    '&:hover': { backgroundColor: 'primary.light' }
-                                                  }}
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (task.howToDoc.length === 1) {
-                                                      window.open(task.howToDoc[0], '_blank');
-                                                    } else {
-                                                      setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
-                                                    }
-                                                  }}
-                                                  title={task.howToDoc.length === 1
-                                                    ? `Documentation: ${task.howToDoc[0]}`
-                                                    : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
-                                                  }
-                                                />
-                                              )}
-                                              {/* How-to video links */}
-                                              {task.howToVideo && task.howToVideo.length > 0 && (
-                                                <Chip
-                                                  size="small"
-                                                  label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
-                                                  color="error"
-                                                  variant="outlined"
-                                                  sx={{
-                                                    fontSize: '0.7rem',
-                                                    height: '20px',
-                                                    cursor: 'pointer',
-                                                    '&:hover': { backgroundColor: 'error.light' }
-                                                  }}
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (task.howToVideo.length === 1) {
-                                                      window.open(task.howToVideo[0], '_blank');
-                                                    } else {
-                                                      setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
-                                                    }
-                                                  }}
-                                                  title={task.howToVideo.length === 1
-                                                    ? `Video: ${task.howToVideo[0]}`
-                                                    : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
-                                                  }
-                                                />
-                                              )}
-                                              {!task.howToDoc && !task.howToVideo && (
-                                                <Typography variant="caption" color="text.secondary">-</Typography>
-                                              )}
-                                            </Box>
-                                          </TableCell>
-                                          <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.weight}%</TableCell>
-                                          <TableCell>
-                                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                                              {task.tags?.map((tag: any) => (
-                                                <Tooltip
-                                                  key={tag.id}
-                                                  title={
-                                                    <Box>
-                                                      <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>Tag: {tag.name}</Typography>
-                                                      {tag.description && <Typography variant="caption" display="block">{tag.description}</Typography>}
-                                                    </Box>
-                                                  }
-                                                  arrow
-                                                >
+                                          {isColumnVisible('resources') && (
+                                            <TableCell>
+                                              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'center' }}>
+                                                {/* How-to documentation links */}
+                                                {task.howToDoc && task.howToDoc.length > 0 && (
                                                   <Chip
-                                                    label={tag.name}
                                                     size="small"
+                                                    label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
+                                                    color="primary"
+                                                    variant="outlined"
                                                     sx={{
-                                                      height: 18,
-                                                      fontSize: '0.65rem',
-                                                      backgroundColor: tag.color || '#888',
-                                                      color: '#fff',
-                                                      fontWeight: 600
+                                                      fontSize: '0.7rem',
+                                                      height: '20px',
+                                                      cursor: 'pointer',
+                                                      '&:hover': { backgroundColor: 'primary.light' }
                                                     }}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      if (task.howToDoc.length === 1) {
+                                                        window.open(task.howToDoc[0], '_blank');
+                                                      } else {
+                                                        setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
+                                                      }
+                                                    }}
+                                                    title={task.howToDoc.length === 1
+                                                      ? `Documentation: ${task.howToDoc[0]}`
+                                                      : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
+                                                    }
                                                   />
-                                                </Tooltip>
-                                              ))}
-                                            </Box>
-                                          </TableCell>
-
-                                          <TableCell>
-                                            {(() => {
-                                              const totalAttributes = task.telemetryAttributes?.length || 0;
-                                              const attributesWithValues = task.telemetryAttributes?.filter((attr: any) =>
-                                                attr.values && attr.values.length > 0
-                                              ).length || 0;
-
-                                              // Count attributes that have criteria met based on the latest evaluation (isMet field)
-                                              const attributesWithCriteriaMet = task.telemetryAttributes?.filter((attr: any) =>
-                                                attr.isMet === true
-                                              ).length || 0;
-
-                                              const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) =>
-                                                attr.successCriteria && attr.successCriteria !== 'No criteria'
-                                              ).length || 0;
-
-                                              if (totalAttributes === 0) {
-                                                return <Typography variant="caption" color="text.secondary">-</Typography>;
-                                              }
-
-                                              const hasData = attributesWithValues > 0;
-                                              const percentage = attributesWithCriteria > 0 ? Math.round((attributesWithCriteriaMet / attributesWithCriteria) * 100) : 0;
-
-                                              return (
-                                                <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap' }}>
+                                                )}
+                                                {/* How-to video links */}
+                                                {task.howToVideo && task.howToVideo.length > 0 && (
+                                                  <Chip
+                                                    size="small"
+                                                    label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
+                                                    color="error"
+                                                    variant="outlined"
+                                                    sx={{
+                                                      fontSize: '0.7rem',
+                                                      height: '20px',
+                                                      cursor: 'pointer',
+                                                      '&:hover': { backgroundColor: 'error.light' }
+                                                    }}
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      if (task.howToVideo.length === 1) {
+                                                        window.open(task.howToVideo[0], '_blank');
+                                                      } else {
+                                                        setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
+                                                      }
+                                                    }}
+                                                    title={task.howToVideo.length === 1
+                                                      ? `Video: ${task.howToVideo[0]}`
+                                                      : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
+                                                    }
+                                                  />
+                                                )}
+                                                {!task.howToDoc && !task.howToVideo && (
+                                                  <Typography variant="caption" color="text.secondary">-</Typography>
+                                                )}
+                                              </Box>
+                                            </TableCell>
+                                          )}
+                                          {isColumnVisible('implPercent') && (
+                                            <TableCell sx={{ whiteSpace: 'nowrap' }}>{task.weight}%</TableCell>
+                                          )}
+                                          {isColumnVisible('tags') && (
+                                            <TableCell>
+                                              <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                                                {task.tags?.map((tag: any) => (
                                                   <Tooltip
+                                                    key={tag.id}
                                                     title={
                                                       <Box>
-                                                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Telemetry Values Filled</Typography>
-                                                        <Typography variant="caption" display="block">
-                                                          {attributesWithValues} out of {totalAttributes} telemetry attributes have imported values
-                                                        </Typography>
-                                                        {!hasData && (
-                                                          <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
-                                                            No telemetry data imported yet
-                                                          </Typography>
-                                                        )}
+                                                        <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>Tag: {tag.name}</Typography>
+                                                        {tag.description && <Typography variant="caption" display="block">{tag.description}</Typography>}
                                                       </Box>
                                                     }
                                                     arrow
                                                   >
                                                     <Chip
-                                                      label={`${attributesWithValues}/${totalAttributes}`}
+                                                      label={tag.name}
                                                       size="small"
-                                                      variant="outlined"
-                                                      color={hasData ? 'info' : 'default'}
-                                                      sx={{ fontSize: '0.7rem', height: 20 }}
+                                                      sx={{
+                                                        height: 18,
+                                                        fontSize: '0.65rem',
+                                                        backgroundColor: tag.color || '#888',
+                                                        color: '#fff',
+                                                        fontWeight: 600
+                                                      }}
                                                     />
                                                   </Tooltip>
-                                                  {attributesWithCriteria > 0 && (
+                                                ))}
+                                              </Box>
+                                            </TableCell>
+                                          )}
+
+                                          {isColumnVisible('validationCriteria') && (
+                                            <TableCell>
+                                              {(() => {
+                                                const totalAttributes = task.telemetryAttributes?.length || 0;
+                                                const attributesWithValues = task.telemetryAttributes?.filter((attr: any) =>
+                                                  attr.values && attr.values.length > 0
+                                                ).length || 0;
+
+                                                // Count attributes that have criteria met based on the latest evaluation (isMet field)
+                                                const attributesWithCriteriaMet = task.telemetryAttributes?.filter((attr: any) =>
+                                                  attr.isMet === true
+                                                ).length || 0;
+
+                                                const attributesWithCriteria = task.telemetryAttributes?.filter((attr: any) =>
+                                                  attr.successCriteria && attr.successCriteria !== 'No criteria'
+                                                ).length || 0;
+
+                                                if (totalAttributes === 0) {
+                                                  return <Typography variant="caption" color="text.secondary">-</Typography>;
+                                                }
+
+                                                const hasData = attributesWithValues > 0;
+                                                const percentage = attributesWithCriteria > 0 ? Math.round((attributesWithCriteriaMet / attributesWithCriteria) * 100) : 0;
+
+                                                return (
+                                                  <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'nowrap' }}>
                                                     <Tooltip
                                                       title={
                                                         <Box>
-                                                          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Success Criteria Met</Typography>
+                                                          <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Telemetry Values Filled</Typography>
                                                           <Typography variant="caption" display="block">
-                                                            {attributesWithCriteriaMet} out of {attributesWithCriteria} success criteria are currently met
+                                                            {attributesWithValues} out of {totalAttributes} telemetry attributes have imported values
                                                           </Typography>
-                                                          {percentage === 100 && (
-                                                            <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'success.light' }}>
-                                                              ✓ All criteria met! Task can be marked as "Done via Telemetry"
-                                                            </Typography>
-                                                          )}
-                                                          {percentage < 100 && percentage > 0 && (
+                                                          {!hasData && (
                                                             <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
-                                                              {percentage}% complete - Some criteria still need to be met
-                                                            </Typography>
-                                                          )}
-                                                          {percentage === 0 && (
-                                                            <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'error.light' }}>
-                                                              No criteria met yet
+                                                              No telemetry data imported yet
                                                             </Typography>
                                                           )}
                                                         </Box>
@@ -2706,18 +2645,54 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
                                                       arrow
                                                     >
                                                       <Chip
-                                                        label={`${attributesWithCriteriaMet}/${attributesWithCriteria} ✓`}
+                                                        label={`${attributesWithValues}/${totalAttributes}`}
                                                         size="small"
                                                         variant="outlined"
-                                                        color={percentage === 100 ? 'success' : percentage > 0 ? 'warning' : 'default'}
+                                                        color={hasData ? 'info' : 'default'}
                                                         sx={{ fontSize: '0.7rem', height: 20 }}
                                                       />
                                                     </Tooltip>
-                                                  )}
-                                                </Box>
-                                              );
-                                            })()}
-                                          </TableCell>
+                                                    {attributesWithCriteria > 0 && (
+                                                      <Tooltip
+                                                        title={
+                                                          <Box>
+                                                            <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Success Criteria Met</Typography>
+                                                            <Typography variant="caption" display="block">
+                                                              {attributesWithCriteriaMet} out of {attributesWithCriteria} success criteria are currently met
+                                                            </Typography>
+                                                            {percentage === 100 && (
+                                                              <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'success.light' }}>
+                                                                ✓ All criteria met! Task can be marked as "Done via Telemetry"
+                                                              </Typography>
+                                                            )}
+                                                            {percentage < 100 && percentage > 0 && (
+                                                              <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'warning.light' }}>
+                                                                {percentage}% complete - Some criteria still need to be met
+                                                              </Typography>
+                                                            )}
+                                                            {percentage === 0 && (
+                                                              <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'error.light' }}>
+                                                                No criteria met yet
+                                                              </Typography>
+                                                            )}
+                                                          </Box>
+                                                        }
+                                                        arrow
+                                                      >
+                                                        <Chip
+                                                          label={`${attributesWithCriteriaMet}/${attributesWithCriteria} ✓`}
+                                                          size="small"
+                                                          variant="outlined"
+                                                          color={percentage === 100 ? 'success' : percentage > 0 ? 'warning' : 'default'}
+                                                          sx={{ fontSize: '0.7rem', height: 20 }}
+                                                        />
+                                                      </Tooltip>
+                                                    )}
+                                                  </Box>
+                                                );
+                                              })()}
+                                            </TableCell>
+                                          )}
                                           <TableCell sx={{ whiteSpace: 'nowrap' }}>
                                             {task.statusUpdateSource ? (
                                               <Chip
@@ -3021,14 +2996,15 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
                       <Typography variant="h6">{importResultDialog.summary.attributesUpdated}</Typography>
                     </Box>
                     <Box>
-                      <Typography variant="caption" color="text.secondary">Criteria Evaluated</Typography>
-                      <Typography variant="h6">{importResultDialog.summary.criteriaEvaluated}</Typography>
-                    </Box>
-                    <Box>
                       <Typography variant="caption" color="text.secondary">Criteria Met</Typography>
                       <Typography variant="h6" color="success.main">
                         {importResultDialog.taskResults?.reduce((sum, task) => sum + task.criteriaMet, 0) || 0}
-                        /{importResultDialog.summary.criteriaEvaluated}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">Criteria Not Met</Typography>
+                      <Typography variant="h6" color="warning.main">
+                        {(importResultDialog.summary.criteriaEvaluated || 0) - (importResultDialog.taskResults?.reduce((sum, task) => sum + task.criteriaMet, 0) || 0)}
                       </Typography>
                     </Box>
                   </Box>
