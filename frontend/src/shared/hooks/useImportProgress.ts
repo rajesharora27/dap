@@ -26,9 +26,12 @@ export function useImportProgress(sessionId: string | null, enabled: boolean = t
             error: null
         });
 
-        // Determine API URL (fallback to localhost:4000 if not set)
-        const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:4000';
-        const url = `${baseUrl}/api/import/progress/${sessionId}`;
+        // Determine API URL using base path for production subpath deployments
+        // In production with subpath (e.g., /dap/), this becomes /dap/api/import/progress/...
+        // The web server (Apache/Nginx) proxies this to the backend
+        const basePath = import.meta.env.VITE_BASE_PATH || '/';
+        const normalizedBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
+        const url = `${normalizedBasePath}/api/import/progress/${sessionId}`;
 
         const eventSource = new EventSource(url);
 
