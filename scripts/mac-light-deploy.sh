@@ -262,14 +262,16 @@ sync_env_file() {
   local current_user=$(whoami)
   
   if [ -f "${MAC_ENV_FILE}" ]; then
-    echo "[INFO] Syncing .env to backend/.env"
+    echo "[INFO] Syncing .env to backend/.env and frontend/.env"
     
     # Check if __MACUSER__ placeholder exists and needs replacement
     if grep -q "__MACUSER__" "${MAC_ENV_FILE}"; then
         # Create a temp copy for backend usage
         sed "s/__MACUSER__/${current_user}/g" "${MAC_ENV_FILE}" > "${BACKEND_DIR}/.env"
+        sed "s/__MACUSER__/${current_user}/g" "${MAC_ENV_FILE}" > "${FRONTEND_DIR}/.env"
     else
         cp "${MAC_ENV_FILE}" "${BACKEND_DIR}/.env"
+        cp "${MAC_ENV_FILE}" "${FRONTEND_DIR}/.env"
     fi
     echo "[INFO] Environment synced"
   else
@@ -279,6 +281,7 @@ sync_env_file() {
         cp "${ROOT_DIR}/.env.example" "${MAC_ENV_FILE}"
         echo "[INFO] Please configure .env for your environment!"
         cp "${MAC_ENV_FILE}" "${BACKEND_DIR}/.env"
+        cp "${MAC_ENV_FILE}" "${FRONTEND_DIR}/.env"
     fi
   fi
 }
@@ -357,9 +360,16 @@ build_frontend() {
   local fe_url=$(get_env_val "FRONTEND_URL")
   [ -z "$fe_url" ] && fe_url="http://localhost:${FRONTEND_PORT}"
 
-  echo "[INFO] Config: SHOW_DEV_MENU=${show_dev}, FRONTEND_URL=${fe_url}"
+  # Read Vite settings from .env (allows per-environment configuration)
+  local base_path=$(get_env_val "VITE_BASE_PATH")
+  [ -z "$base_path" ] && base_path="/"
+  
+  local gql_endpoint=$(get_env_val "VITE_GRAPHQL_ENDPOINT")
+  [ -z "$gql_endpoint" ] && gql_endpoint="/graphql"
 
-  (cd "${FRONTEND_DIR}" && VITE_BASE_PATH=/ VITE_GRAPHQL_ENDPOINT=/graphql VITE_FRONTEND_URL="${fe_url}" VITE_SHOW_DEV_MENU="${show_dev}" npm run build >/dev/null)
+  echo "[INFO] Config: VITE_BASE_PATH=${base_path}, SHOW_DEV_MENU=${show_dev}, FRONTEND_URL=${fe_url}"
+
+  (cd "${FRONTEND_DIR}" && VITE_BASE_PATH="$base_path" VITE_GRAPHQL_ENDPOINT="$gql_endpoint" VITE_FRONTEND_URL="${fe_url}" VITE_SHOW_DEV_MENU="${show_dev}" npm run build >/dev/null)
 }
 
 
@@ -431,7 +441,14 @@ start_frontend() {
   local fe_url=$(get_env_val "FRONTEND_URL")
   [ -z "$fe_url" ] && fe_url="http://localhost:${FRONTEND_PORT}"
 
-  (cd "${FRONTEND_DIR}" && VITE_BASE_PATH=/ VITE_GRAPHQL_ENDPOINT=/graphql VITE_FRONTEND_URL="${fe_url}" VITE_SHOW_DEV_MENU="${show_dev}" nohup npm run preview -- --host --port "${FRONTEND_PORT}" > "${LOG_DIR}/mac-frontend.log" 2>&1 & echo $! > "${FRONTEND_PID_FILE}")
+  # Read Vite settings from .env
+  local base_path=$(get_env_val "VITE_BASE_PATH")
+  [ -z "$base_path" ] && base_path="/"
+  
+  local gql_endpoint=$(get_env_val "VITE_GRAPHQL_ENDPOINT")
+  [ -z "$gql_endpoint" ] && gql_endpoint="/graphql"
+
+  (cd "${FRONTEND_DIR}" && VITE_BASE_PATH="$base_path" VITE_GRAPHQL_ENDPOINT="$gql_endpoint" VITE_FRONTEND_URL="${fe_url}" VITE_SHOW_DEV_MENU="${show_dev}" nohup npm run preview -- --host --port "${FRONTEND_PORT}" > "${LOG_DIR}/mac-frontend.log" 2>&1 & echo $! > "${FRONTEND_PID_FILE}")
   
   # Wait for frontend to start
   local attempts=0

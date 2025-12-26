@@ -407,6 +407,17 @@ start_frontend() {
     fi
     
     log_info "Starting frontend dev server on port $FRONTEND_PORT..."
+    
+    # Export Vite environment variables from .env if available
+    # This ensures VITE_BASE_PATH is set correctly for dev server (e.g., /dap/ for subpath deployments)
+    if [ -f "$PROJECT_DIR/.env" ]; then
+        local vite_base_path=$(grep "^VITE_BASE_PATH=" "$PROJECT_DIR/.env" 2>/dev/null | cut -d '=' -f2- || echo "/")
+        local vite_gql_endpoint=$(grep "^VITE_GRAPHQL_ENDPOINT=" "$PROJECT_DIR/.env" 2>/dev/null | cut -d '=' -f2- || echo "/graphql")
+        export VITE_BASE_PATH="${vite_base_path:-/}"
+        export VITE_GRAPHQL_ENDPOINT="${vite_gql_endpoint:-/graphql}"
+        log_info "Using VITE_BASE_PATH=$VITE_BASE_PATH"
+    fi
+    
     nohup npm run dev > ../frontend.log 2>&1 &
     local frontend_pid=$!
     
