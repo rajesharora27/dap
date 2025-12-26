@@ -691,63 +691,83 @@ async function executeTelemetryAttributes(
             taskCache.set(row.taskName, taskId);
         }
 
-        // Prepare Success Criteria JSON
-        let successCriteria: any = {
-            operator: row.operator,
-        };
+        // Prepare Success Criteria JSON based on type and operator
+        const type = (row.attributeType || 'string').toLowerCase();
+        const operator = row.operator || 'equals';
+        const hasExpectedValue = row.expectedValue !== undefined && row.expectedValue !== null && String(row.expectedValue).trim() !== '';
+        const trimmed = hasExpectedValue ? String(row.expectedValue).trim() : '';
 
-        if (row.expectedValue !== undefined && row.expectedValue !== null) {
-            const trimmed = String(row.expectedValue).trim();
-            const type = (row.attributeType || 'string').toLowerCase();
+        let successCriteria: any;
 
-            // Handle reconstruction based on type
-            if (type === 'boolean') {
-                const val = trimmed.toLowerCase() === 'true' || trimmed === '1';
-                successCriteria = {
-                    type: 'boolean_flag',
-                    expectedValue: val
-                };
-            } else if (type === 'number') {
-                const num = Number(trimmed);
-                successCriteria = {
-                    type: 'number_threshold',
-                    operator: row.operator,
-                    threshold: isNaN(num) ? 0 : num
-                };
-            } else if (type === 'timestamp') {
-                const days = parseInt(trimmed, 10);
-                if (row.operator === 'within_days' || row.operator === 'withinDays') {
-                    successCriteria = {
-                        type: 'timestamp_comparison',
-                        operator: 'lte', // internal op for comparison
-                        withinDays: isNaN(days) ? 30 : days
-                    };
-                } else if (row.operator === 'not_null') {
-                    successCriteria = {
-                        type: 'timestamp_not_null'
-                    };
-                } else {
-                    // Fallback for timestamp
-                    successCriteria.value = trimmed;
-                }
-            } else if (type === 'string') {
-                if (row.operator === 'not_null') {
-                    successCriteria = {
-                        type: 'string_not_null'
-                    };
-                } else {
-                    successCriteria = {
-                        type: 'string_match',
-                        mode: row.operator === 'contains' ? 'contains' : 'exact',
-                        pattern: trimmed
-                    };
-                }
+        // Handle special operators that don't require a value first
+        if (operator === 'not_null') {
+            // not_null applies to string and timestamp types
+            if (type === 'timestamp') {
+                successCriteria = { type: 'timestamp_not_null' };
             } else {
-                // Generic / JSON / Legacy fallback
-                let value: any = trimmed;
-                try { value = JSON.parse(trimmed); } catch { }
-                successCriteria.value = value;
+                successCriteria = { type: 'string_not_null' };
             }
+        } else if (type === 'boolean') {
+            // Boolean: true/false check
+            const val = trimmed.toLowerCase() === 'true' || trimmed === '1';
+            successCriteria = {
+                type: 'boolean_flag',
+                expectedValue: val
+            };
+        } else if (type === 'number') {
+            // Number threshold comparison (gte, gt, lte, lt, equals)
+            // Map short operator names to UI-compatible full names
+            const operatorMap: Record<string, string> = {
+                'gte': 'greater_than_or_equal',
+                'gt': 'greater_than',
+                'lte': 'less_than_or_equal',
+                'lt': 'less_than',
+                'equals': 'equals',
+                'eq': 'equals',
+                // Already full names - no change needed
+                'greater_than_or_equal': 'greater_than_or_equal',
+                'greater_than': 'greater_than',
+                'less_than_or_equal': 'less_than_or_equal',
+                'less_than': 'less_than'
+            };
+            const normalizedOperator = operatorMap[operator] || 'greater_than_or_equal';
+            const num = Number(trimmed);
+            successCriteria = {
+                type: 'number_threshold',
+                operator: normalizedOperator,
+                threshold: isNaN(num) ? 0 : num
+            };
+        } else if (type === 'timestamp') {
+            // Timestamp comparison (within_days)
+            const days = parseInt(trimmed, 10);
+            if (operator === 'within_days' || operator === 'withinDays') {
+                successCriteria = {
+                    type: 'timestamp_comparison',
+                    operator: 'lte',
+                    withinDays: isNaN(days) ? 30 : days
+                };
+            } else {
+                // Fallback for timestamp with value
+                successCriteria = {
+                    operator: operator,
+                    value: trimmed
+                };
+            }
+        } else if (type === 'string') {
+            // String match (exact or contains)
+            successCriteria = {
+                type: 'string_match',
+                mode: operator === 'contains' ? 'contains' : 'exact',
+                pattern: trimmed
+            };
+        } else {
+            // Generic / JSON / Legacy fallback
+            let value: any = trimmed;
+            try { value = JSON.parse(trimmed); } catch { }
+            successCriteria = {
+                operator: operator,
+                value: value
+            };
         }
 
         if (preview.action === 'create') {

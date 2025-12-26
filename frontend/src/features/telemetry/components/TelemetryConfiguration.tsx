@@ -118,6 +118,25 @@ const SimpleCriteriaBuilder = ({
   // Initialize from existing criteria if present
   const getInitialOperator = () => {
     // console.log('[getInitialOperator] attribute:', attribute.name);
+
+    // Map short operator names to UI-compatible full names
+    const normalizeOperator = (op: string): string => {
+      const mapping: Record<string, string> = {
+        'gte': 'greater_than_or_equal',
+        'gt': 'greater_than',
+        'lte': 'less_than_or_equal',
+        'lt': 'less_than',
+        'eq': 'equals',
+        '>=': 'greater_than_or_equal',
+        '>': 'greater_than',
+        '<=': 'less_than_or_equal',
+        '<': 'less_than',
+        '==': 'equals',
+        '!=': 'not_equals',
+      };
+      return mapping[op] || op;
+    };
+
     if (!attribute.successCriteria) {
       return attribute.dataType === 'NUMBER' ? 'greater_than_or_equal' :
         attribute.dataType === 'STRING' ? 'exact' :
@@ -133,21 +152,11 @@ const SimpleCriteriaBuilder = ({
     }
 
     if (criteria.operator && !criteria.type) {
-      const operatorMap: Record<string, string> = {
-        '>=': 'greater_than_or_equal',
-        '>': 'greater_than',
-        '<=': 'less_than_or_equal',
-        '<': 'less_than',
-        '==': 'equals',
-        '!=': 'not_equals',
-        'contains': 'contains',
-        'exact': 'exact'
-      };
-      return operatorMap[criteria.operator] || criteria.operator;
+      return normalizeOperator(criteria.operator);
     }
 
     if (criteria.type === 'string_not_null' || criteria.type === 'timestamp_not_null') return 'not_null';
-    if (criteria.type === 'number_threshold') return criteria.operator || 'greater_than_or_equal';
+    if (criteria.type === 'number_threshold') return normalizeOperator(criteria.operator || 'greater_than_or_equal');
     if (criteria.type === 'string_match') return criteria.mode || 'exact';
     if (criteria.type === 'timestamp_comparison') return 'within_days';
     return '';

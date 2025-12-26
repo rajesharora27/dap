@@ -48,18 +48,28 @@ function stableStringify(obj: unknown): string {
 }
 
 /**
- * Normalizes operator to canonical short form.
- * This ensures consistency between export and import.
+ * Normalizes operator to UI-compatible full form.
+ * This ensures consistency between Excel import and UI display.
  */
 function normalizeOperator(op: string): string {
     const normalized = (op || 'equals').toLowerCase().trim();
     const mapping: Record<string, string> = {
-        'greater_than': 'gt',
-        'greater_than_or_equal': 'gte',
-        'less_than': 'lt',
-        'less_than_or_equal': 'lte',
-        'equal': 'equals',
-        'not_equal': 'not_equals',
+        // Short to full
+        'gte': 'greater_than_or_equal',
+        'gt': 'greater_than',
+        'lte': 'less_than_or_equal',
+        'lt': 'less_than',
+        'eq': 'equals',
+        // Already full - pass through
+        'greater_than_or_equal': 'greater_than_or_equal',
+        'greater_than': 'greater_than',
+        'less_than_or_equal': 'less_than_or_equal',
+        'less_than': 'less_than',
+        'equals': 'equals',
+        'not_null': 'not_null',
+        'contains': 'contains',
+        'exact': 'exact',
+        'within_days': 'within_days',
     };
     return mapping[normalized] || normalized;
 }
@@ -472,27 +482,48 @@ export class BusinessValidator {
                 data.expectedValue = '';  // Default
 
                 if (criteria && typeof criteria === 'object') {
-                    data.operator = normalizeOperator(criteria.operator);
-
-                    // IMPORTANT: This logic MUST match ExportService.ts exactly for round-trip consistency.
-                    // Extract the actual value - prioritize simple values
-                    // Look for common value field names in order of priority
-                    const valueField = criteria.value ?? criteria.threshold ?? criteria.target;
-
-                    if (valueField !== undefined && valueField !== null) {
-                        // We have a simple value - use it directly
-                        if (typeof valueField === 'object') {
-                            data.expectedValue = stableStringify(valueField);
-                        } else {
-                            data.expectedValue = String(valueField);
+                    // Extract operator - use type-aware extraction matching ExportService.getTelemetryOperator
+                    if (criteria.type) {
+                        // Typed criteria format
+                        switch (criteria.type) {
+                            case 'boolean_flag':
+                                data.operator = 'equals';
+                                data.expectedValue = String(criteria.expectedValue ?? '');
+                                break;
+                            case 'number_threshold':
+                                data.operator = normalizeOperator(criteria.operator || 'gte');
+                                data.expectedValue = String(criteria.threshold ?? '');
+                                break;
+                            case 'string_match':
+                                data.operator = criteria.mode === 'exact' ? 'equals' : 'contains';
+                                data.expectedValue = String(criteria.pattern ?? '');
+                                break;
+                            case 'string_not_null':
+                                data.operator = 'not_null';
+                                data.expectedValue = '';
+                                break;
+                            case 'timestamp_not_null':
+                                data.operator = 'not_null';
+                                data.expectedValue = '';
+                                break;
+                            case 'timestamp_comparison':
+                                data.operator = 'within_days';
+                                data.expectedValue = String(criteria.withinDays ?? '');
+                                break;
+                            default:
+                                // Unknown type, try legacy extraction
+                                data.operator = normalizeOperator(criteria.operator);
+                                const valueField = criteria.value ?? criteria.threshold ?? criteria.target;
+                                if (valueField !== undefined && valueField !== null) {
+                                    data.expectedValue = typeof valueField === 'object' ? stableStringify(valueField) : String(valueField);
+                                }
                         }
                     } else {
-                        // No recognizable value field - serialize remaining fields (minus operator)
-                        const { operator, ...rest } = criteria;
-                        if (Object.keys(rest).length > 0) {
-                            data.expectedValue = stableStringify(rest);
-                        } else {
-                            data.expectedValue = '';
+                        // Legacy format without type field
+                        data.operator = normalizeOperator(criteria.operator);
+                        const valueField = criteria.value ?? criteria.threshold ?? criteria.target;
+                        if (valueField !== undefined && valueField !== null) {
+                            data.expectedValue = typeof valueField === 'object' ? stableStringify(valueField) : String(valueField);
                         }
                     }
                 }
