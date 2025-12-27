@@ -59,6 +59,12 @@ interface SolutionTasksGroupProps {
         notes?: string;
       }>;
     }>;
+    tags?: Array<{
+      id: string;
+      name: string;
+      description?: string;
+      color?: string;
+    }>;
   }>;
   onUpdateTaskStatus?: (taskId: string, newStatus: string, notes?: string) => void;
   onExportTelemetry?: () => void;
@@ -100,6 +106,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
     releases: t.releases,
     outcomes: t.outcomes,
     telemetryAttributes: t.telemetryAttributes,
+    tags: t.tags,
   }));
 
   return (

@@ -214,6 +214,7 @@ import {
     faWandSparkles,
     faLockOpen,
     faBox,
+    faMobileScreen,
 } from '@fortawesome/free-solid-svg-icons';
 
 // Brand icons
@@ -536,6 +537,9 @@ export const ErrorOutline = createIcon(faCircleExclamation, 'ErrorOutline');
 export const ColorLens = createIcon(faPaintBrush, 'ColorLens');
 export const LockReset = createIcon(faUnlockKeyhole, 'LockReset');
 export const Update = createIcon(faSync, 'Update');
+
+// ==========================================
+export const Mobile = createIcon(faMobileScreen, 'Mobile');
 
 // ==========================================
 // Outlined Icons (Regular style - flat/simple)

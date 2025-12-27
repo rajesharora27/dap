@@ -1003,6 +1003,14 @@ All DAP data is stored on `/data` partition (not root):
 - **Consistent Telemetry Support**: Standardized telemetry import/export operations across all views with improved authentication.
 - **Dashboard Metric Fixes**: Corrected customer summary dashboard statistics (Velocity, Completion) and improved dynamic coloring.
 
+### Version 3.1.0 (December 27, 2025)
+
+#### Customer Deployment Refinements
+- **Unified Assignment UI**: Streamlined "Assign Product/Solution" using consistent tab-header icons and dropdown actions.
+- **Visual Consistency**: Replaced text-based chips with standardized icons (Article, Video) across all task lists.
+- **Terminology Updates**: Renamed "Telemetry" column to "Validation Criteria" to better reflect business purpose.
+- **Bug Fixes**: Resolved issue where Tags were hidden in Solution Adoption Plans due to data stripping and stale column preferences.
+
 ### Version 2.9.5 (December 22, 2025)
 
 #### Frontend Modular Refactoring (Complete)

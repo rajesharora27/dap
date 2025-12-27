@@ -25,7 +25,8 @@ import {
   Tabs,
   Tab,
   Card,
-  CardContent
+  CardContent,
+  Tooltip
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
@@ -763,7 +764,11 @@ export const SolutionDialog: React.FC<Props> = ({
 
           <TabPanel value={tabValue} index={2}>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddOutcomeDialog(true)} size="small">Add Outcome</Button>
+              <Tooltip title="Add Outcome">
+                <IconButton color="primary" onClick={() => setAddOutcomeDialog(true)} size="small">
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               {solutionOutcomes.filter(o => !o.delete).map((outcome, idx) => (
@@ -804,7 +809,11 @@ export const SolutionDialog: React.FC<Props> = ({
 
           <TabPanel value={tabValue} index={3}>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddReleaseDialog(true)} size="small">Add Solution Release</Button>
+              <Tooltip title="Add Solution Release">
+                <IconButton color="primary" onClick={() => setAddReleaseDialog(true)} size="small">
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Solution-Specific Releases:</Typography>
@@ -835,7 +844,11 @@ export const SolutionDialog: React.FC<Props> = ({
 
           <TabPanel value={tabValue} index={4}>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddLicenseDialog(true)} size="small">Add Solution License</Button>
+              <Tooltip title="Add Solution License">
+                <IconButton color="primary" onClick={() => setAddLicenseDialog(true)} size="small">
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Solution-Specific Licenses:</Typography>
@@ -871,7 +884,11 @@ export const SolutionDialog: React.FC<Props> = ({
 
           <TabPanel value={tabValue} index={5}>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddCustomAttributeDialog(true)} size="small">Add Attribute</Button>
+              <Tooltip title="Add Attribute">
+                <IconButton color="primary" onClick={() => setAddCustomAttributeDialog(true)} size="small">
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleAttributeDragEnd}>
               <SortableContext items={getSortedAttributes(customAttrs).map(([k]) => k)} strategy={verticalListSortingStrategy}>

@@ -278,13 +278,13 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
 
   // Column visibility state with localStorage persistence
   const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
-    const saved = localStorage.getItem('dap_adoption_plan_columns');
+    const saved = localStorage.getItem('dap_adoption_plan_columns_v2');
     return saved ? JSON.parse(saved) : DEFAULT_ADOPTION_VISIBLE_COLUMNS;
   });
 
   // Persist column visibility to localStorage
   React.useEffect(() => {
-    localStorage.setItem('dap_adoption_plan_columns', JSON.stringify(visibleColumns));
+    localStorage.setItem('dap_adoption_plan_columns_v2', JSON.stringify(visibleColumns));
   }, [visibleColumns]);
 
   // Handle column toggle
@@ -604,7 +604,15 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
-          <Typography variant="subtitle1" fontWeight="600">Overall Progress</Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Typography variant="subtitle1" fontWeight="600">Overall Progress</Typography>
+            <Chip
+              label={plan.licenseLevel}
+              size="small"
+              color="primary"
+              sx={{ height: 20, fontSize: '0.75rem', fontWeight: 600 }}
+            />
+          </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Typography variant="body2" color="text.secondary">
               <strong>{plan.completedTasks}</strong> of <strong>{plan.totalTasks}</strong> tasks
@@ -663,18 +671,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
               )}
           </Box>
 
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            {/* License Level Display */}
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="caption" fontWeight="600">
-                License Level:
-              </Typography>
-              <Chip label={plan.licenseLevel} size="small" color="secondary" />
-              <Typography variant="caption" color="text.secondary">
-                (Tasks filtered by license level at assignment)
-              </Typography>
-            </Box>
-          </Box>
+
 
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
             {/* Tags Filter */}

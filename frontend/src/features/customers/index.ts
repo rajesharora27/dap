@@ -1,4 +1,5 @@
 export * from './components/CustomersPanel';
+export * from './components/CustomerOverviewTab';
 export * from './components/CustomerDialog';
 export * from './components/CustomerPreviewDialog';
 export * from './components/CustomerTelemetryDialog';

@@ -34,6 +34,8 @@ import {
 import {
   ExpandMore,
   ExpandLess,
+  Article,
+  OndemandVideo
 } from '@shared/components/FAIcon';
 import { getStatusBackgroundColor, getStatusColor, getUpdateSourceChipColor } from '../../utils/statusStyles';
 import { TaskDetailsDialog, TaskDetailsData } from './TaskDetailsDialog';
@@ -71,6 +73,12 @@ export interface TaskData {
       createdAt?: string;
     }>;
   }>;
+  tags?: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    color?: string;
+  }>;
 }
 
 interface StatusDialogState {
@@ -96,9 +104,10 @@ interface AdoptionTaskTableProps {
 
 // Default visible columns for adoption task tables
 export const ADOPTION_TASK_COLUMNS = [
+  { key: 'tags', label: 'Tags', alwaysVisible: false },
   { key: 'resources', label: 'Resources', alwaysVisible: false },
   { key: 'weight', label: 'Weight', alwaysVisible: false },
-  { key: 'telemetry', label: 'Telemetry', alwaysVisible: false },
+  { key: 'telemetry', label: 'Validation Criteria', alwaysVisible: false },
   { key: 'updatedVia', label: 'Updated Via', alwaysVisible: false },
 ];
 
@@ -170,6 +179,11 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
             <TableCell>
               <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Task</Typography>
             </TableCell>
+            {isColumnVisible('tags') && (
+              <TableCell width={120}>
+                <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Tags</Typography>
+              </TableCell>
+            )}
             {isColumnVisible('resources') && (
               <TableCell width={120}>
                 <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
@@ -182,7 +196,7 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
             )}
             {isColumnVisible('telemetry') && (
               <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
-                <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Telemetry</Typography>
+                <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Validation Criteria</Typography>
               </TableCell>
             )}
             {isColumnVisible('updatedVia') && (
@@ -229,6 +243,29 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
                     {task.name}
                   </Typography>
                 </TableCell>
+                {isColumnVisible('tags') && (
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                      {task.tags?.map((tag) => (
+                        <Chip
+                          key={tag.id}
+                          label={tag.name}
+                          size="small"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.7rem',
+                            backgroundColor: tag.color || '#888',
+                            color: '#fff',
+                            fontWeight: 600
+                          }}
+                        />
+                      ))}
+                      {(!task.tags || task.tags.length === 0) && (
+                        <Typography variant="caption" color="text.secondary">-</Typography>
+                      )}
+                    </Box>
+                  </TableCell>
+                )}
                 {isColumnVisible('resources') && (
                   <TableCell>
                     <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -246,17 +283,8 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
                           }
                           arrow
                         >
-                          <Chip
+                          <IconButton
                             size="small"
-                            label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
-                            color="primary"
-                            variant="outlined"
-                            sx={{
-                              fontSize: '0.7rem',
-                              height: '22px',
-                              cursor: 'pointer',
-                              '&:hover': { backgroundColor: 'primary.light', color: 'white' }
-                            }}
                             onClick={(e) => {
                               e.stopPropagation();
                               if (task.howToDoc!.length === 1) {
@@ -265,7 +293,17 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
                                 setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc! });
                               }
                             }}
-                          />
+                            sx={{
+                              padding: 0.5,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 1,
+                              color: 'text.secondary',
+                              '&:hover': { bgcolor: 'action.hover', color: 'primary.main', borderColor: 'primary.main' }
+                            }}
+                          >
+                            <Article style={{ fontSize: '1rem' }} />
+                          </IconButton>
                         </Tooltip>
                       )}
                       {task.howToVideo && task.howToVideo.length > 0 && (
@@ -282,17 +320,8 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
                           }
                           arrow
                         >
-                          <Chip
+                          <IconButton
                             size="small"
-                            label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
-                            color="error"
-                            variant="outlined"
-                            sx={{
-                              fontSize: '0.7rem',
-                              height: '22px',
-                              cursor: 'pointer',
-                              '&:hover': { backgroundColor: 'error.light', color: 'white' }
-                            }}
                             onClick={(e) => {
                               e.stopPropagation();
                               if (task.howToVideo!.length === 1) {
@@ -301,7 +330,17 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
                                 setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo! });
                               }
                             }}
-                          />
+                            sx={{
+                              padding: 0.5,
+                              border: '1px solid',
+                              borderColor: 'divider',
+                              borderRadius: 1,
+                              color: 'text.secondary',
+                              '&:hover': { bgcolor: 'action.hover', color: 'error.main', borderColor: 'error.main' }
+                            }}
+                          >
+                            <OndemandVideo style={{ fontSize: '1rem' }} />
+                          </IconButton>
                         </Tooltip>
                       )}
                       {(!task.howToDoc || task.howToDoc.length === 0) && (!task.howToVideo || task.howToVideo.length === 0) && (

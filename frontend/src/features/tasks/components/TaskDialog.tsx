@@ -21,7 +21,9 @@ import {
   Checkbox,
   ListItemText,
   Tooltip,
+  IconButton,
 } from '@mui/material';
+import { Add as AddIcon, Delete as DeleteIcon } from '@shared/components/FAIcon';
 import { Release } from '@features/product-releases';
 import { TelemetryConfiguration } from '@features/telemetry';
 import { ProductTag } from '@features/tags';
@@ -760,26 +762,29 @@ export const TaskDialog: React.FC<Props> = ({
                       placeholder="https://example.com/documentation"
                       size="small"
                     />
-                    <Button
-                      onClick={() => {
-                        setHowToDoc(howToDoc.filter((_, i) => i !== index));
-                      }}
-                      variant="outlined"
-                      color="error"
-                      size="small"
-                    >
-                      Remove
-                    </Button>
+                    <Tooltip title="Remove Link">
+                      <IconButton
+                        onClick={() => {
+                          setHowToDoc(howToDoc.filter((_, i) => i !== index));
+                        }}
+                        color="error"
+                        size="small"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </Box>
                 ))}
-                <Button
-                  onClick={() => setHowToDoc([...howToDoc, ''])}
-                  variant="outlined"
-                  size="small"
-                  sx={{ mt: 1 }}
-                >
-                  + Add Documentation Link
-                </Button>
+                <Tooltip title="Add Documentation Link">
+                  <IconButton
+                    onClick={() => setHowToDoc([...howToDoc, ''])}
+                    color="primary"
+                    size="small"
+                    sx={{ mt: 1 }}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                </Tooltip>
               </Box>
 
               {/* How To Video Links */}
@@ -800,26 +805,29 @@ export const TaskDialog: React.FC<Props> = ({
                       placeholder="https://example.com/video"
                       size="small"
                     />
-                    <Button
-                      onClick={() => {
-                        setHowToVideo(howToVideo.filter((_, i) => i !== index));
-                      }}
-                      variant="outlined"
-                      color="error"
-                      size="small"
-                    >
-                      Remove
-                    </Button>
+                    <Tooltip title="Remove Link">
+                      <IconButton
+                        onClick={() => {
+                          setHowToVideo(howToVideo.filter((_, i) => i !== index));
+                        }}
+                        color="error"
+                        size="small"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
                   </Box>
                 ))}
-                <Button
-                  onClick={() => setHowToVideo([...howToVideo, ''])}
-                  variant="outlined"
-                  size="small"
-                  sx={{ mt: 1 }}
-                >
-                  + Add Video Link
-                </Button>
+                <Tooltip title="Add Video Link">
+                  <IconButton
+                    onClick={() => setHowToVideo([...howToVideo, ''])}
+                    color="primary"
+                    size="small"
+                    sx={{ mt: 1 }}
+                  >
+                    <AddIcon />
+                  </IconButton>
+                </Tooltip>
               </Box>
             </>
           )}

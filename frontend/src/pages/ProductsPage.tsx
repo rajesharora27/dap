@@ -4,10 +4,10 @@ import {
     Box, Paper, Typography, LinearProgress, FormControl, InputLabel, Select, MenuItem, Button,
     IconButton, Tabs, Tab, Grid, Chip, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
     List, ListItem, ListItemText, Dialog, DialogTitle, DialogContent, CircularProgress, Card, CardContent,
-    Checkbox, OutlinedInput, Collapse, Divider
+    Checkbox, OutlinedInput, Collapse, Divider, Badge
 } from '@mui/material';
 import { useTheme, alpha } from '@mui/material/styles';
-import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension, FilterList, ExpandMore, ExpandLess, Lock, LockOpen } from '@shared/components/FAIcon';
+import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension, FilterList, ExpandMore, ExpandLess, Lock, LockOpen, Clear } from '@shared/components/FAIcon';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -895,26 +895,26 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                             </IconButton>
                                         </Tooltip>
 
-                                        <Button
-                                            size="small"
-                                            startIcon={<FilterList />}
-                                            endIcon={showFilters ? <ExpandLess /> : <ExpandMore />}
-                                            onClick={() => setShowFilters(!showFilters)}
-                                            color={hasActiveFilters ? "primary" : "inherit"}
-                                            variant={hasActiveFilters ? "contained" : "outlined"}
-                                            sx={{ borderRadius: 2 }}
-                                        >
-                                            Filters {hasActiveFilters && `(${[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length})`}
-                                        </Button>
+                                        <Tooltip title={showFilters ? "Hide Filters" : hasActiveFilters ? `Filters Active (${[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length})` : "Show Filters"}>
+                                            <IconButton
+                                                onClick={() => setShowFilters(!showFilters)}
+                                                color={hasActiveFilters || showFilters ? "primary" : "default"}
+                                            >
+                                                <Badge badgeContent={[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length} color="secondary">
+                                                    <FilterList />
+                                                </Badge>
+                                            </IconButton>
+                                        </Tooltip>
                                         {hasActiveFilters && (
-                                            <Chip
-                                                label="Clear"
-                                                size="small"
-                                                color="secondary"
-                                                variant="outlined"
-                                                onDelete={handleClearFilters}
-                                                sx={{ height: 24, fontSize: '0.75rem' }}
-                                            />
+                                            <Tooltip title="Clear Filters">
+                                                <IconButton
+                                                    size="small"
+                                                    onClick={handleClearFilters}
+                                                    color="secondary"
+                                                >
+                                                    <Clear fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
                                         )}
 
                                         {/* Column Visibility Toggle */}
@@ -924,29 +924,33 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                         />
                                     </>
                                 )}
-                                <Button
-                                    variant="contained"
-                                    startIcon={<Add />}
-                                    size="small"
-                                    disabled={selectedSubSection === 'tasks' && isTasksLocked}
-                                    onClick={() => {
-                                        switch (selectedSubSection) {
-                                            case 'tasks': setEditingTask(null); setTaskDialog(true); break;
-                                            case 'outcomes': setEditingOutcome(null); setOutcomeDialog(true); break;
-                                            case 'releases': setEditingRelease(null); setReleaseDialog(true); break;
-                                            case 'licenses': setEditingLicense(null); setLicenseDialog(true); break;
-                                            case 'customAttributes': setEditingCustomAttr(null); setCustomAttrDialog(true); break;
-                                            case 'tags': setEditingTag(null); setTagDialog(true); break;
-                                        }
-                                    }}
-                                    title={selectedSubSection === 'tasks' && isTasksLocked ? "Unlock Tasks to Add" : ""}
-                                >
-                                    {selectedSubSection === 'tasks' ? 'Add Task' :
-                                        selectedSubSection === 'outcomes' ? 'Add Outcome' :
-                                            selectedSubSection === 'releases' ? 'Add Release' :
-                                                selectedSubSection === 'licenses' ? 'Add License' :
-                                                    selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'}
-                                </Button>
+                                <Tooltip title={
+                                    selectedSubSection === 'tasks' && isTasksLocked ? "Unlock Tasks to Add" :
+                                        selectedSubSection === 'tasks' ? 'Add Task' :
+                                            selectedSubSection === 'outcomes' ? 'Add Outcome' :
+                                                selectedSubSection === 'releases' ? 'Add Release' :
+                                                    selectedSubSection === 'licenses' ? 'Add License' :
+                                                        selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'
+                                }>
+                                    <span>
+                                        <IconButton
+                                            color="primary"
+                                            disabled={selectedSubSection === 'tasks' && isTasksLocked}
+                                            onClick={() => {
+                                                switch (selectedSubSection) {
+                                                    case 'tasks': setEditingTask(null); setTaskDialog(true); break;
+                                                    case 'outcomes': setEditingOutcome(null); setOutcomeDialog(true); break;
+                                                    case 'releases': setEditingRelease(null); setReleaseDialog(true); break;
+                                                    case 'licenses': setEditingLicense(null); setLicenseDialog(true); break;
+                                                    case 'customAttributes': setEditingCustomAttr(null); setCustomAttrDialog(true); break;
+                                                    case 'tags': setEditingTag(null); setTagDialog(true); break;
+                                                }
+                                            }}
+                                        >
+                                            <Add />
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
                             </Box>
                         )}
                     </Box>
@@ -1128,7 +1132,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                 <TableCell align="left">Name</TableCell>
                                                 {visibleColumns.includes('tags') && <TableCell align="left">Tags</TableCell>}
                                                 {visibleColumns.includes('resources') && <TableCell align="left">Resources</TableCell>}
-                                                {visibleColumns.includes('implPercent') && <TableCell width={80} align="center">Impl %</TableCell>}
+                                                {visibleColumns.includes('implPercent') && <TableCell width={80} align="center">Weight</TableCell>}
                                                 {visibleColumns.includes('validationCriteria') && <TableCell align="center">Validation Criteria</TableCell>}
                                                 <TableCell width={100} align="left">Actions</TableCell>
                                             </TableRow>

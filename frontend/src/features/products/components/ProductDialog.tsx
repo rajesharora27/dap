@@ -15,7 +15,8 @@ import {
   ListItemText,
   Tabs,
   Tab,
-  DialogContentText
+  DialogContentText,
+  Tooltip
 } from '@mui/material';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -481,14 +482,11 @@ export const ProductDialog: React.FC<Props> = ({
               <Typography variant="body2" color="text.secondary">
                 Manage outcomes for this product
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setAddOutcomeDialog(true)}
-                size="small"
-              >
-                Add Outcome
-              </Button>
+              <Tooltip title="Add Outcome">
+                <IconButton color="primary" onClick={() => setAddOutcomeDialog(true)} size="small">
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
 
             {outcomes.filter(o => !o.delete).length > 0 ? (
@@ -554,14 +552,11 @@ export const ProductDialog: React.FC<Props> = ({
               <Typography variant="body2" color="text.secondary">
                 Manage entitlements for this product
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setAddLicenseDialog(true)}
-                size="small"
-              >
-                Add Entitlement
-              </Button>
+              <Tooltip title="Add Entitlement">
+                <IconButton color="primary" onClick={() => setAddLicenseDialog(true)} size="small">
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
 
             {licenses.filter(l => !l.delete).length > 0 ? (
@@ -637,14 +632,11 @@ export const ProductDialog: React.FC<Props> = ({
               <Typography variant="body2" color="text.secondary">
                 Manage releases for this product
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setAddReleaseDialog(true)}
-                size="small"
-              >
-                Add Release
-              </Button>
+              <Tooltip title="Add Release">
+                <IconButton color="primary" onClick={() => setAddReleaseDialog(true)} size="small">
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
 
             {releases.filter(r => !r.delete).length > 0 ? (
@@ -710,14 +702,11 @@ export const ProductDialog: React.FC<Props> = ({
               <Typography variant="body2" color="text.secondary">
                 Manage additional metadata for this product
               </Typography>
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setAddCustomAttributeDialog(true)}
-                size="small"
-              >
-                Add Attribute
-              </Button>
+              <Tooltip title="Add Attribute">
+                <IconButton color="primary" onClick={() => setAddCustomAttributeDialog(true)} size="small">
+                  <AddIcon />
+                </IconButton>
+              </Tooltip>
             </Box>
 
             {Object.keys(customAttrs).length > 0 ? (

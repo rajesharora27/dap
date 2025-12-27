@@ -528,7 +528,11 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
   };
   return <Box>
     <Stack direction="row" spacing={1} px={1} pt={1} alignItems="center">
-      <Button size="small" startIcon={<Add />} onClick={openCreateDialog}>Add Product</Button>
+      <Tooltip title="Add Product">
+        <IconButton color="primary" onClick={openCreateDialog}>
+          <Add />
+        </IconButton>
+      </Tooltip>
 
       {/* Sorting Controls */}
       <Box sx={{ ml: 'auto', display: 'flex', gap: 1, alignItems: 'center' }}>

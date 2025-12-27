@@ -45,7 +45,7 @@ export async function checkUserPermission(
     return false;
   }
 
-  if (user.isAdmin) {
+  if (user.isAdmin || user.role === 'ADMIN') {
     return true;
   }
 
@@ -405,7 +405,7 @@ export async function getUserAccessibleResources(
     return [];
   }
 
-  if (user.isAdmin) {
+  if (user.isAdmin || user.role === 'ADMIN') {
     return null; // Admin has access to all resources
   }
 

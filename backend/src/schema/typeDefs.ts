@@ -120,6 +120,7 @@ export const typeDefs = gql`
     deletedAt: String               # Soft delete timestamp
     tags: [ProductTag!]!
     solutionTags: [SolutionTag!]!
+    customAttrs: JSON
   }
 
   type License implements Node { 

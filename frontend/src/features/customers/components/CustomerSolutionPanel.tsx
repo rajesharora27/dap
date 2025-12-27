@@ -17,7 +17,8 @@ import {
   DialogContent,
   DialogActions,
   Divider,
-  Chip
+  Chip,
+  IconButton
 } from '@mui/material';
 import { Add, Edit, Delete, Download, Upload, Assessment, Sync } from '@shared/components/FAIcon';
 import { gql, useQuery, useMutation } from '@apollo/client';
@@ -361,7 +362,13 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
             <InputLabel>Select Deployment</InputLabel>
             <Select
               value={selectedSolutionId || ''}
-              onChange={(e) => setSelectedSolutionId(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value === '__NEW__') {
+                  setAssignDialogOpen(true);
+                } else {
+                  setSelectedSolutionId(e.target.value);
+                }
+              }}
               label="Select Deployment"
             >
               {customerSolutions.map((cs: any) => (
@@ -369,114 +376,128 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
                   {cs.name ? `${cs.name} - ${cs.solution.name}` : cs.solution.name} ({cs.licenseLevel})
                 </MenuItem>
               ))}
+              <Divider />
+              <MenuItem value="__NEW__" sx={{ color: 'primary.main', fontWeight: 600 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Add fontSize="small" />
+                  Assign New Solution
+                </Box>
+              </MenuItem>
             </Select>
           </FormControl>
+
 
           {selectedSolutionId && (
             <>
               {selectedCustomerSolution?.adoptionPlan && (
                 <>
-                  <Tooltip title="Sync with latest solution tasks">
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<Sync />}
-                      color={selectedCustomerSolution.adoptionPlan.needsSync ? 'warning' : 'primary'}
-                      onClick={() => syncPlan({ variables: { solutionAdoptionPlanId: selectedCustomerSolution.adoptionPlan.id } })}
-                      disabled={syncLoading}
-                    >
-                      {syncLoading ? 'Syncing...' : selectedCustomerSolution.adoptionPlan.needsSync ? '⚠️ Sync' : 'Sync'}
-                    </Button>
+                  <Tooltip title={syncLoading ? 'Syncing...' : selectedCustomerSolution.adoptionPlan.needsSync ? 'Sync Needed' : 'Sync with latest solution tasks'}>
+                    <span>
+                      <IconButton
+                        size="small"
+                        color={selectedCustomerSolution.adoptionPlan.needsSync ? 'warning' : 'primary'}
+                        onClick={() => syncPlan({ variables: { solutionAdoptionPlanId: selectedCustomerSolution.adoptionPlan.id } })}
+                        disabled={syncLoading}
+                      >
+                        {/* Badge functionality isn't imported, checking file... import Grid ... Badge is NOT imported. 
+                             I will use simple color change or just the icon. 
+                             Wait, I can import Badge. */}
+                        <Sync fontSize="small" />
+                      </IconButton>
+                    </span>
                   </Tooltip>
-                  <Chip
-                    label={selectedCustomerSolution.licenseLevel}
-                    color="primary"
-                    size="small"
-                  />
                 </>
               )}
               <Tooltip title="Edit solution entitlements">
-                <Button
-                  variant="contained"
+                <IconButton
                   size="small"
-                  startIcon={<Edit />}
                   onClick={() => setEditEntitlementsDialogOpen(true)}
-                  sx={{
-                    backgroundColor: 'primary.main',
-                    '&:hover': {
-                      backgroundColor: 'primary.dark'
-                    }
-                  }}
+                  color="primary"
                 >
-                  Edit
-                </Button>
+                  <Edit fontSize="small" />
+                </IconButton>
+              </Tooltip>
+              <Tooltip title="Remove solution assignment">
+                <IconButton
+                  size="small"
+                  onClick={() => setDeleteConfirmDialogOpen(true)}
+                  color="error"
+                >
+                  <Delete fontSize="small" />
+                </IconButton>
               </Tooltip>
             </>
           )}
         </Box>
 
         {/* Solution Summary Cards */}
-        {customerSolutions.length === 0 && (
-          <Box
-            sx={{
-              textAlign: 'center',
-              py: 6,
-              px: 3,
-              backgroundColor: 'background.default',
-              borderRadius: 2,
-              border: '1px dashed',
-              borderColor: 'divider'
-            }}
-          >
-            <Typography variant="h6" color="text.secondary" gutterBottom fontWeight="500">
-              No Solutions Assigned Yet
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 500, mx: 'auto' }}>
-              Solutions bundle multiple products together for unified adoption tracking and comprehensive progress monitoring
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => setAssignDialogOpen(true)}
+        {
+          customerSolutions.length === 0 && (
+            <Box
+              sx={{
+                textAlign: 'center',
+                py: 6,
+                px: 3,
+                backgroundColor: 'background.default',
+                borderRadius: 2,
+                border: '1px dashed',
+                borderColor: 'divider'
+              }}
             >
-              Assign First Solution
-            </Button>
-          </Box>
-        )}
-      </Paper>
+              <Typography variant="h6" color="text.secondary" gutterBottom fontWeight="500">
+                No Solutions Assigned Yet
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 500, mx: 'auto' }}>
+                Solutions bundle multiple products together for unified adoption tracking and comprehensive progress monitoring
+              </Typography>
+              <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => setAssignDialogOpen(true)}
+              >
+                Assign First Solution
+              </Button>
+            </Box>
+          )
+        }
+      </Paper >
 
       {/* Adoption Plan View */}
-      {selectedCustomerSolution?.adoptionPlan && (
-        <SolutionAdoptionPlanView
-          solutionAdoptionPlanId={selectedCustomerSolution.adoptionPlan.id}
-          customerName={customer.name}
-          lastSyncedAt={selectedCustomerSolution.adoptionPlan.lastSyncedAt}
-        />
-      )}
+      {
+        selectedCustomerSolution?.adoptionPlan && (
+          <SolutionAdoptionPlanView
+            solutionAdoptionPlanId={selectedCustomerSolution.adoptionPlan.id}
+            customerName={customer.name}
+            lastSyncedAt={selectedCustomerSolution.adoptionPlan.lastSyncedAt}
+          />
+        )
+      }
 
-      {selectedSolutionId && !selectedCustomerSolution?.adoptionPlan && (
-        <Alert severity="warning" sx={{ mt: 2 }} action={
-          <Button
-            color="inherit"
-            size="small"
-            onClick={async () => {
-              try {
-                await createAdoptionPlan({
-                  variables: { customerSolutionId: selectedSolutionId }
-                });
-                refetch();
-              } catch (err: any) {
-                console.error('Failed to create adoption plan:', err);
-                alert('Failed to create adoption plan: ' + err.message);
-              }
-            }}
-          >
-            Create Now
-          </Button>
-        }>
-          This solution does not have an adoption plan yet.
-        </Alert>
-      )}
+      {
+        selectedSolutionId && !selectedCustomerSolution?.adoptionPlan && (
+          <Alert severity="warning" sx={{ mt: 2 }} action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={async () => {
+                try {
+                  await createAdoptionPlan({
+                    variables: { customerSolutionId: selectedSolutionId }
+                  });
+                  refetch();
+                } catch (err: any) {
+                  console.error('Failed to create adoption plan:', err);
+                  alert('Failed to create adoption plan: ' + err.message);
+                }
+              }}
+            >
+              Create Now
+            </Button>
+          }>
+            This solution does not have an adoption plan yet.
+          </Alert>
+        )
+      }
 
       {/* Assign Solution Dialog */}
       <AssignSolutionDialog
@@ -490,18 +511,20 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
       />
 
       {/* Edit Entitlements Dialog */}
-      {selectedSolutionId && (
-        <EditSolutionEntitlementsDialog
-          open={editEntitlementsDialogOpen}
-          onClose={() => setEditEntitlementsDialogOpen(false)}
-          customerSolutionId={selectedSolutionId}
-          onSuccess={() => {
-            refetch();
-            refetchPlan();
-            setEditEntitlementsDialogOpen(false);
-          }}
-        />
-      )}
+      {
+        selectedSolutionId && (
+          <EditSolutionEntitlementsDialog
+            open={editEntitlementsDialogOpen}
+            onClose={() => setEditEntitlementsDialogOpen(false)}
+            customerSolutionId={selectedSolutionId}
+            onSuccess={() => {
+              refetch();
+              refetchPlan();
+              setEditEntitlementsDialogOpen(false);
+            }}
+          />
+        )
+      }
 
       {/* Delete Confirmation Dialog */}
       <Dialog
@@ -536,7 +559,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Box >
   );
 };
 

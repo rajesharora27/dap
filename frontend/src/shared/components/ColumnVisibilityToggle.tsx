@@ -5,7 +5,9 @@ import {
     MenuItem,
     Checkbox,
     ListItemText,
-    Box
+    Box,
+    IconButton,
+    Tooltip
 } from '@mui/material';
 import { TableChart } from '@shared/components/FAIcon';
 
@@ -20,7 +22,7 @@ export interface ColumnConfig {
 export const TASK_COLUMNS: ColumnConfig[] = [
     { key: 'tags', label: 'Tags', alwaysVisible: false },
     { key: 'resources', label: 'Resources', alwaysVisible: false },
-    { key: 'implPercent', label: 'Impl %', alwaysVisible: false },
+    { key: 'implPercent', label: 'Weight', alwaysVisible: false },
     { key: 'validationCriteria', label: 'Validation Criteria', alwaysVisible: false },
 ];
 
@@ -53,26 +55,17 @@ export function ColumnVisibilityToggle({
 
     return (
         <Box sx={{ display: 'inline-flex' }}>
-            <Button
-                size="small"
-                variant="outlined"
-                onClick={handleClick}
-                startIcon={<TableChart fontSize="small" />}
-                sx={{
-                    textTransform: 'none',
-                    fontSize: '0.8rem',
-                    py: 0.5,
-                    px: 1.5,
-                    borderColor: 'divider',
-                    color: 'text.secondary',
-                    '&:hover': {
-                        borderColor: 'primary.main',
-                        color: 'primary.main'
-                    }
-                }}
-            >
-                Columns
-            </Button>
+            <Tooltip title="Manage Columns">
+                <IconButton
+                    onClick={handleClick}
+                    sx={{
+                        color: open ? 'primary.main' : 'text.secondary',
+                        '&:hover': { color: 'primary.main' }
+                    }}
+                >
+                    <TableChart fontSize="small" />
+                </IconButton>
+            </Tooltip>
             <Menu
                 anchorEl={anchorEl}
                 open={open}

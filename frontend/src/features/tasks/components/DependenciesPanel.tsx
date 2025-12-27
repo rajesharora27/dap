@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { gql, useMutation, useQuery } from '@apollo/client';
-import { Card, CardHeader, CardContent, TextField, Button, List, ListItem, Typography } from '@mui/material';
+import { Card, CardHeader, CardContent, TextField, Button, List, ListItem, Typography, IconButton, Tooltip } from '@mui/material';
+import { Add as AddIcon, Delete as DeleteIcon } from '@shared/components/FAIcon';
 
 const DEP_QUERY = gql`query Deps($taskId: ID!) { taskDependencies(taskId: $taskId) { id taskId dependsOnId createdAt } }`;
 const ADD_DEP = gql`mutation AddDep($taskId: ID!, $dependsOnId: ID!) { addTaskDependency(taskId: $taskId, dependsOnId: $dependsOnId) { id } }`;
@@ -26,13 +27,19 @@ export function DependenciesPanel({ taskId }: Props) {
         <Typography variant="body2" sx={{ mb: 1 }}>Edges</Typography>
         <List dense>
           {data?.taskDependencies?.map((d: any) => (
-            <ListItem key={d.id} secondaryAction={<Button size="small" onClick={() => del(d.dependsOnId)}>X</Button>}>
+            <ListItem key={d.id} secondaryAction={
+              <Tooltip title="Remove Dependency">
+                <IconButton size="small" onClick={() => del(d.dependsOnId)} color="error"><DeleteIcon /></IconButton>
+              </Tooltip>
+            }>
               {d.taskId} &rarr; {d.dependsOnId}
             </ListItem>
           ))}
         </List>
         <TextField label="Depends On ID" size="small" value={dependsOnId} onChange={e => setDependsOnId(e.target.value)} sx={{ mr: 1 }} />
-        <Button variant="contained" onClick={submit} disabled={!taskId}>Add</Button>
+        <Tooltip title="Add Dependency">
+          <IconButton onClick={submit} disabled={!taskId} color="primary"><AddIcon /></IconButton>
+        </Tooltip>
       </CardContent>
     </Card>
   );

@@ -84,6 +84,7 @@ export function getUserFromToken(token: string): any | null {
     username: payload.username,
     email: payload.email,
     fullName: payload.fullName,
+    role: payload.role, // Ensure role is passed through
     isAdmin: payload.isAdmin || payload.role === 'ADMIN'
   };
 }

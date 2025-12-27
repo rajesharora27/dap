@@ -15,7 +15,9 @@ import {
     Edit,
     Delete,
     Add,
-    Lock
+    Lock,
+    Article,
+    OndemandVideo
 } from '@shared/components/FAIcon';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -60,6 +62,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                     bgcolor: task.telemetryAttributes?.length > 0 ? 'rgba(76, 175, 80, 0.02)' : 'inherit',
                     '&:hover': {
                         backgroundColor: 'rgba(25, 118, 210, 0.08)',
+                        '& .add-tag-btn': { opacity: 1 }
                     }
                 }}
             >
@@ -189,15 +192,21 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                                     );
                                 });
                             })()}
-                            {/* Dropdown to add tags */}
+                            {/* Dropdown to add tags - Only visible on hover */}
                             {!locked && (
                                 <IconButton
                                     size="small"
+                                    className="add-tag-btn"
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setTagMenuAnchor({ el: e.currentTarget, task });
                                     }}
-                                    sx={{ padding: 0.5, marginLeft: 0.5 }}
+                                    sx={{
+                                        padding: 0.5,
+                                        marginLeft: 0.5,
+                                        opacity: 0,
+                                        transition: 'opacity 0.2s'
+                                    }}
                                 >
                                     <Add sx={{ fontSize: '1rem' }} />
                                 </IconButton>
@@ -209,59 +218,69 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 {/* Resources column - hideable */}
                 {isColumnVisible('resources') && (
                     <TableCell sx={{ minWidth: 100, textAlign: 'left' }}>
-                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'nowrap', justifyContent: 'flex-start' }}>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'nowrap', justifyContent: 'flex-start', alignItems: 'center' }}>
                             {task.howToDoc && task.howToDoc.length > 0 && (
-                                <Chip
-                                    size="small"
-                                    label={`Doc${task.howToDoc.length > 1 ? ` (${task.howToDoc.length})` : ''}`}
-                                    color="primary"
-                                    variant="outlined"
-                                    sx={{
-                                        fontSize: '0.7rem',
-                                        height: '20px',
-                                        cursor: 'pointer',
-                                        '&:hover': { backgroundColor: 'primary.light' }
-                                    }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (task.howToDoc.length === 1) {
-                                            window.open(task.howToDoc[0], '_blank');
-                                        } else {
-                                            setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
-                                        }
-                                    }}
+                                <Tooltip
                                     title={task.howToDoc.length === 1
                                         ? `Documentation: ${task.howToDoc[0]}`
                                         : `Documentation (${task.howToDoc.length} links):\n${task.howToDoc.join('\n')}`
                                     }
-                                />
+                                    arrow
+                                >
+                                    <IconButton
+                                        size="small"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (task.howToDoc.length === 1) {
+                                                window.open(task.howToDoc[0], '_blank');
+                                            } else {
+                                                setDocMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToDoc });
+                                            }
+                                        }}
+                                        sx={{
+                                            padding: 0.5,
+                                            border: '1px solid',
+                                            borderColor: 'divider',
+                                            borderRadius: 1,
+                                            color: 'text.secondary',
+                                            '&:hover': { bgcolor: 'action.hover', color: 'primary.main', borderColor: 'primary.main' }
+                                        }}
+                                    >
+                                        <Article style={{ fontSize: '1rem' }} />
+                                    </IconButton>
+                                </Tooltip>
                             )}
 
                             {task.howToVideo && task.howToVideo.length > 0 && (
-                                <Chip
-                                    size="small"
-                                    label={`Video${task.howToVideo.length > 1 ? ` (${task.howToVideo.length})` : ''}`}
-                                    color="error"
-                                    variant="outlined"
-                                    sx={{
-                                        fontSize: '0.7rem',
-                                        height: '20px',
-                                        cursor: 'pointer',
-                                        '&:hover': { backgroundColor: 'error.light' }
-                                    }}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (task.howToVideo.length === 1) {
-                                            window.open(task.howToVideo[0], '_blank');
-                                        } else {
-                                            setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
-                                        }
-                                    }}
+                                <Tooltip
                                     title={task.howToVideo.length === 1
                                         ? `Video: ${task.howToVideo[0]}`
                                         : `Videos (${task.howToVideo.length} links):\n${task.howToVideo.join('\n')}`
                                     }
-                                />
+                                    arrow
+                                >
+                                    <IconButton
+                                        size="small"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (task.howToVideo.length === 1) {
+                                                window.open(task.howToVideo[0], '_blank');
+                                            } else {
+                                                setVideoMenuAnchor({ el: e.currentTarget as HTMLElement, links: task.howToVideo });
+                                            }
+                                        }}
+                                        sx={{
+                                            padding: 0.5,
+                                            border: '1px solid',
+                                            borderColor: 'divider',
+                                            borderRadius: 1,
+                                            color: 'text.secondary',
+                                            '&:hover': { bgcolor: 'action.hover', color: 'error.main', borderColor: 'error.main' }
+                                        }}
+                                    >
+                                        <OndemandVideo style={{ fontSize: '1rem' }} />
+                                    </IconButton>
+                                </Tooltip>
                             )}
                             {!task.howToDoc && !task.howToVideo && (
                                 <Typography variant="caption" color="text.secondary">-</Typography>
@@ -305,7 +324,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                                 e.stopPropagation();
                                 e.target.select();
                             }}
-                            step="0.01"
+                            step="1"
                             min="0"
                             max="100"
                             style={{
@@ -324,7 +343,7 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                                 WebkitAppearance: 'none',
                                 appearance: 'textfield'
                             } as React.CSSProperties}
-                            title={locked ? "Locked" : "Click to edit weight (0-100), press Enter to save"}
+                            title={locked ? "Locked" : "Click to edit weight, press Enter to save"}
                         />
                         <style>{`
                         input[type="number"]::-webkit-inner-spin-button,

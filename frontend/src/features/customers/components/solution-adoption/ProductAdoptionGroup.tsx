@@ -204,6 +204,7 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
     releases: t.releases,
     outcomes: t.outcomes,
     telemetryAttributes: t.telemetryAttributes,
+    tags: t.tags,
   }));
 
   return (
