@@ -1684,6 +1684,23 @@ export const SolutionAdoptionMutationResolvers = {
         }) as any;
       }
 
+      // Sync the product license level to match the solution's license level
+      if (cp.licenseLevel !== customerSolution.licenseLevel) {
+        console.log(`syncSolutionAdoptionPlan: Updating ${product.name} license from ${cp.licenseLevel} to ${customerSolution.licenseLevel}`);
+        await prisma.customerProduct.update({
+          where: { id: cp.id },
+          data: { licenseLevel: customerSolution.licenseLevel }
+        });
+
+        // Also update the adoption plan's license level if it exists
+        if (cp.adoptionPlan) {
+          await prisma.adoptionPlan.update({
+            where: { id: cp.adoptionPlan.id },
+            data: { licenseLevel: customerSolution.licenseLevel }
+          });
+        }
+      }
+
       // Sync the product adoption plan
       if (cp?.adoptionPlan) {
         try {
