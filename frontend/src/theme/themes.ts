@@ -261,32 +261,42 @@ export const createAppTheme = (themeKey: ThemeKey, customConfig?: CustomThemeCon
       // Cisco/Apple font stack:
       // CiscoSans (Cisco employees), SF Pro (Mac), Inter (Google fallback), Segoe UI (Windows)
       fontFamily: '"CiscoSans", "SF Pro Display", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", "Helvetica Neue", Arial, sans-serif',
+      // Desktop-first: larger base font sizes for better readability on monitors
+      fontSize: 14,
       h1: {
+        fontSize: '2.25rem',
         fontWeight: 600,
         letterSpacing: '-0.025em',
       },
       h2: {
+        fontSize: '1.875rem',
         fontWeight: 600,
         letterSpacing: '-0.02em',
       },
       h3: {
+        fontSize: '1.5rem',
         fontWeight: 600,
         letterSpacing: '-0.015em',
       },
       h4: {
+        fontSize: '1.25rem',
         fontWeight: 600,
         letterSpacing: '-0.01em',
       },
       h5: {
+        fontSize: '1.125rem',
         fontWeight: 600,
       },
       h6: {
+        fontSize: '1rem',
         fontWeight: 600,
       },
       body1: {
+        fontSize: '0.9375rem', // 15px - slightly larger for desktop
         letterSpacing: '-0.01em',
       },
       body2: {
+        fontSize: '0.875rem', // 14px
         letterSpacing: '-0.005em',
       },
       button: {
@@ -298,13 +308,49 @@ export const createAppTheme = (themeKey: ThemeKey, customConfig?: CustomThemeCon
     shape: {
       borderRadius: 8,
     },
+    // Desktop-first: increased spacing scale
+    spacing: 8, // default is 8, keep it
     components: {
       MuiButton: {
+        defaultProps: {
+          size: 'medium', // Desktop-first: medium by default
+        },
         styleOverrides: {
           root: {
             borderRadius: 8,
-            padding: '8px 16px',
+            padding: '8px 20px',
           },
+          sizeSmall: {
+            padding: '6px 14px',
+          },
+          sizeLarge: {
+            padding: '12px 28px',
+          },
+        },
+      },
+      MuiIconButton: {
+        defaultProps: {
+          size: 'medium', // Desktop-first: medium by default
+        },
+      },
+      MuiTextField: {
+        defaultProps: {
+          size: 'medium', // Desktop-first: medium by default
+        },
+      },
+      MuiFormControl: {
+        defaultProps: {
+          size: 'medium', // Desktop-first: medium by default
+        },
+      },
+      MuiSelect: {
+        defaultProps: {
+          size: 'medium', // Desktop-first: medium by default
+        },
+      },
+      MuiChip: {
+        defaultProps: {
+          size: 'medium', // Desktop-first: medium by default
         },
       },
       MuiCard: {
@@ -318,6 +364,29 @@ export const createAppTheme = (themeKey: ThemeKey, customConfig?: CustomThemeCon
         styleOverrides: {
           root: {
             backgroundImage: 'none',
+          },
+        },
+      },
+      MuiTableCell: {
+        styleOverrides: {
+          root: {
+            padding: '12px 16px', // Slightly more padding for desktop
+          },
+          sizeSmall: {
+            padding: '8px 12px',
+          },
+        },
+      },
+      MuiDialog: {
+        defaultProps: {
+          maxWidth: 'md', // Default to medium width dialogs
+        },
+      },
+      MuiTab: {
+        styleOverrides: {
+          root: {
+            minHeight: 48, // Taller tabs for desktop
+            padding: '12px 20px',
           },
         },
       },

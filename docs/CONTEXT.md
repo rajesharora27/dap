@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
 **Version:** 3.0.0
-**Last Updated:** December 24, 2025 (13:40 EST)
+**Last Updated:** December 27, 2025 (Desktop-first UI redesign)
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -1075,9 +1075,11 @@ frontend/src/
    - Limited built-in reporting
    - Data accessible via GraphQL
 
-4. **Mobile UI**
-   - Desktop-first design
-   - Mobile experience not optimized
+4. **Desktop-First Design**
+   - UI optimized for laptops and desktop monitors (1280px+)
+   - Medium-sized controls by default (not compact/small)
+   - Full use of horizontal screen real estate
+   - Mobile experience is secondary and not prioritized
 
 5. **Real-time Updates**
    - No WebSocket-based live updates

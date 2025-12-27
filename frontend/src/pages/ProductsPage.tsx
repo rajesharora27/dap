@@ -778,9 +778,9 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
 
             {/* Product Selector and Actions */}
             {!productsLoading && !productsError && (
-                <Paper sx={{ p: 1.5, mb: 2 }}>
+                <Paper sx={{ p: 2, mb: 2 }}>
                     <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                        <FormControl sx={{ flex: '1 1 250px', minWidth: 200 }} size="small">
+                        <FormControl sx={{ flex: '1 1 300px', minWidth: 250 }}>
                             <InputLabel>Select Product</InputLabel>
                             <Select
                                 value={selectedProduct || ''}
