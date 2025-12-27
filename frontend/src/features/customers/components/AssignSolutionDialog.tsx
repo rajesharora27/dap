@@ -47,6 +47,12 @@ const SOLUTIONS_QUERY = gql`
             name
             description
           }
+          licenses {
+            id
+            name
+            level
+            isActive
+          }
           products {
             edges {
               node {
@@ -140,10 +146,25 @@ export const AssignSolutionDialog: React.FC<Props> = ({
     }
   }, [open]);
 
-  // Auto-set solution name when solution is selected
+  // Auto-set solution name and license when solution is selected
   useEffect(() => {
-    if (selectedSolution && !solutionName) {
-      setSolutionName(selectedSolution.name);
+    if (selectedSolution) {
+      if (!solutionName) {
+        setSolutionName(selectedSolution.name);
+      }
+      // Auto-select first active license if available
+      const activeLicenses = selectedSolution?.licenses?.filter((l: any) => l.isActive) || [];
+      if (activeLicenses.length > 0) {
+        const firstLicense = activeLicenses[0];
+        const name = firstLicense.name.toLowerCase();
+        if (name.includes('signature')) {
+          setLicenseLevel('Signature');
+        } else if (name.includes('advantage')) {
+          setLicenseLevel('Advantage');
+        } else {
+          setLicenseLevel('Essential');
+        }
+      }
     }
   }, [selectedSolution, solutionName]);
 
@@ -248,15 +269,24 @@ export const AssignSolutionDialog: React.FC<Props> = ({
 
   const loading = assignLoading || createPlanLoading;
 
-  // Get solution outcomes and releases
+  // Get solution outcomes, releases, products, and licenses
   const solutionOutcomes = selectedSolution?.outcomes || [];
   const solutionReleases = selectedSolution?.releases || [];
   const underlyingProducts = selectedSolution?.products?.edges?.map((e: any) => e.node) || [];
+  const solutionLicenses = selectedSolution?.licenses?.filter((l: any) => l.isActive) || [];
+
+  // Helper function to extract license level enum from license name  
+  const extractLicenseLevel = (licenseName: string): 'Essential' | 'Advantage' | 'Signature' => {
+    const name = licenseName.toLowerCase();
+    if (name.includes('signature')) return 'Signature';
+    if (name.includes('advantage')) return 'Advantage';
+    return 'Essential';
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>Assign Solution to Customer</DialogTitle>
-      
+
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
           {error && (
@@ -339,21 +369,36 @@ export const AssignSolutionDialog: React.FC<Props> = ({
 
           {/* License Level */}
           {selectedSolution && (
-            <FormControl fullWidth required>
-              <InputLabel>License Level</InputLabel>
-              <Select
-                value={licenseLevel}
-                onChange={(e) => setLicenseLevel(e.target.value as any)}
-                label="License Level"
-              >
-                <MenuItem value="Essential">Essential</MenuItem>
-                <MenuItem value="Advantage">Advantage</MenuItem>
-                <MenuItem value="Signature">Signature</MenuItem>
-              </Select>
-              <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                All underlying products will inherit this license tier
-              </Typography>
-            </FormControl>
+            solutionLicenses.length === 0 ? (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                No active licenses configured for this solution. Please configure licenses in the Solutions menu first.
+              </Alert>
+            ) : (
+              <FormControl fullWidth required>
+                <InputLabel>License</InputLabel>
+                <Select
+                  value={licenseLevel}
+                  onChange={(e) => setLicenseLevel(e.target.value as any)}
+                  label="License"
+                >
+                  {solutionLicenses.map((license: any) => {
+                    const levelEnum = extractLicenseLevel(license.name);
+                    return (
+                      <MenuItem key={license.id} value={levelEnum}>
+                        <Box>
+                          <Typography variant="body1" fontWeight="medium">
+                            {license.name}
+                          </Typography>
+                        </Box>
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  All underlying products will inherit this license tier
+                </Typography>
+              </FormControl>
+            )
           )}
 
           {/* Solution Outcomes Selection */}
@@ -367,10 +412,10 @@ export const AssignSolutionDialog: React.FC<Props> = ({
               </Typography>
               <FormGroup>
                 {/* All Outcomes option */}
-                <Box sx={{ 
-                  p: 1.5, 
-                  mb: 1, 
-                  borderRadius: 1, 
+                <Box sx={{
+                  p: 1.5,
+                  mb: 1,
+                  borderRadius: 1,
                   bgcolor: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'action.selected' : 'background.paper',
                   border: '1px solid',
                   borderColor: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'primary.main' : 'divider'
@@ -427,10 +472,10 @@ export const AssignSolutionDialog: React.FC<Props> = ({
               </Typography>
               <FormGroup>
                 {/* All Releases option */}
-                <Box sx={{ 
-                  p: 1.5, 
-                  mb: 1, 
-                  borderRadius: 1, 
+                <Box sx={{
+                  p: 1.5,
+                  mb: 1,
+                  borderRadius: 1,
                   bgcolor: selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'action.selected' : 'background.paper',
                   border: '1px solid',
                   borderColor: selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'primary.main' : 'divider'
