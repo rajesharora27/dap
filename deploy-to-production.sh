@@ -90,13 +90,13 @@ echo "📦 Archive size: $ARCHIVE_SIZE"
 
 # Transfer to /data/dap staging area where dap user has full ownership
 # Use rajarora's sudo access to create staging directory with proper ownership
-ssh rajarora@${PROD_SERVER} "sudo rm -rf $REMOTE_STAGING && sudo mkdir -p $REMOTE_STAGING && sudo chown dap:dap $REMOTE_STAGING"
+ssh dapoc "sudo rm -rf $REMOTE_STAGING && sudo mkdir -p $REMOTE_STAGING && sudo chown dap:dap $REMOTE_STAGING"
 
 # SCP to /tmp first (rajarora can write there), then move as dap user
-scp /tmp/dap-deploy.tar.gz rajarora@${PROD_SERVER}:/tmp/dap-deploy.tar.gz
+scp /tmp/dap-deploy.tar.gz dapoc:/tmp/dap-deploy.tar.gz
 
 # Move archive to staging and extract as dap user
-ssh rajarora@${PROD_SERVER} "sudo mv /tmp/dap-deploy.tar.gz $REMOTE_STAGING/ && sudo chown dap:dap $REMOTE_STAGING/dap-deploy.tar.gz && sudo -u dap tar xzf $REMOTE_STAGING/dap-deploy.tar.gz -C $REMOTE_STAGING && sudo rm $REMOTE_STAGING/dap-deploy.tar.gz"
+ssh dapoc "sudo mv /tmp/dap-deploy.tar.gz $REMOTE_STAGING/ && sudo chown dap:dap $REMOTE_STAGING/dap-deploy.tar.gz && sudo -u dap tar xzf $REMOTE_STAGING/dap-deploy.tar.gz -C $REMOTE_STAGING && sudo rm $REMOTE_STAGING/dap-deploy.tar.gz"
 echo "✅ Transfer complete (archive mode)"
 echo ""
 
@@ -108,7 +108,7 @@ echo "🔨 Step 4: Deploying on $PROD_SERVER..."
 echo ""
 
 # All deployment commands run as dap user - no root needed for app files
-ssh rajarora@${PROD_SERVER} << 'ENDSSH'
+ssh dapoc << 'ENDSSH'
 set -e
 
 echo "📝 preparing directory structure and permissions..."
