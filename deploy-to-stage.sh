@@ -88,10 +88,10 @@ echo "📦 Archive size: $ARCHIVE_SIZE"
 REMOTE_STAGING="/data/dap/deploy-staging"
 
 # SCP to /tmp first (rajarora can write there), then move as dap user
-scp /tmp/dap-deploy.tar.gz rajarora@centos2.rajarora.csslab:/tmp/dap-deploy.tar.gz
+scp /tmp/dap-deploy.tar.gz centos2:/tmp/dap-deploy.tar.gz
 
 # Create staging dir, move archive there, extract as dap user
-ssh rajarora@centos2.rajarora.csslab "sudo rm -rf $REMOTE_STAGING && sudo mkdir -p $REMOTE_STAGING && sudo chown dap:dap $REMOTE_STAGING && sudo mv /tmp/dap-deploy.tar.gz $REMOTE_STAGING/ && sudo chown dap:dap $REMOTE_STAGING/dap-deploy.tar.gz && sudo -u dap tar xzf $REMOTE_STAGING/dap-deploy.tar.gz -C $REMOTE_STAGING && sudo rm $REMOTE_STAGING/dap-deploy.tar.gz"
+ssh centos2 "sudo rm -rf $REMOTE_STAGING && sudo mkdir -p $REMOTE_STAGING && sudo chown dap:dap $REMOTE_STAGING && sudo mv /tmp/dap-deploy.tar.gz $REMOTE_STAGING/ && sudo chown dap:dap $REMOTE_STAGING/dap-deploy.tar.gz && sudo -u dap tar xzf $REMOTE_STAGING/dap-deploy.tar.gz -C $REMOTE_STAGING && sudo rm $REMOTE_STAGING/dap-deploy.tar.gz"
 echo "✅ Transfer complete (archive mode)"
 echo ""
 
@@ -104,7 +104,7 @@ echo "🔨 Step 4: Deploying on centos2..."
 echo ""
 
 # All deployment commands run as dap user - no root needed for app files
-ssh rajarora@centos2.rajarora.csslab << 'ENDSSH'
+ssh centos2 << 'ENDSSH'
 set -e
 
 echo "📝 preparing directory structure and permissions..."
