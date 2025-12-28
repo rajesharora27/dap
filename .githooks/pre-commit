@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Pre-commit hook to enforce modular layout on new files.
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+"$repo_root/scripts/enforce-modular-layout.sh"
+
