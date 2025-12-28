@@ -38,7 +38,7 @@ import { gql, useMutation, useApolloClient } from '@apollo/client';
 import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
 import { OutcomeDialog } from '@features/product-outcomes';
 import { SolutionReleaseDialog, Release } from '@features/product-releases';
-import { LicenseDialog } from '@features/product-licenses';
+import { LicenseDialog, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableAttributeItem } from '@shared/components/SortableAttributeItem';
@@ -139,36 +139,7 @@ const DELETE_RELEASE = gql`
   }
 `;
 
-const CREATE_LICENSE = gql`
-  mutation CreateLicense($input: LicenseInput!) {
-    createLicense(input: $input) {
-      id
-      name
-      description
-      level
-      isActive
-    }
-  }
-`;
-
-const UPDATE_LICENSE = gql`
-  mutation UpdateLicense($id: ID!, $input: LicenseInput!) {
-    updateLicense(id: $id, input: $input) {
-      id
-      name
-      description
-      level
-      isActive
-      solutionId
-    }
-  }
-`;
-
-const DELETE_LICENSE = gql`
-  mutation DeleteLicense($id: ID!) {
-    deleteLicense(id: $id)
-  }
-`;
+// License mutations are imported from @features/product-licenses
 
 interface TabPanelProps {
   children?: React.ReactNode;

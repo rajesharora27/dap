@@ -2,7 +2,6 @@ export * from './components/TestPanelNew';
 export * from './components/DatabaseManagementPanel';
 export * from './components/LogsViewerPanel';
 export * from './components/EnvironmentPanel';
-export * from './components/APITestingPanel';
 export * from './components/CodeQualityPanel';
 export * from './components/DevelopmentDocsPanel';
 export * from './components/EnhancedGitPanel';

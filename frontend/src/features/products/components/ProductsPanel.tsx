@@ -26,7 +26,7 @@ import {
   Update
 } from '@shared/components/FAIcon';
 import { ProductDialog } from './ProductDialog';
-import { License } from '@features/product-licenses';
+import { License, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
 import { Outcome } from '@features/product-outcomes';
 import { Release } from '@features/product-releases';
 
@@ -342,7 +342,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
             if (license.delete && license.id) {
               // Delete existing license
               await client.mutate({
-                mutation: gql`mutation DeleteLicense($id: ID!) { deleteLicense(id: $id) }`,
+                mutation: DELETE_LICENSE,
                 variables: { id: license.id }
               });
               console.log(`Deleted license: ${license.name}`);
@@ -351,11 +351,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
               const licenseLevel = license.level || 1;
               console.log(`Creating license: ${license.name}, level: ${licenseLevel}, productId: ${productId}`);
               const result = await client.mutate({
-                mutation: gql`
-                  mutation CreateLicense($input: LicenseInput!) {
-                    createLicense(input: $input) { id name description level isActive }
-                  }
-                `,
+                mutation: CREATE_LICENSE,
                 variables: {
                   input: {
                     name: license.name,
@@ -376,11 +372,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
               const licenseLevel = license.level || 1;
               console.log(`Updating license: ${license.name}, id: ${license.id}, level: ${licenseLevel}, productId: ${productId}`);
               const result = await client.mutate({
-                mutation: gql`
-                  mutation UpdateLicense($id: ID!, $input: LicenseInput!) {
-                    updateLicense(id: $id, input: $input) { id name description level isActive }
-                  }
-                `,
+                mutation: UPDATE_LICENSE,
                 variables: {
                   id: license.id,
                   input: {

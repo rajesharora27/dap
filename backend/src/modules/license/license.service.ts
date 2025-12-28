@@ -36,7 +36,11 @@ export class LicenseService {
     }
 
     static async updateLicense(userId: string, id: string, input: Partial<LicenseInput>) {
+        console.log(`[DEBUG] updateLicense called with id=${id}`);
+        console.log(`[DEBUG] updateLicense input:`, JSON.stringify(input, null, 2));
+
         const before = await prisma.license.findUnique({ where: { id } });
+        console.log(`[DEBUG] updateLicense before:`, JSON.stringify(before, null, 2));
 
         // Build update data, preserving existing productId/solutionId if not explicitly provided
         const updateData: any = {
@@ -57,10 +61,14 @@ export class LicenseService {
             updateData.solutionId = input.solutionId || null;
         }
 
+        console.log(`[DEBUG] updateLicense updateData:`, JSON.stringify(updateData, null, 2));
+
         const license = await prisma.license.update({
             where: { id },
             data: updateData
         });
+
+        console.log(`[DEBUG] updateLicense result:`, JSON.stringify(license, null, 2));
 
         await logAudit('UPDATE_LICENSE', 'License', id, { before, after: license }, userId);
         return license;
