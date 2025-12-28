@@ -22,11 +22,11 @@ import {
 } from '@mui/material';
 import { Add, Delete, DragIndicator, ArrowUpward, ArrowDownward } from '@shared/components/FAIcon';
 import { useMutation } from '@apollo/client';
-import { 
-  ADD_PRODUCT_TO_SOLUTION_ENHANCED, 
+import {
+  ADD_PRODUCT_TO_SOLUTION_ENHANCED,
   REMOVE_PRODUCT_FROM_SOLUTION_ENHANCED,
-  REORDER_PRODUCTS_IN_SOLUTION 
-} from '../graphql/mutations';
+  REORDER_PRODUCTS_IN_SOLUTION
+} from '../graphql/solutions.mutations';
 
 interface Product {
   id: string;
@@ -96,17 +96,17 @@ export const SolutionProductList: React.FC<Props> = ({
 
   const handleMoveUp = async (index: number) => {
     if (index === 0) return;
-    
+
     const products = [...solutionProducts].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
     const temp = products[index];
     products[index] = products[index - 1];
     products[index - 1] = temp;
-    
+
     const productOrders = products.map((sp: any, idx: number) => ({
       productId: sp.node.id,
       order: idx + 1
     }));
-    
+
     await reorderProducts({
       variables: { solutionId, productOrders }
     });
@@ -115,16 +115,16 @@ export const SolutionProductList: React.FC<Props> = ({
   const handleMoveDown = async (index: number) => {
     const products = [...solutionProducts].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
     if (index === products.length - 1) return;
-    
+
     const temp = products[index];
     products[index] = products[index + 1];
     products[index + 1] = temp;
-    
+
     const productOrders = products.map((sp: any, idx: number) => ({
       productId: sp.node.id,
       order: idx + 1
     }));
-    
+
     await reorderProducts({
       variables: { solutionId, productOrders }
     });
@@ -172,14 +172,14 @@ export const SolutionProductList: React.FC<Props> = ({
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 80 }}>
                     <DragIndicator sx={{ color: 'text.disabled' }} />
-                    <Chip 
-                      label={`#${index + 1}`} 
-                      size="small" 
+                    <Chip
+                      label={`#${index + 1}`}
+                      size="small"
                       color="primary"
                       variant="outlined"
                     />
                   </Box>
-                  
+
                   <ListItemText
                     primary={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

@@ -108,8 +108,8 @@ describe('GraphQL API - Excel Import Tags Integration', () => {
             .set('Authorization', `Bearer ${authToken}`)
             .send({
                 query: `
-          mutation ImportV2DryRun($content: String!, $entityType: EntityType) {
-            importV2DryRun(content: $content, entityType: $entityType) {
+          mutation ImportDryRun($content: String!, $entityType: EntityType) {
+            importDryRun(content: $content, entityType: $entityType) {
               sessionId
               isValid
               summary {
@@ -137,7 +137,7 @@ describe('GraphQL API - Excel Import Tags Integration', () => {
         }
         expect(dryRunResponse.status).toBe(200);
 
-        const dryRunResult = dryRunResponse.body.data.importV2DryRun;
+        const dryRunResult = dryRunResponse.body.data.importDryRun;
         if (dryRunResult.errors && dryRunResult.errors.length > 0) {
             console.error('Dry Run Errors:', dryRunResult.errors);
         }
@@ -150,8 +150,8 @@ describe('GraphQL API - Excel Import Tags Integration', () => {
             .set('Authorization', `Bearer ${authToken}`)
             .send({
                 query: `
-          mutation ImportV2Commit($sessionId: String!) {
-            importV2Commit(sessionId: $sessionId) {
+          mutation ImportCommit($sessionId: String!) {
+            importCommit(sessionId: $sessionId) {
               success
               entityId
               stats {
@@ -175,7 +175,7 @@ describe('GraphQL API - Excel Import Tags Integration', () => {
         }
         expect(commitResponse.status).toBe(200);
 
-        const commitResult = commitResponse.body.data.importV2Commit;
+        const commitResult = commitResponse.body.data.importCommit;
         expect(commitResult.success).toBe(true);
         expect(commitResult.stats.tagsCreated).toBe(1);
         expect(commitResult.stats.tasksCreated).toBe(1);

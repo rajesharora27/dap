@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApolloClient } from '@apollo/client';
-import { EXPORT_PRODUCT_V2 } from '../graphql/queries';
+import { EXPORT_PRODUCT_V2 } from '../graphql/products.queries';
 
 export const useProductImportExport = (
     selectedProduct: string | null,

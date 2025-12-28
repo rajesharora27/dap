@@ -1,7 +1,7 @@
 import { prisma } from '../../shared/graphql/context';
 import { logAudit } from '../../shared/utils/audit';
 import { createChangeSet, recordChange } from '../../shared/utils/changes';
-import { CreateProductSchema, UpdateProductSchema } from '../../validation/schemas';
+import { CreateProductSchema, UpdateProductSchema } from './product.validation';
 import { z } from 'zod';
 
 type CreateProductInput = z.infer<typeof CreateProductSchema>;

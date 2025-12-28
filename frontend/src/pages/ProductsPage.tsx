@@ -19,13 +19,13 @@ import { OutcomeDialog, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME } from '@
 import { ReleaseDialog, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE } from '@features/product-releases';
 import { LicenseDialog, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
 import { TASKS_FOR_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, TaskDialog } from '@features/tasks';
-import { SortableTaskItem } from '@shared/components/SortableTaskItem';
+import { SortableTaskItem } from '@features/tasks/components/SortableTaskItem';
 import { ColumnVisibilityToggle, DEFAULT_VISIBLE_COLUMNS } from '@shared/components/ColumnVisibilityToggle';
 import { TagDialog, ProductTag, CREATE_PRODUCT_TAG, UPDATE_PRODUCT_TAG, DELETE_PRODUCT_TAG } from '@features/tags';
 import { useAuth } from '@features/auth';
 import { useProductImportExport } from '@features/products';
 import { InlineEditableText } from '@shared/components/InlineEditableText';
-import { BulkImportDialog } from '@shared/components/BulkImportDialog';
+import { BulkImportDialog } from '@features/data-management/components/BulkImportDialog';
 
 interface ProductsPageProps {
     onEditProduct: (product: any) => void;

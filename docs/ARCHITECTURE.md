@@ -16,19 +16,31 @@ Supporting assets:
 ## 2. Module Map
 
 ### Frontend (`frontend/src`)
-- `pages/App.tsx`: root container, Apollo provider usage, navigation, Excel import/export drivers.
-- `components/…`: dialogs (product, task, license, release, outcome, telemetry), detail pages, auth bar.
-- `config/frontend.config.ts`: resolves API endpoints per environment.
-- `utils/sharedHandlers.ts`: shared GraphQL mutation handlers.
-- `__tests__/`: Jest + Testing Library suites (optional, skipped if no DOM).
+The frontend is organized into **Features** and **Shared** assets.
+
+- `features/`: Isolated feature modules.
+  - `adoption-plans/`: Customer task tables and progress groups.
+  - `data-management/`: Bulk import dialogs and progress hooks.
+  - `auth/`: Login, authentication context, and RBAC components.
+- `shared/`: Reusable project assets.
+  - `components/`: UI components (e.g., `FAIcon`, `custom-attributes`).
+  - `theme/`: Standardized colors and styles (`statusStyles`, `tabStyles`).
+  - `validation/`: Shared frontend validation utilities.
+- `pages/`: High-level page containers (e.g., `ProductsPage.tsx`, `SolutionsPage.tsx`).
 
 ### Backend (`backend/src`)
-- `schema/typeDefs.ts` & `schema/resolvers/index.ts`: GraphQL schema definition and resolver wiring.
-- `services/excel/`: `ExcelExportService` & `ExcelImportService` encapsulate workbook structure, header normalization, and validation.
-- `services/telemetry/`: evaluation engine, scoring helpers, telemetry repository access.
-- `schema/excel.graphql`: SDL types for Excel import/export operations.
-- `config/app.config.ts`: runtime configuration loader/validator.
-- `prisma/schema.prisma`: canonical data model with relations and enums.
+The backend follows a **Domain-Based** modular structure.
+
+- `modules/`: Self-contained domain logic.
+  - `product/`: Product services, resolvers, and domain-specific validation.
+  - `solution/`: Solution-level logic and bundling.
+  - `customer/`: Customer-specific assignments and metrics.
+  - `task/`: Core task management.
+  - `auth/`: Authentication middleware and security logic.
+  - `dev-tools/`: Specialized development and maintenance services.
+  - `import/`: Data ingestion and synchronization services.
+- `schema/`: Holistic GraphQL schema definitions.
+- `shared/`: Project-wide utilities (Prisma client, GraphQL context, logging).
 
 ## 3. Core Flows
 

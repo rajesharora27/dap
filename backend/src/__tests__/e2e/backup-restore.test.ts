@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { BackupRestoreService } from '../../services/BackupRestoreService';
+import { BackupRestoreService } from '../../modules/backup/backup.service';
 import * as path from 'path';
 import * as fs from 'fs';
 

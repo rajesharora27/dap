@@ -30,6 +30,7 @@ input SolutionInput {
   name: String!
   description: String
   customAttrs: JSON
+  licenseIds: [ID!]
 }
 
 extend type Query {

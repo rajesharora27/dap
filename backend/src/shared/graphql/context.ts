@@ -4,18 +4,12 @@ import jwt from 'jsonwebtoken';
 import { envConfig } from '../../config/env';
 import { createLoaders, Loaders } from '../database/dataloaders';
 
-export const fallbackActive = (process.env.AUTH_FALLBACK || '').toLowerCase() === '1' || (process.env.AUTH_FALLBACK || '').toLowerCase() === 'true';
+// Fallback logic removed
+export const fallbackActive = false;
 
 // Minimal stub to satisfy resolver calls without crashing when DB is unavailable
-const prismaStub: any = {
-  product: { findMany: async () => [], findUnique: async () => null, count: async () => 0 },
-  task: { findMany: async () => [], findUnique: async () => null, count: async () => 0 },
-  taskStatus: { findUnique: async () => null, upsert: async () => null },
-  auditLog: { findMany: async () => [] },
-  changeItem: { findMany: async () => [] },
-  telemetry: { findMany: async () => [], deleteMany: async () => ({}) },
-  lockedEntity: { deleteMany: async () => ({}) }
-};
+// Prisma Stub removed
+
 
 // Use real Prisma only if not in fallback mode
 // Configure connection pool size for production multi-user environment
@@ -112,7 +106,7 @@ export const disconnectPrisma = async (): Promise<void> => {
   }
 };
 
-export const prisma: any = fallbackActive ? prismaStub : getPrismaClient();
+export const prisma: any = getPrismaClient();
 
 // Graceful shutdown handler to properly close database connections
 // This handles SIGTERM (PM2 graceful stop), SIGINT (Ctrl+C), and process exit
@@ -176,10 +170,8 @@ export const logger = pino({
   redact: envConfig.logging.redact
 });
 
-const fallbackUsers = [
-  { id: 'u-admin', username: 'admin', email: 'admin@example.com', password: 'admin', role: 'ADMIN' },
-  { id: 'u-user', username: 'user', email: 'user@example.com', password: 'user', role: 'USER' }
-];
+// Fallback users removed
+
 
 export interface Context {
   prisma: any;
@@ -201,25 +193,23 @@ export async function createContext({ req }: any): Promise<Context> {
 
       let isValidSession = true;
 
-      // Verify session exists in DB (unless in fallback mode)
-      if (!fallbackActive) {
-        if (decoded.sessionId) {
-          const session = await prisma.session.findUnique({
-            where: { id: decoded.sessionId }
-          });
+      // Verify session exists in DB
 
-          if (!session || session.expiresAt < new Date()) {
-            console.warn(`Invalid or expired session: ${decoded.sessionId}`);
-            isValidSession = false;
-          }
-        } else {
-          // Token missing sessionId - treat as invalid to enforce session tracking
-          // This ensures that old stateless tokens are invalidated when we switch to stateful
-          console.warn('Token missing sessionId - rejecting');
+      if (decoded.sessionId) {
+        const session = await prisma.session.findUnique({
+          where: { id: decoded.sessionId }
+        });
+
+        if (!session || session.expiresAt < new Date()) {
+          console.warn(`Invalid or expired session: ${decoded.sessionId}`);
           isValidSession = false;
         }
+      } else {
+        // Token missing sessionId - treat as invalid to enforce session tracking
+        // This ensures that old stateless tokens are invalidated when we switch to stateful
+        console.warn('Token missing sessionId - rejecting');
+        isValidSession = false;
       }
-
       if (isValidSession) {
         user = {
           userId: decoded.userId || decoded.uid, // Support both new and old format
@@ -245,9 +235,7 @@ export async function createContext({ req }: any): Promise<Context> {
     console.log('🔓 DEV MODE: Using default dev user');
   }
 
-  if (!user && fallbackActive) {
-    user = { id: 'admin', username: 'admin', role: 'ADMIN', isAdmin: true };
-  }
+
 
   return {
     prisma,

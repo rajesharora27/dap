@@ -24,8 +24,8 @@ import { Add, Edit, Delete, Download, Upload, Assessment, Sync } from '@shared/c
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { AssignSolutionDialog } from './AssignSolutionDialog';
 import { EditSolutionEntitlementsDialog } from './EditSolutionEntitlementsDialog';
-import { SolutionAdoptionPlanView } from './solution-adoption/SolutionAdoptionPlanView';
-import { importSolutionTelemetry, downloadFileFromUrl } from '@/utils/telemetryOperations';
+import { SolutionAdoptionPlanView } from '@features/adoption-plans';
+import { importSolutionTelemetry, downloadFileFromUrl } from '@/features/telemetry/utils/telemetryOperations';
 
 
 const GET_CUSTOMER_SOLUTIONS = gql`

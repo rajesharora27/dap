@@ -19,12 +19,12 @@ import { SOLUTION_TAGS, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTIO
 import { OutcomeDialog, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME } from '@features/product-outcomes';
 import { ReleaseDialog, SolutionReleaseDialog, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE } from '@features/product-releases';
 import { LicenseDialog, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
-import { SortableTaskItem } from '@shared/components/SortableTaskItem';
+import { SortableTaskItem } from '@features/tasks/components/SortableTaskItem';
 import { ColumnVisibilityToggle, DEFAULT_VISIBLE_COLUMNS } from '@shared/components/ColumnVisibilityToggle';
 
 import { useAuth } from '@features/auth';
 import { InlineEditableText } from '@shared/components/InlineEditableText';
-import { BulkImportDialog } from '@shared/components/BulkImportDialog';
+import { BulkImportDialog } from '@features/data-management/components/BulkImportDialog';
 
 export const SolutionsPage: React.FC = () => {
     // State

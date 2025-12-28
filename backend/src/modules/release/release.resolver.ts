@@ -2,7 +2,7 @@
  * Release Module Resolvers
  */
 
-import { prisma, fallbackActive } from '../../shared/graphql/context';
+import { prisma } from '../../shared/graphql/context';
 import { ensureRole } from '../../shared/auth/auth-helpers';
 import { logAudit } from '../../shared/utils/audit';
 import { ReleaseService } from './release.service';
@@ -12,15 +12,10 @@ import { ReleaseService } from './release.service';
  */
 export const ReleaseFieldResolvers = {
     product: (parent: any) => {
-        if (fallbackActive) {
-            const { products } = require('../../shared/utils/fallbackStore');
-            return products.find((p: any) => p.id === parent.productId);
-        }
         return parent.productId ? prisma.product.findUnique({ where: { id: parent.productId } }) : null;
     },
 
     tasks: async (parent: any) => {
-        if (fallbackActive) return [];
         const taskReleases = await prisma.taskRelease.findMany({
             where: { releaseId: parent.id },
             include: { task: true }
@@ -29,7 +24,6 @@ export const ReleaseFieldResolvers = {
     },
 
     inheritedTasks: async (parent: any) => {
-        if (fallbackActive) return [];
 
         const productId = parent.productId;
         const solutionId = parent.solutionId;
@@ -67,7 +61,7 @@ export const ReleaseFieldResolvers = {
  */
 export const ReleaseQueryResolvers = {
     releases: async (_: any, { productId }: any) => {
-        if (fallbackActive) return [];
+
         const where: any = { deletedAt: null };
         if (productId) where.productId = productId;
         return prisma.release.findMany({
@@ -83,11 +77,6 @@ export const ReleaseQueryResolvers = {
 export const ReleaseMutationResolvers = {
     createRelease: async (_: any, { input }: any, ctx: any) => {
         ensureRole(ctx, ['ADMIN', 'SME']);
-        if (fallbackActive) {
-            const r = await prisma.release.create({ data: input });
-            await logAudit('CREATE_RELEASE', 'Release', r.id, { input }, ctx.user?.id);
-            return r;
-        }
         return ReleaseService.createRelease(ctx.user?.id, input);
     },
 

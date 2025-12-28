@@ -96,7 +96,7 @@ describe('GraphQL API - Excel Export Integration', () => {
             .send({
                 query: `
           query ExportProductToExcel($productId: ID!) {
-            exportProductV2(productId: $productId) {
+            exportProduct(productId: $productId) {
               filename
               content
               mimeType
@@ -111,7 +111,7 @@ describe('GraphQL API - Excel Export Integration', () => {
 
         // 3. Verify Response Structure
         expect(response.status).toBe(200);
-        const data = response.body.data.exportProductV2;
+        const data = response.body.data.exportProduct;
         expect(data).toBeDefined();
         expect(data.filename).toContain('Export Tags Test Product');
         expect(data.content).toBeDefined();

@@ -22,7 +22,7 @@ import {
   Chip
 } from '@mui/material';
 import { License } from '../types';
-import { ValidationUtils } from '@shared/utils/validation';
+import { validateName, validateLicense } from '@shared/validation';
 
 interface ProductLicense {
   id: string;
@@ -105,11 +105,11 @@ export const LicenseDialog: React.FC<LicenseDialogProps> = ({
   }, [license, open, licensesByProduct]);
 
   const handleSave = () => {
-    const errors = ValidationUtils.validateLicense(formData);
+    const validationErrors = validateLicense(formData);
 
-    if (errors.length > 0) {
-      setValidationErrors(errors);
-      alert('Please fix the following errors:\n' + errors.join('\n'));
+    if (validationErrors.length > 0) {
+      setValidationErrors(validationErrors);
+      alert('Please fix the following errors:\n' + validationErrors.join('\n'));
       return;
     }
 

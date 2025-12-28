@@ -117,13 +117,13 @@ import {
   DevelopmentDocsPanel,
   DatabaseManagementPanel,
   LogsViewerPanel,
-  EnhancedBuildDeployPanel,
+  BuildDeployPanel,
   EnvironmentPanel,
-  EnhancedAPITestingPanel,
+  APITestingPanel,
   CodeQualityPanel,
   PerformancePanel,
   TaskRunnerPanel,
-  EnhancedGitPanel
+  GitPanel
 } from '@features/dev-tools';
 import { gql, useQuery, useApolloClient, ApolloError } from '@apollo/client';
 import {
@@ -147,7 +147,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 
 import { TASKS_FOR_PRODUCT } from '@features/tasks';
-import { PRODUCTS } from '../graphql/queries';
+import { PRODUCTS } from '../features/products/graphql/products.queries';
 
 
 
@@ -2447,12 +2447,12 @@ export function App() {
                   {selectedDevSubSection === 'docs' && <DevelopmentDocsPanel />}
                   {selectedDevSubSection === 'database' && <DatabaseManagementPanel />}
                   {selectedDevSubSection === 'logs' && <LogsViewerPanel />}
-                  {selectedDevSubSection === 'build' && <EnhancedBuildDeployPanel />}
+                  {selectedDevSubSection === 'build' && <BuildDeployPanel />}
                   {selectedDevSubSection === 'env' && <EnvironmentPanel />}
-                  {selectedDevSubSection === 'api' && <EnhancedAPITestingPanel />}
+                  {selectedDevSubSection === 'api' && <APITestingPanel />}
                   {selectedDevSubSection === 'quality' && <CodeQualityPanel />}
                   {selectedDevSubSection === 'performance' && <PerformancePanel />}
-                  {selectedDevSubSection === 'git' && <EnhancedGitPanel />}
+                  {selectedDevSubSection === 'git' && <GitPanel />}
                   {selectedDevSubSection === 'tasks' && <TaskRunnerPanel />}
                 </Box>
               )}

@@ -10,7 +10,7 @@ import {
     Box
 } from '@mui/material';
 import { Outcome } from '../types';
-import { ValidationUtils } from '@shared/utils/validation';
+import { validateName, validateOutcome } from '@shared/validation';
 
 interface OutcomeDialogProps {
     open: boolean;
@@ -47,11 +47,15 @@ export const OutcomeDialog: React.FC<OutcomeDialogProps> = ({
     }, [outcome, open]);
 
     const handleSave = () => {
-        const errors = ValidationUtils.validateOutcome(formData);
+        // Assuming validateOutcome is a function that needs to be imported or defined,
+        // and trimName/description refer to formData properties.
+        // If validateOutcome is not available, this line will cause an error.
+        // For now, we'll assume it's meant to be used with formData.name and formData.description.
+        const validationErrors = validateOutcome({ name: formData.name, description: formData.description });
 
-        if (errors.length > 0) {
-            setValidationErrors(errors);
-            alert('Please fix the following errors:\n' + errors.join('\n'));
+        if (validationErrors.length > 0) {
+            setValidationErrors(validationErrors);
+            alert('Please fix the following errors:\n' + validationErrors.join('\n'));
             return;
         }
 

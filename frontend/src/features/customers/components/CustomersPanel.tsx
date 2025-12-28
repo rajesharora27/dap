@@ -81,12 +81,12 @@ import { EditSolutionEntitlementsDialog } from './EditSolutionEntitlementsDialog
 import { CustomerSolutionPanel } from './CustomerSolutionPanel';
 import { CustomerOverviewTab } from './CustomerOverviewTab';
 import { getApiUrl } from '@/config/frontend.config';
-import { getStatusBackgroundColor, getStatusColor, getStatusChipColor, getUpdateSourceChipColor, formatStatus } from '@/utils/statusStyles';
-import { formatSuccessCriteria } from '@/utils/criteriaFormatter';
-import { TaskDetailsDialog, TaskDetailsData } from '@shared/components/TaskDetailsDialog';
+import { getStatusBackgroundColor, getStatusColor, getStatusChipColor, getUpdateSourceChipColor, formatStatus } from '@shared/theme/statusStyles';
+import { formatSuccessCriteria } from '@/features/telemetry/utils/criteriaFormatter';
+import { TaskDetailsDialog, TaskDetailsData } from '@features/tasks/components/TaskDetailsDialog';
 import { ColumnVisibilityToggle, TASK_COLUMNS, DEFAULT_VISIBLE_COLUMNS } from '@shared/components';
 import { useAuth } from '@features/auth';
-import { importProductTelemetry, downloadFileFromUrl } from '@/utils/telemetryOperations';
+import { importProductTelemetry, downloadFileFromUrl } from '@/features/telemetry/utils/telemetryOperations';
 
 
 

@@ -77,6 +77,37 @@ DAP is a customer adoption tracking system where an **Executive Dashboard** prov
 
 ## System Architecture
 
+### Modular Architecture Policy
+
+> [!IMPORTANT]
+> **Strict Modular Adherence:** All future development in DAP MUST adhere to the established modular architecture. Monolithic or shared-utility-only folders (like `api/`, `middleware/`, or `validation/` at the source root) are deprecated.
+
+#### Backend (Domain-Based)
+The backend is organized into domain-specific modules under `backend/src/modules/`. Each module is self-contained and should export its interface via a barrel file (`index.ts`).
+
+**Key Modules:**
+- `product`: Product management, modeling, and attributes.
+- `solution`: Product bundling and solution-level tasks.
+- `customer`: Customer management and assignment logic.
+- `task`: Core task definitions and lifecycle.
+- `auth`: Authentication middleware and helpers.
+- `dev-tools`: Admin-only development utilities and diagnostics.
+- `import`: Excel/CSV processing and data synchronization.
+
+#### Frontend (Feature-Based)
+The frontend follows a feature-based organization under `frontend/src/features/`. Shared UI elements and utilities are strictly categorized under `frontend/src/shared/`.
+
+**Key Feature Folders:**
+- `adoption-plans`: Progress tracking and customer-facing implementation views.
+- `data-management`: Bulk import/export and telemetry synchronization.
+- `products` / `solutions`: Modeling and definition interfaces.
+- `auth`: Login, RBAC, and session management.
+
+**Shared Directory Structure:**
+- `shared/components`: Reusable UI components (e.g., `FAIcon`, `custom-attributes`).
+- `shared/theme`: Project-wide styling (e.g., `statusStyles`, `tabStyles`).
+- `shared/validation`: Shared validation logic for both frontend and backend parity.
+
 ### High-Level Architecture
 
 ```
@@ -118,17 +149,18 @@ DAP is a customer adoption tracking system where an **Executive Dashboard** prov
 
 #### Frontend
 - **Framework:** React 19 with TypeScript
-- **Architecture:** Feature-Based Modular Architecture
+- **Architecture:** Feature-Based Modular Architecture (Strict)
+  - Features are isolated in `src/features/[feature-name]`
+  - Shared assets in `src/shared/` (theme, components, validation, types)
 - **Build Tool:** Vite 7
 - **UI Library:** Material-UI (MUI) v6
 - **GraphQL Client:** Apollo Client
-- **State Management:** React hooks + Apollo Cache
-- **Drag & Drop:** DnD Kit
-- **Routing:** React Router v7
-- **Forms:** Material-UI controlled components
 
 #### Backend
 - **Runtime:** Node.js 20+
+- **Architecture:** Domain-Based Modular Architecture (Strict)
+  - Modules encapsulated in `src/modules/[domain-name]`
+  - Each module contains its own resolvers, services, and validation
 - **Framework:** Express 5
 - **GraphQL:** Apollo Server v4
 - **ORM:** Prisma 6.14.0

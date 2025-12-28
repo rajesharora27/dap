@@ -2,5 +2,5 @@
  * Product GraphQL - Barrel Export
  */
 
-export * from './queries';
-export * from './mutations';
+export * from './products.queries';
+export * from './products.mutations';

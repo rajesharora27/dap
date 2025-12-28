@@ -4,8 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { MockedProvider } from '@apollo/client/testing';
 import { ProductsPage } from '../../pages/ProductsPage';
 import { AuthProvider } from '@features/auth';
-import { PRODUCTS } from '../../graphql/queries';
-import { CREATE_PRODUCT_TAG } from '../../graphql/mutations';
+import { PRODUCTS } from '../../features/products/graphql/products.queries';
+import { CREATE_PRODUCT_TAG } from '../../features/products/graphql/products.mutations';
 
 // Mocks
 jest.mock('react-router-dom', () => ({

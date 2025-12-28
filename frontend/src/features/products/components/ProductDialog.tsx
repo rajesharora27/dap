@@ -20,15 +20,15 @@ import {
 } from '@mui/material';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import { SortableAttributeItem } from '@shared/components/SortableAttributeItem';
+import { SortableAttributeItem } from '@shared/components';
 import { Add as AddIcon, Delete as DeleteIcon, Edit as EditIcon } from '@shared/components/FAIcon';
 import { License } from '@features/product-licenses';
 import { Outcome } from '@features/product-outcomes';
 import { Release } from '@features/product-releases';
 import { Product } from '../types';
 import { CustomAttribute } from '@shared/types';
-import { ValidationUtils } from '@shared/utils/validation';
-import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
+import { validateProduct, validateName, validateSequenceNumber, validateWeight } from '@shared/validation';
+import { CustomAttributeDialog } from '@shared/components';
 import { OutcomeDialog } from '@features/product-outcomes';
 import { ReleaseDialog } from '@features/product-releases';
 import { LicenseDialog } from '@features/product-licenses';
@@ -397,7 +397,7 @@ export const ProductDialog: React.FC<Props> = ({
 
     const parsedAttrs = customAttrs;
 
-    const productValidationErrors = ValidationUtils.validateProduct({
+    const productValidationErrors = validateProduct({
       name: name.trim(),
       description: description.trim() || undefined,
       customAttrs: Object.keys(parsedAttrs).length > 0 ? parsedAttrs : undefined

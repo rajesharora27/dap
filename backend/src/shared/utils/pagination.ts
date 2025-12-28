@@ -1,5 +1,4 @@
-import { prisma, fallbackActive } from '../graphql/context';
-import * as fallbackStore from './fallbackStore';
+import { prisma } from '../graphql/context';
 import { connectionFromArraySlice, cursorToOffset } from 'graphql-relay';
 
 interface DecodedCursor { id: string; createdAt?: string }
@@ -44,23 +43,7 @@ export function buildConnection<T extends { id: string; createdAt?: Date }>(item
 
 // Specific fetch helpers
 export async function fetchProductsPaginated(args: ConnectionArgs & { accessibleIds?: string[] }) {
-  const fb = (process.env.AUTH_FALLBACK || '').toLowerCase();
-  if (fb === '1' || fb === 'true') {
-    const sample = [
-      { id: 'p-1', name: 'Sample Product A', description: 'Demo product A', createdAt: new Date() },
-      { id: 'p-2', name: 'Sample Product B', description: 'Demo product B', createdAt: new Date() },
-      { id: 'p-3', name: 'Sample Product C', description: 'Demo product C', createdAt: new Date() }
-    ];
-    return buildConnection(sample as any, sample.length, sample.length, false, false);
-  }
-  if (fallbackActive) {
-    const sample = [
-      { id: 'p-1', name: 'Sample Product A', description: 'Demo product A', createdAt: new Date() },
-      { id: 'p-2', name: 'Sample Product B', description: 'Demo product B', createdAt: new Date() },
-      { id: 'p-3', name: 'Sample Product C', description: 'Demo product C', createdAt: new Date() }
-    ];
-    return buildConnection(sample as any, sample.length, sample.length, false, false);
-  }
+
   const forward = args.first != null;
   const backward = args.last != null;
   if (forward && backward) throw new Error('Cannot use first & last together');
@@ -154,31 +137,7 @@ export async function fetchProductsPaginated(args: ConnectionArgs & { accessible
 }
 
 export async function fetchTasksPaginated(productId?: string, args?: ConnectionArgs & { solutionId?: string }) {
-  const fb = (process.env.AUTH_FALLBACK || '').toLowerCase();
-  if (fb === '1' || fb === 'true') {
-    // Use actual fallback store data directly imported (not require)
-    let filteredTasks = [...fallbackStore.tasks]; // Use imported arrays to see runtime modifications
 
-    // Filter out deleted tasks first
-    filteredTasks = filteredTasks.filter((t: any) => !t.deletedAt);
-
-    if (productId) {
-      filteredTasks = filteredTasks.filter((t: any) => t.productId === productId);
-    } else if (args?.solutionId) {
-      filteredTasks = filteredTasks.filter((t: any) => t.solutionId === args.solutionId);
-    }
-
-    // Sort by sequence number to ensure correct execution order
-    filteredTasks.sort((a: any, b: any) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
-
-    // Add status information to each task
-    const tasksWithStatus = filteredTasks.map((task: any) => ({
-      ...task,
-      status: fallbackStore.taskStatuses.find((ts: any) => ts.id === task.statusId)
-    }));
-
-    return buildConnection(tasksWithStatus as any, tasksWithStatus.length, tasksWithStatus.length, false, false);
-  }
 
   const safeArgs = args || {};
   const forward = safeArgs.first != null;

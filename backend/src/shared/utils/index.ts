@@ -10,4 +10,3 @@ export * from './changes';
 export * from './pagination';
 export * from './csv';
 export * from './csvSamples';
-export * from './fallbackStore';

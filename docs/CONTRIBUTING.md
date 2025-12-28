@@ -68,6 +68,7 @@ All submissions require review before merging. We use GitHub pull requests for t
 ### Review Checklist
 
 - [ ] Code follows style guidelines
+- [ ] **Strict adherence to modular architecture** (Backend domain modules, Frontend feature modules)
 - [ ] Tests pass (CI green)
 - [ ] Code coverage maintained/improved
 - [ ] No new security vulnerabilities
@@ -96,6 +97,15 @@ All submissions require review before merging. We use GitHub pull requests for t
 - Use DataLoader for GraphQL
 - Lazy load components
 - Optimize bundle size
+
+### Architectural Standards
+
+DAP enforces a **Strict Modular Architecture**. All contributors must follow these patterns:
+
+1. **Backend**: Organise code by domain in `src/modules/[domain]`. Each module must be self-contained with its own service, resolver, and validation.
+2. **Frontend**: Organise code by feature in `src/features/[feature]`.
+3. **Shared Code**: Shared components, logic, or styles must be placed in the appropriate `src/shared/` subfolder.
+4. **No Monoliths**: Avoid adding files to top-level `api/`, `middleware/`, or `validation/` directories.
 
 ## Local Development
 

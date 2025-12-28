@@ -17,12 +17,12 @@ import { makeExecutableSchema } from '@graphql-tools/schema';
 import { createContext, prisma } from './shared/graphql/context';
 import { config as appConfig } from './config/app.config';
 import { envConfig } from './config/env';
-import { CustomerTelemetryImportService } from './services/telemetry/CustomerTelemetryImportService';
-import { SessionManager } from './utils/sessionManager';
-import { AutoBackupScheduler } from './services/AutoBackupScheduler';
+import { CustomerTelemetryImportService } from './modules/telemetry/customer-telemetry-import.service';
+import { SessionManager } from './modules/auth/session.service';
+import { AutoBackupScheduler } from './modules/backup/auto-backup.scheduler';
 import { initSentry, captureException } from './shared/monitoring/sentry';
 import { ApolloServerPluginLandingPageLocalDefault, ApolloServerPluginLandingPageProductionDefault } from '@apollo/server/plugin/landingPage/default';
-import devToolsRouter, { addLogEntry } from './api/devTools';
+import devToolsRouter, { addLogEntry } from './modules/dev-tools/dev-tools.router';
 // Force restart to load permission enforcement - 2025-11-11
 
 export async function createApp() {
@@ -242,7 +242,7 @@ export async function createApp() {
       fs.writeFileSync(filePath, file.buffer);
 
       // Import the BackupRestoreService dynamically
-      const { BackupRestoreService } = await import('./services/BackupRestoreService');
+      const { BackupRestoreService } = await import('./modules/backup/backup.service');
 
       // Restore from the uploaded file
       const result = await BackupRestoreService.restoreBackup(filename);
@@ -271,7 +271,7 @@ export async function createApp() {
     // Better to import along with others at top, but for replacing content block safely:
     // I will assume specific import at top or import here using dynamic import if needed.
     // Let's use dynamic import to be safe with tool usage without modifying top of file.
-    import('./services/excel-v2/progress/ProgressService').then(({ ProgressService }) => {
+    import('./modules/import/progress/ProgressService').then(({ ProgressService }) => {
       ProgressService.getInstance().addClient(sessionId, res);
     });
   });

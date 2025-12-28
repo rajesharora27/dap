@@ -253,14 +253,15 @@ run_integration_tests() {
 }
 
 # Run Excel Export V2 tests
-run_export_v2_test() {
-    log_header "EXCEL EXPORT V2 TESTS (Shadow Database)"
+# Run Excel Export tests
+run_excel_export_test() {
+    log_header "EXCEL EXPORT TESTS (Shadow Database)"
     
     echo ""
     log_info "📁 Working Directory: $BACKEND_DIR"
     log_info "🗃️  Database: dap_test (shadow copy - dev data protected!)"
     log_info "🔧 NODE_ENV: test"
-    log_info "🔍 Test: excel-export-v2"
+    log_info "🔍 Test: excel-export"
     echo ""
     
     ensure_test_database
@@ -272,30 +273,31 @@ run_export_v2_test() {
     export CI="true"
     
     echo ""
-    log_info "💻 Running Export V2 tests..."
+    log_info "💻 Running Export tests..."
     echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
     echo ""
     
-    if npm test -- --runInBand --passWithNoTests --testPathPattern="excel-export-v2"; then
+    if npm test -- --runInBand --passWithNoTests --testPathPattern="excel-export"; then
         echo ""
-        log_success "🎉 EXPORT V2 TESTS PASSED!"
+        log_success "🎉 EXPORT TESTS PASSED!"
         return 0
     else
         echo ""
-        log_error "❌ EXPORT V2 TESTS FAILED!"
+        log_error "❌ EXPORT TESTS FAILED!"
         return 1
     fi
 }
 
 # Run Excel Import V2 tests
-run_import_v2_test() {
-    log_header "EXCEL IMPORT V2 TESTS (Shadow Database)"
+# Run Excel Import tests
+run_excel_import_test() {
+    log_header "EXCEL IMPORT TESTS (Shadow Database)"
     
     echo ""
     log_info "📁 Working Directory: $BACKEND_DIR"
     log_info "🗃️  Database: dap_test (shadow copy - dev data protected!)"
     log_info "🔧 NODE_ENV: test"
-    log_info "🔍 Test: excel-import-v2"
+    log_info "🔍 Test: excel-import"
     echo ""
     
     ensure_test_database
@@ -307,17 +309,17 @@ run_import_v2_test() {
     export CI="true"
     
     echo ""
-    log_info "💻 Running Import V2 tests..."
+    log_info "💻 Running Import tests..."
     echo -e "${CYAN}───────────────────────────────────────────────────────────────${NC}"
     echo ""
     
-    if npm test -- --runInBand --passWithNoTests --testPathPattern="excel-import-v2"; then
+    if npm test -- --runInBand --passWithNoTests --testPathPattern="excel-import"; then
         echo ""
-        log_success "🎉 IMPORT V2 TESTS PASSED!"
+        log_success "🎉 IMPORT TESTS PASSED!"
         return 0
     else
         echo ""
-        log_error "❌ IMPORT V2 TESTS FAILED!"
+        log_error "❌ IMPORT TESTS FAILED!"
         return 1
     fi
 }
@@ -431,17 +433,17 @@ run_all_tests() {
     
     echo ""
 
-    # Export V2 Tests
-    log_info "Running Export V2 tests..."
-    if ! run_export_v2_test; then
+    # Export Tests
+    log_info "Running Export tests..."
+    if ! run_excel_export_test; then
         failed=1
     fi
     
     echo ""
 
-    # Import V2 Tests
-    log_info "Running Import V2 tests..."
-    if ! run_import_v2_test; then
+    # Import Tests
+    log_info "Running Import tests..."
+    if ! run_excel_import_test; then
         failed=1
     fi
     
@@ -500,8 +502,8 @@ show_help() {
     echo -e "  ${CYAN}unit${NC}          - Run unit tests (optional: pattern, --coverage)"
     echo -e "  ${CYAN}tags${NC}          - Run tags implementation tests"
     echo -e "  ${CYAN}integration${NC}   - Run GraphQL integration tests"
-    echo -e "  ${CYAN}export-v2${NC}     - Run Excel Export V2 tests"
-    echo -e "  ${CYAN}import-v2${NC}     - Run Excel Import V2 tests"
+    echo -e "  ${CYAN}excel-export${NC}  - Run Excel Export tests"
+    echo -e "  ${CYAN}excel-import${NC}  - Run Excel Import tests"
     echo -e "  ${YELLOW}coverage${NC}      - Run all tests with coverage report"
     echo -e "  ${BLUE}legacy${NC}        - Run legacy test scripts from tests/ directory"
     echo -e "  ${BLUE}list${NC}          - List available test files"
@@ -626,11 +628,11 @@ main() {
         integration)
             run_integration_tests
             ;;
-        export-v2)
-            run_export_v2_test
+        excel-export)
+            run_excel_export_test
             ;;
-        import-v2)
-            run_import_v2_test
+        excel-import)
+            run_excel_import_test
             ;;
         coverage)
             shift

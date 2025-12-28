@@ -2,5 +2,5 @@
  * Solution GraphQL - Barrel Export
  */
 
-export * from './queries';
-export * from './mutations';
+export * from './solutions.queries';
+export * from './solutions.mutations';
