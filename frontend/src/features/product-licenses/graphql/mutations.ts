@@ -8,6 +8,8 @@ export const CREATE_LICENSE = gql`
       description
       level
       isActive
+      productId
+      solutionId
       customAttrs
     }
   }
@@ -21,6 +23,8 @@ export const UPDATE_LICENSE = gql`
       description
       level
       isActive
+      productId
+      solutionId
       customAttrs
     }
   }

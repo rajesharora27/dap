@@ -159,6 +159,7 @@ const UPDATE_LICENSE = gql`
       description
       level
       isActive
+      solutionId
     }
   }
 `;
