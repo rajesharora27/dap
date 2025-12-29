@@ -20,7 +20,7 @@ import { AuthProvider } from '@features/auth';
 import { ApolloClientWrapper } from '@/providers/ApolloClientProvider';
 import { AppThemeProvider } from './theme/ThemeProvider';
 import { ErrorBoundary } from '@shared/components/ErrorBoundary';
-import { initSentry } from './lib/sentry';
+import { initSentry } from '@shared/services/sentry';
 
 // Initialize Sentry for error tracking
 initSentry();

@@ -45,6 +45,8 @@ allowed_frontend=(
   '^frontend/src/main\.tsx$'
   '^frontend/src/setupTests\.ts$'
   '^frontend/src/__tests__/'
+  '^frontend/src/generated/'
+  '^frontend/src/vite-env\.d\.ts$'
 )
 
 is_allowed() {
@@ -63,16 +65,26 @@ is_allowed() {
 
 # Check staged additions/renames only
 violations=()
-while IFS=$'\t' read -r status path; do
-  # statuses: A=added, R=renamed, C=copied, M=modified
-  # We gate new path locations (A/R/C) and ignore deletions.
+while IFS=$'\t' read -r status path1 path2; do
+  # statuses: A=added, R=renamed, C=copied, M=modified, D=deleted
+  # For renames (R) and copies (C), path1=source, path2=destination
+  # We only care about the destination path for R/C operations
   case "$status" in
-    A*|R*|C*)
-      if ! is_allowed "$path"; then
-        violations+=("$path")
+    A*)
+      # Added file - check the path
+      if ! is_allowed "$path1"; then
+        violations+=("$path1")
+      fi
+      ;;
+    R*|C*)
+      # Renamed or copied - check only the destination path (path2)
+      # This allows moving files FROM non-modular TO modular locations
+      if ! is_allowed "$path2"; then
+        violations+=("$path2")
       fi
       ;;
     *)
+      # M (modified) and D (deleted) are fine
       ;;
   esac
 done < <(git diff --cached --name-status)

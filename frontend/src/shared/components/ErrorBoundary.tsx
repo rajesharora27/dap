@@ -1,6 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { Box, Button, Container, Paper, Typography } from '@mui/material';
-import { captureException } from '@/lib/sentry';
+import { captureException } from '@shared/services/sentry';
 import { ErrorOutline as ErrorOutlineIcon, Refresh as RefreshIcon } from './FAIcon';
 
 
