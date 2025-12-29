@@ -92,7 +92,7 @@ import { importProductTelemetry, downloadFileFromUrl } from '@/features/telemetr
 
 // GraphQL Queries
 const CUSTOMERS = gql`
-  query CustomersPanelQuery {
+  query Customers {
     customers {
       id
       name
@@ -157,7 +157,7 @@ const CUSTOMERS = gql`
 
 
 const GET_ADOPTION_PLAN = gql`
-  query GetAdoptionPlan($id: ID!) {
+  query AdoptionPlan($id: ID!) {
     adoptionPlan(id: $id) {
       id
       progressPercentage
@@ -976,7 +976,7 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
   });
 
   const [updateTaskStatus] = useMutation(UPDATE_TASK_STATUS, {
-    refetchQueries: ['GetAdoptionPlan', 'GetCustomers'],
+    refetchQueries: ['AdoptionPlan', 'Customers'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       refetchPlan();
@@ -989,7 +989,7 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
   });
 
   const [syncAdoptionPlan, { loading: syncLoading }] = useMutation(SYNC_ADOPTION_PLAN, {
-    refetchQueries: ['GetAdoptionPlan', 'GetCustomers'],
+    refetchQueries: ['AdoptionPlan', 'Customers'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       setSyncingProductId(null);
@@ -1007,7 +1007,7 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
 
 
   const [updateCustomerProduct] = useMutation(UPDATE_CUSTOMER_PRODUCT, {
-    refetchQueries: ['GetAdoptionPlan', 'GetCustomers'],
+    refetchQueries: ['AdoptionPlan', 'Customers'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       setEditLicensesDialogOpen(false);
@@ -1019,7 +1019,7 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
   });
 
   const [removeProduct, { loading: removeLoading }] = useMutation(REMOVE_PRODUCT_FROM_CUSTOMER, {
-    refetchQueries: ['GetCustomers'],
+    refetchQueries: ['Customers'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       setSelectedCustomerProductId(null);
@@ -1033,7 +1033,7 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
   });
 
   const [removeSolution, { loading: removeSolutionLoading }] = useMutation(REMOVE_SOLUTION_FROM_CUSTOMER, {
-    refetchQueries: ['GetCustomers'],
+    refetchQueries: ['Customers'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       setSelectedCustomerSolutionId(null);
@@ -1047,7 +1047,7 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
   });
 
   const [syncSolutionPlan, { loading: syncSolutionLoading }] = useMutation(SYNC_SOLUTION_ADOPTION_PLAN, {
-    refetchQueries: ['GetCustomers', 'GetAdoptionPlan'],
+    refetchQueries: ['Customers', 'AdoptionPlan'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       setSyncingSolutionId(null);

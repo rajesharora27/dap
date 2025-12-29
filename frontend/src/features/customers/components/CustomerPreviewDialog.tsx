@@ -20,7 +20,7 @@ import { Close, Business, Description, Inventory, Category } from '@shared/compo
 import { gql, useQuery } from '@apollo/client';
 
 const GET_CUSTOMER_DETAILS = gql`
-  query GetCustomerDetails($id: ID!) {
+  query CustomerDetails($id: ID!) {
     customer(id: $id) {
       id
       name

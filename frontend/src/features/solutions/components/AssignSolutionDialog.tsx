@@ -179,7 +179,7 @@ export const AssignSolutionDialog: React.FC<Props> = ({
             selectedReleaseIds: filteredReleaseIds
           }
         },
-        refetchQueries: ['GetCustomers', 'GET_CUSTOMER_SOLUTIONS']
+        refetchQueries: ['Customers', 'GET_CUSTOMER_SOLUTIONS']
       });
 
       const customerSolutionId = assignResult.data?.assignSolutionToCustomer?.id;
@@ -193,7 +193,7 @@ export const AssignSolutionDialog: React.FC<Props> = ({
         variables: {
           customerSolutionId
         },
-        refetchQueries: ['GET_CUSTOMER_SOLUTIONS', 'GetCustomers']
+        refetchQueries: ['GET_CUSTOMER_SOLUTIONS', 'Customers']
       });
 
       // Success!

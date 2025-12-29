@@ -134,7 +134,7 @@ const DELETE_BACKUP = gql`
 `;
 
 const GET_AUTO_BACKUP_CONFIG = gql`
-  query GetAutoBackupConfig {
+  query AutoBackupConfig {
     autoBackupConfig {
       enabled
       schedule

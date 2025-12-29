@@ -20,7 +20,7 @@ import { Close, Category, Description, CheckCircle, NewReleases, Inventory } fro
 import { gql, useQuery } from '@apollo/client';
 
 const GET_SOLUTION_DETAILS = gql`
-  query GetSolutionDetails($id: ID!) {
+  query SolutionDetails($id: ID!) {
     solution(id: $id) {
       id
       name

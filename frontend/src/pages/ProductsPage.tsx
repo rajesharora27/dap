@@ -414,7 +414,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 await client.mutate({
                     mutation: REORDER_TASKS,
                     variables: { productId: selectedProduct, order: newOrder },
-                    refetchQueries: ['TasksForProductTasksQuery']
+                    refetchQueries: ['ProductTasks']
                 });
             } catch (error) {
                 console.error('Error reordering tasks:', error);
@@ -555,14 +555,14 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 await client.mutate({
                     mutation: UPDATE_TASK,
                     variables: { id: taskId, input },
-                    refetchQueries: ['TasksForProductTasksQuery'],
+                    refetchQueries: ['ProductTasks'],
                     awaitRefetchQueries: true
                 });
             } else {
                 await client.mutate({
                     mutation: CREATE_TASK,
                     variables: { input },
-                    refetchQueries: ['TasksForProductTasksQuery'],
+                    refetchQueries: ['ProductTasks'],
                     awaitRefetchQueries: true
                 });
             }
@@ -580,7 +580,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 await client.mutate({
                     mutation: DELETE_TASK,
                     variables: { id: taskId },
-                    refetchQueries: ['TasksForProductTasksQuery'],
+                    refetchQueries: ['ProductTasks'],
                     awaitRefetchQueries: true
                 });
             } catch (error) {
@@ -599,7 +599,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                     id: taskId,
                     input: { weight: newWeight }
                 },
-                refetchQueries: ['TasksForProductTasksQuery'],
+                refetchQueries: ['ProductTasks'],
                 awaitRefetchQueries: true
             });
         } catch (error) {
@@ -627,7 +627,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
             await client.mutate({
                 mutation: REORDER_TASKS,
                 variables: { productId: selectedProduct, order: newOrder },
-                refetchQueries: ['TasksForProductTasksQuery'],
+                refetchQueries: ['ProductTasks'],
                 awaitRefetchQueries: true
             });
         } catch (error) {
@@ -644,7 +644,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                     id: taskId,
                     input: { tagIds: newTagIds }
                 },
-                refetchQueries: ['TasksForProductTasksQuery'],
+                refetchQueries: ['ProductTasks'],
                 awaitRefetchQueries: true
             });
         } catch (error) {

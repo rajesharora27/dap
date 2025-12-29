@@ -21,7 +21,7 @@ import { Close, Description, Speed, Scale, Link as LinkIcon } from '@shared/comp
 import { gql, useQuery } from '@apollo/client';
 
 const GET_TASK_DETAILS = gql`
-  query GetTaskDetails($id: ID!) {
+  query TaskDetails($id: ID!) {
     task(id: $id) {
       id
       name

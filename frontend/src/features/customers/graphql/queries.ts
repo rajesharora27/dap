@@ -53,7 +53,7 @@ export const CUSTOMERS = gql`
 `;
 
 export const GET_ADOPTION_PLAN = gql`
-  query GetAdoptionPlan($id: ID!) {
+  query AdoptionPlan($id: ID!) {
     adoptionPlan(id: $id) {
       id
       progressPercentage
@@ -136,7 +136,7 @@ export const GET_ADOPTION_PLAN = gql`
 `;
 
 export const GET_CUSTOMER_SOLUTIONS = gql`
-  query GetCustomerSolutions($customerId: ID!) {
+  query CustomerSolutions($customerId: ID!) {
     customer(id: $customerId) {
       id
       name
@@ -160,7 +160,7 @@ export const GET_CUSTOMER_SOLUTIONS = gql`
 `;
 
 export const GET_SOLUTION_ADOPTION_PLAN = gql`
-  query GetSolutionAdoptionPlan($id: ID!) {
+  query SolutionAdoptionPlan($id: ID!) {
     solutionAdoptionPlan(id: $id) {
       id
       progressPercentage

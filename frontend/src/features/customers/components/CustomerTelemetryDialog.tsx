@@ -27,7 +27,7 @@ import {
 import { Add, Delete, CheckCircle, Cancel } from '@shared/components/FAIcon';
 
 const GET_TASK_TELEMETRY = gql`
-  query GetTaskTelemetry($customerTaskId: ID!) {
+  query TaskTelemetry($customerTaskId: ID!) {
     customerTask(id: $customerTaskId) {
       id
       name

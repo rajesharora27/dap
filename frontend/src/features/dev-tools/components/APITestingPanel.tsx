@@ -98,7 +98,7 @@ const EXAMPLE_QUERIES: Example[] = [
     {
         name: 'Get Current User',
         description: 'Fetch authenticated user info',
-        query: `query GetMe {
+        query: `query Me {
   me {
     id
     username

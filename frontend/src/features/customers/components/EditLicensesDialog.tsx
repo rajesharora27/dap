@@ -21,7 +21,7 @@ import {
 } from '@mui/material';
 
 const GET_OUTCOMES_FOR_PRODUCT = gql`
-  query GetOutcomesForProduct($productId: ID!) {
+  query ProductOutcomes($productId: ID!) {
     outcomes(productId: $productId) {
       id
       name
@@ -31,7 +31,7 @@ const GET_OUTCOMES_FOR_PRODUCT = gql`
 `;
 
 const GET_PRODUCT_DETAILS = gql`
-  query GetProductDetails($productId: ID!) {
+  query ProductDetails($productId: ID!) {
     product(id: $productId) {
       id
       name
@@ -47,7 +47,7 @@ const GET_PRODUCT_DETAILS = gql`
 `;
 
 const GET_RELEASES_FOR_PRODUCT = gql`
-  query GetReleasesForProduct($productId: ID!) {
+  query ProductReleases($productId: ID!) {
     releases(productId: $productId) {
       id
       name

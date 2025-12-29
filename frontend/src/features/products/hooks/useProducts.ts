@@ -1,7 +1,7 @@
 import { gql, useQuery } from '@apollo/client';
 
 export const PRODUCTS_HOOK_QUERY = gql`
-  query ProductsHookQuery {
+  query Products {
     products {
       edges {
         node {

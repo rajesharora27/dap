@@ -24,7 +24,7 @@ import {
 import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from '@features/tasks';
 
 const GET_CUSTOMER_SOLUTION = gql`
-  query GetCustomerSolution($id: ID!) {
+  query CustomerSolution($id: ID!) {
     customerSolution(id: $id) {
       id
       name
@@ -110,7 +110,7 @@ export function EditSolutionLicensesDialog({
   });
 
   const [updateSolution, { loading: updating }] = useMutation(UPDATE_CUSTOMER_SOLUTION, {
-    refetchQueries: ['GetCustomerSolutions', 'GetCustomerSolution', 'GetCustomers'],
+    refetchQueries: ['CustomerSolutions', 'CustomerSolution', 'Customers'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       onClose();

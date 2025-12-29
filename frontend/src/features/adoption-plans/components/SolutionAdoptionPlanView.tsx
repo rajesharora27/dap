@@ -37,7 +37,7 @@ const ALL_OUTCOMES_ID = '__ALL_OUTCOMES__';
 const ALL_TAGS_ID = '__ALL_TAGS__';
 
 const GET_SOLUTION_ADOPTION_PLAN = gql`
-  query GetSolutionAdoptionPlan($id: ID!) {
+  query SolutionAdoptionPlan($id: ID!) {
     solutionAdoptionPlan(id: $id) {
       id
       solutionName
@@ -309,7 +309,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
   }, [lastSyncedAt, refetch]);
 
   const [updateSolutionTaskStatus] = useMutation(UPDATE_CUSTOMER_SOLUTION_TASK_STATUS, {
-    refetchQueries: ['GetCustomers', 'GetSolutionAdoptionPlan'],
+    refetchQueries: ['Customers', 'SolutionAdoptionPlan'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       refetch();
@@ -319,7 +319,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
   });
 
   const [updateProductTaskStatus] = useMutation(UPDATE_CUSTOMER_TASK_STATUS, {
-    refetchQueries: ['GetCustomers', 'GetSolutionAdoptionPlan'],
+    refetchQueries: ['Customers', 'SolutionAdoptionPlan'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       refetch();
@@ -330,7 +330,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
 
 
   const [syncPlan, { loading: syncLoading }] = useMutation(SYNC_SOLUTION_ADOPTION_PLAN, {
-    refetchQueries: ['GetCustomers', 'GetSolutionAdoptionPlan'],
+    refetchQueries: ['Customers', 'SolutionAdoptionPlan'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       refetch();

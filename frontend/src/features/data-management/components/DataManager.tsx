@@ -69,7 +69,7 @@ const QUEUE_TASK_DELETION = gql`
 `;
 
 const GET_ALL_PRODUCTS = gql`
-  query GetAllProductsDataManager {
+  query ProductsForDataManager {
     products(first: 100) {
       edges {
         node {

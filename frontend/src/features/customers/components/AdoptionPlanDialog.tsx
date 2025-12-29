@@ -36,7 +36,7 @@ import {
 } from '@shared/components/FAIcon';
 
 const GET_ADOPTION_PLAN = gql`
-  query GetAdoptionPlan($id: ID!) {
+  query AdoptionPlan($id: ID!) {
     adoptionPlan(id: $id) {
       id
       productId

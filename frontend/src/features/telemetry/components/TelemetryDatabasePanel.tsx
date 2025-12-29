@@ -26,7 +26,7 @@ import {
 import { CheckCircle, Cancel, Edit, Refresh, Download, Upload } from '@shared/components/FAIcon';
 
 const GET_TELEMETRY_DATABASE = gql`
-  query GetCustomerTelemetryDatabase($customerId: ID, $customerProductId: ID) {
+  query CustomerTelemetryDatabase($customerId: ID, $customerProductId: ID) {
     customerTelemetryDatabase(customerId: $customerId, customerProductId: $customerProductId) {
       customerId
       customerName
@@ -52,7 +52,7 @@ const GET_TELEMETRY_DATABASE = gql`
 `;
 
 const GET_CUSTOMERS_SIMPLE = gql`
-  query GetCustomersSimple {
+  query CustomersSimple {
     customers {
       id
       name

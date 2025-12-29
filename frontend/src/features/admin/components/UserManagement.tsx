@@ -43,7 +43,7 @@ import { gql, useQuery, useMutation } from '@apollo/client';
 
 // GraphQL Queries
 const GET_USERS = gql`
-  query GetUsers {
+  query Users {
     users {
       id
       username
@@ -109,7 +109,7 @@ const DEACTIVATE_USER = gql`
 `;
 
 const GET_ROLES = gql`
-  query GetRoles {
+  query Roles {
     roles {
       id
       name
@@ -120,7 +120,7 @@ const GET_ROLES = gql`
 `;
 
 const GET_USER_ROLES = gql`
-  query GetUserRoles($userId: ID!) {
+  query UserRoles($userId: ID!) {
     userRoles(userId: $userId) {
       id
       name

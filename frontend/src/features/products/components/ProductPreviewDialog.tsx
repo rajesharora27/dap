@@ -21,7 +21,7 @@ import { Close, Inventory, Description, CheckCircle, LocalOffer, NewReleases } f
 import { gql, useQuery } from '@apollo/client';
 
 const GET_PRODUCT_DETAILS = gql`
-  query GetProductDetails($id: ID!) {
+  query ProductDetails($id: ID!) {
     product(id: $id) {
       id
       name

@@ -16,7 +16,7 @@ import { Add, Edit, Delete } from '@shared/components/FAIcon';
 import { SolutionDialog } from './SolutionDialog';
 
 const SOLUTIONS = gql`
-  query SolutionsPanelQuery {
+  query Solutions {
     solutions {
       edges {
         node {

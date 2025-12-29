@@ -17,7 +17,7 @@ import { gql, useMutation, useQuery } from '@apollo/client';
 import { useAuth } from '../context/AuthContext';
 
 const GET_ME = gql`
-  query GetMe {
+  query Me {
     me {
       id
       username

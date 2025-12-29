@@ -52,7 +52,7 @@ import { AssignProductDialog } from '@features/products';
 
 // GraphQL Queries
 const GET_CUSTOMER_DETAIL = gql`
-  query GetCustomerDetail($id: ID!) {
+  query CustomerDetail($id: ID!) {
     customer(id: $id) {
       id
       name

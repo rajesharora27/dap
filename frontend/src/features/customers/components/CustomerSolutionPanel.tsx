@@ -29,7 +29,7 @@ import { importSolutionTelemetry, downloadFileFromUrl } from '@/features/telemet
 
 
 const GET_CUSTOMER_SOLUTIONS = gql`
-  query GetCustomerSolutions($customerId: ID!) {
+  query CustomerSolutions($customerId: ID!) {
     customer(id: $customerId) {
       id
       name
@@ -73,7 +73,7 @@ const REMOVE_SOLUTION_FROM_CUSTOMER = gql`
 `;
 
 const GET_SOLUTION_ADOPTION_PLAN = gql`
-  query GetSolutionAdoptionPlan($id: ID!) {
+  query SolutionAdoptionPlan($id: ID!) {
     solutionAdoptionPlan(id: $id) {
       id
       progressPercentage
@@ -204,7 +204,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   });
 
   const [createAdoptionPlan] = useMutation(CREATE_SOLUTION_ADOPTION_PLAN, {
-    refetchQueries: ['GetCustomers', 'GetCustomerSolutions'],
+    refetchQueries: ['Customers', 'CustomerSolutions'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       refetch();
@@ -215,7 +215,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   });
 
   const [syncPlan, { loading: syncLoading }] = useMutation(SYNC_SOLUTION_ADOPTION_PLAN, {
-    refetchQueries: ['GetCustomers', 'GetCustomerSolutions'],
+    refetchQueries: ['Customers', 'CustomerSolutions'],
     awaitRefetchQueries: true,
     onCompleted: () => {
       refetch();
@@ -230,7 +230,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
 
 
   const [removeSolution, { loading: removeLoading }] = useMutation(REMOVE_SOLUTION_FROM_CUSTOMER, {
-    refetchQueries: ['GetCustomers', 'GetCustomerSolutions'],
+    refetchQueries: ['Customers', 'CustomerSolutions'],
     awaitRefetchQueries: true,
     onCompleted: (result) => {
       if (result.removeSolutionFromCustomerEnhanced.success) {

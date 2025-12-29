@@ -27,7 +27,7 @@ import { CheckCircle } from '@shared/components/FAIcon';
 import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from '@features/tasks';
 
 const GET_PRODUCTS_AND_OUTCOMES = gql`
-  query GetProductsAndOutcomes {
+  query ProductsWithOutcomes {
     products(first: 100) {
       edges {
         node {
@@ -47,7 +47,7 @@ const GET_PRODUCTS_AND_OUTCOMES = gql`
 `;
 
 const GET_OUTCOMES_FOR_PRODUCT = gql`
-  query GetOutcomesForProduct($productId: ID!) {
+  query ProductOutcomes($productId: ID!) {
     outcomes(productId: $productId) {
       id
       name
@@ -57,7 +57,7 @@ const GET_OUTCOMES_FOR_PRODUCT = gql`
 `;
 
 const GET_RELEASES_FOR_PRODUCT = gql`
-  query GetReleasesForProduct($productId: ID!) {
+  query ProductReleases($productId: ID!) {
     releases(productId: $productId) {
       id
       name
@@ -148,11 +148,11 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
   }, [productsData, productsError]);
 
   const [assignProduct, { loading: assigning }] = useMutation(ASSIGN_PRODUCT_TO_CUSTOMER, {
-    refetchQueries: ['GetCustomers'],
+    refetchQueries: ['Customers'],
     awaitRefetchQueries: true,
   });
   const [createAdoptionPlan, { loading: creatingPlan }] = useMutation(CREATE_ADOPTION_PLAN, {
-    refetchQueries: ['GetCustomers'],
+    refetchQueries: ['Customers'],
     awaitRefetchQueries: true,
   });
 
