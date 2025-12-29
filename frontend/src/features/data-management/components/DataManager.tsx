@@ -379,7 +379,7 @@ export const DataManager: React.FC = () => {
                                     productId: productId
                                 }
                             },
-                            refetchQueries: ['Products', 'Outcomes'],
+                            refetchQueries: ['Products', 'ProductOutcomes'],
                             awaitRefetchQueries: true
                         });
                         createdOutcomes.push(result.data.createOutcome);
@@ -466,7 +466,7 @@ export const DataManager: React.FC = () => {
 
             // Refresh the Apollo cache
             await client.refetchQueries({
-                include: ['Products', 'GetAllProducts']
+                include: ['Products', 'Products']
             });
 
         } catch (error: any) {
@@ -517,7 +517,7 @@ export const DataManager: React.FC = () => {
 
             // Refresh Apollo cache
             await client.refetchQueries({
-                include: ['Products', 'GetAllProducts']
+                include: ['Products', 'Products']
             });
 
         } catch (error: any) {
@@ -558,7 +558,7 @@ export const DataManager: React.FC = () => {
 
             // Refresh Apollo cache
             await client.refetchQueries({
-                include: ['Products', 'GetAllProducts']
+                include: ['Products', 'Products']
             });
 
         } catch (error: any) {

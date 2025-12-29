@@ -659,7 +659,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
             await client.mutate({
                 mutation: UPDATE_OUTCOME,
                 variables: { id, input: { name: inlineOutcomeName } },
-                refetchQueries: ['Products', 'Outcomes']
+                refetchQueries: ['Products', 'ProductOutcomes']
             });
             setInlineEditingOutcome(null);
             setInlineOutcomeName('');
@@ -676,7 +676,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 await client.mutate({
                     mutation: DELETE_OUTCOME,
                     variables: { id },
-                    refetchQueries: ['Products', 'Outcomes']
+                    refetchQueries: ['Products', 'ProductOutcomes']
                 });
             } catch (error: any) {
                 alert('Error deleting outcome: ' + error.message);

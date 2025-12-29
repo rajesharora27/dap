@@ -113,7 +113,7 @@ export const PRODUCTS_HOOK_QUERY = gql`
 `;
 
 export const TASKS_FOR_PRODUCT_HOOK_QUERY = gql`
-  query TasksForProduct($productId: ID!) {
+  query ProductTasksForHook($productId: ID!) {
     tasks(productId: $productId, first: 100) {
       edges {
         node {
@@ -168,7 +168,7 @@ export const TASKS_FOR_PRODUCT_HOOK_QUERY = gql`
 `;
 
 export const OUTCOMES_HOOK_QUERY = gql`
-  query Outcomes($productId: ID) {
+  query ProductOutcomesForHook($productId: ID) {
     outcomes(productId: $productId) {
       id
       name

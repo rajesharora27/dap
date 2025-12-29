@@ -124,7 +124,7 @@ export const PRODUCT_TASK_CONNECTION_FIELDS = gql`
 `;
 
 export const TASKS_FOR_PRODUCT = gql`
-  query TasksForProductQuery($productId: ID!, $first: Int, $after: String, $last: Int, $before: String) {
+  query ProductTasksPaginated($productId: ID!, $first: Int, $after: String, $last: Int, $before: String) {
     product(id: $productId) {
       id
       name
@@ -137,7 +137,7 @@ export const TASKS_FOR_PRODUCT = gql`
 `;
 
 export const OUTCOMES = gql`
-  query Outcomes($productId: ID) {
+  query ProductOutcomes($productId: ID) {
     outcomes(productId: $productId) {
       id
       name

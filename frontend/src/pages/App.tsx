@@ -156,7 +156,7 @@ import { PRODUCTS } from '../features/products/graphql/products.queries';
 
 
 const OUTCOMES = gql`
-  query OutcomesQuery($productId: ID) {
+  query ProductOutcomes($productId: ID) {
     outcomes(productId: $productId) {
       id
       name
@@ -1121,7 +1121,7 @@ export function App() {
             }
           `,
           variables: { input },
-          refetchQueries: ['Products', 'Outcomes'],
+          refetchQueries: ['Products', 'ProductOutcomes'],
           awaitRefetchQueries: true
         });
         if (options?.refetchProducts) await options.refetchProducts();
@@ -1144,7 +1144,7 @@ export function App() {
             }
           `,
           variables: { id, input },
-          refetchQueries: ['Products', 'Outcomes'],
+          refetchQueries: ['Products', 'ProductOutcomes'],
           awaitRefetchQueries: true
         });
         if (options?.refetchProducts) await options.refetchProducts();
@@ -1163,7 +1163,7 @@ export function App() {
             }
           `,
           variables: { id },
-          refetchQueries: ['Products', 'Outcomes'],
+          refetchQueries: ['Products', 'ProductOutcomes'],
           awaitRefetchQueries: true
         });
         if (options?.refetchProducts) await options.refetchProducts();
@@ -1303,7 +1303,7 @@ export function App() {
                 await client.mutate({
                   mutation: gql`mutation DeleteOutcome($id: ID!) { deleteOutcome(id: $id) }`,
                   variables: { id: outcome.id },
-                  refetchQueries: ['Products', 'Outcomes'],
+                  refetchQueries: ['Products', 'ProductOutcomes'],
                   awaitRefetchQueries: true
                 });
               } else if (outcome.isNew || !outcome.id) {
@@ -1321,7 +1321,7 @@ export function App() {
                       productId: id
                     }
                   },
-                  refetchQueries: ['Products', 'Outcomes'],
+                  refetchQueries: ['Products', 'ProductOutcomes'],
                   awaitRefetchQueries: true
                 });
               } else if (outcome.id) {
@@ -1340,7 +1340,7 @@ export function App() {
                       productId: id
                     }
                   },
-                  refetchQueries: ['Products', 'Outcomes'],
+                  refetchQueries: ['Products', 'ProductOutcomes'],
                   awaitRefetchQueries: true
                 });
               }

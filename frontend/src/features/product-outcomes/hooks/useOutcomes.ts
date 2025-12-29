@@ -1,7 +1,7 @@
 import { gql, useQuery } from '@apollo/client';
 
 export const OUTCOMES_QUERY = gql`
-  query Outcomes($productId: ID) {
+  query ProductOutcomes($productId: ID) {
     outcomes(productId: $productId) {
       id
       name

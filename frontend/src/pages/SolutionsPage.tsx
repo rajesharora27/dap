@@ -356,7 +356,7 @@ export const SolutionsPage: React.FC = () => {
                 await client.mutate({
                     mutation: REORDER_TASKS,
                     variables: { solutionId: selectedSolution, order: newOrder },
-                    refetchQueries: ['TasksForSolution']
+                    refetchQueries: ['SolutionTasks']
                 });
             } catch (error) {
                 console.error('Error reordering tasks:', error);
@@ -560,14 +560,14 @@ export const SolutionsPage: React.FC = () => {
                 await client.mutate({
                     mutation: UPDATE_TASK,
                     variables: { id: taskId, input },
-                    refetchQueries: ['TasksForSolution'],
+                    refetchQueries: ['SolutionTasks'],
                     awaitRefetchQueries: true
                 });
             } else {
                 const res = await client.mutate({
                     mutation: CREATE_TASK,
                     variables: { input },
-                    refetchQueries: ['TasksForSolution'],
+                    refetchQueries: ['SolutionTasks'],
                     awaitRefetchQueries: true
                 });
                 savedTaskId = res.data?.createTask?.id;
@@ -578,7 +578,7 @@ export const SolutionsPage: React.FC = () => {
                 await client.mutate({
                     mutation: SET_SOLUTION_TASK_TAGS,
                     variables: { taskId: savedTaskId, tagIds: taskData.tags },
-                    refetchQueries: ['TasksForSolution']
+                    refetchQueries: ['SolutionTasks']
                 });
             }
 
@@ -596,7 +596,7 @@ export const SolutionsPage: React.FC = () => {
                 await client.mutate({
                     mutation: DELETE_TASK,
                     variables: { id: taskId },
-                    refetchQueries: ['TasksForSolution'],
+                    refetchQueries: ['SolutionTasks'],
                     awaitRefetchQueries: true
                 });
             } catch (error) {
@@ -615,7 +615,7 @@ export const SolutionsPage: React.FC = () => {
                     id: taskId,
                     input: { weight: newWeight }
                 },
-                refetchQueries: ['TasksForSolution'],
+                refetchQueries: ['SolutionTasks'],
                 awaitRefetchQueries: true
             });
         } catch (error) {
@@ -633,7 +633,7 @@ export const SolutionsPage: React.FC = () => {
                     taskId,
                     tagIds: newTagIds
                 },
-                refetchQueries: ['TasksForSolution'],
+                refetchQueries: ['SolutionTasks'],
                 awaitRefetchQueries: true
             });
         } catch (error) {
@@ -661,7 +661,7 @@ export const SolutionsPage: React.FC = () => {
             await client.mutate({
                 mutation: REORDER_TASKS,
                 variables: { solutionId: selectedSolution, order: newOrder },
-                refetchQueries: ['TasksForSolution'],
+                refetchQueries: ['SolutionTasks'],
                 awaitRefetchQueries: true
             });
         } catch (error) {
