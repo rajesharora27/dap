@@ -77,7 +77,7 @@ export function useProductEditing(productId: string | null | undefined) {
     await client.mutate({
       mutation: UPDATE_PRODUCT_TAG,
       variables: { id, input: updates },
-      refetchQueries: [...REFETCH_QUERIES, 'GetProductTags']
+      refetchQueries: [...REFETCH_QUERIES, 'ProductTags']
     });
   };
 
@@ -86,7 +86,7 @@ export function useProductEditing(productId: string | null | undefined) {
     await client.mutate({
       mutation: DELETE_PRODUCT_TAG,
       variables: { id },
-      refetchQueries: [...REFETCH_QUERIES, 'GetProductTags']
+      refetchQueries: [...REFETCH_QUERIES, 'ProductTags']
     });
   };
 
@@ -95,7 +95,7 @@ export function useProductEditing(productId: string | null | undefined) {
     await client.mutate({
       mutation: CREATE_PRODUCT_TAG,
       variables: { input: { ...data, productId } },
-      refetchQueries: [...REFETCH_QUERIES, 'GetProductTags']
+      refetchQueries: [...REFETCH_QUERIES, 'ProductTags']
     });
   };
 

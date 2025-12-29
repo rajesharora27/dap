@@ -366,14 +366,14 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 await client.mutate({
                     mutation: UPDATE_PRODUCT_TAG,
                     variables: { id: existingId, input: tagData },
-                    refetchQueries: ['Products', 'Product', 'ProductDetail', 'GetProductTags'],
+                    refetchQueries: ['Products', 'Product', 'ProductDetail', 'ProductTags'],
                     awaitRefetchQueries: true
                 });
             } else {
                 await client.mutate({
                     mutation: CREATE_PRODUCT_TAG,
                     variables: { input: { ...tagData, productId: selectedProduct } },
-                    refetchQueries: ['Products', 'Product', 'ProductDetail', 'GetProductTags'],
+                    refetchQueries: ['Products', 'Product', 'ProductDetail', 'ProductTags'],
                     awaitRefetchQueries: true
                 });
             }
@@ -391,7 +391,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
             await client.mutate({
                 mutation: DELETE_PRODUCT_TAG,
                 variables: { id: tagId },
-                refetchQueries: ['Products', 'Product', 'ProductDetail', 'GetProductTags'],
+                refetchQueries: ['Products', 'Product', 'ProductDetail', 'ProductTags'],
                 awaitRefetchQueries: true
             });
             refetchProductDetail();
