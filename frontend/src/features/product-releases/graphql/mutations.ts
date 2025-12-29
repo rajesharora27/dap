@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client';
 
 export const CREATE_RELEASE = gql`
-  mutation CreateRelease($input: ReleaseInput!) {
+  mutation CreateReleaseCore($input: ReleaseInput!) {
     createRelease(input: $input) {
       id
       name
@@ -14,7 +14,7 @@ export const CREATE_RELEASE = gql`
 `;
 
 export const UPDATE_RELEASE = gql`
-  mutation UpdateRelease($id: ID!, $input: ReleaseInput!) {
+  mutation UpdateReleaseCore($id: ID!, $input: ReleaseInput!) {
     updateRelease(id: $id, input: $input) {
       id
       name

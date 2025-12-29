@@ -15,3 +15,8 @@ export interface OperationResult<T = any> {
     data?: T;
     error?: ErrorDetails;
 }
+
+export interface Resource {
+    label: string;
+    url: string;
+}

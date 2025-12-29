@@ -3,7 +3,7 @@
  * Used by both SolutionsPage (tabs) and SolutionDialog to ensure identical behavior.
  */
 import { useApolloClient, useMutation } from '@apollo/client';
-import { 
+import {
   UPDATE_SOLUTION,
   ADD_PRODUCT_TO_SOLUTION_ENHANCED,
   REMOVE_PRODUCT_FROM_SOLUTION_ENHANCED,
@@ -208,9 +208,85 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
     });
   };
 
+  // --- Resources ---
+  // Resources are stored directly on the Solution, so we update via UPDATE_SOLUTION
+  const handleResourceUpdate = async (index: number, updates: { label?: string; url?: string }) => {
+    if (!solutionId) return;
+    const solution = getCurrentSolution();
+    if (!solution) return;
+
+    const updatedResources = [...solution.resources];
+    updatedResources[index] = { ...updatedResources[index], ...updates };
+    const cleanResources = updatedResources.map(r => ({ label: r.label, url: r.url }));
+
+    await client.mutate({
+      mutation: UPDATE_SOLUTION,
+      variables: {
+        id: solutionId,
+        input: { name: solution.name, resources: cleanResources, customAttrs: solution.customAttrs }
+      },
+      refetchQueries: REFETCH_QUERIES
+    });
+  };
+
+  const handleResourceDelete = async (index: number) => {
+    if (!solutionId) return;
+    const solution = getCurrentSolution();
+    if (!solution) return;
+
+    const updatedResources = [...solution.resources];
+    updatedResources.splice(index, 1);
+    const cleanResources = updatedResources.map(r => ({ label: r.label, url: r.url }));
+
+    await client.mutate({
+      mutation: UPDATE_SOLUTION,
+      variables: {
+        id: solutionId,
+        input: { name: solution.name, resources: cleanResources, customAttrs: solution.customAttrs }
+      },
+      refetchQueries: REFETCH_QUERIES
+    });
+  };
+
+  const handleResourceCreate = async (data: { label: string; url: string }) => {
+    if (!solutionId) return;
+    const solution = getCurrentSolution();
+    if (!solution) return;
+
+    const updatedResources = [...solution.resources, data];
+    const cleanResources = updatedResources.map(r => ({ label: r.label, url: r.url }));
+
+    await client.mutate({
+      mutation: UPDATE_SOLUTION,
+      variables: {
+        id: solutionId,
+        input: { name: solution.name, resources: cleanResources, customAttrs: solution.customAttrs }
+      },
+      refetchQueries: REFETCH_QUERIES
+    });
+  };
+
+  const handleResourceReorder = async (newOrderIndexes: number[]) => {
+    if (!solutionId) return;
+    const solution = getCurrentSolution();
+    if (!solution) return;
+
+    const updatedResources = newOrderIndexes.map(i => solution.resources[i]);
+    const cleanResources = updatedResources.map(r => ({ label: r.label, url: r.url }));
+
+    await client.mutate({
+      mutation: UPDATE_SOLUTION,
+      variables: {
+        id: solutionId,
+        input: { name: solution.name, resources: cleanResources, customAttrs: solution.customAttrs }
+      },
+      refetchQueries: REFETCH_QUERIES
+    });
+  };
+
   // --- Custom Attributes ---
-  // Helper to get current solution from Apollo cache (for name, description, customAttrs)
-  const getCurrentSolution = (): { name: string; description: string; customAttrs: Record<string, any> } | null => {
+  // Helper to get current solution from Apollo cache (for name, resources, customAttrs)
+  const getCurrentSolution = (): { name: string; resources: any[]; customAttrs: Record<string, any> } | null => {
     try {
       const data = client.readQuery({
         query: SOLUTION,
@@ -219,7 +295,7 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
       if (!data?.solution) return null;
       return {
         name: data.solution.name,
-        description: data.solution.description || '',
+        resources: data.solution.resources || [],
         customAttrs: data.solution.customAttrs || {}
       };
     } catch (e) {
@@ -228,12 +304,12 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
     }
   };
 
-  // Simple attribute handlers - include name/description since SolutionInput requires them
+  // Simple attribute handlers - include name/resources since SolutionInput requires them
   const handleAttributeUpdate = async (oldKey: string, newKey: string, newValue: any) => {
     if (!solutionId) return;
     const solution = getCurrentSolution();
     if (!solution) return;
-    
+
     const updated = { ...solution.customAttrs };
     if (oldKey !== newKey) {
       delete updated[oldKey];
@@ -246,7 +322,7 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
 
     await client.mutate({
       mutation: UPDATE_SOLUTION,
-      variables: { id: solutionId, input: { name: solution.name, description: solution.description, customAttrs: updated } },
+      variables: { id: solutionId, input: { name: solution.name, resources: solution.resources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -256,7 +332,7 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
     if (!confirm(`Delete attribute "${key}"?`)) return;
     const solution = getCurrentSolution();
     if (!solution) return;
-    
+
     const updated = { ...solution.customAttrs };
     delete updated[key];
     if (updated._order) {
@@ -265,7 +341,7 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
 
     await client.mutate({
       mutation: UPDATE_SOLUTION,
-      variables: { id: solutionId, input: { name: solution.name, description: solution.description, customAttrs: updated } },
+      variables: { id: solutionId, input: { name: solution.name, resources: solution.resources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -274,7 +350,7 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
     if (!solutionId) return;
     const solution = getCurrentSolution();
     if (!solution) return;
-    
+
     const updated = { ...solution.customAttrs };
     updated[key] = value;
     const order = updated._order || Object.keys(updated).filter(k => !k.startsWith('_'));
@@ -283,7 +359,7 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
 
     await client.mutate({
       mutation: UPDATE_SOLUTION,
-      variables: { id: solutionId, input: { name: solution.name, description: solution.description, customAttrs: updated } },
+      variables: { id: solutionId, input: { name: solution.name, resources: solution.resources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -295,12 +371,12 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
       console.warn('[useSolutionEditing] handleAttributeReorder: solution not in cache');
       return;
     }
-    
+
     const updated = { ...solution.customAttrs, _order: newKeys };
 
     await client.mutate({
       mutation: UPDATE_SOLUTION,
-      variables: { id: solutionId, input: { name: solution.name, description: solution.description, customAttrs: updated } },
+      variables: { id: solutionId, input: { name: solution.name, resources: solution.resources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -346,6 +422,11 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
     handleLicenseUpdate,
     handleLicenseDelete,
     handleLicenseCreate,
+    // Resources
+    handleResourceUpdate,
+    handleResourceDelete,
+    handleResourceCreate,
+    handleResourceReorder,
     // Attributes
     handleAttributeUpdate,
     handleAttributeDelete,

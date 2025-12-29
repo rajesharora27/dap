@@ -1,20 +1,20 @@
 import { gql, useQuery } from '@apollo/client';
 
-export const PRODUCTS_QUERY = gql`
-  query Products {
+export const PRODUCTS_HOOK_QUERY = gql`
+  query ProductsHookQuery {
     products {
       edges {
         node {
           id
           name
-          description
+          resources { label url }
           statusPercent
           completionPercentage
           customAttrs
           solutions {
             id
             name
-            description
+            resources { label url }
           }
           customers {
             id
@@ -112,7 +112,7 @@ export const PRODUCTS_QUERY = gql`
   }
 `;
 
-export const TASKS_FOR_PRODUCT_QUERY = gql`
+export const TASKS_FOR_PRODUCT_HOOK_QUERY = gql`
   query TasksForProduct($productId: ID!) {
     tasks(productId: $productId, first: 100) {
       edges {
@@ -167,7 +167,7 @@ export const TASKS_FOR_PRODUCT_QUERY = gql`
   }
 `;
 
-export const OUTCOMES_QUERY = gql`
+export const OUTCOMES_HOOK_QUERY = gql`
   query Outcomes($productId: ID) {
     outcomes(productId: $productId) {
       id
@@ -181,7 +181,7 @@ export const OUTCOMES_QUERY = gql`
 `;
 
 export function useProducts() {
-  const { data, loading, error, refetch } = useQuery(PRODUCTS_QUERY, {
+  const { data, loading, error, refetch } = useQuery(PRODUCTS_HOOK_QUERY, {
     errorPolicy: 'all'
   });
 
@@ -221,7 +221,7 @@ export function useProducts() {
 }
 
 export function useTasksForProduct(productId: string) {
-  const { data, loading, error, refetch } = useQuery(TASKS_FOR_PRODUCT_QUERY, {
+  const { data, loading, error, refetch } = useQuery(TASKS_FOR_PRODUCT_HOOK_QUERY, {
     variables: { productId },
     skip: !productId,
     errorPolicy: 'all'
@@ -256,7 +256,7 @@ export function useTasksForProduct(productId: string) {
 }
 
 export function useOutcomes(productId?: string) {
-  const { data, loading, error, refetch } = useQuery(OUTCOMES_QUERY, {
+  const { data, loading, error, refetch } = useQuery(OUTCOMES_HOOK_QUERY, {
     variables: { productId },
     skip: !productId,
     errorPolicy: 'all'

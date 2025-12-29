@@ -2,15 +2,17 @@ import * as React from 'react';
 import { useState, useEffect } from 'react';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
-  Box, Tabs, Tab, Alert
+  Box, Tabs, Tab, Alert, Typography
 } from '@mui/material';
 import { useQuery } from '@apollo/client';
-import { Product, ProductTag } from '../types';
+import { Product, ProductTag, ProductInput } from '../types';
+import { Resource } from '@shared/types';
 import { License } from '@features/product-licenses';
 import { Outcome } from '@features/product-outcomes';
 import { Release } from '@features/product-releases';
 
 // Shared Components
+import { ResourcesTable } from './shared/ResourcesTable';
 import { OutcomesTable } from './shared/OutcomesTable';
 import { TagsTable } from './shared/TagsTable';
 import { ReleasesTable } from './shared/ReleasesTable';
@@ -52,7 +54,7 @@ interface Props {
   onClose: () => void;
   onSave: (data: {
     name: string;
-    description?: string;
+    resources?: Resource[];
     customAttrs?: Record<string, any>;
     outcomes?: Outcome[];
     licenses?: License[];
@@ -87,7 +89,7 @@ export const ProductDialog: React.FC<Props> = ({
   const productEditing = useProductEditing(productId);
 
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const [resources, setResources] = useState<Resource[]>([]);
   const [customAttrs, setCustomAttrs] = useState<Record<string, any>>({});
 
   // Local state only used in CREATE mode (product doesn't exist yet)
@@ -104,25 +106,28 @@ export const ProductDialog: React.FC<Props> = ({
 
   useEffect(() => {
     if (open) {
-    if (product) {
-      setName(product.name || '');
-      setDescription(product.description || '');
-      setCustomAttrs(product.customAttrs || {});
+      if (product) {
+        setName(product.name || '');
+        setResources(product.resources || []);
+        setCustomAttrs(product.customAttrs || {});
         // In edit mode, local arrays aren't used - we read from product prop
-    } else {
+      } else {
         // Create mode: initialize local state
-      setName('');
-      setDescription('');
-      setOutcomes([]);
+        setName('');
+        setResources([]);
+        setOutcomes([]);
         setTags([]);
         setLicenses([{ name: 'Essential', description: 'Basic', level: 1, isActive: true, isNew: true, _tempId: 'default-lic' } as any]);
         setReleases([{ name: '1.0', description: 'Initial', level: 1, isNew: true, _tempId: 'default-rel' } as any]);
-      setCustomAttrs({});
-    }
+        setCustomAttrs({});
+      }
       setTabValue(tabMap[initialTab] || 0);
       setError('');
     }
   }, [product, open, initialTab]);
+
+  // Helper to clean resources by removing __typename which Apollo adds
+  const cleanResources = (res: Resource[]) => res.map(({ label, url }) => ({ label, url }));
 
   const handleSave = async () => {
     if (!name.trim()) { setError('Name is required'); return; }
@@ -133,14 +138,14 @@ export const ProductDialog: React.FC<Props> = ({
         // Other tabs use the shared hook which saves immediately
         await onSave({
           name: name.trim(),
-          description: description.trim() || undefined,
+          resources: cleanResources(resources),
           customAttrs,
         });
       } else {
         // In create mode, save everything (batch)
         await onSave({
           name: name.trim(),
-          description: description.trim() || undefined,
+          resources: cleanResources(resources),
           customAttrs,
           outcomes: getVisibleItems(outcomes),
           licenses: getVisibleItems(licenses),
@@ -298,10 +303,10 @@ export const ProductDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { height: '90vh' } }}>
-        <DialogTitle>{title}</DialogTitle>
-        <DialogContent dividers>
+      <DialogTitle>{title}</DialogTitle>
+      <DialogContent dividers>
         <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-          <Tab label="General" />
+          <Tab label="Resources" />
           <Tab label={`Tags (${isEditMode ? (product?.tags?.length || 0) : getVisibleItems(tags).length})`} />
           <Tab label={`Outcomes (${isEditMode ? (product?.outcomes?.length || 0) : getVisibleItems(outcomes).length})`} />
           <Tab label={`Releases (${isEditMode ? (product?.releases?.length || 0) : getVisibleItems(releases).length})`} />
@@ -317,12 +322,40 @@ export const ProductDialog: React.FC<Props> = ({
           </Alert>
         )}
 
-          <TabPanel value={tabValue} index={0}>
+        <TabPanel value={tabValue} index={0}>
           <TextField fullWidth label="Name" value={name} onChange={e => setName(e.target.value)} required sx={{ mb: 2 }} />
-          <TextField fullWidth label="Description" value={description} onChange={e => setDescription(e.target.value)} multiline rows={4} />
-          </TabPanel>
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>Resources</Typography>
+          {isEditMode ? (
+            <ResourcesTable
+              items={product?.resources || []}
+              onUpdate={productEditing.handleResourceUpdate}
+              onDelete={productEditing.handleResourceDelete}
+              onCreate={productEditing.handleResourceCreate}
+              onReorder={productEditing.handleResourceReorder}
+            />
+          ) : (
+            <ResourcesTable
+              items={resources}
+              onUpdate={(index, updates) => {
+                const updated = [...resources];
+                updated[index] = { ...updated[index], ...updates };
+                setResources(updated);
+              }}
+              onDelete={(index) => {
+                const updated = [...resources];
+                updated.splice(index, 1);
+                setResources(updated);
+              }}
+              onCreate={(data) => setResources([...resources, data])}
+              onReorder={(newOrder) => {
+                const reordered = newOrder.map(i => resources[i]);
+                setResources(reordered);
+              }}
+            />
+          )}
+        </TabPanel>
 
-          <TabPanel value={tabValue} index={1}>
+        <TabPanel value={tabValue} index={1}>
           <TagsTable
             items={isEditMode ? (product?.tags || []) : getVisibleItems(tags)}
             onUpdate={isEditMode ? productEditing.handleTagUpdate : handleTagUpdateLocal}
@@ -330,9 +363,9 @@ export const ProductDialog: React.FC<Props> = ({
             onCreate={isEditMode ? productEditing.handleTagCreate : handleTagCreateLocal}
             onReorder={isEditMode ? productEditing.handleTagReorder : handleTagReorderLocal}
           />
-          </TabPanel>
+        </TabPanel>
 
-          <TabPanel value={tabValue} index={2}>
+        <TabPanel value={tabValue} index={2}>
           <OutcomesTable
             items={isEditMode ? (product?.outcomes || []) : getVisibleItems(outcomes)}
             onUpdate={isEditMode ? productEditing.handleOutcomeUpdate : handleOutcomeUpdateLocal}
@@ -340,9 +373,9 @@ export const ProductDialog: React.FC<Props> = ({
             onCreate={isEditMode ? productEditing.handleOutcomeCreate : handleOutcomeCreateLocal}
             onReorder={isEditMode ? productEditing.handleOutcomeReorder : handleOutcomeReorderLocal}
           />
-          </TabPanel>
+        </TabPanel>
 
-          <TabPanel value={tabValue} index={3}>
+        <TabPanel value={tabValue} index={3}>
           <ReleasesTable
             items={isEditMode ? (product?.releases || []) : getVisibleItems(releases)}
             onUpdate={isEditMode ? productEditing.handleReleaseUpdate : handleReleaseUpdateLocal}
@@ -350,9 +383,9 @@ export const ProductDialog: React.FC<Props> = ({
             onCreate={isEditMode ? productEditing.handleReleaseCreate : handleReleaseCreateLocal}
             onReorder={isEditMode ? productEditing.handleReleaseReorder : handleReleaseReorderLocal}
           />
-          </TabPanel>
+        </TabPanel>
 
-          <TabPanel value={tabValue} index={4}>
+        <TabPanel value={tabValue} index={4}>
           <LicensesTable
             items={isEditMode ? (product?.licenses || []) : getVisibleItems(licenses)}
             onUpdate={isEditMode ? productEditing.handleLicenseUpdate : handleLicenseUpdateLocal}
@@ -360,9 +393,9 @@ export const ProductDialog: React.FC<Props> = ({
             onCreate={isEditMode ? productEditing.handleLicenseCreate : handleLicenseCreateLocal}
             onReorder={isEditMode ? productEditing.handleLicenseReorder : handleLicenseReorderLocal}
           />
-          </TabPanel>
+        </TabPanel>
 
-          <TabPanel value={tabValue} index={5}>
+        <TabPanel value={tabValue} index={5}>
           <AttributesTable
             items={isEditMode ? productEditing.getAttributesList(product?.customAttrs) : getLocalAttributesList()}
             onUpdate={isEditMode ? productEditing.handleAttributeUpdate : handleAttributeUpdateLocal}
@@ -370,15 +403,15 @@ export const ProductDialog: React.FC<Props> = ({
             onCreate={isEditMode ? productEditing.handleAttributeCreate : handleAttributeCreateLocal}
             onReorder={isEditMode ? productEditing.handleAttributeReorder : handleAttributeReorderLocal}
           />
-          </TabPanel>
+        </TabPanel>
 
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose}>Cancel</Button>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
         <Button onClick={handleSave} variant="contained" disabled={loading}>
           {isEditMode ? 'Done' : 'Create Product'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };

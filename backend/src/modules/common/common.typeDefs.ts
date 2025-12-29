@@ -12,6 +12,16 @@ export const commonTypeDefs = gql`
   enum TaskSourceType { SOLUTION PRODUCT }
   enum SolutionProductStatus { NOT_STARTED IN_PROGRESS COMPLETED BLOCKED SKIPPED }
 
+  type Resource {
+    label: String!
+    url: String!
+  }
+
+  input ResourceInput {
+    label: String!
+    url: String!
+  }
+
   interface Node { id: ID! }
 
   type PageInfo { 

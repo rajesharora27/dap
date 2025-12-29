@@ -36,7 +36,7 @@ const SOLUTIONS_QUERY = gql`
         node {
           id
           name
-          description
+          resources { label url }
           outcomes {
             id
             name
@@ -256,7 +256,7 @@ export const AssignSolutionDialog: React.FC<Props> = ({
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>Assign Solution to Customer</DialogTitle>
-      
+
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
           {error && (
@@ -288,9 +288,9 @@ export const AssignSolutionDialog: React.FC<Props> = ({
               <li {...props} key={option.id}>
                 <Box>
                   <Typography variant="body1">{option.name}</Typography>
-                  {option.description && (
+                  {option.resources && option.resources.length > 0 && (
                     <Typography variant="caption" color="text.secondary">
-                      {option.description}
+                      {option.resources.length} resources
                     </Typography>
                   )}
                 </Box>
@@ -320,9 +320,9 @@ export const AssignSolutionDialog: React.FC<Props> = ({
           {/* Show solution description and products */}
           {selectedSolution && (
             <Paper sx={{ p: 2, bgcolor: 'background.default' }}>
-              {selectedSolution.description && (
+              {selectedSolution.resources && selectedSolution.resources.length > 0 && (
                 <Typography variant="body2" color="text.secondary" gutterBottom>
-                  {selectedSolution.description}
+                  {selectedSolution.resources.length} resources
                 </Typography>
               )}
               <Divider sx={{ my: 1 }} />
@@ -367,10 +367,10 @@ export const AssignSolutionDialog: React.FC<Props> = ({
               </Typography>
               <FormGroup>
                 {/* All Outcomes option */}
-                <Box sx={{ 
-                  p: 1.5, 
-                  mb: 1, 
-                  borderRadius: 1, 
+                <Box sx={{
+                  p: 1.5,
+                  mb: 1,
+                  borderRadius: 1,
                   bgcolor: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'action.selected' : 'background.paper',
                   border: '1px solid',
                   borderColor: selectedOutcomeIds.includes(ALL_OUTCOMES_ID) ? 'primary.main' : 'divider'
@@ -427,10 +427,10 @@ export const AssignSolutionDialog: React.FC<Props> = ({
               </Typography>
               <FormGroup>
                 {/* All Releases option */}
-                <Box sx={{ 
-                  p: 1.5, 
-                  mb: 1, 
-                  borderRadius: 1, 
+                <Box sx={{
+                  p: 1.5,
+                  mb: 1,
+                  borderRadius: 1,
                   bgcolor: selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'action.selected' : 'background.paper',
                   border: '1px solid',
                   borderColor: selectedReleaseIds.includes(ALL_RELEASES_ID) ? 'primary.main' : 'divider'

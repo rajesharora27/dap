@@ -99,6 +99,15 @@ export const CUSTOM_ATTRIBUTE_COLUMNS: ColumnDefinition[] = [
 ];
 
 // ============================================================================
+// Resources Sheet
+// ============================================================================
+
+export const RESOURCE_COLUMNS: ColumnDefinition[] = [
+    { key: 'label', header: 'Resource Name', width: 40, required: true, type: 'string' },
+    { key: 'url', header: 'URL', width: 60, required: true, type: 'string' },
+];
+
+// ============================================================================
 // Telemetry Attributes Sheet
 // ============================================================================
 
@@ -123,6 +132,7 @@ export const PRODUCT_WORKBOOK_SHEETS: SheetDefinition[] = [
     { name: 'Releases', columns: RELEASE_COLUMNS },
     { name: 'Tags', columns: TAG_COLUMNS },
     { name: 'Custom Attributes', columns: CUSTOM_ATTRIBUTE_COLUMNS },
+    { name: 'Resources', columns: RESOURCE_COLUMNS },
     { name: 'Telemetry', columns: TELEMETRY_ATTRIBUTE_COLUMNS },
     { name: 'Instructions', columns: [] },
 ];
@@ -135,6 +145,7 @@ export const SOLUTION_WORKBOOK_SHEETS: SheetDefinition[] = [
     { name: 'Releases', columns: RELEASE_COLUMNS },
     { name: 'Tags', columns: TAG_COLUMNS },
     { name: 'Custom Attributes', columns: CUSTOM_ATTRIBUTE_COLUMNS },
+    { name: 'Resources', columns: RESOURCE_COLUMNS },
     { name: 'Telemetry', columns: TELEMETRY_ATTRIBUTE_COLUMNS },
     { name: 'Instructions', columns: [] },
 ];

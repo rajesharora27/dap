@@ -32,12 +32,13 @@ import { TagsTable } from '../features/products/components/shared/TagsTable';
 import { ReleasesTable } from '../features/products/components/shared/ReleasesTable';
 import { LicensesTable } from '../features/products/components/shared/LicensesTable';
 import { AttributesTable } from '../features/products/components/shared/AttributesTable';
+import { ResourcesTable } from '../features/products/components/shared/ResourcesTable';
 
 export const SolutionsPage: React.FC = () => {
     // State
     const { isAuthenticated, isLoading: authLoading } = useAuth();
     const [selectedSolution, setSelectedSolution] = useState<string | null>(localStorage.getItem('lastSelectedSolutionId'));
-    const [selectedSubSection, setSelectedSubSection] = useState<'summary' | 'tasks' | 'products' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('summary');
+    const [selectedSubSection, setSelectedSubSection] = useState<'summary' | 'resources' | 'tasks' | 'products' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('summary');
     const [isExporting, setIsExporting] = useState(false);
 
     // Column visibility state with localStorage persistence
@@ -88,7 +89,7 @@ export const SolutionsPage: React.FC = () => {
     // Inline editing state for outcomes
     const [inlineEditingOutcome, setInlineEditingOutcome] = useState<string | null>(null);
     const [inlineOutcomeName, setInlineOutcomeName] = useState('');
-    
+
     // External add mode state - used by + icon in tabs row (same as ProductsPage)
     const [externalAddMode, setExternalAddMode] = useState<string | null>(null);
 
@@ -214,7 +215,7 @@ export const SolutionsPage: React.FC = () => {
 
             // Special case: "__ALL_OUTCOMES__" means show ONLY tasks with no specific outcomes
             if (taskOutcomeFilter.includes('__ALL_OUTCOMES__')) {
-            if (hasSpecificOutcomes) {
+                if (hasSpecificOutcomes) {
                     return false; // Exclude tasks that have specific outcomes
                 }
                 // Keep tasks with no specific outcomes (they apply to ALL)
@@ -398,14 +399,23 @@ export const SolutionsPage: React.FC = () => {
     const handleInlineSolutionUpdate = async (field: 'name' | 'description', value: string) => {
         if (!displaySolution) return;
         try {
+            const input: any = {
+                name: field === 'name' ? value : displaySolution.name,
+                customAttrs: displaySolution.customAttrs
+            };
+
+            if (field === 'description') {
+                input.resources = value ? [{ label: 'Description', url: value }] : [];
+            } else {
+                // Strip __typename from resources to avoid GraphQL input error
+                input.resources = (displaySolution.resources || []).map((r: any) => ({ label: r.label, url: r.url }));
+            }
+
             await client.mutate({
                 mutation: UPDATE_SOLUTION,
                 variables: {
                     id: displaySolution.id,
-                    input: {
-                        name: field === 'name' ? value : displaySolution.name,
-                        description: field === 'description' ? value : displaySolution.description
-                    }
+                    input
                 },
                 refetchQueries: ['Solutions', 'Solution'],
                 awaitRefetchQueries: true
@@ -954,6 +964,7 @@ export const SolutionsPage: React.FC = () => {
                                 sx={{ borderBottom: 1, borderColor: 'divider', flex: 1 }}
                             >
                                 <Tab label="Summary" value="summary" />
+                                <Tab label="Resources" value="resources" />
                                 <Tab label={`Tasks${tasks.length > 0 ? ` (${hasActiveFilters ? `${filteredTasks.length}/${tasks.length}` : tasks.length})` : ''}`} value="tasks" />
                                 <Tab label="Tags" value="tags" />
                                 <Tab label="Products" value="products" />
@@ -970,7 +981,7 @@ export const SolutionsPage: React.FC = () => {
                                         <>
                                             <Tooltip title={isTasksLocked ? "Unlock Tasks to Edit" : "Lock Tasks"}>
                                                 <IconButton
-                                                size="small"
+                                                    size="small"
                                                     onClick={() => setIsTasksLocked(!isTasksLocked)}
                                                     sx={{ mr: 1, color: isTasksLocked ? 'text.secondary' : 'primary.main', border: `1px solid ${isTasksLocked ? 'divider' : 'primary.main'}`, borderRadius: 1 }}
                                                 >
@@ -980,7 +991,7 @@ export const SolutionsPage: React.FC = () => {
 
                                             <Tooltip title={showFilters ? "Hide Filters" : hasActiveFilters ? `Filters Active (${[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length})` : "Show Filters"}>
                                                 <IconButton
-                                                onClick={() => setShowFilters(!showFilters)}
+                                                    onClick={() => setShowFilters(!showFilters)}
                                                     color={hasActiveFilters || showFilters ? "primary" : "default"}
                                                 >
                                                     <Badge badgeContent={[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length} color="secondary">
@@ -991,13 +1002,13 @@ export const SolutionsPage: React.FC = () => {
                                             {hasActiveFilters && (
                                                 <Tooltip title="Clear Filters">
                                                     <IconButton
-                                                    size="small"
+                                                        size="small"
                                                         onClick={() => {
-                                                        setTaskTagFilter([]);
-                                                        setTaskOutcomeFilter([]);
-                                                        setTaskReleaseFilter([]);
-                                                        setTaskLicenseFilter([]);
-                                                    }}
+                                                            setTaskTagFilter([]);
+                                                            setTaskOutcomeFilter([]);
+                                                            setTaskReleaseFilter([]);
+                                                            setTaskLicenseFilter([]);
+                                                        }}
                                                         color="secondary"
                                                     >
                                                         <Clear fontSize="small" />
@@ -1016,11 +1027,12 @@ export const SolutionsPage: React.FC = () => {
                                         selectedSubSection === 'tasks' && isTasksLocked ? "Unlock Tasks to Add" :
                                             selectedSubSection === 'tasks' ? 'Add Task' :
                                                 selectedSubSection === 'products' ? 'Add Product' :
-                                                    selectedSubSection === 'tags' ? 'Add Tag' :
-                                                        selectedSubSection === 'outcomes' ? 'Add Outcome' :
-                                                            selectedSubSection === 'releases' ? 'Add Release' :
-                                                                selectedSubSection === 'licenses' ? 'Add License' :
-                                                                    selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'
+                                                    selectedSubSection === 'resources' ? 'Add Resource' :
+                                                        selectedSubSection === 'tags' ? 'Add Tag' :
+                                                            selectedSubSection === 'outcomes' ? 'Add Outcome' :
+                                                                selectedSubSection === 'releases' ? 'Add Release' :
+                                                                    selectedSubSection === 'licenses' ? 'Add License' :
+                                                                        selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'
                                     }>
                                         <span>
                                             <IconButton
@@ -1032,6 +1044,8 @@ export const SolutionsPage: React.FC = () => {
                                                         setTaskDialog(true);
                                                     } else if (selectedSubSection === 'tags') {
                                                         setExternalAddMode('tags');
+                                                    } else if (selectedSubSection === 'resources') {
+                                                        setExternalAddMode('resources');
                                                     } else if (selectedSubSection === 'outcomes') {
                                                         setExternalAddMode('outcomes');
                                                     } else if (selectedSubSection === 'releases') {
@@ -1228,6 +1242,24 @@ export const SolutionsPage: React.FC = () => {
                             </Box>
                         )}
 
+                        {selectedSubSection === 'resources' && (
+                            <Grid container spacing={3}>
+                                <Grid size={{ xs: 12 }}>
+                                    <Paper sx={{ p: 2 }}>
+                                        <ResourcesTable
+                                            items={displaySolution?.resources || []}
+                                            onUpdate={solutionEditing.handleResourceUpdate}
+                                            onDelete={solutionEditing.handleResourceDelete}
+                                            onCreate={solutionEditing.handleResourceCreate}
+                                            onReorder={solutionEditing.handleResourceReorder}
+                                            externalAddMode={externalAddMode === 'resources'}
+                                            onExternalAddComplete={() => setExternalAddMode(null)}
+                                        />
+                                    </Paper>
+                                </Grid>
+                            </Grid>
+                        )}
+
                         {selectedSubSection === 'products' && (
                             <Grid container spacing={3}>
                                 <Grid size={{ xs: 12 }}>
@@ -1253,8 +1285,8 @@ export const SolutionsPage: React.FC = () => {
                                                 }
                                             }}
                                         >
-                                            <SortableContext 
-                                                items={currentSolution?.products?.edges?.map((e: any) => e.node.id) || []} 
+                                            <SortableContext
+                                                items={currentSolution?.products?.edges?.map((e: any) => e.node.id) || []}
                                                 strategy={verticalListSortingStrategy}
                                             >
                                                 <List>
@@ -1310,7 +1342,7 @@ export const SolutionsPage: React.FC = () => {
                                             onUpdate={solutionEditing.handleReleaseUpdate}
                                             onDelete={solutionEditing.handleReleaseDelete}
                                             onCreate={solutionEditing.handleReleaseCreate}
-                                            onReorder={() => {}} // Releases are auto-sorted by level
+                                            onReorder={() => { }} // Releases are auto-sorted by level
                                             externalAddMode={externalAddMode === 'releases'}
                                             onExternalAddComplete={() => setExternalAddMode(null)}
                                         />
@@ -1328,7 +1360,7 @@ export const SolutionsPage: React.FC = () => {
                                             onUpdate={solutionEditing.handleLicenseUpdate}
                                             onDelete={solutionEditing.handleLicenseDelete}
                                             onCreate={solutionEditing.handleLicenseCreate}
-                                            onReorder={() => {}} // Licenses are auto-sorted by level
+                                            onReorder={() => { }} // Licenses are auto-sorted by level
                                             externalAddMode={externalAddMode === 'licenses'}
                                             onExternalAddComplete={() => setExternalAddMode(null)}
                                         />

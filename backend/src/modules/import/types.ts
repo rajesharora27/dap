@@ -41,12 +41,14 @@ export interface RawProductRow {
     id?: string | null;
     name?: string | null;
     description?: string | null;
+    resources?: string | null; // JSON string or comma-separated links if we want to support it
 }
 
 export interface RawSolutionRow {
     id?: string | null;
     name?: string | null;
     description?: string | null;
+    resources?: string | null;
     linkedProducts?: string | null; // Comma-separated product names
 }
 
@@ -117,12 +119,14 @@ export interface ValidatedProductRow {
     id?: string;
     name: string;
     description?: string;
+    resources?: Array<{ label: string; url: string }>;
 }
 
 export interface ValidatedSolutionRow {
     id?: string;
     name: string;
     description?: string;
+    resources?: Array<{ label: string; url: string }>;
     linkedProducts: string[];
 }
 

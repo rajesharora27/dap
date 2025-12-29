@@ -24,7 +24,7 @@ const GET_SOLUTION_DETAILS = gql`
     solution(id: $id) {
       id
       name
-      description
+      resources { label url }
       customAttrs
       outcomes {
         id
@@ -42,7 +42,7 @@ const GET_SOLUTION_DETAILS = gql`
           node {
             id
             name
-            description
+            resources { label url }
             statusPercent
           }
         }
@@ -104,10 +104,10 @@ export const SolutionPreviewDialog: React.FC<SolutionPreviewDialogProps> = ({
                         }}
                     >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Box sx={{ 
-                                width: 48, 
-                                height: 48, 
-                                borderRadius: 2, 
+                            <Box sx={{
+                                width: 48,
+                                height: 48,
+                                borderRadius: 2,
                                 bgcolor: 'secondary.main',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -120,8 +120,8 @@ export const SolutionPreviewDialog: React.FC<SolutionPreviewDialogProps> = ({
                                     {solution.name}
                                 </Typography>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                    <Chip 
-                                        size="small" 
+                                    <Chip
+                                        size="small"
                                         label="Solution"
                                         color="secondary"
                                         variant="outlined"
@@ -141,15 +141,38 @@ export const SolutionPreviewDialog: React.FC<SolutionPreviewDialogProps> = ({
                         <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 3 }}>
                             {/* Left Column: Description & Products */}
                             <Box>
-                                {/* Description */}
+                                {/* Resources */}
                                 <Box sx={{ mb: 3 }}>
                                     <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                        <Description fontSize="small" /> Description
+                                        <Description fontSize="small" /> Resources
                                     </Typography>
                                     <Paper variant="outlined" sx={{ p: 2, bgcolor: '#fafafa' }}>
-                                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                                            {solution.description || 'No description provided.'}
-                                        </Typography>
+                                        {solution.resources && solution.resources.length > 0 ? (
+                                            <List dense disablePadding>
+                                                {solution.resources.map((res: any, idx: number) => (
+                                                    <ListItem key={idx} sx={{ px: 0 }}>
+                                                        <ListItemText
+                                                            primary={
+                                                                <Button
+                                                                    component="a"
+                                                                    href={res.url}
+                                                                    target="_blank"
+                                                                    rel="noopener"
+                                                                    size="small"
+                                                                    sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
+                                                                >
+                                                                    {res.label}
+                                                                </Button>
+                                                            }
+                                                        />
+                                                    </ListItem>
+                                                ))}
+                                            </List>
+                                        ) : (
+                                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                                No resources provided.
+                                            </Typography>
+                                        )}
                                     </Paper>
                                 </Box>
 
@@ -172,8 +195,8 @@ export const SolutionPreviewDialog: React.FC<SolutionPreviewDialogProps> = ({
                                                                             {product.name}
                                                                         </Typography>
                                                                         {product.statusPercent !== undefined && (
-                                                                            <Chip 
-                                                                                size="small" 
+                                                                            <Chip
+                                                                                size="small"
                                                                                 label={`${product.statusPercent}%`}
                                                                                 color={product.statusPercent === 100 ? 'success' : 'primary'}
                                                                                 variant="outlined"
@@ -182,7 +205,7 @@ export const SolutionPreviewDialog: React.FC<SolutionPreviewDialogProps> = ({
                                                                         )}
                                                                     </Box>
                                                                 }
-                                                                secondary={product.description}
+                                                                secondary={product.resources && product.resources.length > 0 ? `${product.resources.length} resources` : 'No resources'}
                                                             />
                                                         </ListItem>
                                                     </React.Fragment>

@@ -114,7 +114,7 @@ export const ProductManagement: React.FC<Props> = ({
                   secondary={
                     <Box>
                       <Typography variant="caption" color="text.secondary">
-                        {product.description}
+                        {product.resources && product.resources.length > 0 ? `${product.resources.length} resources` : 'No resources'}
                       </Typography>
                       <br />
                       <Typography variant="caption" color="primary">

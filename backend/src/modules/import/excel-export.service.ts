@@ -57,6 +57,7 @@ export interface ExportResult {
         licensesExported: number;
         outcomesExported: number;
         releasesExported: number;
+        resourcesExported: number;
         telemetryAttributesExported: number;
     };
 }
@@ -182,7 +183,14 @@ export class ExcelExportService {
         }
         this.createSheet(workbook, PRODUCT_WORKBOOK_SHEETS[6], attrData);
 
-        // 8. Telemetry Attributes
+        // 8. Resources
+        const resourcesData = (product.resources || []).map((r: any) => ({
+            label: r.label,
+            url: r.url
+        }));
+        this.createSheet(workbook, PRODUCT_WORKBOOK_SHEETS[7], resourcesData);
+
+        // 9. Telemetry Attributes
         const telemetryData: any[] = [];
         product.tasks.forEach((t: any) => {
             t.telemetryAttributes.forEach((ta: any) => {
@@ -196,9 +204,9 @@ export class ExcelExportService {
                 });
             });
         });
-        this.createSheet(workbook, PRODUCT_WORKBOOK_SHEETS[7], telemetryData);
+        this.createSheet(workbook, PRODUCT_WORKBOOK_SHEETS[8], telemetryData);
 
-        // 9. Instructions
+        // 10. Instructions
         this.createInstructionsSheet(workbook);
 
         const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
@@ -215,6 +223,7 @@ export class ExcelExportService {
                 licensesExported: licenseData.length,
                 outcomesExported: outcomeData.length,
                 releasesExported: releaseData.length,
+                resourcesExported: resourcesData.length,
                 telemetryAttributesExported: telemetryData.length
             }
         };
@@ -287,9 +296,17 @@ export class ExcelExportService {
         this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[4], solution.releases.map((r: any) => ({ ...r, id: r.id })).sort((a: any, b: any) => a.level - b.level));
         this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[5], solution.tags.map((t: any) => ({ ...t, id: t.id })).sort((a: any, b: any) => a.name.localeCompare(b.name)));
 
-        // 7. Custom Attributes, 8. Telemetry
+        // 7. Custom Attributes
         this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[6], []);
 
+        // 8. Resources
+        const resourcesData = (solution.resources || []).map((r: any) => ({
+            label: r.label,
+            url: r.url
+        }));
+        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[7], resourcesData);
+
+        // 9. Telemetry
         const telemetryData: any[] = [];
         solution.tasks.forEach((t: any) => {
             t.telemetryAttributes.forEach((ta: any) => {
@@ -303,9 +320,9 @@ export class ExcelExportService {
                 });
             });
         });
-        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[7], telemetryData);
+        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[8], telemetryData);
 
-        // 9. Instructions
+        // 10. Instructions
         this.createInstructionsSheet(workbook);
 
         const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
@@ -322,6 +339,7 @@ export class ExcelExportService {
                 licensesExported: solution.licenses.length,
                 outcomesExported: solution.outcomes.length,
                 releasesExported: solution.releases.length,
+                resourcesExported: resourcesData.length,
                 telemetryAttributesExported: telemetryData.length
             }
         };

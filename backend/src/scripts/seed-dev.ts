@@ -35,7 +35,7 @@ export async function seedDev() {
           update: {},
           create: {
             name: 'Dev Product 1',
-            description: 'Sample product for dev',
+            resources: [{ label: 'Dev Resource', url: 'https://example.com' }],
             tasks: {
               create: [
                 {
@@ -67,7 +67,7 @@ export async function seedDev() {
           update: {},
           create: {
             name: 'Dev Product 2',
-            description: 'Secondary sample',
+            resources: [{ label: 'Secondary Resource', url: 'https://example.com' }],
             tasks: {
               create: [
                 {

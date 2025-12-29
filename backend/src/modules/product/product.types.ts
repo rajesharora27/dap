@@ -5,19 +5,20 @@
  */
 
 import { z } from 'zod';
+import { Resource } from '../common/common.types';
 
 // ===== Input Types =====
 
 export interface ProductCreateInput {
     name: string;
-    description?: string;
+    resources?: Resource[];
     customAttrs?: Record<string, any>;
     licenseIds?: string[];
 }
 
 export interface ProductUpdateInput {
     name?: string;
-    description?: string;
+    resources?: Resource[];
     customAttrs?: Record<string, any>;
     licenseIds?: string[];
 }
@@ -33,7 +34,7 @@ export interface ProductFilters {
 export interface Product {
     id: string;
     name: string;
-    description?: string | null;
+    resources?: Resource[] | null;
     customAttrs?: Record<string, any> | null;
     createdAt: Date;
     updatedAt: Date;

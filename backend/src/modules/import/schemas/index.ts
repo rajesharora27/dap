@@ -7,6 +7,11 @@
 
 import { z } from 'zod';
 
+const ResourceSchema = z.object({
+    label: z.string().min(1, "Label is required"),
+    url: z.string().url("Invalid URL format")
+});
+
 // ============================================================================
 // Common Schemas
 // ============================================================================
@@ -48,6 +53,7 @@ export const ProductRowSchema = z.object({
     id: IdSchema,
     name: NonEmptyString.describe('Product name is required'),
     description: z.string().max(5000).optional().nullable(),
+    resources: z.array(ResourceSchema).optional().nullable(),
 });
 
 export type ProductRow = z.infer<typeof ProductRowSchema>;
@@ -60,6 +66,7 @@ export const SolutionRowSchema = z.object({
     id: IdSchema,
     name: NonEmptyString.describe('Solution name is required'),
     description: z.string().max(5000).optional().nullable(),
+    resources: z.array(ResourceSchema).optional().nullable(),
     linkedProducts: z.array(z.string().min(1)).default([]),
 });
 

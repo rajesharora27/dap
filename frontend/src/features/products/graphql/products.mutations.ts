@@ -5,7 +5,7 @@ export const CREATE_PRODUCT = gql`
     createProduct(input: $input) {
       id
       name
-      description
+      resources { label url }
       statusPercent
     }
   }
@@ -16,7 +16,7 @@ export const UPDATE_PRODUCT = gql`
     updateProduct(id: $id, input: $input) {
       id
       name
-      description
+      resources { label url }
       statusPercent
       customAttrs
     }

@@ -35,6 +35,8 @@ import { SortableAttributeItem } from '@shared/components/SortableAttributeItem'
 import { License } from '@features/product-licenses';
 import { Outcome } from '@features/product-outcomes';
 import { Release } from '@features/product-releases';
+import { Resource } from '@shared/types';
+import { ResourcesTable } from '@features/products/components/shared/ResourcesTable';
 import {
   InlineOutcomeEditor,
   AddOutcomeForm,
@@ -54,22 +56,22 @@ import { CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG } from '@
 import { PRODUCTS } from '@features/products';
 
 const CREATE_SOLUTION = gql`
-  mutation CreateSolution($input: SolutionInput!) {
+  mutation CreateSolutionDialog($input: SolutionInput!) {
     createSolution(input: $input) {
       id
       name
-      description
+      resources { label url }
       customAttrs
     }
   }
 `;
 
 const UPDATE_SOLUTION = gql`
-  mutation UpdateSolution($id: ID!, $input: SolutionInput!) {
+  mutation UpdateSolutionDialog($id: ID!, $input: SolutionInput!) {
     updateSolution(id: $id, input: $input) {
       id
       name
-      description
+      resources { label url }
       customAttrs
     }
   }
@@ -94,7 +96,7 @@ const REORDER_PRODUCTS_IN_SOLUTION = gql`
 `;
 
 const CREATE_OUTCOME = gql`
-  mutation CreateOutcome($input: OutcomeInput!) {
+  mutation CreateOutcomeSolutionDialog($input: OutcomeInput!) {
     createOutcome(input: $input) {
       id
       name
@@ -104,7 +106,7 @@ const CREATE_OUTCOME = gql`
 `;
 
 const UPDATE_OUTCOME = gql`
-  mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
+  mutation UpdateOutcomeSolutionDialog($id: ID!, $input: OutcomeInput!) {
     updateOutcome(id: $id, input: $input) {
       id
       name
@@ -120,7 +122,7 @@ const DELETE_OUTCOME = gql`
 `;
 
 const CREATE_RELEASE = gql`
-  mutation CreateRelease($input: ReleaseInput!) {
+  mutation CreateReleaseSolutionDialog($input: ReleaseInput!) {
     createRelease(input: $input) {
       id
       name
@@ -131,7 +133,7 @@ const CREATE_RELEASE = gql`
 `;
 
 const UPDATE_RELEASE = gql`
-  mutation UpdateRelease($id: ID!, $input: ReleaseInput!) {
+  mutation UpdateReleaseSolutionDialog($id: ID!, $input: ReleaseInput!) {
     updateRelease(id: $id, input: $input) {
       id
       name
@@ -148,7 +150,7 @@ const DELETE_RELEASE = gql`
 `;
 
 const CREATE_LICENSE = gql`
-  mutation CreateLicense($input: LicenseInput!) {
+  mutation CreateLicenseSolutionDialog($input: LicenseInput!) {
     createLicense(input: $input) {
       id
       name
@@ -160,7 +162,7 @@ const CREATE_LICENSE = gql`
 `;
 
 const UPDATE_LICENSE = gql`
-  mutation UpdateLicense($id: ID!, $input: LicenseInput!) {
+  mutation UpdateLicenseSolutionDialog($id: ID!, $input: LicenseInput!) {
     updateLicense(id: $id, input: $input) {
       id
       name
@@ -205,7 +207,7 @@ function TabPanel(props: TabPanelProps) {
 interface Solution {
   id: string;
   name: string;
-  description?: string;
+  resources?: Resource[];
   customAttrs?: any;
   products?: any;
   outcomes?: any[];
@@ -250,7 +252,7 @@ export const SolutionDialog: React.FC<Props> = ({
     skip: !open,
     fetchPolicy: 'cache-and-network'  // Always fetch fresh data when dialog opens
   });
-  
+
   // Use fresh products data from query, fall back to prop if not available
   const allProducts = productsData?.products?.edges?.map((e: any) => e.node) || propAllProducts || [];
 
@@ -261,7 +263,7 @@ export const SolutionDialog: React.FC<Props> = ({
   const solutionEditing = useSolutionEditing(solutionId);
 
   const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+  const [resources, setResources] = useState<Resource[]>([]);
   const [customAttrs, setCustomAttrs] = useState<{ [key: string]: any }>({});
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [solutionOutcomes, setSolutionOutcomes] = useState<Outcome[]>([]);
@@ -332,7 +334,7 @@ export const SolutionDialog: React.FC<Props> = ({
   useEffect(() => {
     if (solution) {
       setName(solution.name || '');
-      setDescription(solution.description || '');
+      setResources(solution.resources || []);
       const attrs = solution.customAttrs || {};
       const cleanedAttrs = Object.fromEntries(
         Object.entries(attrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
@@ -346,7 +348,7 @@ export const SolutionDialog: React.FC<Props> = ({
       setTags((solution.tags || []).map((t: any) => ({ ...t })));
     } else {
       setName('');
-      setDescription('');
+      setResources([]);
       setCustomAttrs({});
       setSelectedProductIds([]);
       setSolutionOutcomes([]);
@@ -492,7 +494,7 @@ export const SolutionDialog: React.FC<Props> = ({
       const overIdx = solutionOutcomes.findIndex((o, i) => (o.id || `new-${i}`) === over.id);
       const newOrder = arrayMove(solutionOutcomes, activeIdx, overIdx);
       setSolutionOutcomes(newOrder);
-      
+
       if (isEditMode) {
         const outcomeIds = newOrder.filter(o => o.id).map(o => o.id as string);
         await solutionEditing.handleOutcomeReorder(outcomeIds);
@@ -738,7 +740,7 @@ export const SolutionDialog: React.FC<Props> = ({
       const newIndex = tags.findIndex((item) => (item.id || (item as any)._tempId) === over.id);
       const newOrder = arrayMove(tags, oldIndex, newIndex);
       setTags(newOrder);
-      
+
       if (isEditMode) {
         const tagIds = newOrder.filter(t => t.id).map(t => t.id as string);
         await solutionEditing.handleTagReorder(tagIds);
@@ -800,7 +802,8 @@ export const SolutionDialog: React.FC<Props> = ({
 
       const input = {
         name: name.trim(),
-        description: description.trim() || undefined,
+        // Strip __typename from resources to avoid GraphQL input error
+        resources: resources.map(({ label, url }) => ({ label, url })),
         customAttrs: cleanedCustomAttrs
       };
 
@@ -1022,7 +1025,7 @@ export const SolutionDialog: React.FC<Props> = ({
       <DialogContent dividers>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab label="General" />
+            <Tab label="Resources" />
             <Tab label={`Tags (${visibleTags.length})`} />
             <Tab label={`Products (${selectedProductIds.length})`} />
             <Tab label={`Outcomes (${allOutcomes.length})`} />
@@ -1040,10 +1043,38 @@ export const SolutionDialog: React.FC<Props> = ({
           </Alert>
         )}
 
-        {/* General Tab */}
+        {/* Resources Tab */}
         <TabPanel value={tabValue} index={0}>
           <TextField fullWidth label="Solution Name" value={name} onChange={(e) => setName(e.target.value)} required sx={{ mb: 2 }} />
-          <TextField fullWidth label="Description" value={description} onChange={(e) => setDescription(e.target.value)} multiline rows={4} />
+          <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>Resources</Typography>
+          {isEditMode ? (
+            <ResourcesTable
+              items={solution?.resources || []}
+              onUpdate={solutionEditing.handleResourceUpdate}
+              onDelete={solutionEditing.handleResourceDelete}
+              onCreate={solutionEditing.handleResourceCreate}
+              onReorder={solutionEditing.handleResourceReorder}
+            />
+          ) : (
+            <ResourcesTable
+              items={resources}
+              onUpdate={(index, updates) => {
+                const updated = [...resources];
+                updated[index] = { ...updated[index], ...updates };
+                setResources(updated);
+              }}
+              onDelete={(index) => {
+                const updated = [...resources];
+                updated.splice(index, 1);
+                setResources(updated);
+              }}
+              onCreate={(data) => setResources([...resources, data])}
+              onReorder={(newOrder) => {
+                const reordered = newOrder.map(i => resources[i]);
+                setResources(reordered);
+              }}
+            />
+          )}
         </TabPanel>
 
         {/* Products Tab - Drag & Drop */}

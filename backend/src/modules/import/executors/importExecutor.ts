@@ -234,7 +234,7 @@ async function createEntity(
         const product = await tx.product.create({
             data: {
                 name: entity.name,
-                description: (entity as any).description ?? null,
+                resources: (entity as any).resources || ((entity as any).description ? [{ label: 'Description', url: 'https://example.com' }] : []),
             },
         });
         return product.id;
@@ -242,7 +242,7 @@ async function createEntity(
         const solution = await tx.solution.create({
             data: {
                 name: entity.name,
-                description: (entity as any).description ?? null,
+                resources: (entity as any).resources || ((entity as any).description ? [{ label: 'Description', url: 'https://example.com' }] : []),
             },
         });
         return solution.id;
@@ -260,7 +260,7 @@ async function updateEntity(
             where: { id: entityId },
             data: {
                 name: entity.name,
-                description: (entity as any).description ?? null,
+                resources: (entity as any).resources || ((entity as any).description ? [{ label: 'Description', url: 'https://example.com' }] : []),
             },
         });
     } else {
@@ -268,7 +268,7 @@ async function updateEntity(
             where: { id: entityId },
             data: {
                 name: entity.name,
-                description: (entity as any).description ?? null,
+                resources: (entity as any).resources || ((entity as any).description ? [{ label: 'Description', url: 'https://example.com' }] : []),
             },
         });
     }

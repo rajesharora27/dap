@@ -3,18 +3,18 @@
  * 
  * TypeScript interfaces and types for the Solution domain.
  */
-
+import { Resource } from '../common/common.types';
 // ===== Input Types =====
 
 export interface SolutionCreateInput {
   name: string;
-  description?: string;
+  resources?: Resource[];
   customAttrs?: Record<string, any>;
 }
 
 export interface SolutionUpdateInput {
   name?: string;
-  description?: string;
+  resources?: Resource[];
   customAttrs?: Record<string, any>;
 }
 
@@ -23,7 +23,7 @@ export interface SolutionUpdateInput {
 export interface Solution {
   id: string;
   name: string;
-  description?: string | null;
+  resources?: Resource[] | null;
   customAttrs?: Record<string, any> | null;
   createdAt?: Date;
   updatedAt?: Date;

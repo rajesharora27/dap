@@ -64,7 +64,6 @@ const GET_CUSTOMER_DETAIL = gql`
         product {
           id
           name
-          description
         }
         adoptionPlan {
           id

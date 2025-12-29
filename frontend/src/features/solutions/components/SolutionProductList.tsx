@@ -31,7 +31,7 @@ import {
 interface Product {
   id: string;
   name: string;
-  description?: string;
+  resources?: any[];
   tasks?: { edges: any[] };
 }
 
@@ -193,7 +193,7 @@ export const SolutionProductList: React.FC<Props> = ({
                         />
                       </Box>
                     }
-                    secondary={product.description}
+                    secondary={product.resources && product.resources.length > 0 ? `${product.resources.length} resources` : 'No resources'}
                   />
 
                   <Box

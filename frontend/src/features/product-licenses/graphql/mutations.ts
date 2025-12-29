@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client';
 
 export const CREATE_LICENSE = gql`
-  mutation CreateLicense($input: LicenseInput!) {
+  mutation CreateLicenseCore($input: LicenseInput!) {
     createLicense(input: $input) {
       id
       name
@@ -16,7 +16,7 @@ export const CREATE_LICENSE = gql`
 `;
 
 export const UPDATE_LICENSE = gql`
-  mutation UpdateLicense($id: ID!, $input: LicenseInput!) {
+  mutation UpdateLicenseCore($id: ID!, $input: LicenseInput!) {
     updateLicense(id: $id, input: $input) {
       id
       name

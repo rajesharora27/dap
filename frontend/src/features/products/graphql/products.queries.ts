@@ -7,7 +7,7 @@ export const PRODUCTS = gql`
         node {
           id
           name
-          description
+          resources { label url }
           statusPercent
           customAttrs
           licenses {
@@ -42,7 +42,7 @@ export const PRODUCT = gql`
     product(id: $id) {
       id
       name
-      description
+      resources { label url }
       statusPercent
       customAttrs
       licenses {
@@ -87,6 +87,63 @@ export const PRODUCT_TAGS = gql`
      displayOrder
    }
   }
+`;
+
+export const PRODUCT_TASK_CONNECTION_FIELDS = gql`
+  fragment ProductTaskConnectionFields on TaskConnection {
+    edges {
+      node {
+        id
+        name
+        description
+        status
+        priority
+        dueDate
+        customAttrs
+        assignees {
+          id
+          firstName
+          lastName
+        }
+        tags {
+          id
+          name
+          color
+        }
+        product {
+          id
+          name
+        }
+        release {
+          id
+          name
+        }
+        outcome {
+          id
+          name
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      hasPreviousPage
+      startCursor
+      endCursor
+    }
+  }
+`;
+
+export const TASKS_FOR_PRODUCT = gql`
+  query TasksForProductQuery($productId: ID!, $first: Int, $after: String, $last: Int, $before: String) {
+    product(id: $productId) {
+      id
+      name
+      tasks(first: $first, after: $after, last: $last, before: $before) {
+        ...ProductTaskConnectionFields
+      }
+    }
+  }
+  ${PRODUCT_TASK_CONNECTION_FIELDS}
 `;
 
 export const OUTCOMES = gql`

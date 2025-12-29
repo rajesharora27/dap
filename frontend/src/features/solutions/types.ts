@@ -3,11 +3,12 @@
  */
 
 import { Product } from '../products/types';
+import { Resource } from '@shared/types';
 
 export interface Solution {
     id: string;
     name: string;
-    description?: string;
+    resources?: Resource[];
     customAttrs?: Record<string, any>;
     products?: Product[];
     createdAt?: string;
@@ -24,7 +25,7 @@ export interface Solution {
 
 export interface SolutionInput {
     name: string;
-    description?: string;
+    resources?: Resource[];
     customAttrs?: Record<string, any>;
 }
 

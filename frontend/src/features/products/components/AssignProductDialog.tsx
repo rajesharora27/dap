@@ -33,7 +33,7 @@ const GET_PRODUCTS_AND_OUTCOMES = gql`
         node {
           id
           name
-          description
+          resources { label url }
           licenses {
             id
             name
@@ -436,9 +436,9 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                             <Typography variant="body1" fontWeight={500}>
                               {product.name}
                             </Typography>
-                            {product.description && (
+                            {product.resources && product.resources.length > 0 && (
                               <Typography variant="caption" color="text.secondary" display="block">
-                                {product.description}
+                                {product.resources.length} resources
                               </Typography>
                             )}
                           </Box>
@@ -468,9 +468,9 @@ export const AssignProductDialog: React.FC<Props> = ({ open, onClose, customerId
                   Selected Product
                 </Typography>
                 <Typography variant="h6">{selectedProduct.name}</Typography>
-                {selectedProduct.description && (
+                {selectedProduct.resources && selectedProduct.resources.length > 0 && (
                   <Typography variant="body2" color="text.secondary">
-                    {selectedProduct.description}
+                    {selectedProduct.resources.length} resources
                   </Typography>
                 )}
               </Box>

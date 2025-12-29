@@ -11,7 +11,7 @@ export const UPDATE_SOLUTION = gql`
     updateSolution(id: $id, input: $input) {
       id
       name
-      description
+      resources { label url }
       customAttrs
     }
   }

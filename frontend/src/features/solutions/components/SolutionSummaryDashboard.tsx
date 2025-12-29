@@ -438,6 +438,64 @@ export const SolutionSummaryDashboard: React.FC<SolutionSummaryDashboardProps> =
                 </Paper>
 
             </Box>
+
+            {/* === 3. Resources Panel (Top 3) === */}
+            {solution.resources && solution.resources.length > 0 && (
+                <Paper
+                    elevation={0}
+                    sx={{
+                        border: `1px solid ${colors.divider}`,
+                        borderRadius: 1,
+                        overflow: 'hidden',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                    }}
+                >
+                    <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${colors.divider}`, bgcolor: colors.headerBg, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="h6" fontWeight={700} color={colors.primary} sx={{ fontSize: '0.9rem', letterSpacing: '-0.01em' }}>
+                            Resources
+                        </Typography>
+                        {solution.resources.length > 3 && (
+                            <Typography variant="caption" color={colors.secondary}>
+                                Showing 3 of {solution.resources.length}
+                            </Typography>
+                        )}
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 2, p: 2 }}>
+                        {solution.resources.slice(0, 3).map((resource: any, index: number) => (
+                            <Box
+                                key={index}
+                                component="a"
+                                href={resource.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                sx={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    p: 2,
+                                    bgcolor: alpha(colors.ciscoBlue, 0.05),
+                                    borderRadius: 1,
+                                    border: `1px solid ${alpha(colors.ciscoBlue, 0.2)}`,
+                                    textDecoration: 'none',
+                                    transition: 'all 0.2s ease',
+                                    '&:hover': {
+                                        bgcolor: alpha(colors.ciscoBlue, 0.1),
+                                        borderColor: colors.ciscoBlue,
+                                        transform: 'translateY(-1px)'
+                                    }
+                                }}
+                            >
+                                <Typography variant="body2" fontWeight={600} color={colors.ciscoBlue} sx={{ fontSize: '0.85rem' }}>
+                                    {resource.label}
+                                </Typography>
+                                <Typography variant="caption" color={colors.secondary} sx={{ mt: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {resource.url.length > 40 ? resource.url.slice(0, 40) + '...' : resource.url}
+                                </Typography>
+                            </Box>
+                        ))}
+                    </Box>
+                </Paper>
+            )}
         </Box>
     );
 };

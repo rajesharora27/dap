@@ -156,7 +156,7 @@ import { PRODUCTS } from '../features/products/graphql/products.queries';
 
 
 const OUTCOMES = gql`
-  query Outcomes($productId: ID) {
+  query OutcomesQuery($productId: ID) {
     outcomes(productId: $productId) {
       id
       name
@@ -171,11 +171,11 @@ const OUTCOMES = gql`
 import { REORDER_TASKS } from '@features/tasks';
 
 const UPDATE_PRODUCT = gql`
-  mutation UpdateProduct($id: ID!, $input: ProductInput!) {
+  mutation UpdateProductInline($id: ID!, $input: ProductInput!) {
     updateProduct(id: $id, input: $input) {
       id
       name
-      description
+      resources { label url }
       statusPercent
       customAttrs
     }
@@ -1112,7 +1112,7 @@ export function App() {
       try {
         const result = await client.mutate({
           mutation: gql`
-            mutation CreateOutcome($input: OutcomeInput!) {
+            mutation CreateOutcomeInline($input: OutcomeInput!) {
               createOutcome(input: $input) {
                 id
                 name
@@ -1135,7 +1135,7 @@ export function App() {
       try {
         await client.mutate({
           mutation: gql`
-            mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
+            mutation UpdateOutcomeInline($id: ID!, $input: OutcomeInput!) {
               updateOutcome(id: $id, input: $input) {
                 id
                 name
@@ -1180,11 +1180,11 @@ export function App() {
       try {
         const result = await client.mutate({
           mutation: gql`
-            mutation CreateProduct($input: ProductInput!) {
+            mutation CreateProductInline($input: ProductInput!) {
               createProduct(input: $input) {
                 id
                 name
-                description
+                resources { label url }
                 statusPercent
               }
             }
@@ -1229,7 +1229,8 @@ export function App() {
             id,
             input: {
               name: data.name,
-              description: data.description,
+              // Strip __typename from resources to avoid GraphQL input error
+              resources: (data.resources || []).map((r: any) => ({ label: r.label, url: r.url })),
               customAttrs: data.customAttrs || {}
             }
           },
@@ -1309,7 +1310,7 @@ export function App() {
                 console.log(`Creating outcome: ${outcome.name}`);
                 await client.mutate({
                   mutation: gql`
-                    mutation CreateOutcome($input: OutcomeInput!) {
+                    mutation CreateOutcomeInline2($input: OutcomeInput!) {
                       createOutcome(input: $input) { id name description }
                     }
                   `,
@@ -1327,7 +1328,7 @@ export function App() {
                 console.log(`Updating outcome: ${outcome.name}`);
                 await client.mutate({
                   mutation: gql`
-                    mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
+                    mutation UpdateOutcomeInline2($id: ID!, $input: OutcomeInput!) {
                       updateOutcome(id: $id, input: $input) { id name description }
                     }
                   `,
@@ -1730,11 +1731,11 @@ export function App() {
     try {
       const result = await client.mutate({
         mutation: gql`
-          mutation CreateProduct($input: ProductInput!) {
+          mutation CreateProductInline3($input: ProductInput!) {
             createProduct(input: $input) {
               id
               name
-              description
+              resources { label url }
               statusPercent
             }
           }
@@ -1742,7 +1743,7 @@ export function App() {
         variables: {
           input: {
             name: newProduct.name,
-            description: newProduct.description,
+            resources: newProduct.description ? [{ label: 'Description', url: newProduct.description }] : [],
             customAttrs: {}
           }
         },
@@ -1769,7 +1770,7 @@ export function App() {
       // Create default outcome with product name
       await client.mutate({
         mutation: gql`
-          mutation CreateOutcome($input: OutcomeInput!) {
+          mutation CreateOutcomeInline3($input: OutcomeInput!) {
             createOutcome(input: $input) {
               id
               name
@@ -1804,7 +1805,7 @@ export function App() {
     try {
       await client.mutate({
         mutation: UPDATE_PRODUCT,
-        variables: { id: selectedProduct, input: { name: product.name, description: product.description, customAttrs: newAttrs } }
+        variables: { id: selectedProduct, input: { name: product.name, resources: product.resources, customAttrs: newAttrs } }
       });
       setAddCustomAttributeDialog(false);
       await refetchProducts();
@@ -1826,7 +1827,7 @@ export function App() {
     try {
       await client.mutate({
         mutation: UPDATE_PRODUCT,
-        variables: { id: selectedProduct, input: { name: product.name, description: product.description, customAttrs: newAttrs } }
+        variables: { id: selectedProduct, input: { name: product.name, resources: product.resources, customAttrs: newAttrs } }
       });
       setEditCustomAttributeDialog(false);
       setEditingCustomAttribute(null);
@@ -1850,7 +1851,7 @@ export function App() {
           id: editingProductId,
           input: {
             name: data.name,
-            description: data.description,
+            resources: data.resources,
             customAttrs: data.customAttrs
           }
         }

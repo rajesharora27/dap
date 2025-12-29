@@ -4,7 +4,7 @@ export const productTypeDefs = gql`
   type Product implements Node {
     id: ID!
     name: String!
-    description: String
+    resources: [Resource!]
     tasks(first: Int, after: String, last: Int, before: String): TaskConnection!
     statusPercent: Int!
     completionPercentage: Int!
@@ -61,7 +61,7 @@ export const productTypeDefs = gql`
 
   input ProductInput { 
     name: String! 
-    description: String 
+    resources: [ResourceInput!] 
     customAttrs: JSON 
     licenseIds: [ID!]
   }

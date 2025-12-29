@@ -33,6 +33,7 @@ import { TagsTable } from '../features/products/components/shared/TagsTable';
 import { ReleasesTable } from '../features/products/components/shared/ReleasesTable';
 import { LicensesTable } from '../features/products/components/shared/LicensesTable';
 import { AttributesTable } from '../features/products/components/shared/AttributesTable';
+import { ResourcesTable } from '../features/products/components/shared/ResourcesTable';
 
 interface ProductsPageProps {
     onEditProduct: (product: any) => void;
@@ -62,7 +63,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         );
     };
     const [selectedProduct, setSelectedProduct] = useState<string | null>(null);
-    const [selectedSubSection, setSelectedSubSection] = useState<'summary' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('summary');
+    const [selectedSubSection, setSelectedSubSection] = useState<'summary' | 'resources' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('summary');
 
     // Dialog States - must be before any conditional returns
     const [importDialog, setImportDialog] = useState(false);
@@ -78,7 +79,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const [isTasksLocked, setIsTasksLocked] = useState(false);
     const [inlineEditingOutcome, setInlineEditingOutcome] = useState<string | null>(null);
     const [inlineOutcomeName, setInlineOutcomeName] = useState('');
-    
+
     // External add mode state - used by + icon in tabs row
     const [externalAddMode, setExternalAddMode] = useState<string | null>(null); // null or tab name e.g. 'tags', 'outcomes', etc.
 
@@ -281,15 +282,23 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const handleInlineProductUpdate = async (field: 'name' | 'description', value: string) => {
         if (!displayProduct) return;
         try {
+            const input: any = {
+                name: field === 'name' ? value : displayProduct.name,
+                customAttrs: displayProduct.customAttrs
+            };
+
+            if (field === 'description') {
+                input.resources = value ? [{ label: 'Description', url: value }] : [];
+            } else {
+                // Strip __typename from resources to avoid GraphQL input error
+                input.resources = (displayProduct.resources || []).map((r: any) => ({ label: r.label, url: r.url }));
+            }
+
             await client.mutate({
                 mutation: UPDATE_PRODUCT,
                 variables: {
                     id: displayProduct.id,
-                    input: {
-                        name: field === 'name' ? value : displayProduct.name,
-                        description: field === 'description' ? value : displayProduct.description,
-                        customAttrs: displayProduct.customAttrs
-                    }
+                    input
                 },
                 refetchQueries: ['Products', 'ProductDetail'],
                 awaitRefetchQueries: true
@@ -808,6 +817,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                             sx={{ borderBottom: 1, borderColor: 'divider', flex: 1 }}
                         >
                             <Tab label="Summary" value="summary" />
+                            <Tab label="Resources" value="resources" />
                             <Tab label={`Tasks${tasks.length > 0 ? ` (${hasActiveFilters ? `${filteredTasks.length}/${tasks.length}` : tasks.length})` : ''}`} value="tasks" />
                             <Tab label="Tags" value="tags" />
                             <Tab label="Outcomes" value="outcomes" />
@@ -863,11 +873,12 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                 <Tooltip title={
                                     selectedSubSection === 'tasks' && isTasksLocked ? "Unlock Tasks to Add" :
                                         selectedSubSection === 'tasks' ? 'Add Task' :
-                                            selectedSubSection === 'tags' ? 'Add Tag' :
-                                                selectedSubSection === 'outcomes' ? 'Add Outcome' :
-                                                    selectedSubSection === 'releases' ? 'Add Release' :
-                                                        selectedSubSection === 'licenses' ? 'Add License' :
-                                                            selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'
+                                            selectedSubSection === 'resources' ? 'Add Resource' :
+                                                selectedSubSection === 'tags' ? 'Add Tag' :
+                                                    selectedSubSection === 'outcomes' ? 'Add Outcome' :
+                                                        selectedSubSection === 'releases' ? 'Add Release' :
+                                                            selectedSubSection === 'licenses' ? 'Add License' :
+                                                                selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'
                                 }>
                                     <span>
                                         <IconButton
@@ -877,7 +888,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                                 if (selectedSubSection === 'tasks') {
                                                     setEditingTask(null);
                                                     setTaskDialog(true);
-                                                } else if (['tags', 'outcomes', 'releases', 'licenses', 'customAttributes'].includes(selectedSubSection)) {
+                                                } else if (['resources', 'tags', 'outcomes', 'releases', 'licenses', 'customAttributes'].includes(selectedSubSection)) {
                                                     setExternalAddMode(selectedSubSection);
                                                 }
                                             }}
@@ -916,6 +927,24 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                 }}
                             />
                         </Box>
+                    )}
+
+                    {selectedSubSection === 'resources' && (
+                        <Grid container spacing={3}>
+                            <Grid size={{ xs: 12 }}>
+                                <Paper sx={{ p: 2 }}>
+                                    <ResourcesTable
+                                        items={displayProduct?.resources || []}
+                                        onUpdate={productEditing.handleResourceUpdate}
+                                        onDelete={productEditing.handleResourceDelete}
+                                        onCreate={productEditing.handleResourceCreate}
+                                        onReorder={productEditing.handleResourceReorder}
+                                        externalAddMode={externalAddMode === 'resources'}
+                                        onExternalAddComplete={() => setExternalAddMode(null)}
+                                    />
+                                </Paper>
+                            </Grid>
+                        </Grid>
                     )}
 
                     {selectedSubSection === 'tasks' && (

@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client';
 
 export const CREATE_OUTCOME = gql`
-  mutation CreateOutcome($input: OutcomeInput!) {
+  mutation CreateOutcomeCore($input: OutcomeInput!) {
     createOutcome(input: $input) {
       id
       name
@@ -11,7 +11,7 @@ export const CREATE_OUTCOME = gql`
 `;
 
 export const UPDATE_OUTCOME = gql`
-  mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
+  mutation UpdateOutcomeCore($id: ID!, $input: OutcomeInput!) {
     updateOutcome(id: $id, input: $input) {
       id
       name

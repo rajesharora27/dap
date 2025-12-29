@@ -1,5 +1,5 @@
 schema:
-  - ../backend/src/schema/typeDefs.ts:
+  - ../backend/src/modules/**/*.typeDefs.ts:
       noRequire: true
       pluckConfig:
         modules:
@@ -7,7 +7,7 @@ schema:
             identifier: gql
 
 documents:
-  - src/graphql/**/*.{ts,tsx}
+  - src/**/*.{ts,tsx}
 
 generates:
   src/generated/graphql.ts:

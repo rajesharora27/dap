@@ -39,14 +39,14 @@ const DELETE_PRODUCT = gql`
 `;
 
 const CREATE_PRODUCT = gql`
-  mutation CreateProduct($input: ProductInput!) {
-    createProduct(input: $input) { id name description }
+  mutation CreateProductDataManager($input: ProductInput!) {
+    createProduct(input: $input) { id name resources { label url } }
   }
 `;
 
 const CREATE_TASK = gql`
-  mutation CreateTask($input: TaskInput!) {
-    createTask(input: $input) { id name description }
+  mutation CreateTaskDataManager($input: TaskInput!) {
+    createTask(input: $input) { id name }
   }
 `;
 
@@ -69,13 +69,13 @@ const QUEUE_TASK_DELETION = gql`
 `;
 
 const GET_ALL_PRODUCTS = gql`
-  query GetAllProducts {
+  query GetAllProductsDataManager {
     products(first: 100) {
       edges {
         node {
           id
           name
-          description
+          resources { label url }
           tasks(first: 100) {
             edges {
               node {
@@ -120,11 +120,11 @@ export const DataManager: React.FC = () => {
     // Comprehensive sample data with proper structure
     const sampleData = {
         products: [
-            { name: "E-Commerce Platform", description: "Complete online shopping solution with advanced features" },
-            { name: "Mobile Banking Application", description: "Secure mobile banking app with biometric authentication" },
-            { name: "Customer Relationship Management", description: "Comprehensive CRM system for sales and support teams" },
-            { name: "Business Intelligence Dashboard", description: "Advanced analytics and reporting platform" },
-            { name: "Healthcare Management System", description: "Complete healthcare management solution with compliance features" }
+            { name: "E-Commerce Platform", resources: [{ label: "Description", url: "https://example.com/ecommerce" }] },
+            { name: "Mobile Banking Application", resources: [{ label: "Description", url: "https://example.com/banking" }] },
+            { name: "Customer Relationship Management", resources: [{ label: "Description", url: "https://example.com/crm" }] },
+            { name: "Business Intelligence Dashboard", resources: [{ label: "Description", url: "https://example.com/bi" }] },
+            { name: "Healthcare Management System", resources: [{ label: "Description", url: "https://example.com/healthcare" }] }
         ],
 
         // License templates for each product
@@ -493,7 +493,7 @@ export const DataManager: React.FC = () => {
                 variables: {
                     input: {
                         name: newProductName.trim(),
-                        description: newProductDescription.trim() || `Product: ${newProductName.trim()}`,
+                        resources: newProductDescription.trim() ? [{ label: 'Description', url: newProductDescription.trim() }] : [],
                         customAttrs: {
                             createdBy: 'Data Manager',
                             createdAt: new Date().toISOString()

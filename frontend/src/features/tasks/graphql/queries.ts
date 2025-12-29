@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client';
 
 export const TASKS_FOR_PRODUCT = gql`
-  query TasksForProduct($productId: ID!) {
+  query TasksForProductTasksQuery($productId: ID!) {
     tasks(productId: $productId, first: 100) {
       edges {
         node {
@@ -62,7 +62,7 @@ export const TASKS_FOR_PRODUCT = gql`
 `;
 
 export const TASKS_FOR_SOLUTION = gql`
-  query TasksForSolution($solutionId: ID!) {
+  query TasksForSolutionTasksQuery($solutionId: ID!) {
     tasks(solutionId: $solutionId, first: 100) {
       edges {
         node {

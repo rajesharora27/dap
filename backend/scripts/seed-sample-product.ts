@@ -22,7 +22,10 @@ async function seedSampleProduct() {
     const product = await prisma.product.create({
       data: {
         name: 'Smart Laptop Pro',
-        description: 'A modern, high-performance laptop designed for professionals, students, and enthusiasts. Features cutting-edge technology, seamless connectivity, and enterprise-grade security.',
+        resources: [
+          { label: 'Product Datasheet', url: 'https://example.com/datasheet' },
+          { label: 'Getting Started Guide', url: 'https://example.com/guide' }
+        ],
         customAttrs: {
           manufacturer: 'TechCorp',
           warrantyYears: '3',
@@ -128,8 +131,10 @@ async function seedSampleProduct() {
         name: 'Complete Initial Device Setup',
         description: 'Unbox, power on, and complete the initial setup wizard including account creation and privacy settings',
         productId: product.id,
-        releaseIds: [releases[0].id, releases[1].id, releases[2].id, releases[3].id],
-        outcomeIds: [outcomes[2].id], // User Experience
+        estMinutes: 30,
+        sequenceNumber: 1,
+        releases: { create: [releases[0].id, releases[1].id, releases[2].id, releases[3].id].map(id => ({ releaseId: id })) },
+        outcomes: { create: [{ outcomeId: outcomes[2].id }] },
         telemetryAttributes: {
           create: [
             {
@@ -174,8 +179,10 @@ async function seedSampleProduct() {
         name: 'Install Essential Software',
         description: 'Install productivity suite, security software, and collaboration tools',
         productId: product.id,
-        releaseIds: [releases[0].id, releases[1].id, releases[2].id, releases[3].id],
-        outcomeIds: [outcomes[0].id, outcomes[1].id], // Productivity, Security
+        estMinutes: 60,
+        sequenceNumber: 2,
+        releases: { create: [releases[0].id, releases[1].id, releases[2].id, releases[3].id].map(id => ({ releaseId: id })) },
+        outcomes: { create: [{ outcomeId: outcomes[0].id }, { outcomeId: outcomes[1].id }] },
         telemetryAttributes: {
           create: [
             {
@@ -220,8 +227,10 @@ async function seedSampleProduct() {
         name: 'Configure Security Settings',
         description: 'Enable firewall, encryption, biometric authentication, and automatic updates',
         productId: product.id,
-        releaseIds: [releases[1].id, releases[2].id, releases[3].id],
-        outcomeIds: [outcomes[1].id], // Security & Compliance
+        estMinutes: 45,
+        sequenceNumber: 3,
+        releases: { create: [releases[1].id, releases[2].id, releases[3].id].map(id => ({ releaseId: id })) },
+        outcomes: { create: [{ outcomeId: outcomes[1].id }] },
         telemetryAttributes: {
           create: [
             {
@@ -276,8 +285,10 @@ async function seedSampleProduct() {
         name: 'Set Up Productivity Tools',
         description: 'Configure email, calendar, task management, and document collaboration tools',
         productId: product.id,
-        releaseIds: [releases[0].id, releases[1].id, releases[2].id, releases[3].id],
-        outcomeIds: [outcomes[0].id, outcomes[4].id], // Productivity, Collaboration
+        estMinutes: 45,
+        sequenceNumber: 4,
+        releases: { create: [releases[0].id, releases[1].id, releases[2].id, releases[3].id].map(id => ({ releaseId: id })) },
+        outcomes: { create: [{ outcomeId: outcomes[0].id }, { outcomeId: outcomes[4].id }] },
         telemetryAttributes: {
           create: [
             {
@@ -332,8 +343,10 @@ async function seedSampleProduct() {
         name: 'Configure Network Settings',
         description: 'Connect to corporate Wi-Fi, VPN, and configure network security',
         productId: product.id,
-        releaseIds: [releases[0].id, releases[1].id, releases[2].id, releases[3].id],
-        outcomeIds: [outcomes[1].id, outcomes[4].id], // Security, Collaboration
+        estMinutes: 30,
+        sequenceNumber: 5,
+        releases: { create: [releases[0].id, releases[1].id, releases[2].id, releases[3].id].map(id => ({ releaseId: id })) },
+        outcomes: { create: [{ outcomeId: outcomes[1].id }, { outcomeId: outcomes[4].id }] },
         telemetryAttributes: {
           create: [
             {
@@ -388,8 +401,10 @@ async function seedSampleProduct() {
         name: 'Optimize System Performance',
         description: 'Configure power settings, startup programs, and system optimization',
         productId: product.id,
-        releaseIds: [releases[1].id, releases[2].id, releases[3].id],
-        outcomeIds: [outcomes[0].id, outcomes[3].id], // Productivity, Cost Optimization
+        estMinutes: 30,
+        sequenceNumber: 6,
+        releases: { create: [releases[1].id, releases[2].id, releases[3].id].map(id => ({ releaseId: id })) },
+        outcomes: { create: [{ outcomeId: outcomes[0].id }, { outcomeId: outcomes[3].id }] },
         telemetryAttributes: {
           create: [
             {
@@ -445,8 +460,10 @@ async function seedSampleProduct() {
         name: 'Set Up Automated Backups',
         description: 'Configure cloud backup and local backup solutions',
         productId: product.id,
-        releaseIds: [releases[0].id, releases[1].id, releases[2].id, releases[3].id],
-        outcomeIds: [outcomes[1].id, outcomes[3].id], // Security, Cost Optimization
+        estMinutes: 45,
+        sequenceNumber: 7,
+        releases: { create: [releases[0].id, releases[1].id, releases[2].id, releases[3].id].map(id => ({ releaseId: id })) },
+        outcomes: { create: [{ outcomeId: outcomes[1].id }, { outcomeId: outcomes[3].id }] },
         telemetryAttributes: {
           create: [
             {
@@ -501,8 +518,10 @@ async function seedSampleProduct() {
         name: 'Complete User Training',
         description: 'Complete training modules on device features, security best practices, and productivity tools',
         productId: product.id,
-        releaseIds: [releases[0].id, releases[1].id, releases[2].id, releases[3].id],
-        outcomeIds: [outcomes[0].id, outcomes[1].id, outcomes[2].id], // Productivity, Security, UX
+        estMinutes: 120,
+        sequenceNumber: 8,
+        releases: { create: [releases[0].id, releases[1].id, releases[2].id, releases[3].id].map(id => ({ releaseId: id })) },
+        outcomes: { create: [{ outcomeId: outcomes[0].id }, { outcomeId: outcomes[1].id }, { outcomeId: outcomes[2].id }] },
         telemetryAttributes: {
           create: [
             {
@@ -558,8 +577,10 @@ async function seedSampleProduct() {
         name: 'Perform Hardware Health Check',
         description: 'Run diagnostics on battery, storage, memory, and other hardware components',
         productId: product.id,
-        releaseIds: [releases[0].id, releases[1].id, releases[2].id, releases[3].id],
-        outcomeIds: [outcomes[2].id, outcomes[3].id], // UX, Cost Optimization
+        estMinutes: 30,
+        sequenceNumber: 9,
+        releases: { create: [releases[0].id, releases[1].id, releases[2].id, releases[3].id].map(id => ({ releaseId: id })) },
+        outcomes: { create: [{ outcomeId: outcomes[2].id }, { outcomeId: outcomes[3].id }] },
         telemetryAttributes: {
           create: [
             {
@@ -615,8 +636,10 @@ async function seedSampleProduct() {
         name: 'Integrate Collaboration Tools',
         description: 'Set up video conferencing, instant messaging, and file sharing platforms',
         productId: product.id,
-        releaseIds: [releases[1].id, releases[2].id, releases[3].id],
-        outcomeIds: [outcomes[4].id], // Collaboration
+        estMinutes: 60,
+        sequenceNumber: 10,
+        releases: { create: [releases[1].id, releases[2].id, releases[3].id].map(id => ({ releaseId: id })) },
+        outcomes: { create: [{ outcomeId: outcomes[4].id }] },
         telemetryAttributes: {
           create: [
             {
@@ -672,7 +695,7 @@ async function seedSampleProduct() {
     console.log('✅ SAMPLE PRODUCT SEEDING COMPLETE!');
     console.log('═══════════════════════════════════════════════════════');
     console.log(`\n📦 Product: ${product.name}`);
-    console.log(`   Description: ${product.description}`);
+    console.log(`   Resources: ${JSON.stringify(product.resources)}`);
     console.log(`\n📋 Created Resources:`);
     console.log(`   • ${releases.length} Releases (versions 1.0 to 3.0)`);
     console.log(`   • ${outcomes.length} Business Outcomes`);

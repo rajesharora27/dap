@@ -7,7 +7,7 @@ export const SOLUTIONS = gql`
         node {
           id
           name
-          description
+          resources { label url }
           customAttrs
           outcomes {
             id
@@ -56,7 +56,7 @@ export const SOLUTION = gql`
     solution(id: $id) {
       id
       name
-      description
+      resources { label url }
       customAttrs
       outcomes {
         id

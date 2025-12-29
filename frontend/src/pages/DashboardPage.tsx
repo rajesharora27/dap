@@ -36,7 +36,6 @@ const DASHBOARD_DATA = gql`
         node {
           id
           name
-          description
           statusPercent
           tasks(first: 50) {
             edges {

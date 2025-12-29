@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useState } from 'react';
+import { Resource } from '@shared/types';
 import { gql, useQuery, useSubscription, useMutation, useApolloClient } from '@apollo/client';
 import {
   List,
@@ -30,7 +31,7 @@ import { License, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@featur
 import { Outcome } from '@features/product-outcomes';
 import { Release } from '@features/product-releases';
 
-const PRODUCTS = gql`query Products($first:Int,$after:String,$last:Int,$before:String){ 
+const PRODUCTS = gql`query ProductsPanelFetch($first:Int,$after:String,$last:Int,$before:String){ 
   products(first:$first,after:$after,last:$last,before:$before){ 
     edges { 
       cursor 
@@ -38,7 +39,7 @@ const PRODUCTS = gql`query Products($first:Int,$after:String,$last:Int,$before:S
         id 
         name 
         statusPercent 
-        description
+        resources { label url }
         customAttrs
         licenses {
           id
@@ -81,8 +82,27 @@ const PRODUCTS = gql`query Products($first:Int,$after:String,$last:Int,$before:S
   } 
 }`;
 const PRODUCT_UPDATED = gql`subscription { productUpdated { id name statusPercent } }`;
-const CREATE_PRODUCT = gql`mutation CreateProduct($input:ProductInput!){ createProduct(input:$input){ id name statusPercent } }`;
-const UPDATE_PRODUCT = gql`mutation UpdateProduct($id:ID!,$input:ProductInput!){ updateProduct(id:$id,input:$input){ id name statusPercent } }`;
+const CREATE_PRODUCT = gql`
+  mutation CreateProductPanel($input: ProductInput!) {
+    createProduct(input: $input) {
+      id
+      name
+      resources { label url }
+      statusPercent
+    }
+  }
+`;
+const UPDATE_PRODUCT = gql`
+  mutation UpdateProductPanel($id: ID!, $input: ProductInput!) {
+    updateProduct(id: $id, input: $input) {
+      id
+      name
+      resources { label url }
+      statusPercent
+      customAttrs
+    }
+  }
+`;
 const DELETE_PRODUCT = gql`mutation DeleteProduct($id:ID!){ deleteProduct(id:$id) }`;
 
 interface Props { onSelect: (id: string) => void }
@@ -195,7 +215,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
 
   const handleSave = async (data: {
     name: string;
-    description?: string;
+    resources?: Resource[];
     customAttrs?: any;
     outcomes?: Outcome[];
     licenses?: License[];
@@ -217,7 +237,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
             id: editingProduct.id,
             input: {
               name: data.name,
-              description: data.description,
+              resources: data.resources,
               customAttrs: data.customAttrs
             }
           }
@@ -232,7 +252,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
               if (outcome.delete && outcome.id) {
                 // Delete existing outcome
                 await client.mutate({
-                  mutation: gql`mutation DeleteOutcome($id: ID!) { deleteOutcome(id: $id) }`,
+                  mutation: gql`mutation DeleteOutcomePanel($id: ID!) { deleteOutcome(id: $id) }`,
                   variables: { id: outcome.id }
                 });
                 console.log(`Deleted outcome: ${outcome.name}`);
@@ -241,7 +261,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
                 console.log(`Creating outcome: ${outcome.name}, productId: ${productId}`);
                 const result = await client.mutate({
                   mutation: gql`
-                    mutation CreateOutcome($input: OutcomeInput!) {
+                    mutation CreateOutcomePanel($input: OutcomeInput!) {
                       createOutcome(input: $input) { id name description }
                     }
                   `,
@@ -263,7 +283,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
                 console.log(`Updating outcome: ${outcome.name}, id: ${outcome.id}, productId: ${productId}`);
                 const result = await client.mutate({
                   mutation: gql`
-                    mutation UpdateOutcome($id: ID!, $input: OutcomeInput!) {
+                    mutation UpdateOutcomePanel($id: ID!, $input: OutcomeInput!) {
                       updateOutcome(id: $id, input: $input) { id name description }
                     }
                   `,
@@ -294,7 +314,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
           variables: {
             input: {
               name: data.name,
-              description: data.description,
+              resources: data.resources,
               customAttrs: data.customAttrs
             }
           }
@@ -309,7 +329,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
                 console.log(`Creating outcome for new product: ${outcome.name}, productId: ${productId}`);
                 const result = await client.mutate({
                   mutation: gql`
-                    mutation CreateOutcome($input: OutcomeInput!) {
+                    mutation CreateOutcomePanel2($input: OutcomeInput!) {
                       createOutcome(input: $input) { id name description }
                     }
                   `,
@@ -408,7 +428,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
               // Delete existing release
               console.log(`DELETING release: ${release.name} (${release.id})`);
               const deleteResult = await client.mutate({
-                mutation: gql`mutation DeleteRelease($id: ID!) { deleteRelease(id: $id) }`,
+                mutation: gql`mutation DeleteReleasePanel($id: ID!) { deleteRelease(id: $id) }`,
                 variables: { id: release.id }
               });
               console.log(`Deleted release: ${release.name}, result:`, deleteResult);
@@ -418,7 +438,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
               console.log(`Creating release: ${release.name}, level: ${releaseLevel}, productId: ${productId}`);
               const result = await client.mutate({
                 mutation: gql`
-                  mutation CreateRelease($input: ReleaseInput!) {
+                  mutation CreateReleasePanel($input: ReleaseInput!) {
                     createRelease(input: $input) { id name level description }
                   }
                 `,
@@ -442,7 +462,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
               console.log(`Updating release: ${release.name}, id: ${release.id}, level: ${releaseLevel}, productId: ${productId}`);
               const result = await client.mutate({
                 mutation: gql`
-                  mutation UpdateRelease($id: ID!, $input: ReleaseInput!) {
+                  mutation UpdateReleasePanel($id: ID!, $input: ReleaseInput!) {
                     updateRelease(id: $id, input: $input) { id name level description }
                   }
                 `,

@@ -25,7 +25,7 @@ const GET_PRODUCT_DETAILS = gql`
     product(id: $id) {
       id
       name
-      description
+      resources { label url }
       statusPercent
       customAttrs
       licenses {
@@ -113,10 +113,10 @@ export const ProductPreviewDialog: React.FC<ProductPreviewDialogProps> = ({
                         }}
                     >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Box sx={{ 
-                                width: 48, 
-                                height: 48, 
-                                borderRadius: 2, 
+                            <Box sx={{
+                                width: 48,
+                                height: 48,
+                                borderRadius: 2,
                                 bgcolor: 'primary.main',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -129,8 +129,8 @@ export const ProductPreviewDialog: React.FC<ProductPreviewDialogProps> = ({
                                     {product.name}
                                 </Typography>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                    <Chip 
-                                        size="small" 
+                                    <Chip
+                                        size="small"
                                         label={`${product.statusPercent}% Complete`}
                                         color={product.statusPercent === 100 ? 'success' : product.statusPercent > 50 ? 'primary' : 'warning'}
                                     />
@@ -149,15 +149,38 @@ export const ProductPreviewDialog: React.FC<ProductPreviewDialogProps> = ({
                         <Box sx={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 3 }}>
                             {/* Left Column: Description & Outcomes */}
                             <Box>
-                                {/* Description */}
+                                {/* Resources */}
                                 <Box sx={{ mb: 3 }}>
                                     <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                        <Description fontSize="small" /> Description
+                                        <Description fontSize="small" /> Resources
                                     </Typography>
                                     <Paper variant="outlined" sx={{ p: 2, bgcolor: '#fafafa' }}>
-                                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                                            {product.description || 'No description provided.'}
-                                        </Typography>
+                                        {product.resources && product.resources.length > 0 ? (
+                                            <List dense disablePadding>
+                                                {product.resources.map((res: any, idx: number) => (
+                                                    <ListItem key={idx} sx={{ px: 0 }}>
+                                                        <ListItemText
+                                                            primary={
+                                                                <Button
+                                                                    component="a"
+                                                                    href={res.url}
+                                                                    target="_blank"
+                                                                    rel="noopener"
+                                                                    size="small"
+                                                                    sx={{ textTransform: 'none', justifyContent: 'flex-start' }}
+                                                                >
+                                                                    {res.label}
+                                                                </Button>
+                                                            }
+                                                        />
+                                                    </ListItem>
+                                                ))}
+                                            </List>
+                                        ) : (
+                                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                                No resources provided.
+                                            </Typography>
+                                        )}
                                     </Paper>
                                 </Box>
 
@@ -169,9 +192,9 @@ export const ProductPreviewDialog: React.FC<ProductPreviewDialogProps> = ({
                                     <Paper variant="outlined" sx={{ p: 2 }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                             <Box sx={{ flex: 1 }}>
-                                                <LinearProgress 
-                                                    variant="determinate" 
-                                                    value={product.statusPercent} 
+                                                <LinearProgress
+                                                    variant="determinate"
+                                                    value={product.statusPercent}
                                                     sx={{ height: 10, borderRadius: 5 }}
                                                 />
                                             </Box>

@@ -38,7 +38,8 @@ describe('Excel Export', () => {
             data: {
                 name: `Export V2 Test Product ${Date.now()}`,
                 description: 'Rich product for export verification',
-                customAttrs: { vendor: 'Acme', version: '2.0', certified: true }
+                customAttrs: { vendor: 'Acme', version: '2.0', certified: true },
+                resources: [{ label: 'Test Res', url: 'http://test.com' }]
             }
         });
         productId = product.id;
@@ -180,23 +181,10 @@ describe('Excel Export', () => {
         expect(result.stats).toEqual({
             tasksExported: 1,
             customAttributesExported: 4, // 1 from table + 3 from legacy JSON (vendor, version, certified)
-            // Check mapping logic: customAttributes.map -> flattened db table rows?
-            // Wait, Product schema `customAttrs` is JSON.
-            // ExportService query: `customAttributes: { orderBy: { displayOrder: 'asc' } }`
-            // Product model: `customAttributes CustomAttribute[]`? No?
-            // Prisma schema: `model CustomAttribute`.
-            // Product model: `customAttrs Json?`.
-            // Does Product have relation `customAttributes`?
-            // Schema lines 597: `model CustomAttribute { ... productId ... product Product ... }`.
-            // So `Product` SHOULD have `customAttributes` relation.
-            // BUT I inserted into `customAttrs` JSON field in existing test, NOT `CustomAttribute` table.
-            // Ah! `ExportService` queries `customAttributes` relation.
-            // My setup in `beforeAll` created data in `customAttrs` JSON field: `customAttrs: { vendor: ... }`.
-            // It did NOT create `CustomAttribute` rows.
-            // So `customAttributesExported` will be 0 unless I create rows.
             licensesExported: 1,
             outcomesExported: 1,
             releasesExported: 1,
+            resourcesExported: 1,
             telemetryAttributesExported: 1
         });
 

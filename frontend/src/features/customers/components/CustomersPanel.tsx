@@ -91,38 +91,28 @@ import { importProductTelemetry, downloadFileFromUrl } from '@/features/telemetr
 
 
 // GraphQL Queries
-const GET_CUSTOMERS = gql`
-  query GetCustomers {
+const CUSTOMERS = gql`
+  query CustomersPanelQuery {
     customers {
       id
       name
       description
-      products {
+      selectedOutcomes {
         id
         name
-        customerSolutionId
-        product {
-          id
-          name
-        }
-        licenseLevel
-        selectedOutcomes {
-          id
-          name
-          description
-        }
-        selectedReleases {
-          id
-          name
-          level
-        }
-        adoptionPlan {
-          id
-          progressPercentage
-          totalTasks
-          completedTasks
-          lastSyncedAt
-        }
+        description
+      }
+      selectedReleases {
+        id
+        name
+        level
+      }
+      adoptionPlan {
+        id
+        progressPercentage
+        totalTasks
+        completedTasks
+        lastSyncedAt
       }
       solutions {
         id
@@ -240,7 +230,7 @@ const GET_ADOPTION_PLAN = gql`
 `;
 
 const CREATE_CUSTOMER = gql`
-  mutation CreateCustomer($input: CustomerInput!) {
+  mutation CreateCustomerPanel($input: CustomerInput!) {
     createCustomer(input: $input) {
       id
       name
@@ -250,7 +240,7 @@ const CREATE_CUSTOMER = gql`
 `;
 
 const UPDATE_CUSTOMER = gql`
-  mutation UpdateCustomer($id: ID!, $input: CustomerInput!) {
+  mutation UpdateCustomerPanel($id: ID!, $input: CustomerInput!) {
     updateCustomer(id: $id, input: $input) {
       id
       name
@@ -736,7 +726,7 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
   const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
   const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
 
-  const { data, loading, refetch } = useQuery(GET_CUSTOMERS, {
+  const { data, loading, refetch } = useQuery(CUSTOMERS, {
     fetchPolicy: 'cache-and-network',
   });
 

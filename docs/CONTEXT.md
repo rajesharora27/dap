@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 3.2.0
-**Last Updated:** December 29, 2025 (Inline editing consistency & DnD improvements)
+**Version:** 3.3.0
+**Last Updated:** December 29, 2025 (Resources Tab Feature)
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -1022,6 +1022,16 @@ All DAP data is stored on `/data` partition (not root):
 ---
 
 ## Recent Changes & Fixes
+
+### Version 3.3.0 (December 29, 2025)
+
+#### Resources Tab Feature
+- **New Resources Tab**: Added a "Resources" tab to Products and Solutions pages (after Summary tab), replacing the "General" tab in dialogs.
+- **Identical to Outcomes Tab**: Resources tab behavior mirrors Outcomes tab with DnD reordering, inline editing, shared hooks, and + icon add support.
+- **Shared Hooks**: `useProductEditing` and `useSolutionEditing` now include `handleResourceUpdate`, `handleResourceDelete`, `handleResourceCreate`, `handleResourceReorder` methods.
+- **ResourcesTable Component**: New component (`features/products/components/shared/ResourcesTable.tsx`) with SortableResourceRow using @dnd-kit for reordering.
+- **Summary Dashboard Integration**: Top 3 resources displayed on ProductSummaryDashboard and SolutionSummaryDashboard as clickable cards.
+- **Import/Export Support**: Resources included in Excel V2 import/export with dedicated "Resources" sheet containing Resource Name and URL columns.
 
 ### Version 3.2.0 (December 29, 2025)
 

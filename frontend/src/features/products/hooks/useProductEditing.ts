@@ -3,7 +3,7 @@
  * Used by both ProductsPage (tabs) and ProductDialog to ensure identical behavior.
  */
 import { useApolloClient, useMutation } from '@apollo/client';
-import { UPDATE_PRODUCT } from '../graphql/mutations';
+import { UPDATE_PRODUCT } from '../graphql';
 import { PRODUCT } from '../graphql';
 import { CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME, REORDER_OUTCOMES } from '@features/product-outcomes';
 import { CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, REORDER_RELEASES } from '@features/product-releases';
@@ -180,9 +180,86 @@ export function useProductEditing(productId: string | null | undefined) {
     });
   };
 
+  // --- Resources ---
+  // Resources are stored directly on the Product, so we update via UPDATE_PRODUCT
+  const handleResourceUpdate = async (index: number, updates: { label?: string; url?: string }) => {
+    if (!productId) return;
+    const product = getCurrentProduct();
+    if (!product) return;
+
+    const updatedResources = [...product.resources];
+    updatedResources[index] = { ...updatedResources[index], ...updates };
+    // Strip __typename
+    const cleanResources = updatedResources.map(r => ({ label: r.label, url: r.url }));
+
+    await client.mutate({
+      mutation: UPDATE_PRODUCT,
+      variables: {
+        id: productId,
+        input: { name: product.name, resources: cleanResources, customAttrs: product.customAttrs }
+      },
+      refetchQueries: REFETCH_QUERIES
+    });
+  };
+
+  const handleResourceDelete = async (index: number) => {
+    if (!productId) return;
+    const product = getCurrentProduct();
+    if (!product) return;
+
+    const updatedResources = [...product.resources];
+    updatedResources.splice(index, 1);
+    const cleanResources = updatedResources.map(r => ({ label: r.label, url: r.url }));
+
+    await client.mutate({
+      mutation: UPDATE_PRODUCT,
+      variables: {
+        id: productId,
+        input: { name: product.name, resources: cleanResources, customAttrs: product.customAttrs }
+      },
+      refetchQueries: REFETCH_QUERIES
+    });
+  };
+
+  const handleResourceCreate = async (data: { label: string; url: string }) => {
+    if (!productId) return;
+    const product = getCurrentProduct();
+    if (!product) return;
+
+    const updatedResources = [...product.resources, data];
+    const cleanResources = updatedResources.map(r => ({ label: r.label, url: r.url }));
+
+    await client.mutate({
+      mutation: UPDATE_PRODUCT,
+      variables: {
+        id: productId,
+        input: { name: product.name, resources: cleanResources, customAttrs: product.customAttrs }
+      },
+      refetchQueries: REFETCH_QUERIES
+    });
+  };
+
+  const handleResourceReorder = async (newOrderIndexes: number[]) => {
+    if (!productId) return;
+    const product = getCurrentProduct();
+    if (!product) return;
+
+    const updatedResources = newOrderIndexes.map(i => product.resources[i]);
+    const cleanResources = updatedResources.map(r => ({ label: r.label, url: r.url }));
+
+    await client.mutate({
+      mutation: UPDATE_PRODUCT,
+      variables: {
+        id: productId,
+        input: { name: product.name, resources: cleanResources, customAttrs: product.customAttrs }
+      },
+      refetchQueries: REFETCH_QUERIES
+    });
+  };
+
   // --- Custom Attributes ---
-  // Helper to get current product from Apollo cache (for name, description, customAttrs)
-  const getCurrentProduct = (): { name: string; description: string; customAttrs: Record<string, any> } | null => {
+  // Helper to get current product from Apollo cache (for name, resources, customAttrs)
+  const getCurrentProduct = (): { name: string; resources: any[]; customAttrs: Record<string, any> } | null => {
     try {
       const data = client.readQuery({
         query: PRODUCT,
@@ -191,7 +268,7 @@ export function useProductEditing(productId: string | null | undefined) {
       if (!data?.product) return null;
       return {
         name: data.product.name,
-        description: data.product.description || '',
+        resources: data.product.resources || [],
         customAttrs: data.product.customAttrs || {}
       };
     } catch (e) {
@@ -200,12 +277,12 @@ export function useProductEditing(productId: string | null | undefined) {
     }
   };
 
-  // Simple attribute handlers - include name/description since ProductInput requires them
+  // Simple attribute handlers - include name/resources since ProductInput requires them
   const handleAttributeUpdate = async (oldKey: string, newKey: string, newValue: any) => {
     if (!productId) return;
     const product = getCurrentProduct();
     if (!product) return;
-    
+
     const updated = { ...product.customAttrs };
     if (oldKey !== newKey) {
       delete updated[oldKey];
@@ -218,7 +295,7 @@ export function useProductEditing(productId: string | null | undefined) {
 
     await client.mutate({
       mutation: UPDATE_PRODUCT,
-      variables: { id: productId, input: { name: product.name, description: product.description, customAttrs: updated } },
+      variables: { id: productId, input: { name: product.name, resources: product.resources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -228,7 +305,7 @@ export function useProductEditing(productId: string | null | undefined) {
     if (!confirm(`Delete attribute "${key}"?`)) return;
     const product = getCurrentProduct();
     if (!product) return;
-    
+
     const updated = { ...product.customAttrs };
     delete updated[key];
     if (updated._order) {
@@ -237,7 +314,7 @@ export function useProductEditing(productId: string | null | undefined) {
 
     await client.mutate({
       mutation: UPDATE_PRODUCT,
-      variables: { id: productId, input: { name: product.name, description: product.description, customAttrs: updated } },
+      variables: { id: productId, input: { name: product.name, resources: product.resources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -246,7 +323,7 @@ export function useProductEditing(productId: string | null | undefined) {
     if (!productId) return;
     const product = getCurrentProduct();
     if (!product) return;
-    
+
     const updated = { ...product.customAttrs };
     updated[key] = value;
     const order = updated._order || Object.keys(updated).filter(k => !k.startsWith('_'));
@@ -255,7 +332,7 @@ export function useProductEditing(productId: string | null | undefined) {
 
     await client.mutate({
       mutation: UPDATE_PRODUCT,
-      variables: { id: productId, input: { name: product.name, description: product.description, customAttrs: updated } },
+      variables: { id: productId, input: { name: product.name, resources: product.resources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -267,12 +344,12 @@ export function useProductEditing(productId: string | null | undefined) {
       console.warn('[useProductEditing] handleAttributeReorder: product not in cache');
       return;
     }
-    
+
     const updated = { ...product.customAttrs, _order: newKeys };
 
     await client.mutate({
       mutation: UPDATE_PRODUCT,
-      variables: { id: productId, input: { name: product.name, description: product.description, customAttrs: updated } },
+      variables: { id: productId, input: { name: product.name, resources: product.resources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -316,6 +393,11 @@ export function useProductEditing(productId: string | null | undefined) {
     handleLicenseDelete,
     handleLicenseCreate,
     handleLicenseReorder,
+    // Resources
+    handleResourceUpdate,
+    handleResourceDelete,
+    handleResourceCreate,
+    handleResourceReorder,
     // Attributes
     handleAttributeUpdate,
     handleAttributeDelete,

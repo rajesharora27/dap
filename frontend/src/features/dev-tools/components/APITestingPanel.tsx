@@ -43,12 +43,15 @@ const EXAMPLE_QUERIES: Example[] = [
         description: 'Fetch all products with basic fields',
         query: `query GetProducts {
   products {
-    id
-    name
-    description
-    status
-    version
-    createdAt
+    edges {
+      node {
+        id
+        name
+        statusPercent
+        resources { label url }
+        customAttrs
+      }
+    }
   }
 }`,
         variables: '{}'
@@ -56,17 +59,20 @@ const EXAMPLE_QUERIES: Example[] = [
     {
         name: 'Get Product by ID',
         description: 'Fetch a specific product by ID',
-        query: `query GetProduct($id: Int!) {
+        query: `query GetProduct($id: ID!) {
   product(id: $id) {
     id
     name
-    description
-    status
-    version
-    tasks {
-      id
-      title
-      description
+    resources { label url }
+    statusPercent
+    tasks(first: 50) {
+      edges {
+        node {
+          id
+          name
+          description
+        }
+      }
     }
   }
 }`,
@@ -77,14 +83,13 @@ const EXAMPLE_QUERIES: Example[] = [
         description: 'Fetch all solutions with related data',
         query: `query GetSolutions {
   solutions {
-    id
-    name
-    description
-    status
-    version
-    products {
-      id
-      name
+    edges {
+      node {
+        id
+        name
+        resources { label url }
+        customAttrs
+      }
     }
   }
 }`,
@@ -127,20 +132,19 @@ const EXAMPLE_QUERIES: Example[] = [
     {
         name: 'Create Product',
         description: 'Create a new product (mutation)',
-        query: `mutation CreateProduct($input: CreateProductInput!) {
+        query: `mutation CreateProductTesting($input: ProductInput!) {
   createProduct(input: $input) {
     id
     name
-    description
-    status
+    resources { label url }
+    statusPercent
   }
 }`,
         variables: `{
   "input": {
     "name": "Test Product",
-    "description": "Created via API Testing Panel",
-    "version": "1.0.0",
-    "status": "DRAFT"
+    "resources": [{"label": "Description", "url": "Created via API Testing Panel"}],
+    "customAttrs": {}
   }
 }`
     },

@@ -16,32 +16,21 @@ import { Add, Edit, Delete } from '@shared/components/FAIcon';
 import { SolutionDialog } from './SolutionDialog';
 
 const SOLUTIONS = gql`
-  query Solutions {
-    solutions(first: 20) {
+  query SolutionsPanelQuery {
+    solutions {
       edges {
         node {
           id
           name
-          description
+          resources { label url }
           customAttrs
-          outcomes {
-            id
-            name
-            description
-          }
-          releases {
-            id
-            name
-            description
-            level
-          }
         }
       }
     }
   }
 `;
-const CREATE_SOLUTION = gql`mutation CreateSolution($input:SolutionInput!){ createSolution(input:$input){ id name description customAttrs } }`;
-const UPDATE_SOLUTION = gql`mutation UpdateSolution($id:ID!,$input:SolutionInput!){ updateSolution(id:$id,input:$input){ id name description customAttrs } }`;
+const CREATE_SOLUTION = gql`mutation CreateSolution($input:SolutionInput!){ createSolution(input:$input){ id name resources { label url } customAttrs } }`;
+const UPDATE_SOLUTION = gql`mutation UpdateSolution($id:ID!,$input:SolutionInput!){ updateSolution(id:$id,input:$input){ id name resources { label url } customAttrs } }`;
 const DELETE_SOLUTION = gql`mutation DeleteSolution($id:ID!){ deleteSolution(id:$id) }`;
 
 interface Props { onSelect: (id: string) => void }
@@ -132,7 +121,7 @@ export const SolutionsPanel: React.FC<Props> = ({ onSelect }) => {
               secondary={
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Typography variant="caption" color="text.secondary">
-                    {e.node.description || 'No description'}
+                    {e.node.resources && e.node.resources.length > 0 ? `${e.node.resources.length} resources` : 'No resources'}
                   </Typography>
                   <Box
                     className="action-buttons"
