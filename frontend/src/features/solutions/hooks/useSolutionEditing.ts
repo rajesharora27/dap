@@ -357,7 +357,8 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
 
     const updated = { ...solution.customAttrs };
     updated[key] = value;
-    const order = updated._order || Object.keys(updated).filter(k => !k.startsWith('_'));
+    // Create a copy of _order to avoid mutating frozen cache object
+    const order = [...(updated._order || Object.keys(updated).filter(k => !k.startsWith('_')))];
     if (!order.includes(key)) order.push(key);
     updated._order = order;
 
