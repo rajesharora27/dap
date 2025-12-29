@@ -29,4 +29,9 @@ export const commonTypeDefs = gql`
     # Base mutation
     _empty: String
   }
+
+  type Subscription {
+    productUpdated: Product!
+    taskUpdated: Task!
+  }
 `;

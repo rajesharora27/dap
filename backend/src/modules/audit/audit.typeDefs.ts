@@ -9,4 +9,8 @@ export const auditTypeDefs = gql`
     details: JSON 
     createdAt: String! 
   }
+
+  extend type Query {
+    auditLogs: [AuditLog!]!
+  }
 `;

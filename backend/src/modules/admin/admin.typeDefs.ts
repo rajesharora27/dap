@@ -20,10 +20,13 @@ export const adminTypeDefs = gql`
     username: String!
     fullName: String
     role: Role!
+    isAdmin: Boolean!
     isActive: Boolean!
+    mustChangePassword: Boolean!
     createdAt: DateTime!
     updatedAt: DateTime!
     permissions: [Permission!]!
+    roles: [String!]!
   }
 
   type Permission {

@@ -10,22 +10,29 @@ import { useTheme, alpha } from '@mui/material/styles';
 import { Edit, Delete, Add, DragIndicator, FileDownload, FileUpload, Description, CheckCircle, Extension, FilterList, ExpandMore, ExpandLess, Lock, LockOpen, Clear } from '@shared/components/FAIcon';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
-import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
-import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+
 import { CSS } from '@dnd-kit/utilities';
 
-import { PRODUCTS, PRODUCT, DELETE_PRODUCT, CREATE_PRODUCT, UPDATE_PRODUCT, ProductDialog, ProductSummaryDashboard, OUTCOMES } from '@features/products';
-import { OutcomeDialog, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME } from '@features/product-outcomes';
-import { ReleaseDialog, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE } from '@features/product-releases';
-import { LicenseDialog, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
+import { PRODUCTS, PRODUCT, DELETE_PRODUCT, CREATE_PRODUCT, UPDATE_PRODUCT, ProductDialog, ProductSummaryDashboard, OUTCOMES, useProductEditing } from '@features/products';
+import { CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME, REORDER_OUTCOMES } from '@features/product-outcomes';
+import { CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE, REORDER_RELEASES } from '@features/product-releases';
+import { CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE, REORDER_LICENSES } from '@features/product-licenses';
 import { TASKS_FOR_PRODUCT, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, TaskDialog } from '@features/tasks';
 import { SortableTaskItem } from '@features/tasks/components/SortableTaskItem';
 import { ColumnVisibilityToggle, DEFAULT_VISIBLE_COLUMNS } from '@shared/components/ColumnVisibilityToggle';
-import { TagDialog, ProductTag, CREATE_PRODUCT_TAG, UPDATE_PRODUCT_TAG, DELETE_PRODUCT_TAG } from '@features/tags';
+import { ProductTag, CREATE_PRODUCT_TAG, UPDATE_PRODUCT_TAG, DELETE_PRODUCT_TAG, REORDER_PRODUCT_TAGS } from '@features/tags';
 import { useAuth } from '@features/auth';
 import { useProductImportExport } from '@features/products';
-import { InlineEditableText } from '@shared/components/InlineEditableText';
+
 import { BulkImportDialog } from '@features/data-management/components/BulkImportDialog';
+
+// Shared Components
+import { OutcomesTable } from '../features/products/components/shared/OutcomesTable';
+import { TagsTable } from '../features/products/components/shared/TagsTable';
+import { ReleasesTable } from '../features/products/components/shared/ReleasesTable';
+import { LicensesTable } from '../features/products/components/shared/LicensesTable';
+import { AttributesTable } from '../features/products/components/shared/AttributesTable';
 
 interface ProductsPageProps {
     onEditProduct: (product: any) => void;
@@ -61,18 +68,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const [importDialog, setImportDialog] = useState(false);
     const [taskDialog, setTaskDialog] = useState(false);
     const [editingTask, setEditingTask] = useState<any>(null);
-    const [outcomeDialog, setOutcomeDialog] = useState(false);
-    const [editingOutcome, setEditingOutcome] = useState<any>(null);
-    const [releaseDialog, setReleaseDialog] = useState(false);
-    const [editingRelease, setEditingRelease] = useState<any>(null);
-    const [licenseDialog, setLicenseDialog] = useState(false);
-    const [editingLicense, setEditingLicense] = useState<any>(null);
     const [productDialog, setProductDialog] = useState(false);
     const [editingProduct, setEditingProduct] = useState<any>(null);
-    const [customAttrDialog, setCustomAttrDialog] = useState(false);
-    const [editingCustomAttr, setEditingCustomAttr] = useState<any>(null);
-    const [tagDialog, setTagDialog] = useState(false);
-    const [editingTag, setEditingTag] = useState<ProductTag | null>(null);
     const [taskTagFilter, setTaskTagFilter] = useState<string[]>([]);
     const [taskOutcomeFilter, setTaskOutcomeFilter] = useState<string[]>([]);
     const [taskReleaseFilter, setTaskReleaseFilter] = useState<string[]>([]);
@@ -81,6 +78,9 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const [isTasksLocked, setIsTasksLocked] = useState(false);
     const [inlineEditingOutcome, setInlineEditingOutcome] = useState<string | null>(null);
     const [inlineOutcomeName, setInlineOutcomeName] = useState('');
+    
+    // External add mode state - used by + icon in tabs row
+    const [externalAddMode, setExternalAddMode] = useState<string | null>(null); // null or tab name e.g. 'tags', 'outcomes', etc.
 
     // Queries - must be before any conditional returns (skip handles auth)
     const { data: productsData, loading: productsLoading, error: productsError, refetch: refetchProducts } = useQuery(PRODUCTS, {
@@ -243,7 +243,11 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         setTaskLicenseFilter([]);
     };
 
-    // Handlers
+    // Handlers - Use shared hook for CRUD operations (same code as ProductDialog)
+    const productEditing = useProductEditing(selectedProduct);
+
+    // Attribute handlers - hook now fetches current attrs from Apollo cache automatically
+
     const handleProductChange = (productId: string) => {
         setSelectedProduct(productId);
         localStorage.setItem('lastSelectedProductId', productId);
@@ -413,7 +417,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     const getSortedAttributes = (attrs: any) => {
         if (!attrs) return [];
         const order = attrs._order || [];
-        const entries = Object.entries(attrs).filter(([k]) => k !== '_order' && k !== '__typename');
+        // Filter out all internal keys (starting with _)
+        const entries = Object.entries(attrs).filter(([k]) => !k.startsWith('_'));
 
         return entries.sort((a, b) => {
             const indexA = order.indexOf(a[0]);
@@ -426,54 +431,45 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     };
 
     // Attribute Drag End
+    const handleAttributeDragEnd = async (event: any) => {
+        const { active, over } = event;
+        if (!displayProduct || active.id === over?.id) return;
+
+        const currentAttrs = displayProduct.customAttrs || {};
+        const keys = getSortedAttributes(currentAttrs).map(([k]) => k);
+        const oldIndex = keys.indexOf(active.id);
+        const newIndex = keys.indexOf(over.id);
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+            const newOrder = arrayMove(keys, oldIndex, newIndex);
+
+            const updatedAttrs = { ...currentAttrs };
+            updatedAttrs._order = newOrder;
+
+            try {
+                await client.mutate({
+                    mutation: UPDATE_PRODUCT,
+                    variables: {
+                        id: selectedProduct,
+                        input: {
+                            name: displayProduct.name,
+                            description: displayProduct.description,
+                            customAttrs: updatedAttrs
+                        }
+                    },
+                    refetchQueries: ['ProductDetail'],
+                    awaitRefetchQueries: true
+                });
+            } catch (error) {
+                console.error('Error reordering attributes:', error);
+                alert('Failed to reorder attributes');
+            }
+        }
+    };
 
 
     // Custom Attribute handlers
-    const handleSaveCustomAttr = async (attrData: { key: string; value: any }) => {
-        if (!displayProduct) return;
 
-        const currentAttrs = displayProduct.customAttrs || {};
-        const updatedAttrs = { ...currentAttrs };
-        const order = [...(updatedAttrs._order || [])];
-
-        // If editing and key changed, remove old key
-        if (editingCustomAttr && editingCustomAttr.key !== attrData.key) {
-            delete updatedAttrs[editingCustomAttr.key];
-            const idx = order.indexOf(editingCustomAttr.key);
-            if (idx > -1) order.splice(idx, 1);
-        }
-
-        updatedAttrs[attrData.key] = attrData.value;
-        if (!order.includes(attrData.key)) {
-            order.push(attrData.key);
-        }
-        updatedAttrs._order = order;
-
-        try {
-            await client.mutate({
-                mutation: UPDATE_PRODUCT,
-                variables: {
-                    id: selectedProduct,
-                    input: {
-                        name: displayProduct.name,
-                        description: displayProduct.description,
-                        customAttrs: updatedAttrs
-                    }
-                },
-                refetchQueries: ['Products', 'ProductDetail'],
-                awaitRefetchQueries: true
-            });
-            await Promise.all([
-                refetchProducts(),
-                refetchProductDetail()
-            ]);
-            setCustomAttrDialog(false);
-            setEditingCustomAttr(null);
-        } catch (error) {
-            console.error('Error saving custom attribute:', error);
-            alert('Failed to save custom attribute');
-        }
-    };
 
     const handleDeleteCustomAttr = async (key: string) => {
         if (!displayProduct || !window.confirm(`Delete attribute "${key}"?`)) return;
@@ -663,27 +659,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         }
     };
 
-    const handleSaveOutcome = async (input: any) => {
-        try {
-            if (editingOutcome) {
-                await client.mutate({
-                    mutation: UPDATE_OUTCOME,
-                    variables: { id: editingOutcome.id, input },
-                    refetchQueries: ['Products', 'Outcomes']
-                });
-            } else {
-                await client.mutate({
-                    mutation: CREATE_OUTCOME,
-                    variables: { input: { ...input, productId: selectedProduct } },
-                    refetchQueries: ['Products', 'Outcomes']
-                });
-            }
-            setOutcomeDialog(false);
-            setEditingOutcome(null);
-        } catch (error: any) {
-            alert('Error saving outcome: ' + error.message);
-        }
-    };
+
 
     const handleDeleteOutcome = async (id: string) => {
         if (window.confirm('Are you sure you want to delete this outcome?')) {
@@ -699,27 +675,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         }
     };
 
-    const handleSaveRelease = async (input: any) => {
-        try {
-            if (editingRelease) {
-                await client.mutate({
-                    mutation: UPDATE_RELEASE,
-                    variables: { id: editingRelease.id, input },
-                    refetchQueries: ['Products']
-                });
-            } else {
-                await client.mutate({
-                    mutation: CREATE_RELEASE,
-                    variables: { input: { ...input, productId: selectedProduct } },
-                    refetchQueries: ['Products']
-                });
-            }
-            setReleaseDialog(false);
-            setEditingRelease(null);
-        } catch (error: any) {
-            alert('Error saving release: ' + error.message);
-        }
-    };
+
 
     const handleDeleteRelease = async (id: string) => {
         if (window.confirm('Are you sure you want to delete this release?')) {
@@ -735,27 +691,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
         }
     };
 
-    const handleSaveLicense = async (input: any) => {
-        try {
-            if (editingLicense) {
-                await client.mutate({
-                    mutation: UPDATE_LICENSE,
-                    variables: { id: editingLicense.id, input },
-                    refetchQueries: ['Products']
-                });
-            } else {
-                await client.mutate({
-                    mutation: CREATE_LICENSE,
-                    variables: { input: { ...input, productId: selectedProduct } },
-                    refetchQueries: ['Products']
-                });
-            }
-            setLicenseDialog(false);
-            setEditingLicense(null);
-        } catch (error: any) {
-            alert('Error saving license: ' + error.message);
-        }
-    };
+
 
     const handleDeleteLicense = async (id: string) => {
         if (window.confirm('Are you sure you want to delete this license?')) {
@@ -927,23 +863,22 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                 <Tooltip title={
                                     selectedSubSection === 'tasks' && isTasksLocked ? "Unlock Tasks to Add" :
                                         selectedSubSection === 'tasks' ? 'Add Task' :
-                                            selectedSubSection === 'outcomes' ? 'Add Outcome' :
-                                                selectedSubSection === 'releases' ? 'Add Release' :
-                                                    selectedSubSection === 'licenses' ? 'Add License' :
-                                                        selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'
+                                            selectedSubSection === 'tags' ? 'Add Tag' :
+                                                selectedSubSection === 'outcomes' ? 'Add Outcome' :
+                                                    selectedSubSection === 'releases' ? 'Add Release' :
+                                                        selectedSubSection === 'licenses' ? 'Add License' :
+                                                            selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'
                                 }>
                                     <span>
                                         <IconButton
                                             color="primary"
                                             disabled={selectedSubSection === 'tasks' && isTasksLocked}
                                             onClick={() => {
-                                                switch (selectedSubSection) {
-                                                    case 'tasks': setEditingTask(null); setTaskDialog(true); break;
-                                                    case 'outcomes': setEditingOutcome(null); setOutcomeDialog(true); break;
-                                                    case 'releases': setEditingRelease(null); setReleaseDialog(true); break;
-                                                    case 'licenses': setEditingLicense(null); setLicenseDialog(true); break;
-                                                    case 'customAttributes': setEditingCustomAttr(null); setCustomAttrDialog(true); break;
-                                                    case 'tags': setEditingTag(null); setTagDialog(true); break;
+                                                if (selectedSubSection === 'tasks') {
+                                                    setEditingTask(null);
+                                                    setTaskDialog(true);
+                                                } else if (['tags', 'outcomes', 'releases', 'licenses', 'customAttributes'].includes(selectedSubSection)) {
+                                                    setExternalAddMode(selectedSubSection);
                                                 }
                                             }}
                                         >
@@ -1177,79 +1112,15 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                         <Grid container spacing={3}>
                             <Grid size={{ xs: 12 }}>
                                 <Paper sx={{ p: 2 }}>
-
-                                    <List>
-                                        {displayProduct?.outcomes?.map((outcome: any) => (
-                                            <ListItem
-                                                key={outcome.id}
-                                                sx={{
-                                                    cursor: 'default',
-                                                    '&:hover': { bgcolor: 'action.hover' },
-                                                    borderBottom: '1px solid #eee'
-                                                }}
-                                                secondaryAction={
-                                                    <Box>
-                                                        {inlineEditingOutcome === outcome.id ? (
-                                                            <IconButton
-                                                                size="small"
-                                                                color="success"
-                                                                onClick={() => handleSaveInlineOutcome(outcome.id)}
-                                                            >
-                                                                <CheckCircle fontSize="small" />
-                                                            </IconButton>
-                                                        ) : (
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={() => {
-                                                                    setInlineEditingOutcome(outcome.id);
-                                                                    setInlineOutcomeName(outcome.name);
-                                                                }}
-                                                            >
-                                                                <Edit fontSize="small" />
-                                                            </IconButton>
-                                                        )}
-                                                        <IconButton
-                                                            size="small"
-                                                            onClick={inlineEditingOutcome === outcome.id ? () => setInlineEditingOutcome(null) : () => handleDeleteOutcome(outcome.id)}
-                                                            color="error"
-                                                        >
-                                                            <Delete fontSize="small" />
-                                                        </IconButton>
-                                                    </Box>
-                                                }
-                                            >
-                                                {inlineEditingOutcome === outcome.id ? (
-                                                    <OutlinedInput
-                                                        fullWidth
-                                                        size="small"
-                                                        value={inlineOutcomeName}
-                                                        onChange={(e) => setInlineOutcomeName(e.target.value)}
-                                                        onKeyDown={(e) => {
-                                                            if (e.key === 'Enter') handleSaveInlineOutcome(outcome.id);
-                                                            if (e.key === 'Escape') setInlineEditingOutcome(null);
-                                                        }}
-                                                        autoFocus
-                                                    />
-                                                ) : (
-                                                    <Tooltip title={outcome.description || ''} placement="top" arrow>
-                                                        <ListItemText
-                                                            primary={outcome.name}
-                                                            secondary={outcome.description}
-                                                            onDoubleClick={() => {
-                                                                setInlineEditingOutcome(outcome.id);
-                                                                setInlineOutcomeName(outcome.name);
-                                                            }}
-                                                        />
-                                                    </Tooltip>
-                                                )}
-                                            </ListItem>
-                                        ))}
-                                        {(!displayProduct?.outcomes || displayProduct.outcomes.length === 0) && (
-                                            <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-                                                No outcomes defined
-                                            </Typography>
-                                        )}
-                                    </List>
+                                    <OutcomesTable
+                                        items={displayProduct?.outcomes || []}
+                                        onUpdate={productEditing.handleOutcomeUpdate}
+                                        onDelete={productEditing.handleOutcomeDelete}
+                                        onCreate={productEditing.handleOutcomeCreate}
+                                        onReorder={productEditing.handleOutcomeReorder}
+                                        externalAddMode={externalAddMode === 'outcomes'}
+                                        onExternalAddComplete={() => setExternalAddMode(null)}
+                                    />
                                 </Paper>
                             </Grid>
                         </Grid>
@@ -1259,54 +1130,15 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                         <Grid container spacing={3}>
                             <Grid size={{ xs: 12 }}>
                                 <Paper sx={{ p: 2 }}>
-
-                                    <List>
-                                        {displayProduct?.releases?.map((release: any) => (
-                                            <ListItem
-                                                key={release.id}
-                                                sx={{
-                                                    cursor: 'default',
-                                                    '&:hover': { bgcolor: 'action.hover' },
-                                                    borderBottom: '1px solid #eee'
-                                                }}
-                                                secondaryAction={
-                                                    <Box>
-                                                        <IconButton size="small" onClick={() => { setEditingRelease(release); setReleaseDialog(true); }}><Edit fontSize="small" /></IconButton>
-                                                        <IconButton size="small" onClick={() => handleDeleteRelease(release.id)} color="error"><Delete fontSize="small" /></IconButton>
-                                                    </Box>
-                                                }
-                                            >
-                                                <ListItemText
-                                                    primary={
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                            <InlineEditableText
-                                                                value={release.name}
-                                                                onSave={(val) => handleInlineReleaseUpdate(release.id, 'name', val)}
-                                                                variant="subtitle1"
-                                                                color="text.primary"
-                                                            />
-                                                            <Typography variant="body2" color="text.secondary">(v{release.level})</Typography>
-                                                        </Box>
-                                                    }
-                                                    secondary={
-                                                        <InlineEditableText
-                                                            value={release.description || ''}
-                                                            onSave={(val) => handleInlineReleaseUpdate(release.id, 'description', val)}
-                                                            variant="body2"
-                                                            color="text.secondary"
-                                                            placeholder="Add description..."
-                                                            fullWidth
-                                                        />
-                                                    }
-                                                />
-                                            </ListItem>
-                                        ))}
-                                        {(!displayProduct?.releases || displayProduct.releases.length === 0) && (
-                                            <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-                                                No releases defined
-                                            </Typography>
-                                        )}
-                                    </List>
+                                    <ReleasesTable
+                                        items={displayProduct?.releases || []}
+                                        onUpdate={productEditing.handleReleaseUpdate}
+                                        onDelete={productEditing.handleReleaseDelete}
+                                        onCreate={productEditing.handleReleaseCreate}
+                                        onReorder={productEditing.handleReleaseReorder}
+                                        externalAddMode={externalAddMode === 'releases'}
+                                        onExternalAddComplete={() => setExternalAddMode(null)}
+                                    />
                                 </Paper>
                             </Grid>
                         </Grid>
@@ -1316,54 +1148,15 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                         <Grid container spacing={3}>
                             <Grid size={{ xs: 12 }}>
                                 <Paper sx={{ p: 2 }}>
-
-                                    <List>
-                                        {displayProduct?.licenses?.map((license: any) => (
-                                            <ListItem
-                                                key={license.id}
-                                                sx={{
-                                                    cursor: 'default',
-                                                    '&:hover': { bgcolor: 'action.hover' },
-                                                    borderBottom: '1px solid #eee'
-                                                }}
-                                                secondaryAction={
-                                                    <Box>
-                                                        <IconButton size="small" onClick={() => { setEditingLicense(license); setLicenseDialog(true); }}><Edit fontSize="small" /></IconButton>
-                                                        <IconButton size="small" onClick={() => handleDeleteLicense(license.id)} color="error"><Delete fontSize="small" /></IconButton>
-                                                    </Box>
-                                                }
-                                            >
-                                                <ListItemText
-                                                    primary={
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                            <InlineEditableText
-                                                                value={license.name}
-                                                                onSave={(val) => handleInlineLicenseUpdate(license.id, 'name', val)}
-                                                                variant="subtitle1"
-                                                                color="text.primary"
-                                                            />
-                                                            <Typography variant="body2" color="text.secondary">(Level {license.level})</Typography>
-                                                        </Box>
-                                                    }
-                                                    secondary={
-                                                        <InlineEditableText
-                                                            value={license.description || ''}
-                                                            onSave={(val) => handleInlineLicenseUpdate(license.id, 'description', val)}
-                                                            variant="body2"
-                                                            color="text.secondary"
-                                                            placeholder="Add description..."
-                                                            fullWidth
-                                                        />
-                                                    }
-                                                />
-                                            </ListItem>
-                                        ))}
-                                        {(!displayProduct?.licenses || displayProduct.licenses.length === 0) && (
-                                            <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-                                                No licenses defined
-                                            </Typography>
-                                        )}
-                                    </List>
+                                    <LicensesTable
+                                        items={displayProduct?.licenses || []}
+                                        onUpdate={productEditing.handleLicenseUpdate}
+                                        onDelete={productEditing.handleLicenseDelete}
+                                        onCreate={productEditing.handleLicenseCreate}
+                                        onReorder={productEditing.handleLicenseReorder}
+                                        externalAddMode={externalAddMode === 'licenses'}
+                                        onExternalAddComplete={() => setExternalAddMode(null)}
+                                    />
                                 </Paper>
                             </Grid>
                         </Grid>
@@ -1373,56 +1166,15 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                         <Grid container spacing={3}>
                             <Grid size={{ xs: 12 }}>
                                 <Paper sx={{ p: 2 }}>
-                                    <TableContainer>
-                                        <Table size="small">
-                                            <TableHead>
-                                                <TableRow>
-                                                    <TableCell width={40}></TableCell>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>Attribute</TableCell>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>Value</TableCell>
-                                                    <TableCell width={100} align="right">Actions</TableCell>
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {getSortedAttributes(displayProduct?.customAttrs).map(([key, value]) => (
-                                                    <TableRow key={key} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
-                                                        <TableCell>
-                                                            <DragIndicator fontSize="small" sx={{ color: 'text.disabled' }} />
-                                                        </TableCell>
-                                                        <TableCell sx={{ fontWeight: 500 }}>{key}</TableCell>
-                                                        <TableCell>
-                                                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                                        </TableCell>
-                                                        <TableCell align="right">
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={() => {
-                                                                    setEditingCustomAttr({ key, value });
-                                                                    setCustomAttrDialog(true);
-                                                                }}
-                                                            >
-                                                                <Edit fontSize="small" />
-                                                            </IconButton>
-                                                            <IconButton
-                                                                size="small"
-                                                                color="error"
-                                                                onClick={() => handleDeleteCustomAttr(key)}
-                                                            >
-                                                                <Delete fontSize="small" />
-                                                            </IconButton>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                                {getSortedAttributes(displayProduct?.customAttrs).length === 0 && (
-                                                    <TableRow>
-                                                        <TableCell colSpan={4} sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
-                                                            No custom attributes defined
-                                                        </TableCell>
-                                                    </TableRow>
-                                                )}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
+                                    <AttributesTable
+                                        items={productEditing.getAttributesList(displayProduct?.customAttrs)}
+                                        onUpdate={productEditing.handleAttributeUpdate}
+                                        onDelete={productEditing.handleAttributeDelete}
+                                        onCreate={productEditing.handleAttributeCreate}
+                                        onReorder={productEditing.handleAttributeReorder}
+                                        externalAddMode={externalAddMode === 'customAttributes'}
+                                        onExternalAddComplete={() => setExternalAddMode(null)}
+                                    />
                                 </Paper>
                             </Grid>
                         </Grid>
@@ -1432,39 +1184,15 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                         <Grid container spacing={3}>
                             <Grid size={{ xs: 12 }}>
                                 <Paper sx={{ p: 2 }}>
-                                    {(!displayProduct?.tags || displayProduct.tags.length === 0) ? (
-                                        <Typography variant="body2" color="text.secondary" sx={{ py: 3, textAlign: 'center' }}>
-                                            No tags defined for this product. Click "Add" to create one.
-                                        </Typography>
-                                    ) : (
-                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                            {displayProduct.tags.map((tag: any) => (
-                                                <Tooltip key={tag.id} title={tag.description || tag.name} arrow>
-                                                    <Chip
-                                                        label={tag.name}
-                                                        sx={{
-                                                            backgroundColor: tag.color,
-                                                            color: '#fff',
-                                                            fontWeight: 500,
-                                                            cursor: 'pointer',
-                                                            '& .MuiChip-deleteIcon': {
-                                                                color: 'rgba(255, 255, 255, 0.7)',
-                                                                '&:hover': {
-                                                                    color: '#fff'
-                                                                }
-                                                            }
-                                                        }}
-                                                        onClick={() => {
-                                                            setEditingTag(tag);
-                                                            setTagDialog(true);
-                                                        }}
-                                                        onDelete={() => handleDeleteTag(tag.id)}
-                                                        deleteIcon={<Delete />}
-                                                    />
-                                                </Tooltip>
-                                            ))}
-                                        </Box>
-                                    )}
+                                    <TagsTable
+                                        items={displayProduct?.tags || []}
+                                        onUpdate={productEditing.handleTagUpdate}
+                                        onDelete={productEditing.handleTagDelete}
+                                        onCreate={productEditing.handleTagCreate}
+                                        onReorder={productEditing.handleTagReorder}
+                                        externalAddMode={externalAddMode === 'tags'}
+                                        onExternalAddComplete={() => setExternalAddMode(null)}
+                                    />
                                 </Paper>
                             </Grid>
                         </Grid>
@@ -1489,25 +1217,7 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 availableReleases={displayProduct?.releases || []}
                 availableTags={displayProduct?.tags || []}
             />
-            <OutcomeDialog
-                open={outcomeDialog}
-                onClose={() => setOutcomeDialog(false)}
-                outcome={editingOutcome}
-                onSave={handleSaveOutcome}
-            />
-            <ReleaseDialog
-                open={releaseDialog}
-                onClose={() => setReleaseDialog(false)}
-                title={editingRelease ? 'Edit Release' : 'Add Release'}
-                release={editingRelease}
-                onSave={handleSaveRelease}
-            />
-            <LicenseDialog
-                open={licenseDialog}
-                onClose={() => setLicenseDialog(false)}
-                license={editingLicense}
-                onSave={handleSaveLicense}
-            />
+
 
             {/* Add/Edit Product Dialog */}
             <ProductDialog
@@ -1515,6 +1225,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 onClose={() => setProductDialog(false)}
                 onSave={async (data: any) => {
                     try {
+                        let productId = editingProduct?.id;
+
                         if (editingProduct) {
                             // Update existing product
                             await client.mutate({
@@ -1530,10 +1242,6 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                 refetchQueries: ['Products', 'ProductDetail'],
                                 awaitRefetchQueries: true
                             });
-
-                            // Note: Outcomes, Licenses, and Releases are currently handled by their own dialogs
-                            // or would need separate reconciliation logic here if they were modified in ProductDialog.
-                            // For now, we focus on name, description, and customAttrs (including order).
                         } else {
                             // Create new product
                             const result = await client.mutate({
@@ -1542,9 +1250,135 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                                 refetchQueries: ['Products'],
                                 awaitRefetchQueries: true
                             });
-                            const newProductId = result.data.createProduct.id;
-                            setSelectedProduct(newProductId);
-                            localStorage.setItem('lastSelectedProductId', newProductId);
+                            productId = result.data.createProduct.id;
+                            setSelectedProduct(productId);
+                            localStorage.setItem('lastSelectedProductId', productId);
+                        }
+
+                        // Handle outcomes CRUD
+                        if (data.outcomes && productId) {
+                            const finalOutcomeIds: string[] = [];
+                            for (const outcome of data.outcomes) {
+                                if (outcome.delete && outcome.id) {
+                                    await client.mutate({ mutation: DELETE_OUTCOME, variables: { id: outcome.id } });
+                                } else if (outcome.isNew && !outcome.delete) {
+                                    const res = await client.mutate({
+                                        mutation: CREATE_OUTCOME,
+                                        variables: { input: { name: outcome.name, description: outcome.description, productId } }
+                                    });
+                                    if (res.data?.createOutcome?.id) finalOutcomeIds.push(res.data.createOutcome.id);
+                                } else if (!outcome.isNew && !outcome.delete && outcome.id) {
+                                    await client.mutate({
+                                        mutation: UPDATE_OUTCOME,
+                                        variables: { id: outcome.id, input: { name: outcome.name, description: outcome.description } }
+                                    });
+                                    finalOutcomeIds.push(outcome.id);
+                                }
+                            }
+
+                            // Reorder outcomes to match the dialog order
+                            if (finalOutcomeIds.length > 0) {
+                                await client.mutate({
+                                    mutation: REORDER_OUTCOMES,
+                                    variables: {
+                                        productId,
+                                        outcomeIds: finalOutcomeIds
+                                    }
+                                });
+                            }
+                        }
+
+                        // Handle licenses CRUD
+                        if (data.licenses && productId) {
+                            const finalLicenseIds: string[] = [];
+                            for (const license of data.licenses) {
+                                if (license.delete && license.id) {
+                                    await client.mutate({ mutation: DELETE_LICENSE, variables: { id: license.id } });
+                                } else if (license.isNew && !license.delete) {
+                                    const res = await client.mutate({
+                                        mutation: CREATE_LICENSE,
+                                        variables: { input: { name: license.name, level: license.level, description: license.description, isActive: license.isActive, productId } }
+                                    });
+                                    if (res.data?.createLicense?.id) finalLicenseIds.push(res.data.createLicense.id);
+                                } else if (!license.isNew && !license.delete && license.id) {
+                                    await client.mutate({
+                                        mutation: UPDATE_LICENSE,
+                                        variables: { id: license.id, input: { name: license.name, level: license.level, description: license.description, isActive: license.isActive } }
+                                    });
+                                    finalLicenseIds.push(license.id);
+                                }
+                            }
+
+                            // Reorder licenses
+                            if (finalLicenseIds.length > 0) {
+                                await client.mutate({
+                                    mutation: REORDER_LICENSES,
+                                    variables: { productId, licenseIds: finalLicenseIds }
+                                });
+                            }
+                        }
+
+                        // Handle releases CRUD
+                        if (data.releases && productId) {
+                            const finalReleaseIds: string[] = [];
+                            for (const release of data.releases) {
+                                if (release.delete && release.id) {
+                                    await client.mutate({ mutation: DELETE_RELEASE, variables: { id: release.id } });
+                                } else if (release.isNew && !release.delete) {
+                                    const res = await client.mutate({
+                                        mutation: CREATE_RELEASE,
+                                        variables: { input: { name: release.name, level: release.level, description: release.description, productId } }
+                                    });
+                                    if (res.data?.createRelease?.id) finalReleaseIds.push(res.data.createRelease.id);
+                                } else if (!release.isNew && !release.delete && release.id) {
+                                    await client.mutate({
+                                        mutation: UPDATE_RELEASE,
+                                        variables: { id: release.id, input: { name: release.name, level: release.level, description: release.description } }
+                                    });
+                                    finalReleaseIds.push(release.id);
+                                }
+                            }
+
+                            // Reorder releases
+                            if (finalReleaseIds.length > 0) {
+                                await client.mutate({
+                                    mutation: REORDER_RELEASES,
+                                    variables: { productId, releaseIds: finalReleaseIds }
+                                });
+                            }
+                        }
+
+                        // Handle tags CRUD
+                        if (data.tags && productId) {
+                            const finalTagIds: string[] = [];
+                            for (const tag of data.tags) {
+                                if (tag.delete && tag.id) {
+                                    await client.mutate({ mutation: DELETE_PRODUCT_TAG, variables: { id: tag.id } });
+                                } else if (tag.isNew && !tag.delete) {
+                                    const res = await client.mutate({
+                                        mutation: CREATE_PRODUCT_TAG,
+                                        variables: { input: { name: tag.name, color: tag.color, description: tag.description, productId } }
+                                    });
+                                    if (res.data?.createProductTag?.id) finalTagIds.push(res.data.createProductTag.id);
+                                } else if (!tag.isNew && !tag.delete && tag.id) {
+                                    await client.mutate({
+                                        mutation: UPDATE_PRODUCT_TAG,
+                                        variables: { id: tag.id, input: { name: tag.name, color: tag.color, description: tag.description } }
+                                    });
+                                    finalTagIds.push(tag.id);
+                                }
+                            }
+
+                            // Reorder tags to match the dialog order
+                            if (finalTagIds.length > 0) {
+                                await client.mutate({
+                                    mutation: REORDER_PRODUCT_TAGS,
+                                    variables: {
+                                        productId,
+                                        tagIds: finalTagIds
+                                    }
+                                });
+                            }
                         }
 
                         setProductDialog(false);
@@ -1558,28 +1392,11 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                         alert('Failed to save product: ' + error.message);
                     }
                 }}
-                product={editingProduct}
+                product={editingProduct ? displayProduct : null}
                 title={editingProduct ? 'Edit Product' : 'Add Product'}
-                availableReleases={[]}
             />
 
-            {/* Custom Attribute Dialog */}
-            <CustomAttributeDialog
-                open={customAttrDialog}
-                onClose={() => { setCustomAttrDialog(false); setEditingCustomAttr(null); }}
-                onSave={handleSaveCustomAttr}
-                attribute={editingCustomAttr}
-                existingKeys={Object.keys(displayProduct?.customAttrs || {})}
-            />
 
-            {/* Tag Dialog */}
-            <TagDialog
-                open={tagDialog}
-                onClose={() => { setTagDialog(false); setEditingTag(null); }}
-                onSave={handleSaveTag}
-                tag={editingTag}
-                existingNames={displayProduct?.tags?.map((t: any) => t.name) || []}
-            />
             {/* Bulk Import V2 Dialog */}
             {importDialog && (
                 <BulkImportDialog
@@ -1596,56 +1413,4 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
     );
 };
 
-// Sortable Row Component (Internal)
-const SortableAttributeRow = ({ id, attrKey, value, onEdit, onDelete }: any) => {
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        transform,
-        transition,
-        isDragging
-    } = useSortable({ id });
 
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-        backgroundColor: isDragging ? alpha('#000', 0.05) : undefined,
-        zIndex: isDragging ? 1 : undefined,
-    };
-
-    return (
-        <TableRow ref={setNodeRef} style={style} sx={{ '&:hover .drag-handle': { opacity: 1 } }}>
-            <TableCell>
-                <IconButton
-                    size="small"
-                    className="drag-handle"
-                    sx={{ opacity: 0.3, cursor: 'grab' }}
-                    {...attributes}
-                    {...listeners}
-                >
-                    <DragIndicator fontSize="small" />
-                </IconButton>
-            </TableCell>
-            <TableCell
-                onClick={onEdit}
-                sx={{ cursor: 'pointer', fontWeight: 500 }}
-            >
-                {attrKey}
-            </TableCell>
-            <TableCell onClick={onEdit} sx={{ cursor: 'pointer' }}>
-                <Tooltip title={typeof value === 'string' ? value : JSON.stringify(value)} placement="top" arrow>
-                    <span>{typeof value === 'string' ? value : JSON.stringify(value)}</span>
-                </Tooltip>
-            </TableCell>
-            <TableCell align="right">
-                <IconButton size="small" onClick={onEdit}>
-                    <Edit fontSize="small" />
-                </IconButton>
-                <IconButton size="small" color="error" onClick={onDelete}>
-                    <Delete fontSize="small" />
-                </IconButton>
-            </TableCell>
-        </TableRow>
-    );
-};

@@ -87,6 +87,8 @@ export const taskTypeDefs = gql`
     createTaskStatus(input: TaskStatusInput!): TaskStatus!
     updateTaskStatus(id: ID!, input: TaskStatusInput!): TaskStatus!
     deleteTaskStatus(id: ID!): Boolean!
+    queueTaskSoftDelete(id: ID!): Task!
+    processDeletionQueue(limit: Int): Int!
   }
 
   type TaskDependencyEdge { id: ID! taskId: ID! dependsOnId: ID! task: Task! dependsOn: Task! }

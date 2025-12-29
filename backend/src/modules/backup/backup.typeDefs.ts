@@ -1,31 +1,51 @@
 import gql from 'graphql-tag';
 
 export const backupTypeDefs = gql`
+  type RecordCounts {
+    users: Int
+    products: Int
+    solutions: Int
+    customers: Int
+    customerProducts: Int
+    customerSolutions: Int
+    adoptionPlans: Int
+    solutionAdoptionPlans: Int
+    tasks: Int
+    customerTasks: Int
+    customerSolutionTasks: Int
+  }
+
   type BackupFile {
+    id: ID!
     filename: String!
+    timestamp: DateTime!
     size: Int!
-    createdAt: DateTime!
-    path: String!
+    recordCounts: RecordCounts
+    path: String
   }
 
   type BackupResult {
     success: Boolean!
     filename: String
-    message: String!
+    size: Int
+    url: String
+    message: String
     error: String
+    metadata: BackupFile
   }
 
   type RestoreResult {
     success: Boolean!
     message: String!
     error: String
+    recordsRestored: RecordCounts
   }
 
   type AutoBackupConfig {
     enabled: Boolean!
     schedule: String!
     retentionDays: Int!
-    lastRun: DateTime
+    lastBackupTime: DateTime
     nextRun: DateTime
   }
 
@@ -37,13 +57,15 @@ export const backupTypeDefs = gql`
 
   extend type Query {
     listBackups: [BackupFile!]!
-    getAutoBackupConfig: AutoBackupConfig!
+    autoBackupConfig: AutoBackupConfig!
   }
 
   extend type Mutation {
-    createManualBackup: BackupResult!
+    createManualBackup(customName: String): BackupResult!
+    createBackup: BackupResult!
     restoreBackup(filename: String!): RestoreResult!
-    deleteBackup(filename: String!): Boolean!
+    deleteBackup(filename: String!): BackupResult!
     updateAutoBackupConfig(input: AutoBackupUpdateInput!): AutoBackupConfig!
+    triggerAutoBackup: BackupResult!
   }
 `;

@@ -66,7 +66,7 @@ export const ReleaseQueryResolvers = {
         if (productId) where.productId = productId;
         return prisma.release.findMany({
             where,
-            orderBy: [{ productId: 'asc' }, { level: 'asc' }]
+            orderBy: { displayOrder: 'asc' }
         });
     }
 };
@@ -88,5 +88,10 @@ export const ReleaseMutationResolvers = {
     deleteRelease: async (_: any, { id }: any, ctx: any) => {
         ensureRole(ctx, ['ADMIN', 'SME']);
         return ReleaseService.deleteRelease(ctx.user?.id, id);
+    },
+
+    reorderReleases: async (_: any, { productId, releaseIds }: any, ctx: any) => {
+        ensureRole(ctx, ['ADMIN', 'SME']);
+        return ReleaseService.reorderReleases(ctx.user?.id, productId, releaseIds);
     }
 };

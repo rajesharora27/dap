@@ -14,12 +14,22 @@ export interface OutcomeInput {
 
 export class OutcomeService {
     static async createOutcome(userId: string, input: OutcomeInput) {
+        // Calculate next display order
+        const maxOrder = await prisma.outcome.findFirst({
+            where: {
+                productId: input.productId ?? undefined,
+                solutionId: input.solutionId ?? undefined
+            },
+            orderBy: { displayOrder: 'desc' }
+        });
+
         const outcome = await prisma.outcome.create({
             data: {
                 name: input.name,
                 description: input.description,
                 productId: input.productId || null,
-                solutionId: input.solutionId || null
+                solutionId: input.solutionId || null,
+                displayOrder: (maxOrder?.displayOrder ?? 0) + 1
             }
         });
 
@@ -27,7 +37,7 @@ export class OutcomeService {
         return outcome;
     }
 
-    static async updateOutcome(userId: string, id: string, input: Partial<OutcomeInput>) {
+    static async updateOutcome(userId: string, id: string, input: Partial<OutcomeInput> & { displayOrder?: number }) {
         const before = await prisma.outcome.findUnique({ where: { id } });
 
         const outcome = await prisma.outcome.update({
@@ -36,7 +46,8 @@ export class OutcomeService {
                 name: input.name,
                 description: input.description,
                 productId: input.productId,
-                solutionId: input.solutionId
+                solutionId: input.solutionId,
+                displayOrder: input.displayOrder
             }
         });
 
@@ -57,5 +68,28 @@ export class OutcomeService {
 
         await logAudit('DELETE_OUTCOME', 'Outcome', id, {}, userId);
         return true;
+    }
+
+    static async reorderOutcomes(userId: string, productId: string | null, solutionId: string | null, outcomeIds: string[]) {
+        if (!productId && !solutionId) {
+            throw new Error('Must provide either productId or solutionId');
+        }
+
+        await prisma.$transaction(
+            outcomeIds.map((id, index) =>
+                prisma.outcome.update({
+                    where: { id },
+                    data: { displayOrder: index + 1 }
+                })
+            )
+        );
+
+        return prisma.outcome.findMany({
+            where: {
+                productId: productId ?? undefined,
+                solutionId: solutionId ?? undefined
+            },
+            orderBy: { displayOrder: 'asc' }
+        });
     }
 }

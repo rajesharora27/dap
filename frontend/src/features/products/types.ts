@@ -16,6 +16,7 @@ export interface Product {
     licenses?: License[];
     outcomes?: Outcome[];
     releases?: Release[];
+    tags?: ProductTag[];
     tasks?: {
         edges: Array<{
             node: {

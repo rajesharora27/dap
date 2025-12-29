@@ -32,7 +32,10 @@ export const OutcomeQueryResolvers = {
         const where: any = {};
         if (productId) where.productId = productId;
         if (solutionId) where.solutionId = solutionId;
-        return prisma.outcome.findMany({ where });
+        return prisma.outcome.findMany({
+            where,
+            orderBy: { displayOrder: 'asc' }
+        });
     }
 };
 
@@ -53,5 +56,10 @@ export const OutcomeMutationResolvers = {
     deleteOutcome: async (_: any, { id }: any, ctx: any) => {
         ensureRole(ctx, ['ADMIN', 'SME']);
         return OutcomeService.deleteOutcome(ctx.user?.id, id);
+    },
+
+    reorderOutcomes: async (_: any, { productId, solutionId, outcomeIds }: any, ctx: any) => {
+        ensureRole(ctx, ['ADMIN', 'SME']);
+        return OutcomeService.reorderOutcomes(ctx.user?.id, productId, solutionId, outcomeIds);
     }
 };

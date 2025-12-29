@@ -11,10 +11,11 @@ type Release implements Node {
   tasks: [Task!]!
   inheritedTasks: [Task!]!
   customAttrs: JSON
+  displayOrder: Int!
 }
 
 input ReleaseInput {
- name: String!
+  name: String!
   description: String
   level: Float!
   isActive: Boolean
@@ -31,4 +32,5 @@ extend type Mutation {
   createRelease(input: ReleaseInput!): Release!
   updateRelease(id: ID!, input: ReleaseInput!): Release!
   deleteRelease(id: ID!): Boolean!
+  reorderReleases(productId: ID!, releaseIds: [ID!]!): [Release!]!
 }

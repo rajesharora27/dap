@@ -33,6 +33,11 @@ input SolutionInput {
   licenseIds: [ID!]
 }
 
+input ProductOrderInput {
+  productId: ID!
+  order: Int!
+}
+
 extend type Query {
   solution(id: ID!): Solution
   solutions(first: Int, after: String, last: Int, before: String): SolutionConnection!
@@ -42,6 +47,7 @@ extend type Mutation {
   createSolution(input: SolutionInput!): Solution!
   updateSolution(id:ID!, input: SolutionInput!): Solution!
   deleteSolution(id: ID!): Boolean!
-  addProductToSolution(solutionId: ID!, productId: ID!): Boolean!
+  addProductToSolution(solutionId: ID!, productId: ID!, order: Int): Boolean!
   removeProductFromSolution(solutionId: ID!, productId: ID!): Boolean!
+  reorderProductsInSolution(solutionId: ID!, productOrders: [ProductOrderInput!]!): Boolean!
 }

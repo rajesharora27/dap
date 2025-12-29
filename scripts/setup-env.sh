@@ -25,8 +25,8 @@ fi
 if [ "$1" = "--sync-only" ]; then
     if [ ! -f "$PROJECT_DIR/.env" ]; then
         echo "❌ .env not found. Run without --sync-only to create it."
-        exit 1
-    fi
+  exit 1
+fi
     echo "📋 Syncing .env to backend/.env..."
     cp "$PROJECT_DIR/.env" "$PROJECT_DIR/backend/.env"
     echo "✅ Sync complete"

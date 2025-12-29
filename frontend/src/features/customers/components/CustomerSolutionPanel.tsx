@@ -23,7 +23,7 @@ import {
 import { Add, Edit, Delete, Download, Upload, Assessment, Sync } from '@shared/components/FAIcon';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { AssignSolutionDialog } from './AssignSolutionDialog';
-import { EditSolutionEntitlementsDialog } from './EditSolutionEntitlementsDialog';
+import { EditSolutionLicensesDialog } from './EditSolutionLicensesDialog';
 import { SolutionAdoptionPlanView } from '@features/adoption-plans';
 import { importSolutionTelemetry, downloadFileFromUrl } from '@/features/telemetry/utils/telemetryOperations';
 
@@ -145,7 +145,7 @@ interface Props {
 export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   const [selectedSolutionId, setSelectedSolutionId] = useState<string | null>(null);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
-  const [editEntitlementsDialogOpen, setEditEntitlementsDialogOpen] = useState(false);
+  const [editLicensesDialogOpen, setEditLicensesDialogOpen] = useState(false);
   const [deleteConfirmDialogOpen, setDeleteConfirmDialogOpen] = useState(false);
 
   const { data, loading, error, refetch } = useQuery(GET_CUSTOMER_SOLUTIONS, {
@@ -408,10 +408,10 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
                   </Tooltip>
                 </>
               )}
-              <Tooltip title="Edit solution entitlements">
+              <Tooltip title="Edit solution licenses">
                 <IconButton
                   size="small"
-                  onClick={() => setEditEntitlementsDialogOpen(true)}
+                  onClick={() => setEditLicensesDialogOpen(true)}
                   color="primary"
                 >
                   <Edit fontSize="small" />
@@ -510,17 +510,17 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
         }}
       />
 
-      {/* Edit Entitlements Dialog */}
+      {/* Edit Licenses Dialog */}
       {
         selectedSolutionId && (
-          <EditSolutionEntitlementsDialog
-            open={editEntitlementsDialogOpen}
-            onClose={() => setEditEntitlementsDialogOpen(false)}
+          <EditSolutionLicensesDialog
+            open={editLicensesDialogOpen}
+            onClose={() => setEditLicensesDialogOpen(false)}
             customerSolutionId={selectedSolutionId}
             onSuccess={() => {
               refetch();
               refetchPlan();
-              setEditEntitlementsDialogOpen(false);
+              setEditLicensesDialogOpen(false);
             }}
           />
         )

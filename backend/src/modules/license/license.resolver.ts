@@ -27,7 +27,10 @@ export const LicenseQueryResolvers = {
         const where: any = { deletedAt: null };
         if (productId) where.productId = productId;
         if (solutionId) where.solutionId = solutionId;
-        return prisma.license.findMany({ where });
+        return prisma.license.findMany({
+            where,
+            orderBy: { displayOrder: 'asc' }
+        });
     }
 };
 
@@ -51,5 +54,10 @@ export const LicenseMutationResolvers = {
         ensureRole(ctx, ['ADMIN', 'SME']);
 
         return LicenseService.deleteLicense(ctx.user?.id, id);
+    },
+
+    reorderLicenses: async (_: any, { productId, solutionId, licenseIds }: any, ctx: any) => {
+        ensureRole(ctx, ['ADMIN', 'SME']);
+        return LicenseService.reorderLicenses(ctx.user?.id, productId || null, solutionId || null, licenseIds);
     }
 };

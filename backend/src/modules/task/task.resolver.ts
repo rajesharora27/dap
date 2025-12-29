@@ -168,25 +168,41 @@ export const TaskQueryResolvers = {
     tasks: async (_: any, { productId, solutionId }: any, ctx: any) => {
         requireUser(ctx);
 
+        // Helper to wrap a list of tasks into a Relay-style connection
+        const toConnection = (items: any[]) => ({
+            edges: items.map((task: any) => ({
+                cursor: task.id,
+                node: task
+            })),
+            pageInfo: {
+                hasNextPage: false,
+                hasPreviousPage: false,
+                startCursor: items[0]?.id || null,
+                endCursor: items[items.length - 1]?.id || null
+            },
+            totalCount: items.length
+        });
 
         // Check read permissions for the container (product or solution)
         if (productId) {
             await requirePermission(ctx, ResourceType.PRODUCT, productId, PermissionLevel.READ);
-            return prisma.task.findMany({
+            const items = await prisma.task.findMany({
                 where: { productId, deletedAt: null },
                 orderBy: { sequenceNumber: 'asc' }
             });
+            return toConnection(items);
         }
 
         if (solutionId) {
             await requirePermission(ctx, ResourceType.SOLUTION, solutionId, PermissionLevel.READ);
-            return prisma.task.findMany({
+            const items = await prisma.task.findMany({
                 where: { solutionId, deletedAt: null },
                 orderBy: { sequenceNumber: 'asc' }
             });
+            return toConnection(items);
         }
 
-        return [];
+        return toConnection([]);
     },
 
     taskDependencies: async (_: any, { taskId }: any, ctx: any) => {
@@ -305,19 +321,7 @@ export const TaskMutationResolvers = {
         return TaskService.reorderTasks(ctx.user.id, effectiveProductId || effectiveSolutionId, effectiveOrder, !!effectiveProductId);
     },
 
-    exportTasksCsv: async (_: any, { productId }: any, ctx: any) => {
-        ensureRole(ctx, ['ADMIN', 'SME']);
-        return TaskService.exportTasksCsv(ctx.user.id, productId);
-    },
 
-    importTasksCsv: async (_: any, { productId, csv, mode }: any, ctx: any) => {
-        ensureRole(ctx, ['ADMIN', 'SME']);
-        return TaskService.importTasksCsv(ctx.user.id, productId, csv, mode);
-    },
-
-    downloadProductSampleCsv: async () => {
-        return generateProductSampleCsv();
-    },
 
     addTaskDependency: async (_: any, { taskId, dependsOnId }: any, ctx: any) => {
         ensureRole(ctx, ['ADMIN', 'SME']);
@@ -329,8 +333,4 @@ export const TaskMutationResolvers = {
         return TaskService.removeTaskDependency(ctx.user.id, taskId, dependsOnId);
     },
 
-    addTelemetry: async (_: any, { taskId, data }: any, ctx: any) => {
-        ensureRole(ctx, ['ADMIN', 'SME']);
-        return TaskService.addTelemetry(ctx.user.id, taskId, data);
-    }
 };

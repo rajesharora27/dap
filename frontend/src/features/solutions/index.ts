@@ -11,6 +11,7 @@ export { SolutionTaskManagement } from './components/SolutionTaskManagement';
 export { SolutionSummaryDashboard } from './components/SolutionSummaryDashboard';
 
 // Hooks
+export * from './hooks';
 
 // GraphQL
 export * from './graphql';

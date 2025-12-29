@@ -19,6 +19,16 @@ export interface LicenseInput {
 
 export class LicenseService {
     static async createLicense(userId: string, input: LicenseInput) {
+        // Calculate next display order
+        const maxOrder = await prisma.license.findFirst({
+            where: {
+                productId: input.productId || null,
+                solutionId: input.solutionId || null,
+                deletedAt: null
+            },
+            orderBy: { displayOrder: 'desc' }
+        });
+
         const license = await prisma.license.create({
             data: {
                 name: input.name,
@@ -27,7 +37,8 @@ export class LicenseService {
                 isActive: input.isActive,
                 productId: input.productId || null,
                 solutionId: input.solutionId || null,
-                customAttrs: input.customAttrs
+                customAttrs: input.customAttrs,
+                displayOrder: (maxOrder?.displayOrder ?? 0) + 1
             }
         });
 
@@ -35,7 +46,7 @@ export class LicenseService {
         return license;
     }
 
-    static async updateLicense(userId: string, id: string, input: Partial<LicenseInput>) {
+    static async updateLicense(userId: string, id: string, input: Partial<LicenseInput> & { displayOrder?: number }) {
         console.log(`[DEBUG] updateLicense called with id=${id}`);
         console.log(`[DEBUG] updateLicense input:`, JSON.stringify(input, null, 2));
 
@@ -48,7 +59,8 @@ export class LicenseService {
             description: input.description,
             level: input.level,
             isActive: input.isActive,
-            customAttrs: input.customAttrs
+            customAttrs: input.customAttrs,
+            displayOrder: input.displayOrder
         };
 
         // Only update productId if explicitly provided in input
@@ -87,5 +99,25 @@ export class LicenseService {
 
         await logAudit('DELETE_LICENSE', 'License', id, {}, userId);
         return true;
+    }
+
+    static async reorderLicenses(userId: string, productId: string | null, solutionId: string | null, licenseIds: string[]) {
+        await prisma.$transaction(
+            licenseIds.map((id, index) =>
+                prisma.license.update({
+                    where: { id },
+                    data: { displayOrder: index + 1 }
+                })
+            )
+        );
+
+        return prisma.license.findMany({
+            where: {
+                productId: productId || undefined,
+                solutionId: solutionId || undefined,
+                deletedAt: null
+            },
+            orderBy: { displayOrder: 'asc' }
+        });
     }
 }

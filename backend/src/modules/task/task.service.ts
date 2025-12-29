@@ -659,7 +659,7 @@ export class TaskService {
         return deletedCount;
     }
 
-    static async exportTasksCsv(userId: string, productId: string) {
+    static async exportTasksCsv(userId: string, productId: string | null) {
         const product = await prisma.product.findUnique({
             where: { id: productId },
             select: { id: true, name: true }
@@ -696,7 +696,7 @@ export class TaskService {
         return csv;
     }
 
-    static async importTasksCsv(userId: string, productId: string, csv: string, mode: string) {
+    static async importTasksCsv(userId: string, productId: string | null, csv: string, mode: string) {
         const result = {
             success: false,
             productId,

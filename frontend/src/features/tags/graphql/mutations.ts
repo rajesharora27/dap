@@ -147,3 +147,27 @@ export const REMOVE_SOLUTION_TAG_FROM_TASK = gql`
     }
   }
 `;
+
+export const REORDER_PRODUCT_TAGS = gql`
+  mutation ReorderProductTags($productId: ID!, $tagIds: [ID!]!) {
+    reorderProductTags(productId: $productId, tagIds: $tagIds) {
+      id
+      name
+      color
+      description
+      displayOrder
+    }
+  }
+`;
+
+export const REORDER_SOLUTION_TAGS = gql`
+  mutation ReorderSolutionTags($solutionId: ID!, $tagIds: [ID!]!) {
+    reorderSolutionTags(solutionId: $solutionId, tagIds: $tagIds) {
+      id
+      name
+      color
+      description
+      displayOrder
+    }
+  }
+`;

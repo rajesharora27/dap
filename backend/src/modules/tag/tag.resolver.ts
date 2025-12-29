@@ -135,6 +135,16 @@ export const TagResolvers = {
                 await requirePermission(ctx, ResourceType.SOLUTION, task.solutionId, PermissionLevel.WRITE);
             }
             return TagService.removeSolutionTagFromTask(taskId, tagId);
+        },
+        reorderProductTags: async (_: any, { productId, tagIds }: any, ctx: any) => {
+            requireUser(ctx);
+            await requirePermission(ctx, ResourceType.PRODUCT, productId, PermissionLevel.WRITE);
+            return TagService.reorderProductTags(productId, tagIds);
+        },
+        reorderSolutionTags: async (_: any, { solutionId, tagIds }: any, ctx: any) => {
+            requireUser(ctx);
+            await requirePermission(ctx, ResourceType.SOLUTION, solutionId, PermissionLevel.WRITE);
+            return TagService.reorderSolutionTags(solutionId, tagIds);
         }
     },
     // Field Resolvers

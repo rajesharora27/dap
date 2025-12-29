@@ -31,6 +31,8 @@ allowed_backend=(
   '^backend/src/server\.ts$'
   '^backend/src/scripts/'
   '^backend/src/__tests__/'
+  '^backend/prisma/migrations/'
+  '^backend/prisma/schema\.prisma$'
 )
 
 allowed_frontend=(

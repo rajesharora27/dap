@@ -17,6 +17,16 @@ export interface ReleaseInput {
 
 export class ReleaseService {
     static async createRelease(userId: string, input: ReleaseInput) {
+        // Calculate next display order
+        const maxOrder = await prisma.release.findFirst({
+            where: {
+                productId: input.productId || null,
+                solutionId: input.solutionId || null,
+                deletedAt: null
+            },
+            orderBy: { displayOrder: 'desc' }
+        });
+
         const release = await prisma.release.create({
             data: {
                 name: input.name,
@@ -25,7 +35,8 @@ export class ReleaseService {
                 isActive: input.isActive !== undefined ? input.isActive : true,
                 productId: input.productId || null,
                 solutionId: input.solutionId || null,
-                customAttrs: input.customAttrs
+                customAttrs: input.customAttrs,
+                displayOrder: (maxOrder?.displayOrder ?? 0) + 1
             }
         });
 
@@ -33,7 +44,7 @@ export class ReleaseService {
         return release;
     }
 
-    static async updateRelease(userId: string, id: string, input: Partial<ReleaseInput>) {
+    static async updateRelease(userId: string, id: string, input: Partial<ReleaseInput> & { displayOrder?: number }) {
         const before = await prisma.release.findUnique({ where: { id } });
 
         const release = await prisma.release.update({
@@ -45,7 +56,8 @@ export class ReleaseService {
                 isActive: input.isActive,
                 productId: input.productId,
                 solutionId: input.solutionId,
-                customAttrs: input.customAttrs
+                customAttrs: input.customAttrs,
+                displayOrder: input.displayOrder
             }
         });
 
@@ -66,5 +78,21 @@ export class ReleaseService {
 
         await logAudit('DELETE_RELEASE', 'Release', id, {}, userId);
         return true;
+    }
+
+    static async reorderReleases(userId: string, productId: string, releaseIds: string[]) {
+        await prisma.$transaction(
+            releaseIds.map((id, index) =>
+                prisma.release.update({
+                    where: { id },
+                    data: { displayOrder: index + 1 }
+                })
+            )
+        );
+
+        return prisma.release.findMany({
+            where: { productId, deletedAt: null },
+            orderBy: { displayOrder: 'asc' }
+        });
     }
 }

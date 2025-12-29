@@ -93,7 +93,7 @@ interface Props {
   onSuccess: () => void;
 }
 
-export function EditSolutionEntitlementsDialog({
+export function EditSolutionLicensesDialog({
   open,
   onClose,
   customerSolutionId,

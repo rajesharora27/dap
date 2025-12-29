@@ -35,3 +35,16 @@ export const DELETE_LICENSE = gql`
     deleteLicense(id: $id)
   }
 `;
+
+export const REORDER_LICENSES = gql`
+  mutation ReorderLicenses($productId: ID, $solutionId: ID, $licenseIds: [ID!]!) {
+    reorderLicenses(productId: $productId, solutionId: $solutionId, licenseIds: $licenseIds) {
+      id
+      name
+      description
+      level
+      isActive
+      displayOrder
+    }
+  }
+`;

@@ -11,6 +11,7 @@ type License implements Node {
   solution: Solution
   solutionId: ID
   customAttrs: JSON
+  displayOrder: Int!
 }
 
 input LicenseInput {
@@ -31,4 +32,5 @@ extend type Mutation {
   createLicense(input: LicenseInput!): License!
   updateLicense(id: ID!, input: LicenseInput!): License!
   deleteLicense(id: ID!): Boolean!
+  reorderLicenses(productId: ID, solutionId: ID, licenseIds: [ID!]!): [License!]!
 }

@@ -36,5 +36,11 @@ export const solutionTypeDefs = gql`
     deleteSolution(id: ID!): Boolean!
     addProductToSolution(solutionId: ID!, productId: ID!): Boolean!
     removeProductFromSolution(solutionId: ID!, productId: ID!): Boolean!
+    addProductToSolutionEnhanced(solutionId: ID!, productId: ID!, order: Int): Boolean!
+    removeProductFromSolutionEnhanced(solutionId: ID!, productId: ID!): Boolean!
+    reorderProductsInSolution(solutionId: ID!, productOrders: [ProductOrderInput!]!): Boolean!
+    migrateProductNamesToNewFormat: Boolean!
   }
+
+  input ProductOrderInput { productId: ID!, order: Int! }
 `;

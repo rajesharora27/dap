@@ -13,6 +13,7 @@ export { AssignProductDialog } from './components/AssignProductDialog';
 // Hooks
 export * from './hooks/useProducts';
 export * from './hooks/useProductImportExport';
+export * from './hooks/useProductEditing';
 
 // GraphQL
 export * from './graphql';

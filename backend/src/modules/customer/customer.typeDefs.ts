@@ -401,6 +401,7 @@ export const customerTypeDefs = gql`
     message: String
   }
 
+
   extend type Query {
     customer(id: ID!): Customer
     customers: [Customer!]!
@@ -435,6 +436,9 @@ export const customerTypeDefs = gql`
     createAdoptionPlan(customerProductId: ID!): AdoptionPlan!
     syncAdoptionPlan(adoptionPlanId: ID!): AdoptionPlan!
     updateCustomerTaskStatus(input: UpdateCustomerTaskStatusInput!): CustomerTask!
+    addCustomerTelemetryValue(input: AddCustomerTelemetryValueInput!): CustomerTelemetryValue!
+    bulkAddCustomerTelemetryValues(inputs: [AddCustomerTelemetryValueInput!]!): [CustomerTelemetryValue!]!
+    evaluateTaskTelemetry(customerTaskId: ID!): CustomerTask!
     bulkUpdateCustomerTaskStatus(adoptionPlanId: ID!, taskIds: [ID!]!, status: CustomerTaskStatus!, notes: String): [CustomerTask!]!
     
     assignSolutionToCustomer(input: AssignSolutionToCustomerInput!): CustomerSolutionWithPlan!

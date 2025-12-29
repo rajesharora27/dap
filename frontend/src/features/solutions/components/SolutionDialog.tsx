@@ -10,15 +10,7 @@ import {
   Box,
   Typography,
   List,
-  ListItem,
-  ListItemText,
   IconButton,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Checkbox,
-  ListItemButton,
   Alert,
   Chip,
   Divider,
@@ -26,24 +18,40 @@ import {
   Tab,
   Card,
   CardContent,
-  Tooltip
+  Tooltip,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   Delete as DeleteIcon,
   Add as AddIcon,
-  Edit as EditIcon,
-  Badge as BadgeIcon
 } from '@shared/components/FAIcon';
-import { gql, useMutation, useApolloClient } from '@apollo/client';
-import { CustomAttributeDialog } from '@shared/components/CustomAttributeDialog';
-import { OutcomeDialog } from '@features/product-outcomes';
-import { SolutionReleaseDialog, Release } from '@features/product-releases';
-import { LicenseDialog, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
+import { gql, useMutation, useApolloClient, useQuery } from '@apollo/client';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { SortableAttributeItem } from '@shared/components/SortableAttributeItem';
 import { License } from '@features/product-licenses';
 import { Outcome } from '@features/product-outcomes';
+import { Release } from '@features/product-releases';
+import {
+  InlineOutcomeEditor,
+  AddOutcomeForm,
+  SortableProductItem,
+  InlineSolutionLicenseEditor,
+  AddSolutionLicenseForm,
+  InlineSolutionReleaseEditor,
+  AddSolutionReleaseForm,
+  InlineTagEditor,
+  AddTagForm,
+} from '@shared/components/inline-editors';
+
+// GraphQL & Hook - SAME CODE as SolutionsPage
+import { SOLUTION } from '../graphql/solutions.queries';
+import { useSolutionEditing } from '../hooks/useSolutionEditing';
+import { CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG } from '@features/tags';
+import { PRODUCTS } from '@features/products';
 
 const CREATE_SOLUTION = gql`
   mutation CreateSolution($input: SolutionInput!) {
@@ -139,7 +147,35 @@ const DELETE_RELEASE = gql`
   }
 `;
 
-// License mutations are imported from @features/product-licenses
+const CREATE_LICENSE = gql`
+  mutation CreateLicense($input: LicenseInput!) {
+    createLicense(input: $input) {
+      id
+      name
+      description
+      level
+      isActive
+    }
+  }
+`;
+
+const UPDATE_LICENSE = gql`
+  mutation UpdateLicense($id: ID!, $input: LicenseInput!) {
+    updateLicense(id: $id, input: $input) {
+      id
+      name
+      description
+      level
+      isActive
+    }
+  }
+`;
+
+const DELETE_LICENSE = gql`
+  mutation DeleteLicense($id: ID!) {
+    deleteLicense(id: $id)
+  }
+`;
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -175,25 +211,55 @@ interface Solution {
   outcomes?: any[];
   licenses?: any[];
   releases?: any[];
+  tags?: any[];
 }
 
 interface Props {
   open: boolean;
   onClose: () => void;
   onSave: () => void;
-  solution?: Solution | null;
-  allProducts: any[];
-  initialTab?: 'general' | 'products' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes';
+  solutionId?: string | null;  // Changed: just pass ID, dialog fetches its own data
+  solution?: Solution | null;   // For backwards compatibility / create mode
+  allProducts?: any[];  // Optional - dialog will fetch its own fresh data
+  initialTab?: 'general' | 'products' | 'outcomes' | 'releases' | 'licenses' | 'tags' | 'customAttributes';
 }
 
 export const SolutionDialog: React.FC<Props> = ({
   open,
   onClose,
   onSave,
-  solution,
-  allProducts,
+  solutionId: propSolutionId,
+  solution: propSolution,
+  allProducts: propAllProducts,
   initialTab = 'general'
 }) => {
+  // Determine solution ID - prefer explicit solutionId prop, fall back to solution.id
+  const solutionId = propSolutionId || propSolution?.id || null;
+  const isEditMode = !!solutionId;
+
+  // Query for live solution data - SAME QUERY as SolutionsPage
+  // This ensures both places use the same Apollo cache entry
+  const { data: solutionData } = useQuery(SOLUTION, {
+    variables: { id: solutionId },
+    skip: !solutionId || !open,
+    fetchPolicy: 'cache-and-network'
+  });
+
+  // Query for fresh products data - ensures we always have current product info
+  const { data: productsData } = useQuery(PRODUCTS, {
+    skip: !open,
+    fetchPolicy: 'cache-and-network'  // Always fetch fresh data when dialog opens
+  });
+  
+  // Use fresh products data from query, fall back to prop if not available
+  const allProducts = productsData?.products?.edges?.map((e: any) => e.node) || propAllProducts || [];
+
+  // Use live data from query, or fall back to prop for create mode
+  const solution = solutionData?.solution || propSolution || null;
+
+  // Use shared hook for edit mode - SAME CODE as SolutionsPage
+  const solutionEditing = useSolutionEditing(solutionId);
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [customAttrs, setCustomAttrs] = useState<{ [key: string]: any }>({});
@@ -201,23 +267,23 @@ export const SolutionDialog: React.FC<Props> = ({
   const [solutionOutcomes, setSolutionOutcomes] = useState<Outcome[]>([]);
   const [releases, setReleases] = useState<Release[]>([]);
   const [licenses, setLicenses] = useState<License[]>([]);
+  const [tags, setTags] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [tabValue, setTabValue] = useState(0);
 
-  // Dialog states for sub-dialogs
-  const [addCustomAttributeDialog, setAddCustomAttributeDialog] = useState(false);
-  const [editCustomAttributeDialog, setEditCustomAttributeDialog] = useState(false);
-  const [editingCustomAttribute, setEditingCustomAttribute] = useState<any>(null);
-  const [addOutcomeDialog, setAddOutcomeDialog] = useState(false);
-  const [editOutcomeDialog, setEditOutcomeDialog] = useState(false);
-  const [editingOutcome, setEditingOutcome] = useState<any>(null);
-  const [addReleaseDialog, setAddReleaseDialog] = useState(false);
-  const [editReleaseDialog, setEditReleaseDialog] = useState(false);
-  const [editingRelease, setEditingRelease] = useState<any | null>(null);
-  const [addLicenseDialog, setAddLicenseDialog] = useState(false);
-  const [editLicenseDialog, setEditLicenseDialog] = useState(false);
-  const [editingLicense, setEditingLicense] = useState<any | null>(null);
+  // Inline editing states
+  const [editingOutcomeIndex, setEditingOutcomeIndex] = useState<number | null>(null);
+  const [addingOutcome, setAddingOutcome] = useState(false);
+  const [editingReleaseIndex, setEditingReleaseIndex] = useState<number | null>(null);
+  const [addingRelease, setAddingRelease] = useState(false);
+  const [editingLicenseIndex, setEditingLicenseIndex] = useState<number | null>(null);
+  const [addingLicense, setAddingLicense] = useState(false);
+  const [editingTagIndex, setEditingTagIndex] = useState<number | null>(null);
+  const [addingTag, setAddingTag] = useState(false);
+  const [inlineAttrKey, setInlineAttrKey] = useState<string | null>(null);
+  const [inlineAttrDraft, setInlineAttrDraft] = useState<{ key: string; value: string }>({ key: '', value: '' });
+  const [productToAdd, setProductToAdd] = useState<string>('');
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -236,7 +302,6 @@ export const SolutionDialog: React.FC<Props> = ({
     awaitRefetchQueries: true,
     fetchPolicy: 'network-only',
     onCompleted: () => {
-      // Force evict solution from cache to prevent stale data merging
       if (solution?.id) {
         client.cache.evict({ id: `Solution:${solution.id}` });
         client.cache.gc();
@@ -248,13 +313,21 @@ export const SolutionDialog: React.FC<Props> = ({
   const [reorderProducts] = useMutation(REORDER_PRODUCTS_IN_SOLUTION);
   const [createOutcome] = useMutation(CREATE_OUTCOME);
   const [updateOutcome] = useMutation(UPDATE_OUTCOME);
-  const [deleteOutcome] = useMutation(DELETE_OUTCOME);
+  const [deleteOutcomeMut] = useMutation(DELETE_OUTCOME);
   const [createRelease] = useMutation(CREATE_RELEASE);
   const [updateRelease] = useMutation(UPDATE_RELEASE);
-  const [deleteRelease] = useMutation(DELETE_RELEASE);
+  const [deleteReleaseMut] = useMutation(DELETE_RELEASE);
   const [createLicense] = useMutation(CREATE_LICENSE);
-  const [updateLicense] = useMutation(UPDATE_LICENSE);
-  const [deleteLicense] = useMutation(DELETE_LICENSE);
+  const [updateLicenseMut] = useMutation(UPDATE_LICENSE);
+  const [deleteLicenseMut] = useMutation(DELETE_LICENSE);
+  const [createTag] = useMutation(CREATE_SOLUTION_TAG);
+  const [updateTag] = useMutation(UPDATE_SOLUTION_TAG);
+  const [deleteTagMut] = useMutation(DELETE_SOLUTION_TAG);
+
+  // Helper to refetch solution data
+  const refetchSolution = async () => {
+    await client.refetchQueries({ include: ['Solutions', 'SolutionDetail'] });
+  };
 
   useEffect(() => {
     if (solution) {
@@ -267,10 +340,10 @@ export const SolutionDialog: React.FC<Props> = ({
       setCustomAttrs(cleanedAttrs);
       const productIds = (solution.products?.edges || []).map((edge: any) => edge.node.id);
       setSelectedProductIds(productIds);
-      setSolutionOutcomes((solution.outcomes || []).map(o => ({ ...o })));
-      setReleases((solution.releases || []).map(r => ({ ...r })));
-      setLicenses((solution.licenses || []).map(l => ({ ...l })));
-
+      setSolutionOutcomes((solution.outcomes || []).map((o: any) => ({ ...o })));
+      setReleases((solution.releases || []).map((r: any) => ({ ...r })));
+      setLicenses((solution.licenses || []).map((l: any) => ({ ...l })));
+      setTags((solution.tags || []).map((t: any) => ({ ...t })));
     } else {
       setName('');
       setDescription('');
@@ -279,24 +352,432 @@ export const SolutionDialog: React.FC<Props> = ({
       setSolutionOutcomes([]);
       setReleases([]);
       setLicenses([]);
+      setTags([]);
     }
+    // Reset inline editing states
+    setEditingOutcomeIndex(null);
+    setAddingOutcome(false);
+    setEditingReleaseIndex(null);
+    setAddingRelease(false);
+    setEditingLicenseIndex(null);
+    setAddingLicense(false);
+    setEditingTagIndex(null);
+    setAddingTag(false);
+    setInlineAttrKey(null);
+    setProductToAdd('');
     setError('');
   }, [solution, open]);
 
-  // Set initial tab based on prop
+  // Sync local state when solution data changes (after refetch)
+  useEffect(() => {
+    if (solution && isEditMode) {
+      setSolutionOutcomes((solution.outcomes || []).map((o: any) => ({ ...o })));
+      setReleases((solution.releases || []).map((r: any) => ({ ...r })));
+      setLicenses((solution.licenses || []).map((l: any) => ({ ...l })));
+      setTags((solution.tags || []).map((t: any) => ({ ...t })));
+      const attrs = solution.customAttrs || {};
+      const cleanedAttrs = Object.fromEntries(
+        Object.entries(attrs).filter(([key]) => key.toLowerCase() !== 'licenselevel')
+      );
+      setCustomAttrs(cleanedAttrs);
+    }
+  }, [solution?.outcomes, solution?.releases, solution?.licenses, solution?.tags, solution?.customAttrs, isEditMode]);
+
   useEffect(() => {
     if (open) {
       const tabMap: Record<string, number> = {
         general: 0,
-        products: 1,
-        outcomes: 2,
-        releases: 3,
-        licenses: 4,
-        customAttributes: 5
+        tags: 1,
+        products: 2,
+        outcomes: 3,
+        releases: 4,
+        licenses: 5,
+        customAttributes: 6
       };
-      setTabValue(tabMap[initialTab] || 0);
+      setTabValue(tabMap[initialTab as keyof typeof tabMap] || 0);
     }
   }, [open, initialTab]);
+
+  // Product handlers - Products save immediately in edit mode
+  const handleAddProduct = async () => {
+    if (productToAdd && !selectedProductIds.includes(productToAdd)) {
+      if (isEditMode) {
+        await addProduct({
+          variables: { solutionId: solution!.id, productId: productToAdd, order: selectedProductIds.length + 1 },
+          refetchQueries: ['Solutions', 'SolutionDetail']
+        });
+        await refetchSolution();
+      }
+      setSelectedProductIds([...selectedProductIds, productToAdd]);
+      setProductToAdd('');
+    }
+  };
+
+  const handleRemoveProduct = async (productId: string) => {
+    if (isEditMode) {
+      await removeProduct({
+        variables: { solutionId: solution!.id, productId },
+        refetchQueries: ['Solutions', 'SolutionDetail']
+      });
+    }
+    setSelectedProductIds(selectedProductIds.filter(id => id !== productId));
+  };
+
+  const handleProductDragEnd = async (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const oldIndex = selectedProductIds.indexOf(active.id);
+      const newIndex = selectedProductIds.indexOf(over.id);
+      const newOrder = arrayMove(selectedProductIds, oldIndex, newIndex);
+      setSelectedProductIds(newOrder);
+
+      if (isEditMode) {
+        const productOrders = newOrder.map((productId, index) => ({
+          productId,
+          order: index + 1
+        }));
+        await reorderProducts({
+          variables: { solutionId: solution!.id, productOrders }
+        });
+      }
+    }
+  };
+
+  // Outcome handlers - Edit mode uses shared hook for immediate persistence
+  const handleOutcomeSave = async (outcomeData: any, index: number) => {
+    if (isEditMode && solutionOutcomes[index].id) {
+      await solutionEditing.handleOutcomeUpdate(solutionOutcomes[index].id, {
+        name: outcomeData.name,
+        description: outcomeData.description
+      });
+    } else {
+      const updatedOutcomes = [...solutionOutcomes];
+      updatedOutcomes[index] = { ...updatedOutcomes[index], ...outcomeData };
+      setSolutionOutcomes(updatedOutcomes);
+    }
+    setEditingOutcomeIndex(null);
+  };
+
+  const handleAddOutcome = async (outcomeData: any) => {
+    if (isEditMode) {
+      await solutionEditing.handleOutcomeCreate({
+        name: outcomeData.name,
+        description: outcomeData.description
+      });
+    } else {
+      setSolutionOutcomes([...solutionOutcomes, { ...outcomeData, isNew: true }]);
+    }
+    setAddingOutcome(false);
+  };
+
+  const handleDeleteOutcome = async (index: number) => {
+    if (isEditMode && solutionOutcomes[index].id) {
+      await solutionEditing.handleOutcomeDelete(solutionOutcomes[index].id);
+    } else {
+      if (!confirm(`Delete outcome "${solutionOutcomes[index].name}"?`)) return;
+      const updatedOutcomes = [...solutionOutcomes];
+      if (updatedOutcomes[index].id) {
+        updatedOutcomes[index] = { ...updatedOutcomes[index], delete: true };
+      } else {
+        updatedOutcomes.splice(index, 1);
+      }
+      setSolutionOutcomes(updatedOutcomes);
+    }
+  };
+
+  const handleOutcomeDragEnd = async (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const activeIdx = solutionOutcomes.findIndex((o, i) => (o.id || `new-${i}`) === active.id);
+      const overIdx = solutionOutcomes.findIndex((o, i) => (o.id || `new-${i}`) === over.id);
+      const newOrder = arrayMove(solutionOutcomes, activeIdx, overIdx);
+      setSolutionOutcomes(newOrder);
+      
+      if (isEditMode) {
+        const outcomeIds = newOrder.filter(o => o.id).map(o => o.id as string);
+        await solutionEditing.handleOutcomeReorder(outcomeIds);
+      }
+    }
+  };
+
+  // Release handlers - Edit mode saves immediately
+  const handleReleaseSave = async (releaseData: any, index: number) => {
+    if (isEditMode && releases[index].id) {
+      await updateRelease({
+        variables: { id: releases[index].id, input: { name: releaseData.name, level: releaseData.level, description: releaseData.description, isActive: releaseData.isActive, solutionId: solution!.id, customAttrs: releaseData.customAttrs } },
+        refetchQueries: ['Solutions', 'SolutionDetail']
+      });
+    }
+    const updatedReleases = [...releases];
+    updatedReleases[index] = { ...updatedReleases[index], ...releaseData };
+    setReleases(updatedReleases);
+    setEditingReleaseIndex(null);
+  };
+
+  const handleAddReleaseSave = async (releaseData: any) => {
+    if (isEditMode) {
+      await createRelease({
+        variables: { input: { name: releaseData.name, level: releaseData.level, description: releaseData.description, isActive: true, solutionId: solution!.id, customAttrs: releaseData.customAttrs } },
+        refetchQueries: ['Solutions', 'SolutionDetail']
+      });
+      await refetchSolution();
+    } else {
+      setReleases([...releases, { ...releaseData, isNew: true, isActive: true }]);
+    }
+    setAddingRelease(false);
+  };
+
+  const handleDeleteRelease = async (index: number) => {
+    if (!confirm(`Delete release "${releases[index].name}"?`)) return;
+
+    if (isEditMode && releases[index].id) {
+      await deleteReleaseMut({
+        variables: { id: releases[index].id },
+        refetchQueries: ['Solutions', 'SolutionDetail']
+      });
+      await refetchSolution();
+    } else {
+      const updatedReleases = [...releases];
+      if (updatedReleases[index].id) {
+        updatedReleases[index] = { ...updatedReleases[index], delete: true };
+      } else {
+        updatedReleases.splice(index, 1);
+      }
+      setReleases(updatedReleases);
+    }
+  };
+
+  const handleReleaseDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const activeIdx = releases.findIndex((r, i) => (r.id || `new-${i}`) === active.id);
+      const overIdx = releases.findIndex((r, i) => (r.id || `new-${i}`) === over.id);
+      setReleases(arrayMove(releases, activeIdx, overIdx));
+    }
+  };
+
+  // License handlers - Edit mode saves immediately
+  const handleLicenseSave = async (licenseData: any, index: number) => {
+    if (isEditMode && licenses[index].id) {
+      await updateLicenseMut({
+        variables: { id: licenses[index].id, input: { name: licenseData.name, level: licenseData.level, description: licenseData.description, isActive: licenseData.isActive, solutionId: solution!.id, customAttrs: licenseData.customAttrs } },
+        refetchQueries: ['Solutions', 'SolutionDetail']
+      });
+    }
+    const updatedLicenses = [...licenses];
+    updatedLicenses[index] = { ...updatedLicenses[index], ...licenseData };
+    setLicenses(updatedLicenses);
+    setEditingLicenseIndex(null);
+  };
+
+  const handleAddLicenseSave = async (licenseData: any) => {
+    if (isEditMode) {
+      await createLicense({
+        variables: { input: { name: licenseData.name, level: licenseData.level, description: licenseData.description, isActive: licenseData.isActive ?? true, solutionId: solution!.id, customAttrs: licenseData.customAttrs } },
+        refetchQueries: ['Solutions', 'SolutionDetail']
+      });
+      await refetchSolution();
+    } else {
+      setLicenses([...licenses, { ...licenseData, isNew: true }]);
+    }
+    setAddingLicense(false);
+  };
+
+  const handleDeleteLicense = async (index: number) => {
+    if (!confirm(`Delete license "${licenses[index].name}"?`)) return;
+
+    if (isEditMode && licenses[index].id) {
+      await deleteLicenseMut({
+        variables: { id: licenses[index].id },
+        refetchQueries: ['Solutions', 'SolutionDetail']
+      });
+      await refetchSolution();
+    } else {
+      const updatedLicenses = [...licenses];
+      if (updatedLicenses[index].id) {
+        updatedLicenses[index] = { ...updatedLicenses[index], delete: true };
+      } else {
+        updatedLicenses.splice(index, 1);
+      }
+      setLicenses(updatedLicenses);
+    }
+  };
+
+  const handleLicenseDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const activeIdx = licenses.findIndex((l, i) => (l.id || `new-${i}`) === active.id);
+      const overIdx = licenses.findIndex((l, i) => (l.id || `new-${i}`) === over.id);
+      setLicenses(arrayMove(licenses, activeIdx, overIdx));
+    }
+  };
+
+  // Tag handlers - Edit mode uses shared hook for immediate persistence
+  const handleTagSave = async (tagData: any, index: number) => {
+    if (isEditMode && tags[index].id) {
+      await solutionEditing.handleTagUpdate(tags[index].id, {
+        name: tagData.name,
+        color: tagData.color,
+        description: tagData.description
+      });
+    } else {
+      const updatedTags = [...tags];
+      updatedTags[index] = { ...updatedTags[index], ...tagData };
+      setTags(updatedTags);
+    }
+    setEditingTagIndex(null);
+  };
+
+  const handleAddTagSave = async (tagData: any) => {
+    if (isEditMode) {
+      await solutionEditing.handleTagCreate({
+        name: tagData.name,
+        color: tagData.color,
+        description: tagData.description
+      });
+    } else {
+      setTags([...tags, { ...tagData, isNew: true, _tempId: Math.random().toString(36).substr(2, 9) } as any]);
+    }
+    setAddingTag(false);
+  };
+
+  const handleDeleteTag = async (index: number) => {
+    if (isEditMode && tags[index].id) {
+      await solutionEditing.handleTagDelete(tags[index].id);
+    } else {
+      if (!confirm(`Delete tag "${tags[index].name}"?`)) return;
+      const updatedTags = [...tags];
+      if (updatedTags[index].id) {
+        updatedTags[index] = { ...updatedTags[index], delete: true };
+      } else {
+        updatedTags.splice(index, 1);
+      }
+      setTags(updatedTags);
+    }
+  };
+
+  const visibleTags = tags.filter(t => !t.delete);
+
+  // Custom attribute handlers - Edit mode uses shared hook
+  const handleDeleteCustomAttribute = async (key: string) => {
+    if (isEditMode) {
+      // Use shared hook for immediate persistence
+      await solutionEditing.handleAttributeDelete(key);
+    } else {
+      if (!confirm(`Delete attribute "${key}"?`)) return;
+      const updatedCustomAttrs = { ...customAttrs };
+      delete updatedCustomAttrs[key];
+      if (updatedCustomAttrs._order) {
+        updatedCustomAttrs._order = updatedCustomAttrs._order.filter((k: string) => k !== key);
+      }
+      setCustomAttrs(updatedCustomAttrs);
+    }
+  };
+
+  const beginInlineAttrEdit = (key: string, value: any) => {
+    setInlineAttrKey(key);
+    setInlineAttrDraft({
+      key,
+      value: typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value ?? '')
+    });
+  };
+
+  const beginInlineAttrCreate = () => {
+    setInlineAttrKey('__new__');
+    setInlineAttrDraft({ key: '', value: '' });
+  };
+
+  const cancelInlineAttrEdit = () => {
+    setInlineAttrKey(null);
+    setInlineAttrDraft({ key: '', value: '' });
+  };
+
+  const saveInlineAttr = async () => {
+    if (!inlineAttrKey) return;
+    const newKey = inlineAttrDraft.key.trim();
+    if (!newKey) return;
+
+    let parsed: any = inlineAttrDraft.value;
+    const raw = inlineAttrDraft.value.trim();
+    if (raw === 'true' || raw === 'false') {
+      parsed = raw === 'true';
+    } else if (!Number.isNaN(Number(raw)) && raw !== '') {
+      parsed = Number(raw);
+    } else {
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        parsed = inlineAttrDraft.value;
+      }
+    }
+
+    if (isEditMode) {
+      // Use shared hook for immediate persistence
+      if (inlineAttrKey === '__new__') {
+        await solutionEditing.handleAttributeCreate(newKey, parsed);
+      } else {
+        await solutionEditing.handleAttributeUpdate(inlineAttrKey, newKey, parsed);
+      }
+    } else {
+      const updated = { ...customAttrs };
+      if (inlineAttrKey !== '__new__' && inlineAttrKey !== newKey) {
+        delete updated[inlineAttrKey];
+      }
+      updated[newKey] = parsed;
+      const existingOrder = updated._order || Object.keys(updated).filter(k => !k.startsWith('_'));
+      updated._order = existingOrder.includes(newKey) ? existingOrder : [...existingOrder, newKey];
+      setCustomAttrs(updated);
+    }
+    cancelInlineAttrEdit();
+  };
+
+  const handleTagDragEnd = async (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over.id) {
+      const oldIndex = tags.findIndex((item) => (item.id || (item as any)._tempId) === active.id);
+      const newIndex = tags.findIndex((item) => (item.id || (item as any)._tempId) === over.id);
+      const newOrder = arrayMove(tags, oldIndex, newIndex);
+      setTags(newOrder);
+      
+      if (isEditMode) {
+        const tagIds = newOrder.filter(t => t.id).map(t => t.id as string);
+        await solutionEditing.handleTagReorder(tagIds);
+      }
+    }
+  };
+
+  const handleAttributeDragEnd = async (event: any) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      const keys = getSortedAttributes(customAttrs).map(([k]) => k);
+      const oldIndex = keys.indexOf(active.id);
+      const newIndex = keys.indexOf(over.id);
+      const newOrder = arrayMove(keys, oldIndex, newIndex);
+
+      // Always update local state immediately for visual feedback
+      const updated = { ...customAttrs, _order: newOrder };
+      setCustomAttrs(updated);
+
+      // In edit mode, use shared hook for persistence
+      if (isEditMode) {
+        await solutionEditing.handleAttributeReorder(newOrder);
+      }
+    }
+  };
+
+  const getSortedAttributes = (attrs: any) => {
+    if (!attrs) return [];
+    const order = attrs._order || [];
+    const entries = Object.entries(attrs).filter(([k]) => !k.startsWith('_'));
+    return entries.sort((a, b) => {
+      const indexA = order.indexOf(a[0]);
+      const indexB = order.indexOf(b[0]);
+      if (indexA === -1 && indexB === -1) return 0;
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -326,39 +807,29 @@ export const SolutionDialog: React.FC<Props> = ({
       let solutionId = solution?.id;
 
       if (solution) {
-        await updateSolution({
-          variables: { id: solution.id, input }
-        });
+        await updateSolution({ variables: { id: solution.id, input } });
       } else {
-        const result = await createSolution({
-          variables: { input }
-        });
+        const result = await createSolution({ variables: { input } });
         solutionId = result.data.createSolution.id;
       }
 
-      if (solutionId) {
+      // Only process batch saves for new solutions (create mode)
+      // Edit mode saves are handled immediately by handlers
+      if (solutionId && !isEditMode) {
         const existingProductIds = (solution?.products?.edges || []).map((edge: any) => edge.node.id);
 
-        // First, remove products that are no longer selected
+        // Remove products that are no longer selected
         for (const productId of existingProductIds) {
           if (!selectedProductIds.includes(productId)) {
-            await removeProduct({
-              variables: { solutionId, productId }
-            });
+            await removeProduct({ variables: { solutionId, productId } });
           }
         }
 
-        // Then, add new products
+        // Add new products
         for (let i = 0; i < selectedProductIds.length; i++) {
           const productId = selectedProductIds[i];
           if (!existingProductIds.includes(productId)) {
-            await addProduct({
-              variables: {
-                solutionId,
-                productId,
-                order: i + 1
-              }
-            });
+            await addProduct({ variables: { solutionId, productId, order: i + 1 } });
           }
         }
 
@@ -367,24 +838,19 @@ export const SolutionDialog: React.FC<Props> = ({
           productId,
           order: index + 1
         }));
+        await reorderProducts({ variables: { solutionId, productOrders } });
 
-        await reorderProducts({
-          variables: { solutionId, productOrders }
-        });
-      }
-
-      // Save outcomes
-      if (solutionId) {
+        // Save outcomes
         for (const outcome of solutionOutcomes) {
           if (outcome.delete && outcome.id) {
-            await deleteOutcome({ variables: { id: outcome.id } });
+            await deleteOutcomeMut({ variables: { id: outcome.id } });
           } else if (outcome.isNew && !outcome.delete) {
             await createOutcome({
               variables: {
                 input: {
                   name: outcome.name,
                   description: outcome.description || undefined,
-                  solutionId: solutionId
+                  solutionId
                 }
               }
             });
@@ -395,19 +861,17 @@ export const SolutionDialog: React.FC<Props> = ({
                 input: {
                   name: outcome.name,
                   description: outcome.description || undefined,
-                  solutionId: solutionId
+                  solutionId
                 }
               }
             });
           }
         }
-      }
 
-      // Save releases
-      if (solutionId) {
+        // Save releases
         for (const release of releases) {
           if (release.delete && release.id) {
-            await deleteRelease({ variables: { id: release.id } });
+            await deleteReleaseMut({ variables: { id: release.id } });
           } else if (release.isNew && !release.delete) {
             await createRelease({
               variables: {
@@ -416,7 +880,7 @@ export const SolutionDialog: React.FC<Props> = ({
                   level: release.level,
                   description: release.description,
                   isActive: release.isActive,
-                  solutionId: solutionId,
+                  solutionId,
                   customAttrs: release.customAttrs
                 }
               }
@@ -430,21 +894,18 @@ export const SolutionDialog: React.FC<Props> = ({
                   level: release.level,
                   description: release.description,
                   isActive: release.isActive,
-                  solutionId: solutionId,
+                  solutionId,
                   customAttrs: release.customAttrs
                 }
               }
             });
           }
         }
-      }
 
-      // Save licenses
-      if (solutionId) {
-        // Handle solution-specific licenses
+        // Save licenses
         for (const license of licenses) {
           if (license.delete && license.id) {
-            await deleteLicense({ variables: { id: license.id } });
+            await deleteLicenseMut({ variables: { id: license.id } });
           } else if (license.isNew && !license.delete) {
             await createLicense({
               variables: {
@@ -453,13 +914,13 @@ export const SolutionDialog: React.FC<Props> = ({
                   level: license.level,
                   description: license.description,
                   isActive: license.isActive,
-                  solutionId: solutionId,
+                  solutionId,
                   customAttrs: license.customAttrs
                 }
               }
             });
           } else if (!license.isNew && !license.delete && license.id) {
-            await updateLicense({
+            await updateLicenseMut({
               variables: {
                 id: license.id,
                 input: {
@@ -467,7 +928,7 @@ export const SolutionDialog: React.FC<Props> = ({
                   level: license.level,
                   description: license.description,
                   isActive: license.isActive,
-                  solutionId: solutionId,
+                  solutionId,
                   customAttrs: license.customAttrs
                 }
               }
@@ -475,8 +936,35 @@ export const SolutionDialog: React.FC<Props> = ({
           }
         }
 
+        // Save tags
+        for (const tag of tags) {
+          if (tag.delete && tag.id) {
+            await deleteTagMut({ variables: { id: tag.id } });
+          } else if (tag.isNew && !tag.delete) {
+            await createTag({
+              variables: {
+                input: {
+                  name: tag.name,
+                  color: tag.color,
+                  description: tag.description,
+                  solutionId,
+                }
+              }
+            });
+          } else if (!tag.isNew && !tag.delete && tag.id) {
+            await updateTag({
+              variables: {
+                id: tag.id,
+                input: {
+                  name: tag.name,
+                  color: tag.color,
+                  description: tag.description,
+                }
+              }
+            });
+          }
+        }
       }
-
 
       onSave();
       onClose();
@@ -487,18 +975,16 @@ export const SolutionDialog: React.FC<Props> = ({
     }
   };
 
-  const handleProductToggle = (productId: string) => {
-    setSelectedProductIds(prev => {
-      if (prev.includes(productId)) {
-        return prev.filter(id => id !== productId);
-      } else {
-        return [...prev, productId];
-      }
-    });
-  };
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => setTabValue(newValue);
+
+  // Computed values
+  const selectedProducts = selectedProductIds
+    .map(id => allProducts.find((p: any) => p.id === id))
+    .filter((p): p is NonNullable<typeof p> => p !== undefined);
+  const availableProducts = allProducts.filter((p: any) => !selectedProductIds.includes(p.id));
 
   const inheritedOutcomes = selectedProductIds.flatMap(productId => {
-    const product = allProducts.find(p => p.id === productId);
+    const product = allProducts.find((p: any) => p.id === productId);
     return (product?.outcomes || []).map((outcome: any) => ({
       ...outcome,
       sourceProductId: productId,
@@ -507,139 +993,8 @@ export const SolutionDialog: React.FC<Props> = ({
     }));
   });
 
-  const allOutcomes = [...solutionOutcomes.filter(o => !o.delete), ...inheritedOutcomes];
-
-  const handleAddCustomAttributeSave = (attribute: { key: string; value: any; type: string }) => {
-    setCustomAttrs(prev => ({ ...prev, [attribute.key]: attribute.value }));
-    setAddCustomAttributeDialog(false);
-  };
-
-  const handleEditCustomAttributeSave = (attribute: { key: string; value: any; type: string; oldKey?: string }) => {
-    setCustomAttrs(prev => {
-      const newAttrs = { ...prev };
-      if (attribute.oldKey && attribute.oldKey !== attribute.key) {
-        delete newAttrs[attribute.oldKey];
-      }
-      newAttrs[attribute.key] = attribute.value;
-      return newAttrs;
-    });
-    setEditCustomAttributeDialog(false);
-    setEditingCustomAttribute(null);
-  };
-
-  const handleDeleteCustomAttribute = (key: string) => {
-    const updatedCustomAttrs = { ...customAttrs };
-    delete updatedCustomAttrs[key];
-    if (updatedCustomAttrs._order) {
-      updatedCustomAttrs._order = updatedCustomAttrs._order.filter((k: string) => k !== key);
-    }
-    setCustomAttrs(updatedCustomAttrs);
-  };
-
-  const handleAttributeDragEnd = (event: any) => {
-    const { active, over } = event;
-    if (active.id !== over.id) {
-      const currentKeys = Object.keys(customAttrs).filter(k => k !== '_order' && k !== '__typename');
-      const order = customAttrs._order || currentKeys;
-      const completeOrder = [...new Set([...order, ...currentKeys])].filter(k => customAttrs[k] !== undefined);
-      const oldIndex = completeOrder.indexOf(active.id);
-      const newIndex = completeOrder.indexOf(over.id);
-      const newOrder = arrayMove(completeOrder, oldIndex, newIndex);
-      setCustomAttrs({ ...customAttrs, _order: newOrder });
-    }
-  };
-
-  const getSortedAttributes = (attrs: any) => {
-    if (!attrs) return [];
-    const order = attrs._order || [];
-    const entries = Object.entries(attrs).filter(([k]) => k !== '_order' && k !== '__typename');
-    return entries.sort((a, b) => {
-      const indexA = order.indexOf(a[0]);
-      const indexB = order.indexOf(b[0]);
-      if (indexA === -1 && indexB === -1) return 0;
-      if (indexA === -1) return 1;
-      if (indexB === -1) return -1;
-      return indexA - indexB;
-    });
-  };
-
-  const handleEditCustomAttribute = (attr: any) => {
-    setEditingCustomAttribute(attr);
-    setEditCustomAttributeDialog(true);
-  };
-
-  const handleAddOutcomeSave = (outcome: Omit<Outcome, 'id'>) => {
-    setSolutionOutcomes(prev => [...prev, { ...outcome, isNew: true }]);
-    setAddOutcomeDialog(false);
-  };
-
-  const handleEditOutcomeSave = (outcome: Omit<Outcome, 'id'>) => {
-    setSolutionOutcomes(prev => prev.map(o => (o === editingOutcome ? { ...o, ...outcome } : o)));
-    setEditOutcomeDialog(false);
-    setEditingOutcome(null);
-  };
-
-  const handleDeleteOutcome = (outcome: any) => {
-    if (confirm(`Delete outcome "${outcome.name}"?`)) {
-      if (outcome.isNew) {
-        setSolutionOutcomes(prev => prev.filter(o => o !== outcome));
-      } else {
-        setSolutionOutcomes(prev => prev.map(o => (o === outcome ? { ...o, delete: true } : o)));
-      }
-    }
-  };
-
-  const handleAddReleaseSave = (release: { name: string; level: number; description?: string; customAttrs: { productReleaseMapping: { [productId: string]: string[] } } }) => {
-    setReleases(prev => [...prev, { ...release, isNew: true, isActive: true }]);
-    setAddReleaseDialog(false);
-  };
-
-  const handleEditReleaseSave = (release: { name: string; level: number; description?: string; customAttrs?: { productReleaseMapping?: { [productId: string]: string[] } } }) => {
-    setReleases(prev => prev.map(r => (r === editingRelease ? { ...r, ...release } : r)));
-    setEditReleaseDialog(false);
-    setEditingRelease(null);
-  };
-
-  const handleDeleteRelease = (release: any) => {
-    if (confirm(`Delete release "${release.name}"?`)) {
-      if (release.isNew) {
-        setReleases(prev => prev.filter(r => r !== release));
-      } else {
-        setReleases(prev => prev.map(r => (r === release ? { ...r, delete: true } : r)));
-      }
-    }
-  };
-
-  const handleAddLicenseSave = (license: Omit<License, 'id'> & { customAttrs?: { productLicenseMapping?: { [productId: string]: string[] } } }) => {
-    setLicenses(prev => [...prev, { ...license, isNew: true }]);
-    setAddLicenseDialog(false);
-  };
-
-  const handleEditLicenseSave = (license: Omit<License, 'id'> & { customAttrs?: { productLicenseMapping?: { [productId: string]: string[] } } }) => {
-    setLicenses(prev => prev.map(l => (l === editingLicense ? { ...l, ...license } : l)));
-    setEditLicenseDialog(false);
-    setEditingLicense(null);
-  };
-
-  const handleDeleteLicense = (license: any) => {
-    if (confirm(`Delete license "${license.name}"?`)) {
-      if (license.isNew) {
-        setLicenses(prev => prev.filter(l => l !== license));
-      } else {
-        setLicenses(prev => prev.map(l => (l === license ? { ...l, delete: true } : l)));
-      }
-    }
-  };
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => setTabValue(newValue);
-
-  const selectedProducts = selectedProductIds
-    .map(id => allProducts.find(p => p.id === id))
-    .filter((p): p is NonNullable<typeof p> => p !== undefined);
-  const availableProducts = allProducts.filter(p => !selectedProductIds.includes(p.id));
-
   const allProductLicenses = selectedProductIds.flatMap(productId => {
-    const product = allProducts.find(p => p.id === productId);
+    const product = allProducts.find((p: any) => p.id === productId);
     return (product?.licenses || []).map((license: any) => ({
       ...license,
       productId,
@@ -648,7 +1003,7 @@ export const SolutionDialog: React.FC<Props> = ({
   });
 
   const allProductReleases = selectedProductIds.flatMap(productId => {
-    const product = allProducts.find(p => p.id === productId);
+    const product = allProducts.find((p: any) => p.id === productId);
     return (product?.releases || []).map((release: any) => ({
       ...release,
       productId,
@@ -656,271 +1011,418 @@ export const SolutionDialog: React.FC<Props> = ({
     }));
   });
 
-  const renderMappingInfo = (item: any, type: 'licenses' | 'releases') => {
-    const mappingKey = type === 'licenses' ? 'productLicenseMapping' : 'productReleaseMapping';
-    const mapping = item.customAttrs?.[mappingKey];
-
-    if (!mapping || Object.keys(mapping).length === 0) return null;
-
-    const productCount = Object.keys(mapping).length;
-    const totalItems = Object.values(mapping).flat().length;
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    const isAll = Object.values(mapping).flat().includes('__ALL__') || Object.values(mapping).flat().includes('ALL');
-
-    return (
-      <Box sx={{ mt: 0.5, display: 'flex', gap: 1, alignItems: 'center' }}>
-        <Chip
-          label={isAll ? `Mapped to All Product ${type === 'licenses' ? 'Licenses' : 'Releases'}` : `Mapped to ${totalItems} ${type === 'licenses' ? 'Licenses' : 'Releases'} across ${productCount} Product(s)`}
-          size="small"
-          color="primary"
-          variant="outlined"
-          sx={{ height: 20, fontSize: '0.7rem' }}
-        />
-      </Box>
-    );
-  };
+  const visibleOutcomes = solutionOutcomes.filter(o => !o.delete);
+  const visibleReleases = releases.filter(r => !r.delete);
+  const visibleLicenses = licenses.filter(l => !l.delete);
+  const allOutcomes = [...visibleOutcomes, ...inheritedOutcomes];
 
   return (
-    <>
-      <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { height: '90vh' } }}>
-        <DialogTitle>{solution ? 'Edit Solution' : 'Add New Solution'}</DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tabValue} onChange={handleTabChange}>
-              <Tab label="General" />
-              <Tab label={`Products (${selectedProductIds.length})`} />
-              <Tab label={`Outcomes (${allOutcomes.length})`} />
-              <Tab label={`Releases (${releases.filter(r => !r.delete).length})`} />
-              <Tab label={`Licenses (${licenses.filter(l => !l.delete).length})`} />
-              <Tab label={`Attributes (${Object.keys(customAttrs).length})`} />
-            </Tabs>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth PaperProps={{ sx: { height: '90vh' } }}>
+      <DialogTitle>{solution ? 'Edit Solution' : 'Add New Solution'}</DialogTitle>
+      <DialogContent dividers>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          <Tabs value={tabValue} onChange={handleTabChange}>
+            <Tab label="General" />
+            <Tab label={`Tags (${visibleTags.length})`} />
+            <Tab label={`Products (${selectedProductIds.length})`} />
+            <Tab label={`Outcomes (${allOutcomes.length})`} />
+            <Tab label={`Releases (${visibleReleases.length})`} />
+            <Tab label={`Licenses (${visibleLicenses.length})`} />
+            <Tab label={`Custom Attributes (${Object.keys(customAttrs).filter(k => !k.startsWith('_')).length})`} />
+          </Tabs>
+        </Box>
+
+        {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+
+        {isEditMode && tabValue !== 0 && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            Changes are saved immediately.
+          </Alert>
+        )}
+
+        {/* General Tab */}
+        <TabPanel value={tabValue} index={0}>
+          <TextField fullWidth label="Solution Name" value={name} onChange={(e) => setName(e.target.value)} required sx={{ mb: 2 }} />
+          <TextField fullWidth label="Description" value={description} onChange={(e) => setDescription(e.target.value)} multiline rows={4} />
+        </TabPanel>
+
+        {/* Products Tab - Drag & Drop */}
+        <TabPanel value={tabValue} index={2}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Add products to bundle into this solution. Drag to reorder.
+          </Typography>
+
+          {/* Add Product Dropdown */}
+          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Add Product</InputLabel>
+              <Select
+                value={productToAdd}
+                label="Add Product"
+                onChange={(e) => setProductToAdd(e.target.value)}
+              >
+                {availableProducts.map((product: any) => (
+                  <MenuItem key={product.id} value={product.id}>
+                    {product.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button
+              variant="contained"
+              onClick={handleAddProduct}
+              disabled={!productToAdd}
+              sx={{ minWidth: 100 }}
+            >
+              Add
+            </Button>
           </Box>
 
-          <TabPanel value={tabValue} index={0}>
-            <TextField fullWidth label="Solution Name" value={name} onChange={(e) => setName(e.target.value)} required sx={{ mb: 2 }} />
-            <TextField fullWidth label="Description" value={description} onChange={(e) => setDescription(e.target.value)} multiline rows={4} />
-          </TabPanel>
-
-          <TabPanel value={tabValue} index={1}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Select products to bundle into this solution.</Typography>
-            {selectedProducts.length > 0 && (
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>Included Products:</Typography>
-                <List sx={{ bgcolor: 'background.paper', border: '1px solid #e0e0e0', borderRadius: 1 }}>
+          {selectedProducts.length > 0 ? (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleProductDragEnd}>
+              <SortableContext items={selectedProductIds} strategy={verticalListSortingStrategy}>
+                <List>
                   {selectedProducts.map((product, index) => (
-                    <ListItem
+                    <SortableProductItem
                       key={product.id}
-                      secondaryAction={
-                        <IconButton edge="end" onClick={() => handleProductToggle(product.id)} color="error"><DeleteIcon /></IconButton>
-                      }
-                    >
-                      <ListItemText primary={`${index + 1}. ${product.name}`} secondary={product.description} />
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            )}
-            <Box>
-              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>Add Products:</Typography>
-              <List sx={{ bgcolor: 'grey.50', border: '1px solid #e0e0e0', borderRadius: 1, maxHeight: 300, overflow: 'auto' }}>
-                {availableProducts.map((product) => (
-                  <ListItemButton key={product.id} onClick={() => handleProductToggle(product.id)} dense>
-                    <Checkbox edge="start" checked={false} disableRipple />
-                    <ListItemText primary={product.name} secondary={product.description} />
-                  </ListItemButton>
-                ))}
-              </List>
-            </Box>
-          </TabPanel>
-
-          <TabPanel value={tabValue} index={2}>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Tooltip title="Add Outcome">
-                <IconButton color="primary" onClick={() => setAddOutcomeDialog(true)} size="small">
-                  <AddIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {solutionOutcomes.filter(o => !o.delete).map((outcome, idx) => (
-                <Card key={idx} variant="outlined">
-                  <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{outcome.name}</Typography>
-                          {outcome.isNew && <Chip label="New" size="small" color="success" variant="outlined" />}
-                        </Box>
-                        <Typography variant="body2" color="text.secondary">{outcome.description}</Typography>
-                      </Box>
-                      <Box>
-                        <IconButton size="small" onClick={() => { setEditingOutcome(outcome); setEditOutcomeDialog(true); }}><EditIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" color="error" onClick={() => handleDeleteOutcome(outcome)}><DeleteIcon fontSize="small" /></IconButton>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
-              {inheritedOutcomes.length > 0 && (
-                <>
-                  <Divider sx={{ my: 1 }} />
-                  <Typography variant="subtitle2" color="primary">Inherited from Products:</Typography>
-                  {inheritedOutcomes.map((outcome, idx) => (
-                    <Card key={`inh-${idx}`} variant="outlined" sx={{ bgcolor: '#f9f9f9' }}>
-                      <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{outcome.name} <Chip label={outcome.sourceProductName} size="small" /></Typography>
-                        <Typography variant="body2" color="text.secondary">{outcome.description}</Typography>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </>
-              )}
-            </Box>
-          </TabPanel>
-
-          <TabPanel value={tabValue} index={3}>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Tooltip title="Add Solution Release">
-                <IconButton color="primary" onClick={() => setAddReleaseDialog(true)} size="small">
-                  <AddIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Solution-Specific Releases:</Typography>
-              {releases.filter(r => !r.delete).map((release, idx) => (
-                <Card key={idx} variant="outlined">
-                  <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{release.name} <Chip label={`Level ${release.level}`} size="small" /></Typography>
-                        <Typography variant="body2" color="text.secondary">{release.description}</Typography>
-                        {renderMappingInfo(release, 'releases')}
-                      </Box>
-                      <Box>
-                        <IconButton size="small" onClick={() => { setEditingRelease(release); setEditReleaseDialog(true); }}><EditIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" color="error" onClick={() => handleDeleteRelease(release)}><DeleteIcon fontSize="small" /></IconButton>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
-              {releases.filter(r => !r.delete).length === 0 && (
-                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', ml: 1 }}>No solution-specific releases.</Typography>
-              )}
-
-
-            </Box>
-          </TabPanel>
-
-          <TabPanel value={tabValue} index={4}>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Tooltip title="Add Solution License">
-                <IconButton color="primary" onClick={() => setAddLicenseDialog(true)} size="small">
-                  <AddIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Solution-Specific Licenses:</Typography>
-              {licenses.filter(l => !l.delete).map((license, idx) => (
-                <Card key={idx} variant="outlined">
-                  <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>{license.name}</Typography>
-                          <Chip label={`Level ${license.level}`} size="small" />
-                          {!license.isActive && <Chip label="Inactive" size="small" color="warning" />}
-                        </Box>
-                        <Typography variant="body2" color="text.secondary">{license.description}</Typography>
-                        {renderMappingInfo(license, 'licenses')}
-                      </Box>
-                      <Box>
-                        <IconButton size="small" onClick={() => { setEditingLicense(license); setEditLicenseDialog(true); }}><EditIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" color="error" onClick={() => handleDeleteLicense(license)}><DeleteIcon fontSize="small" /></IconButton>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
-              {licenses.filter(l => !l.delete).length === 0 && (
-                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', ml: 1 }}>No solution-specific licenses.</Typography>
-              )}
-
-
-
-            </Box>
-          </TabPanel>
-
-          <TabPanel value={tabValue} index={5}>
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-              <Tooltip title="Add Attribute">
-                <IconButton color="primary" onClick={() => setAddCustomAttributeDialog(true)} size="small">
-                  <AddIcon />
-                </IconButton>
-              </Tooltip>
-            </Box>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleAttributeDragEnd}>
-              <SortableContext items={getSortedAttributes(customAttrs).map(([k]) => k)} strategy={verticalListSortingStrategy}>
-                <List dense>
-                  {getSortedAttributes(customAttrs).map(([key, value]) => (
-                    <SortableAttributeItem
-                      key={key}
-                      attrKey={key}
-                      value={value}
-                      onEdit={() => handleEditCustomAttribute({ key, value, type: typeof value })}
-                      onDelete={() => handleDeleteCustomAttribute(key)}
+                      product={product}
+                      index={index}
+                      onRemove={() => handleRemoveProduct(product.id)}
                     />
                   ))}
                 </List>
               </SortableContext>
             </DndContext>
-          </TabPanel>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+              No products added yet. Use the dropdown above to add products.
+            </Typography>
+          )}
+        </TabPanel>
 
-          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button onClick={handleSave} variant="contained" disabled={loading || !name.trim() || selectedProductIds.length === 0}>
-            {loading ? 'Saving...' : solution ? 'Update Solution' : 'Create Solution'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        {/* Outcomes Tab */}
+        <TabPanel value={tabValue} index={3}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Manage outcomes for this solution
+            </Typography>
+            <Tooltip title="Add Outcome">
+              <IconButton color="primary" onClick={() => setAddingOutcome(true)} size="small" disabled={addingOutcome}>
+                <AddIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
 
-      <CustomAttributeDialog
-        open={addCustomAttributeDialog || editCustomAttributeDialog}
-        onClose={() => { setAddCustomAttributeDialog(false); setEditCustomAttributeDialog(false); setEditingCustomAttribute(null); }}
-        onSave={addCustomAttributeDialog ? handleAddCustomAttributeSave : handleEditCustomAttributeSave}
-        attribute={editingCustomAttribute}
-        existingKeys={Object.keys(customAttrs)}
-      />
+          {visibleOutcomes.length > 0 && (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleOutcomeDragEnd}>
+              <SortableContext
+                items={solutionOutcomes.filter(o => !o.delete).map((o, i) => o.id || `new-${i}`)}
+                strategy={verticalListSortingStrategy}
+              >
+                <List dense>
+                  {solutionOutcomes.map((outcome, index) =>
+                    !outcome.delete && (
+                      <InlineOutcomeEditor
+                        key={outcome.id || `new-${index}`}
+                        outcome={outcome}
+                        index={index}
+                        isEditing={editingOutcomeIndex === index}
+                        onStartEdit={() => setEditingOutcomeIndex(index)}
+                        onSave={(data) => handleOutcomeSave(data, index)}
+                        onCancel={() => setEditingOutcomeIndex(null)}
+                        onDelete={() => handleDeleteOutcome(index)}
+                      />
+                    )
+                  )}
+                </List>
+              </SortableContext>
+            </DndContext>
+          )}
 
-      <OutcomeDialog
-        open={addOutcomeDialog || editOutcomeDialog}
-        onClose={() => { setAddOutcomeDialog(false); setEditOutcomeDialog(false); setEditingOutcome(null); }}
-        onSave={addOutcomeDialog ? handleAddOutcomeSave : handleEditOutcomeSave}
-        outcome={editingOutcome}
-      />
+          {addingOutcome && (
+            <AddOutcomeForm
+              onSave={handleAddOutcome}
+              onCancel={() => setAddingOutcome(false)}
+            />
+          )}
 
-      <SolutionReleaseDialog
-        open={addReleaseDialog || editReleaseDialog}
-        onClose={() => { setAddReleaseDialog(false); setEditReleaseDialog(false); setEditingRelease(null); }}
-        onSave={addReleaseDialog ? handleAddReleaseSave : handleEditReleaseSave}
-        release={editingRelease}
-        title={editingRelease ? 'Edit Solution Release' : 'Add Solution Release'}
-        availableProductReleases={allProductReleases}
-      />
+          {!addingOutcome && visibleOutcomes.length === 0 && inheritedOutcomes.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+              No outcomes added yet. Click the + button to add one.
+            </Typography>
+          )}
 
-      <LicenseDialog
-        open={addLicenseDialog || editLicenseDialog}
-        onClose={() => { setAddLicenseDialog(false); setEditLicenseDialog(false); setEditingLicense(null); }}
-        onSave={addLicenseDialog ? handleAddLicenseSave : handleEditLicenseSave}
-        license={editingLicense}
-        availableProductLicenses={allProductLicenses}
-        title={editingLicense ? 'Edit Solution License' : 'Add Solution License'}
-      />
-    </>
+          {inheritedOutcomes.length > 0 && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle2" color="primary" sx={{ mb: 1 }}>Inherited from Products:</Typography>
+              {inheritedOutcomes.map((outcome, idx) => (
+                <Card key={`inh-${idx}`} variant="outlined" sx={{ mb: 1, bgcolor: '#f9f9f9' }}>
+                  <CardContent sx={{ py: 1, '&:last-child': { pb: 1 } }}>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                      {outcome.name} <Chip label={outcome.sourceProductName} size="small" />
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">{outcome.description}</Typography>
+                  </CardContent>
+                </Card>
+              ))}
+            </>
+          )}
+        </TabPanel>
+
+        {/* Releases Tab */}
+        <TabPanel value={tabValue} index={4}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Manage releases for this solution (can map to product releases)
+            </Typography>
+            <Tooltip title="Add Release">
+              <IconButton color="primary" onClick={() => setAddingRelease(true)} size="small" disabled={addingRelease}>
+                <AddIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          {visibleReleases.length > 0 ? (
+            <List dense>
+              {releases.map((release, index) =>
+                !release.delete && (
+                  <InlineSolutionReleaseEditor
+                    key={release.id || `new-${index}`}
+                    release={release}
+                    index={index}
+                    isEditing={editingReleaseIndex === index}
+                    onStartEdit={() => setEditingReleaseIndex(index)}
+                    onSave={(data) => handleReleaseSave(data, index)}
+                    onCancel={() => setEditingReleaseIndex(null)}
+                    onDelete={() => handleDeleteRelease(index)}
+                    availableProductReleases={allProductReleases}
+                    dragDisabled={true}
+                  />
+                )
+              )}
+            </List>
+          ) : !addingRelease ? (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+              No releases added yet. Click the + button to add one.
+            </Typography>
+          ) : null}
+
+          {addingRelease && (
+            <AddSolutionReleaseForm
+              onSave={handleAddReleaseSave}
+              onCancel={() => setAddingRelease(false)}
+              availableProductReleases={allProductReleases}
+            />
+          )}
+        </TabPanel>
+
+        {/* Licenses Tab */}
+        <TabPanel value={tabValue} index={5}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Manage licenses for this solution (can map to product licenses)
+            </Typography>
+            <Tooltip title="Add License">
+              <IconButton color="primary" onClick={() => setAddingLicense(true)} size="small" disabled={addingLicense}>
+                <AddIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          {visibleLicenses.length > 0 ? (
+            <List dense>
+              {licenses.map((license, index) =>
+                !license.delete && (
+                  <InlineSolutionLicenseEditor
+                    key={license.id || `new-${index}`}
+                    license={license}
+                    index={index}
+                    isEditing={editingLicenseIndex === index}
+                    onStartEdit={() => setEditingLicenseIndex(index)}
+                    onSave={(data) => handleLicenseSave(data, index)}
+                    onCancel={() => setEditingLicenseIndex(null)}
+                    onDelete={() => handleDeleteLicense(index)}
+                    availableProductLicenses={allProductLicenses}
+                    dragDisabled={true}
+                  />
+                )
+              )}
+            </List>
+          ) : !addingLicense ? (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+              No licenses added yet. Click the + button to add one.
+            </Typography>
+          ) : null}
+
+          {addingLicense && (
+            <AddSolutionLicenseForm
+              onSave={handleAddLicenseSave}
+              onCancel={() => setAddingLicense(false)}
+              availableProductLicenses={allProductLicenses}
+            />
+          )}
+        </TabPanel>
+
+        {/* Tags Tab */}
+        <TabPanel value={tabValue} index={1}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Manage tags for this solution
+            </Typography>
+            <Tooltip title="Add Tag">
+              <IconButton color="primary" onClick={() => setAddingTag(true)} size="small" disabled={addingTag}>
+                <AddIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+
+          {visibleTags.length > 0 && (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleTagDragEnd}>
+              <SortableContext
+                items={tags.filter(t => !t.delete).map((t, i) => t.id || (t as any)._tempId)}
+                strategy={verticalListSortingStrategy}
+              >
+                <List dense>
+                  {tags.map((tag, index) =>
+                    !tag.delete && (
+                      <InlineTagEditor
+                        key={tag.id || (tag as any)._tempId}
+                        tag={tag}
+                        index={index}
+                        isEditing={editingTagIndex === index}
+                        onStartEdit={() => setEditingTagIndex(index)}
+                        onSave={(data) => handleTagSave(data, index)}
+                        onCancel={() => setEditingTagIndex(null)}
+                        onDelete={() => handleDeleteTag(index)}
+                        existingNames={tags.filter((_, i) => i !== index).map(t => t.name)}
+                      />
+                    )
+                  )}
+                </List>
+              </SortableContext>
+            </DndContext>
+          )}
+
+          {addingTag && (
+            <AddTagForm
+              onSave={handleAddTagSave}
+              onCancel={() => setAddingTag(false)}
+              existingNames={tags.map(t => t.name)}
+            />
+          )}
+
+          {!addingTag && visibleTags.length === 0 && (
+            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
+              No tags added yet. Click the + button to add one.
+            </Typography>
+          )}
+        </TabPanel>
+
+        {/* Attributes Tab */}
+        <TabPanel value={tabValue} index={6}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="body2" color="text.secondary">
+              Manage additional metadata for this solution
+            </Typography>
+            <Tooltip title="Add Attribute">
+              <IconButton color="primary" onClick={beginInlineAttrCreate} size="small">
+                <AddIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleAttributeDragEnd}>
+            <SortableContext items={getSortedAttributes(customAttrs).map(([k]) => k)} strategy={verticalListSortingStrategy}>
+              <List dense>
+                {getSortedAttributes(customAttrs).map(([key, value]) => (
+                  inlineAttrKey === key ? (
+                    <Box
+                      key={key}
+                      sx={{
+                        border: '1px solid #1976d2',
+                        borderRadius: 1,
+                        mb: 1,
+                        p: 2,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1,
+                        bgcolor: 'rgba(25, 118, 210, 0.04)'
+                      }}
+                    >
+                      <TextField
+                        label="Key"
+                        size="small"
+                        value={inlineAttrDraft.key}
+                        onChange={(e) => setInlineAttrDraft(prev => ({ ...prev, key: e.target.value }))}
+                      />
+                      <TextField
+                        label="Value"
+                        size="small"
+                        value={inlineAttrDraft.value}
+                        onChange={(e) => setInlineAttrDraft(prev => ({ ...prev, value: e.target.value }))}
+                        multiline
+                        minRows={2}
+                      />
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                        <Button size="small" onClick={cancelInlineAttrEdit}>Cancel</Button>
+                        <Button size="small" variant="contained" onClick={saveInlineAttr}>Save</Button>
+                      </Box>
+                    </Box>
+                  ) : (
+                    <SortableAttributeItem
+                      key={key}
+                      attrKey={key}
+                      value={value}
+                      onEdit={() => beginInlineAttrEdit(key, value)}
+                      onDelete={() => handleDeleteCustomAttribute(key)}
+                    />
+                  )
+                ))}
+                {inlineAttrKey === '__new__' && (
+                  <Box
+                    sx={{
+                      border: '1px solid #1976d2',
+                      borderRadius: 1,
+                      mb: 1,
+                      p: 2,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 1,
+                      bgcolor: 'rgba(25, 118, 210, 0.04)'
+                    }}
+                  >
+                    <TextField
+                      label="Key"
+                      size="small"
+                      value={inlineAttrDraft.key}
+                      onChange={(e) => setInlineAttrDraft(prev => ({ ...prev, key: e.target.value }))}
+                      autoFocus
+                    />
+                    <TextField
+                      label="Value"
+                      size="small"
+                      value={inlineAttrDraft.value}
+                      onChange={(e) => setInlineAttrDraft(prev => ({ ...prev, value: e.target.value }))}
+                      multiline
+                      minRows={2}
+                    />
+                    <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                      <Button size="small" onClick={cancelInlineAttrEdit}>Cancel</Button>
+                      <Button size="small" variant="contained" onClick={saveInlineAttr}>Save</Button>
+                    </Box>
+                  </Box>
+                )}
+              </List>
+            </SortableContext>
+          </DndContext>
+        </TabPanel>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} disabled={loading}>Cancel</Button>
+        <Button onClick={handleSave} variant="contained" disabled={loading || !name.trim() || selectedProductIds.length === 0}>
+          {loading ? 'Saving...' : isEditMode ? 'Done' : 'Create Solution'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };

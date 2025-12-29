@@ -1,29 +1,50 @@
 import { createAuthService } from './auth.service';
-import { ResourceType, PermissionLevel } from '@prisma/client';
+import { PrismaClient, ResourceType, PermissionLevel } from '@prisma/client';
+
+// Helper to fetch full user details for UserExtended
+const getExtendedUser = async (context: any, userId: string) => {
+  const user = await context.prisma.user.findUnique({
+    where: { id: userId }
+  });
+  if (!user) return null;
+
+  const authService = createAuthService(context.prisma);
+  const permissions = await authService.getUserPermissions(user.id);
+
+  const userRoles = await context.prisma.userRole.findMany({
+    where: { userId: user.id },
+    include: {
+      role: {
+        select: { name: true }
+      }
+    }
+  });
+
+  const roles = userRoles
+    .filter((ur: any) => ur.role)
+    .map((ur: any) => ur.role.name);
+
+  return {
+    ...user,
+    role: user.role,
+    isAdmin: user.isAdmin,
+    isActive: user.isActive,
+    mustChangePassword: user.mustChangePassword,
+    permissions,
+    roles
+  };
+};
 
 export const AuthQueryResolvers = {
   me: async (_: any, __: any, context: any) => {
     if (!context.user) {
       throw new Error('Not authenticated');
     }
-
-    const user = await context.prisma.user.findUnique({
-      where: { id: context.user.userId }
-    });
-
-    if (!user) {
+    const extendedUser = await getExtendedUser(context, context.user.userId);
+    if (!extendedUser) {
       throw new Error('User not found');
     }
-
-    return {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      fullName: user.fullName,
-      isAdmin: user.isAdmin,
-      isActive: user.isActive,
-      mustChangePassword: user.mustChangePassword
-    };
+    return extendedUser;
   },
 
   users: async (_: any, __: any, context: any) => {
@@ -344,7 +365,13 @@ export const AuthMutationResolvers = {
 
   loginExtended: async (_: any, { username, password }: any, context: any) => {
     const authService = createAuthService(context.prisma);
-    return authService.login(username, password);
+    const result = await authService.login(username, password);
+    const extendedUser = await getExtendedUser(context, result.user.id);
+    return {
+      token: result.tokens.token,
+      refreshToken: result.tokens.refreshToken,
+      user: extendedUser!
+    };
   },
 
   logout: async (_: any, __: any, context: any) => {
@@ -419,7 +446,9 @@ export const AuthMutationResolvers = {
     }
 
     const authService = createAuthService(context.prisma);
-    return authService.createUser(context.user.userId, input);
+    const tempUser = await authService.createUser(context.user.userId, input);
+    const extendedUser = await getExtendedUser(context, tempUser.id);
+    return extendedUser!;
   },
 
   updateUser: async (_: any, { userId, input }: any, context: any) => {
@@ -428,7 +457,9 @@ export const AuthMutationResolvers = {
     }
 
     const authService = createAuthService(context.prisma);
-    return authService.updateUser(context.user.userId, userId, input);
+    await authService.updateUser(context.user.userId, userId, input);
+    const extendedUser = await getExtendedUser(context, userId);
+    return extendedUser!;
   },
 
   deleteUser: async (_: any, { userId }: any, context: any) => {

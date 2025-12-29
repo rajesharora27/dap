@@ -28,6 +28,7 @@ export const productTypeDefs = gql`
     tasks: [Task!]!
     inheritedTasks: [Task!]!
     customAttrs: JSON
+    displayOrder: Int!
   }
 
   type Outcome implements Node {
@@ -38,6 +39,7 @@ export const productTypeDefs = gql`
     solution: Solution
     productId: ID
     solutionId: ID
+    displayOrder: Int
   }
 
   type License implements Node { 
@@ -51,6 +53,7 @@ export const productTypeDefs = gql`
     solution: Solution
     solutionId: ID
     customAttrs: JSON
+    displayOrder: Int!
   }
 
   type ProductEdge { cursor: String! node: Product! }
@@ -88,6 +91,7 @@ export const productTypeDefs = gql`
     description: String 
     productId: ID 
     solutionId: ID 
+    displayOrder: Int
   }
 
   extend type Query {
@@ -111,5 +115,8 @@ export const productTypeDefs = gql`
     createOutcome(input: OutcomeInput!): Outcome!
     updateOutcome(id: ID!, input: OutcomeInput!): Outcome!
     deleteOutcome(id: ID!): Boolean!
+    reorderOutcomes(productId: ID, solutionId: ID, outcomeIds: [ID!]!): [Outcome!]!
+    reorderLicenses(productId: ID, solutionId: ID, licenseIds: [ID!]!): [License!]!
+    reorderReleases(productId: ID, releaseIds: [ID!]!): [Release!]!
   }
 `;

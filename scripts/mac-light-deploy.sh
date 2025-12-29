@@ -475,6 +475,10 @@ start_stack() {
   build_frontend
   start_backend
   start_frontend
+  
+  # Ensure default users exist
+  (cd "${BACKEND_DIR}" && DATABASE_URL="${DATABASE_URL}" npx ts-node scripts/user-manager.ts seed)
+  
   echo ""
   echo "═══════════════════════════════════════════════════════════"
   echo "[SUCCESS] Mac demo stack is up!"

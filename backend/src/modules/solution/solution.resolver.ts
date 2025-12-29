@@ -49,18 +49,24 @@ export const SolutionFieldResolvers = {
     },
 
     licenses: async (parent: any) => {
-        return prisma.license.findMany({ where: { solutionId: parent.id, deletedAt: null } });
-    },
-
-    releases: async (parent: any) => {
-        return prisma.release.findMany({
+        return prisma.license.findMany({
             where: { solutionId: parent.id, deletedAt: null },
             orderBy: { level: 'asc' }
         });
     },
 
+    releases: async (parent: any) => {
+        return prisma.release.findMany({
+            where: { solutionId: parent.id, deletedAt: null },
+            orderBy: { level: 'desc' }
+        });
+    },
+
     outcomes: async (parent: any) => {
-        return prisma.outcome.findMany({ where: { solutionId: parent.id } });
+        return prisma.outcome.findMany({
+            where: { solutionId: parent.id },
+            orderBy: { displayOrder: 'asc' }
+        });
     }
 };
 
@@ -124,15 +130,33 @@ export const SolutionMutationResolvers = {
         return SolutionService.deleteSolution(ctx.user.id, id);
     },
 
-    addProductToSolution: async (_: any, { solutionId, productId }: any, ctx: any) => {
+    addProductToSolution: async (_: any, { solutionId, productId, order }: any, ctx: any) => {
         requireUser(ctx);
         await requirePermission(ctx, ResourceType.SOLUTION, solutionId, PermissionLevel.WRITE);
-        return SolutionService.addProductToSolution(ctx.user.id, solutionId, productId);
+        return SolutionService.addProductToSolution(ctx.user.id, solutionId, productId, order);
+    },
+
+    addProductToSolutionEnhanced: async (_: any, { solutionId, productId, order }: any, ctx: any) => {
+        requireUser(ctx);
+        await requirePermission(ctx, ResourceType.SOLUTION, solutionId, PermissionLevel.WRITE);
+        return SolutionService.addProductToSolution(ctx.user.id, solutionId, productId, order);
     },
 
     removeProductFromSolution: async (_: any, { solutionId, productId }: any, ctx: any) => {
         requireUser(ctx);
         await requirePermission(ctx, ResourceType.SOLUTION, solutionId, PermissionLevel.WRITE);
         return SolutionService.removeProductFromSolution(ctx.user.id, solutionId, productId);
+    },
+
+    removeProductFromSolutionEnhanced: async (_: any, { solutionId, productId }: any, ctx: any) => {
+        requireUser(ctx);
+        await requirePermission(ctx, ResourceType.SOLUTION, solutionId, PermissionLevel.WRITE);
+        return SolutionService.removeProductFromSolution(ctx.user.id, solutionId, productId);
+    },
+
+    reorderProductsInSolution: async (_: any, { solutionId, productOrders }: any, ctx: any) => {
+        requireUser(ctx);
+        await requirePermission(ctx, ResourceType.SOLUTION, solutionId, PermissionLevel.WRITE);
+        return SolutionService.reorderProductsInSolution(ctx.user.id, solutionId, productOrders);
     }
 };

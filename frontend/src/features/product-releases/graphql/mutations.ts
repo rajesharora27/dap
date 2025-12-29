@@ -31,3 +31,16 @@ export const DELETE_RELEASE = gql`
     deleteRelease(id: $id)
   }
 `;
+
+export const REORDER_RELEASES = gql`
+  mutation ReorderReleases($productId: ID!, $releaseIds: [ID!]!) {
+    reorderReleases(productId: $productId, releaseIds: $releaseIds) {
+      id
+      name
+      description
+      level
+      isActive
+      displayOrder
+    }
+  }
+`;

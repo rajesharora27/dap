@@ -119,5 +119,8 @@ export const tagTypeDefs = gql`
     setSolutionTaskTags(taskId: ID!, tagIds: [ID!]!): Task!
     addSolutionTagToTask(taskId: ID!, tagId: ID!): Task!
     removeSolutionTagFromTask(taskId: ID!, tagId: ID!): Task!
+    
+    reorderProductTags(productId: ID!, tagIds: [ID!]!): [ProductTag!]!
+    reorderSolutionTags(solutionId: ID!, tagIds: [ID!]!): [SolutionTag!]!
   }
 `;

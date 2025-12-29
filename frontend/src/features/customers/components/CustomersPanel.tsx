@@ -75,9 +75,9 @@ import {
 } from '@mui/material';
 import { CustomerDialog } from './CustomerDialog';
 import { AssignProductDialog } from '@features/products';
-import { EditEntitlementsDialog } from './EditEntitlementsDialog';
+import { EditLicensesDialog } from './EditLicensesDialog';
 import { AssignSolutionDialog } from './AssignSolutionDialog';
-import { EditSolutionEntitlementsDialog } from './EditSolutionEntitlementsDialog';
+import { EditSolutionLicensesDialog } from './EditSolutionLicensesDialog';
 import { CustomerSolutionPanel } from './CustomerSolutionPanel';
 import { CustomerOverviewTab } from './CustomerOverviewTab';
 import { getApiUrl } from '@/config/frontend.config';
@@ -672,8 +672,8 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
   const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [assignProductDialogOpen, setAssignProductDialogOpen] = useState(false);
   const [assignSolutionDialogOpen, setAssignSolutionDialogOpen] = useState(false);
-  const [editEntitlementsDialogOpen, setEditEntitlementsDialogOpen] = useState(false);
-  const [editSolutionEntitlementsDialogOpen, setEditSolutionEntitlementsDialogOpen] = useState(false);
+  const [editLicensesDialogOpen, setEditLicensesDialogOpen] = useState(false);
+  const [editSolutionLicensesDialogOpen, setEditSolutionLicensesDialogOpen] = useState(false);
   const [cannotEditProductDialogOpen, setCannotEditProductDialogOpen] = useState(false);
   const [deleteProductDialogOpen, setDeleteProductDialogOpen] = useState(false);
   const [deleteSolutionDialogOpen, setDeleteSolutionDialogOpen] = useState(false);
@@ -897,15 +897,15 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
     return tasks;
   }, [planData?.adoptionPlan?.tasks, filterReleases, filterOutcomes, filterTags]);
 
-  // Get releases and outcomes for filter dropdowns - always from entitlements (synced from product)
+  // Get releases and outcomes for filter dropdowns - always from licenses (synced from product)
   const availableReleases = React.useMemo(() => {
-    // Use entitlements directly - sync populates these with all product releases
+    // Use licenses directly - sync populates these with all product releases
     if (!planData?.adoptionPlan?.selectedReleases) return [];
     return [...planData.adoptionPlan.selectedReleases].sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [planData?.adoptionPlan?.selectedReleases]);
 
   const availableOutcomes = React.useMemo(() => {
-    // Use entitlements directly - sync populates these with all product outcomes
+    // Use licenses directly - sync populates these with all product outcomes
     if (!planData?.adoptionPlan?.selectedOutcomes) return [];
     return [...planData.adoptionPlan.selectedOutcomes].sort((a: any, b: any) => a.name.localeCompare(b.name));
   }, [planData?.adoptionPlan?.selectedOutcomes]);
@@ -1010,10 +1010,10 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
     refetchQueries: ['GetAdoptionPlan', 'GetCustomers'],
     awaitRefetchQueries: true,
     onCompleted: () => {
-      setEditEntitlementsDialogOpen(false);
+      setEditLicensesDialogOpen(false);
       refetchPlan();
       refetch();
-      setSuccess('Product entitlements updated successfully. Use the Sync button to update tasks.');
+      setSuccess('Product licenses updated successfully. Use the Sync button to update tasks.');
     },
     onError: (err) => setError(err.message),
   });
@@ -1318,13 +1318,13 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
     }
   };
 
-  const handleEditProductEntitlements = () => {
+  const handleEditProductLicenses = () => {
     if (selectedCustomerProduct?.customerSolutionId) {
       // Product is part of a solution - show warning dialog
       setCannotEditProductDialogOpen(true);
     } else {
       // Standalone product - allow editing
-      setEditEntitlementsDialogOpen(true);
+      setEditLicensesDialogOpen(true);
     }
   };
 
@@ -1580,11 +1580,11 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
                   onAssignSolution={() => setAssignSolutionDialogOpen(true)}
                   onEditProduct={(productId) => {
                     setSelectedCustomerProductId(productId);
-                    setEditEntitlementsDialogOpen(true);
+                    setEditLicensesDialogOpen(true);
                   }}
                   onEditSolution={(solutionId) => {
                     setSelectedCustomerSolutionId(solutionId);
-                    setEditSolutionEntitlementsDialogOpen(true);
+                    setEditSolutionLicensesDialogOpen(true);
                   }}
                   onDeleteProduct={(productId) => {
                     setSelectedCustomerProductId(productId);
@@ -1744,7 +1744,7 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
                             <Tooltip title="Edit license and outcomes">
                               <IconButton
                                 size="small"
-                                onClick={() => setEditEntitlementsDialogOpen(true)}
+                                onClick={() => setEditLicensesDialogOpen(true)}
                               >
                                 <Edit fontSize="small" />
                               </IconButton>
@@ -1782,7 +1782,7 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
                             </Typography>
                             <Typography variant="body2">
                               This product was assigned as part of a solution. Some operations may be restricted.
-                              To modify entitlements, please edit the solution assignment.
+                              To modify licenses, please edit the solution assignment.
                             </Typography>
                           </Alert>
                         ) : null;
@@ -2563,12 +2563,12 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
         )
       }
 
-      {/* Edit Entitlements Dialog */}
+      {/* Edit licenses Dialog */}
       {
         selectedCustomerProduct && (
-          <EditEntitlementsDialog
-            open={editEntitlementsDialogOpen}
-            onClose={() => setEditEntitlementsDialogOpen(false)}
+          <EditLicensesDialog
+            open={editLicensesDialogOpen}
+            onClose={() => setEditLicensesDialogOpen(false)}
             customerProductId={selectedCustomerProduct.id}
             productId={selectedCustomerProduct.product.id}
             currentLicenseLevel={selectedCustomerProduct.licenseLevel}
@@ -2603,7 +2603,7 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
                 <strong>{selectedCustomerProduct.product.name}</strong> was assigned as part of a solution and can only be edited through the solution adoption plan.
               </Alert>
               <Typography>
-                This product's entitlements (license level, outcomes, releases) are managed at the solution level.
+                This product's licenses (license level, outcomes, releases) are managed at the solution level.
                 Any changes must be made through the <strong>Solutions</strong> tab by editing the solution assignment.
               </Typography>
               <Typography sx={{ mt: 2 }}>
@@ -2873,9 +2873,9 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
 
       {
         selectedCustomerProduct && (
-          <EditEntitlementsDialog
-            open={editEntitlementsDialogOpen}
-            onClose={() => setEditEntitlementsDialogOpen(false)}
+          <EditLicensesDialog
+            open={editLicensesDialogOpen}
+            onClose={() => setEditLicensesDialogOpen(false)}
             customerProductId={selectedCustomerProduct.id}
             productId={selectedCustomerProduct.product.id}
             currentLicenseLevel={selectedCustomerProduct.licenseLevel}
@@ -2906,9 +2906,9 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
 
       {
         selectedCustomerSolutionId && (
-          <EditSolutionEntitlementsDialog
-            open={editSolutionEntitlementsDialogOpen}
-            onClose={() => setEditSolutionEntitlementsDialogOpen(false)}
+          <EditSolutionLicensesDialog
+            open={editSolutionLicensesDialogOpen}
+            onClose={() => setEditSolutionLicensesDialogOpen(false)}
             customerSolutionId={selectedCustomerSolutionId}
             onSuccess={() => refetch()}
           />

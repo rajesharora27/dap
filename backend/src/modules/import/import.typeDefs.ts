@@ -46,8 +46,8 @@ export const importTypeDefs = gql`
     customerProductId: String!
     productName: String!
     stats: CustomerAdoptionImportStats!
-    errors: [ValidationError!]!
-    warnings: [ValidationError!]!
+    errors: [ImportValidationError!]!
+    warnings: [ImportValidationError!]!
   }
 
   type CustomerAdoptionImportStats {

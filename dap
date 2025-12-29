@@ -754,13 +754,19 @@ restart_devtools() {
 # Start services without migrations or seeding
 start_services() {
     log_header "STARTING SERVICES"
-    
+
+    # Mac demo runs via the mac light deploy script (no Docker)
+    if use_mac_mode; then
+        mac_start
+        return
+    fi
+
     manage_docker start || exit 1
-    
+
     start_backend || exit 1
     start_devtools || exit 1
     start_frontend || exit 1
-    
+
     echo ""
     log_success "Services started successfully!"
     log_info "Database: PostgreSQL running in container"

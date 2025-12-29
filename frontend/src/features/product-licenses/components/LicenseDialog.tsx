@@ -208,6 +208,9 @@ export const LicenseDialog: React.FC<LicenseDialogProps> = ({
       onClose={onClose}
       maxWidth="md"
       fullWidth
+      keepMounted
+      disableEnforceFocus
+      disableRestoreFocus
     >
       <DialogTitle>
         {title || (license ? 'Edit License' : 'Add New License')}

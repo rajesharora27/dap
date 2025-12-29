@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 3.0.0
-**Last Updated:** December 27, 2025 (Desktop-first UI redesign)
+**Version:** 3.2.0
+**Last Updated:** December 29, 2025 (Inline editing consistency & DnD improvements)
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -1022,6 +1022,29 @@ All DAP data is stored on `/data` partition (not root):
 ---
 
 ## Recent Changes & Fixes
+
+### Version 3.2.0 (December 29, 2025)
+
+#### Inline Editing & Consistency Overhaul
+- **Unified Inline Editing**: ProductsPage and ProductDialog now share identical behavior for Tags, Outcomes, Releases, Licenses, and Custom Attributes via the `useProductEditing` hook.
+- **Solutions Parity**: SolutionsPage and SolutionDialog share identical behavior via the `useSolutionEditing` hook, including Products tab management.
+- **Immediate Saves**: All inline edits are saved immediately to the database (no batch save required), with Apollo cache properly refreshed.
+- **Drag-and-Drop Consistency**: DnD for Tags, Outcomes, and Custom Attributes works identically in both page tabs and edit dialogs with immediate visual feedback using local state.
+- **Sorting for Releases/Licenses**: Releases sorted by level (descending), Licenses sorted by level (ascending) - no DnD for these.
+- **Unified Add Icon**: Single `+` icon in tab row triggers inline add for all relevant tables (Tags, Outcomes, Releases, Licenses, Custom Attributes).
+- **Tab Order Consistency**: Tab order in ProductDialog/SolutionDialog matches their respective page tabs.
+- **Terminology Consistency**: Standardized "Key" column header for Custom Attributes across Products and Solutions.
+
+#### Summary Dashboard Improvements
+- **Documentation Status**: "Resource Gaps" renamed to "Fully Documented" when 0 gaps, showing count with different color when gaps exist.
+- **Outcome Distribution**: "Unassigned" renamed to "All Outcomes" with blue/info color; bars are clickable to filter tasks.
+- **Active Licenses Only**: License chips show only active licenses, consistent with Releases display.
+- **Positive Colors**: Outcome distribution bars use success (green) color instead of warning (orange).
+
+#### Code Quality
+- **Shared Hooks**: `useProductEditing` and `useSolutionEditing` hooks encapsulate all CRUD and reorder logic, eliminating code duplication.
+- **Shared Table Components**: `OutcomesTable`, `TagsTable`, `ReleasesTable`, `LicensesTable`, `AttributesTable` used consistently across pages and dialogs.
+- **Removed Unused Code**: Cleaned up unused imports and redundant description fields from product displays in solutions.
 
 ### Version 3.0.0 (December 24, 2025)
 

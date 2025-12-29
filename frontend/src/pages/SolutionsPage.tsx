@@ -12,11 +12,11 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { CSS } from '@dnd-kit/utilities';
 import { DragIndicator } from '@shared/components/FAIcon';
 
-import { SOLUTIONS, SOLUTION, DELETE_SOLUTION, UPDATE_SOLUTION, EXPORT_SOLUTION_V2, SolutionDialog, SolutionSummaryDashboard } from '@features/solutions';
+import { SOLUTIONS, SOLUTION, DELETE_SOLUTION, UPDATE_SOLUTION, EXPORT_SOLUTION_V2, SolutionDialog, SolutionSummaryDashboard, useSolutionEditing } from '@features/solutions';
 import { PRODUCTS } from '@features/products';
 import { TASKS_FOR_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, TaskDialog } from '@features/tasks';
-import { SOLUTION_TAGS, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS, TagDialog } from '@features/tags';
-import { OutcomeDialog, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME } from '@features/product-outcomes';
+import { SOLUTION_TAGS, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS, REORDER_SOLUTION_TAGS, TagDialog } from '@features/tags';
+import { OutcomeDialog, CREATE_OUTCOME, UPDATE_OUTCOME, DELETE_OUTCOME, REORDER_OUTCOMES } from '@features/product-outcomes';
 import { ReleaseDialog, SolutionReleaseDialog, CREATE_RELEASE, UPDATE_RELEASE, DELETE_RELEASE } from '@features/product-releases';
 import { LicenseDialog, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
 import { SortableTaskItem } from '@features/tasks/components/SortableTaskItem';
@@ -25,6 +25,13 @@ import { ColumnVisibilityToggle, DEFAULT_VISIBLE_COLUMNS } from '@shared/compone
 import { useAuth } from '@features/auth';
 import { InlineEditableText } from '@shared/components/InlineEditableText';
 import { BulkImportDialog } from '@features/data-management/components/BulkImportDialog';
+
+// Shared Table Components (same as ProductsPage)
+import { OutcomesTable } from '../features/products/components/shared/OutcomesTable';
+import { TagsTable } from '../features/products/components/shared/TagsTable';
+import { ReleasesTable } from '../features/products/components/shared/ReleasesTable';
+import { LicensesTable } from '../features/products/components/shared/LicensesTable';
+import { AttributesTable } from '../features/products/components/shared/AttributesTable';
 
 export const SolutionsPage: React.FC = () => {
     // State
@@ -63,7 +70,7 @@ export const SolutionsPage: React.FC = () => {
     // Dialog States - must be before any conditional returns
     const [importDialog, setImportDialog] = useState(false);
     const [solutionDialog, setSolutionDialog] = useState(false);
-    const [editingSolution, setEditingSolution] = useState<any>(null);
+    const [editingSolutionId, setEditingSolutionId] = useState<string | null>(null);
     const [solutionDialogInitialTab, setSolutionDialogInitialTab] = useState<'general' | 'products' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes'>('general');
 
     const [taskDialog, setTaskDialog] = useState(false);
@@ -81,6 +88,9 @@ export const SolutionsPage: React.FC = () => {
     // Inline editing state for outcomes
     const [inlineEditingOutcome, setInlineEditingOutcome] = useState<string | null>(null);
     const [inlineOutcomeName, setInlineOutcomeName] = useState('');
+    
+    // External add mode state - used by + icon in tabs row (same as ProductsPage)
+    const [externalAddMode, setExternalAddMode] = useState<string | null>(null);
 
     // Queries - must be before any conditional returns (skip handles auth)
     const { data: solutionsData, loading: solutionsLoading, error: solutionsError, refetch: refetchSolutions } = useQuery(SOLUTIONS, {
@@ -152,6 +162,9 @@ export const SolutionsPage: React.FC = () => {
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
+    // Use shared hook for CRUD operations (same code as SolutionDialog)
+    const solutionEditing = useSolutionEditing(selectedSolution);
+
     // Effect for refetching tasks
     useEffect(() => {
         if (selectedSubSection === 'tasks' && selectedSolution && refetchTasks && isAuthenticated) {
@@ -201,7 +214,7 @@ export const SolutionsPage: React.FC = () => {
 
             // Special case: "__ALL_OUTCOMES__" means show ONLY tasks with no specific outcomes
             if (taskOutcomeFilter.includes('__ALL_OUTCOMES__')) {
-                if (hasSpecificOutcomes) {
+            if (hasSpecificOutcomes) {
                     return false; // Exclude tasks that have specific outcomes
                 }
                 // Keep tasks with no specific outcomes (they apply to ALL)
@@ -352,7 +365,8 @@ export const SolutionsPage: React.FC = () => {
     const getSortedAttributes = (attrs: any) => {
         if (!attrs) return [];
         const order = attrs._order || [];
-        const entries = Object.entries(attrs).filter(([k]) => k !== '_order' && k !== '__typename');
+        // Filter out all internal keys
+        const entries = Object.entries(attrs).filter(([k]) => !k.startsWith('_'));
 
         return entries.sort((a, b) => {
             const indexA = order.indexOf(a[0]);
@@ -364,7 +378,21 @@ export const SolutionsPage: React.FC = () => {
         });
     };
 
-    // Attribute Drag End
+    // Attribute Drag End - uses shared hook
+    const handleAttributeDragEnd = async (event: any) => {
+        const { active, over } = event;
+        if (!displaySolution || active.id === over?.id) return;
+
+        const currentAttrs = displaySolution.customAttrs || {};
+        const keys = getSortedAttributes(currentAttrs).map(([k]) => k);
+        const oldIndex = keys.indexOf(active.id);
+        const newIndex = keys.indexOf(over.id);
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+            const newOrder = arrayMove(keys, oldIndex, newIndex);
+            await solutionEditing.handleAttributeReorder(newOrder);
+        }
+    };
 
 
     const handleInlineSolutionUpdate = async (field: 'name' | 'description', value: string) => {
@@ -837,7 +865,7 @@ export const SolutionsPage: React.FC = () => {
                                 label="Select Solution"
                                 onChange={(e) => {
                                     if (e.target.value === '__add_new__') {
-                                        setEditingSolution(null);
+                                        setEditingSolutionId(null);
                                         setSolutionDialog(true);
                                     } else {
                                         handleSolutionChange(e.target.value);
@@ -866,7 +894,7 @@ export const SolutionsPage: React.FC = () => {
                                         size="small"
                                         onClick={() => {
                                             setSolutionDialogInitialTab('general');
-                                            setEditingSolution(currentSolution);
+                                            setEditingSolutionId(displaySolution?.id || null);
                                             setSolutionDialog(true);
                                         }}
                                     >
@@ -942,7 +970,7 @@ export const SolutionsPage: React.FC = () => {
                                         <>
                                             <Tooltip title={isTasksLocked ? "Unlock Tasks to Edit" : "Lock Tasks"}>
                                                 <IconButton
-                                                    size="small"
+                                                size="small"
                                                     onClick={() => setIsTasksLocked(!isTasksLocked)}
                                                     sx={{ mr: 1, color: isTasksLocked ? 'text.secondary' : 'primary.main', border: `1px solid ${isTasksLocked ? 'divider' : 'primary.main'}`, borderRadius: 1 }}
                                                 >
@@ -952,7 +980,7 @@ export const SolutionsPage: React.FC = () => {
 
                                             <Tooltip title={showFilters ? "Hide Filters" : hasActiveFilters ? `Filters Active (${[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length})` : "Show Filters"}>
                                                 <IconButton
-                                                    onClick={() => setShowFilters(!showFilters)}
+                                                onClick={() => setShowFilters(!showFilters)}
                                                     color={hasActiveFilters || showFilters ? "primary" : "default"}
                                                 >
                                                     <Badge badgeContent={[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length} color="secondary">
@@ -963,13 +991,13 @@ export const SolutionsPage: React.FC = () => {
                                             {hasActiveFilters && (
                                                 <Tooltip title="Clear Filters">
                                                     <IconButton
-                                                        size="small"
+                                                    size="small"
                                                         onClick={() => {
-                                                            setTaskTagFilter([]);
-                                                            setTaskOutcomeFilter([]);
-                                                            setTaskReleaseFilter([]);
-                                                            setTaskLicenseFilter([]);
-                                                        }}
+                                                        setTaskTagFilter([]);
+                                                        setTaskOutcomeFilter([]);
+                                                        setTaskReleaseFilter([]);
+                                                        setTaskLicenseFilter([]);
+                                                    }}
                                                         color="secondary"
                                                     >
                                                         <Clear fontSize="small" />
@@ -987,12 +1015,12 @@ export const SolutionsPage: React.FC = () => {
                                     <Tooltip title={
                                         selectedSubSection === 'tasks' && isTasksLocked ? "Unlock Tasks to Add" :
                                             selectedSubSection === 'tasks' ? 'Add Task' :
-                                                selectedSubSection === 'products' ? 'Manage Products' :
-                                                    selectedSubSection === 'outcomes' ? 'Manage Outcomes' :
-                                                        selectedSubSection === 'releases' ? 'Add Release' :
-                                                            selectedSubSection === 'customAttributes' ? 'Manage Attributes' :
-                                                                selectedSubSection === 'tags' ? 'Add Tag' :
-                                                                    selectedSubSection === 'licenses' ? 'Add License' : 'Manage'
+                                                selectedSubSection === 'products' ? 'Add Product' :
+                                                    selectedSubSection === 'tags' ? 'Add Tag' :
+                                                        selectedSubSection === 'outcomes' ? 'Add Outcome' :
+                                                            selectedSubSection === 'releases' ? 'Add Release' :
+                                                                selectedSubSection === 'licenses' ? 'Add License' :
+                                                                    selectedSubSection === 'customAttributes' ? 'Add Attribute' : 'Add'
                                     }>
                                         <span>
                                             <IconButton
@@ -1003,20 +1031,20 @@ export const SolutionsPage: React.FC = () => {
                                                         setEditingTask(null);
                                                         setTaskDialog(true);
                                                     } else if (selectedSubSection === 'tags') {
-                                                        setEditingTag(null);
-                                                        setTagDialog(true);
-                                                    } else if (selectedSubSection === 'licenses') {
-                                                        setEditingLicense(null);
-                                                        setLicenseDialog(true);
+                                                        setExternalAddMode('tags');
+                                                    } else if (selectedSubSection === 'outcomes') {
+                                                        setExternalAddMode('outcomes');
                                                     } else if (selectedSubSection === 'releases') {
-                                                        setEditingRelease(null);
-                                                        setReleaseDialog(true);
-                                                    } else {
-                                                        setEditingSolution(displaySolution); // Updated from currentSolution to displaySolution based on file context
+                                                        setExternalAddMode('releases');
+                                                    } else if (selectedSubSection === 'licenses') {
+                                                        setExternalAddMode('licenses');
+                                                    } else if (selectedSubSection === 'customAttributes') {
+                                                        setExternalAddMode('customAttributes');
+                                                    } else if (selectedSubSection === 'products') {
+                                                        // Open solution dialog for products management
+                                                        setEditingSolutionId(displaySolution?.id || null);
                                                         setSolutionDialog(true);
-                                                        if (selectedSubSection === 'products') setSolutionDialogInitialTab('products');
-                                                        else if (selectedSubSection === 'outcomes') setSolutionDialogInitialTab('outcomes');
-                                                        else if (selectedSubSection === 'customAttributes') setSolutionDialogInitialTab('customAttributes');
+                                                        setSolutionDialogInitialTab('products');
                                                     }
                                                 }}
                                             >
@@ -1204,32 +1232,52 @@ export const SolutionsPage: React.FC = () => {
                             <Grid container spacing={3}>
                                 <Grid size={{ xs: 12 }}>
                                     <Paper sx={{ p: 2 }}>
-
-
-                                        <List>
-                                            {(currentSolution.products?.edges || []).map((edge: any, idx: number) => (
-                                                <ListItem
-                                                    key={edge.node.id}
-                                                    sx={{
-                                                        borderBottom: `1px solid ${theme.palette.divider}`,
-                                                        bgcolor: idx % 2 === 0 ? alpha(theme.palette.info.main, 0.02) : 'transparent'
-                                                    }}
-                                                >
-                                                    <Box sx={{ mr: 2 }}>
-                                                        <Inventory2 sx={{ color: theme.palette.info.main }} />
-                                                    </Box>
-                                                    <ListItemText
-                                                        primary={<Typography fontWeight={500}>{edge.node.name}</Typography>}
-                                                        secondary={edge.node.description}
-                                                    />
-                                                </ListItem>
-                                            ))}
-                                            {(currentSolution.products?.edges || []).length === 0 && (
-                                                <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-                                                    No products linked
-                                                </Typography>
-                                            )}
-                                        </List>
+                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                            Drag to reorder products in this solution.
+                                        </Typography>
+                                        <DndContext
+                                            sensors={sensors}
+                                            collisionDetection={closestCenter}
+                                            onDragEnd={async (event) => {
+                                                const { active, over } = event;
+                                                if (active.id !== over?.id && currentSolution?.products?.edges) {
+                                                    const edges = currentSolution.products.edges;
+                                                    const oldIndex = edges.findIndex((e: any) => e.node.id === active.id);
+                                                    const newIndex = edges.findIndex((e: any) => e.node.id === over?.id);
+                                                    const newOrder = arrayMove(edges, oldIndex, newIndex);
+                                                    const productOrders = newOrder.map((e: any, idx: number) => ({
+                                                        productId: e.node.id,
+                                                        order: idx + 1
+                                                    }));
+                                                    await solutionEditing.handleProductReorder(productOrders);
+                                                }
+                                            }}
+                                        >
+                                            <SortableContext 
+                                                items={currentSolution?.products?.edges?.map((e: any) => e.node.id) || []} 
+                                                strategy={verticalListSortingStrategy}
+                                            >
+                                                <List>
+                                                    {(currentSolution.products?.edges || []).map((edge: any, idx: number) => (
+                                                        <SortableSolutionProductRow
+                                                            key={edge.node.id}
+                                                            product={edge.node}
+                                                            idx={idx}
+                                                            onRemove={async () => {
+                                                                if (confirm(`Remove "${edge.node.name}" from this solution?`)) {
+                                                                    await solutionEditing.handleProductRemove(edge.node.id);
+                                                                }
+                                                            }}
+                                                        />
+                                                    ))}
+                                                    {(currentSolution.products?.edges || []).length === 0 && (
+                                                        <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
+                                                            No products linked
+                                                        </Typography>
+                                                    )}
+                                                </List>
+                                            </SortableContext>
+                                        </DndContext>
                                     </Paper>
                                 </Grid>
                             </Grid>
@@ -1239,83 +1287,15 @@ export const SolutionsPage: React.FC = () => {
                             <Grid container spacing={3}>
                                 <Grid size={{ xs: 12 }}>
                                     <Paper sx={{ p: 2 }}>
-
-                                        <List>
-                                            {(currentSolution.outcomes || []).map((outcome: any, idx: number) => (
-                                                <ListItem
-                                                    key={outcome.id}
-                                                    sx={{
-                                                        cursor: 'default',
-                                                        '&:hover': { bgcolor: 'action.hover' },
-                                                        borderBottom: `1px solid ${theme.palette.divider}`,
-                                                        bgcolor: idx % 2 === 0 ? alpha(theme.palette.success.main, 0.02) : 'transparent'
-                                                    }}
-                                                    secondaryAction={
-                                                        <Box>
-                                                            {inlineEditingOutcome === outcome.id ? (
-                                                                <IconButton
-                                                                    size="small"
-                                                                    color="success"
-                                                                    onClick={() => handleSaveInlineOutcome(outcome.id)}
-                                                                >
-                                                                    <CheckCircle fontSize="small" />
-                                                                </IconButton>
-                                                            ) : (
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={() => {
-                                                                        setInlineEditingOutcome(outcome.id);
-                                                                        setInlineOutcomeName(outcome.name);
-                                                                    }}
-                                                                >
-                                                                    <Edit fontSize="small" />
-                                                                </IconButton>
-                                                            )}
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={inlineEditingOutcome === outcome.id ? () => setInlineEditingOutcome(null) : () => handleDeleteOutcome(outcome.id)}
-                                                                color="error"
-                                                            >
-                                                                <Delete fontSize="small" />
-                                                            </IconButton>
-                                                        </Box>
-                                                    }
-                                                >
-                                                    <Box sx={{ mr: 2 }}>
-                                                        <CheckCircle sx={{ color: theme.palette.success.main }} />
-                                                    </Box>
-                                                    {inlineEditingOutcome === outcome.id ? (
-                                                        <OutlinedInput
-                                                            fullWidth
-                                                            size="small"
-                                                            value={inlineOutcomeName}
-                                                            onChange={(e) => setInlineOutcomeName(e.target.value)}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') handleSaveInlineOutcome(outcome.id);
-                                                                if (e.key === 'Escape') setInlineEditingOutcome(null);
-                                                            }}
-                                                            autoFocus
-                                                        />
-                                                    ) : (
-                                                        <Tooltip title={outcome.description || ''} placement="top" arrow>
-                                                            <ListItemText
-                                                                primary={<Typography fontWeight={500}>{outcome.name}</Typography>}
-                                                                secondary={outcome.description}
-                                                                onDoubleClick={() => {
-                                                                    setInlineEditingOutcome(outcome.id);
-                                                                    setInlineOutcomeName(outcome.name);
-                                                                }}
-                                                            />
-                                                        </Tooltip>
-                                                    )}
-                                                </ListItem>
-                                            ))}
-                                            {(currentSolution.outcomes || []).length === 0 && (
-                                                <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-                                                    No outcomes defined
-                                                </Typography>
-                                            )}
-                                        </List>
+                                        <OutcomesTable
+                                            items={currentSolution?.outcomes || []}
+                                            onUpdate={solutionEditing.handleOutcomeUpdate}
+                                            onDelete={solutionEditing.handleOutcomeDelete}
+                                            onCreate={solutionEditing.handleOutcomeCreate}
+                                            onReorder={solutionEditing.handleOutcomeReorder}
+                                            externalAddMode={externalAddMode === 'outcomes'}
+                                            onExternalAddComplete={() => setExternalAddMode(null)}
+                                        />
                                     </Paper>
                                 </Grid>
                             </Grid>
@@ -1325,58 +1305,15 @@ export const SolutionsPage: React.FC = () => {
                             <Grid container spacing={3}>
                                 <Grid size={{ xs: 12 }}>
                                     <Paper sx={{ p: 2 }}>
-
-                                        <List>
-                                            {(currentSolution.releases || []).map((release: any, idx: number) => (
-                                                <ListItem
-                                                    key={release.id}
-                                                    secondaryAction={
-                                                        <Box>
-                                                            <IconButton edge="end" aria-label="edit" onClick={() => { setEditingRelease(release); setReleaseDialog(true); }}>
-                                                                <Edit />
-                                                            </IconButton>
-                                                            <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteRelease(release.id)}>
-                                                                <Delete />
-                                                            </IconButton>
-                                                        </Box>
-                                                    }
-                                                    sx={{
-                                                        borderBottom: `1px solid ${theme.palette.divider}`,
-                                                        bgcolor: idx % 2 === 0 ? alpha(theme.palette.warning.main, 0.02) : 'transparent'
-                                                    }}
-                                                >
-                                                    <ListItemText
-                                                        primary={
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                <InlineEditableText
-                                                                    value={release.name}
-                                                                    onSave={(val) => handleInlineSolutionReleaseUpdate(release.id, 'name', val)}
-                                                                    variant="subtitle1"
-                                                                />
-                                                            </Box>
-                                                        }
-                                                        secondary={
-                                                            <>
-                                                                <InlineEditableText
-                                                                    value={release.description || ''}
-                                                                    onSave={(val) => handleInlineSolutionReleaseUpdate(release.id, 'description', val)}
-                                                                    variant="body2"
-                                                                    color="text.secondary"
-                                                                    placeholder="Add description..."
-                                                                    fullWidth
-                                                                />
-                                                                {renderMappingInfo(release, 'releases')}
-                                                            </>
-                                                        }
-                                                    />
-                                                </ListItem>
-                                            ))}
-                                            {(currentSolution.releases || []).length === 0 && (
-                                                <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-                                                    No releases defined
-                                                </Typography>
-                                            )}
-                                        </List>
+                                        <ReleasesTable
+                                            items={currentSolution?.releases || []}
+                                            onUpdate={solutionEditing.handleReleaseUpdate}
+                                            onDelete={solutionEditing.handleReleaseDelete}
+                                            onCreate={solutionEditing.handleReleaseCreate}
+                                            onReorder={() => {}} // Releases are auto-sorted by level
+                                            externalAddMode={externalAddMode === 'releases'}
+                                            onExternalAddComplete={() => setExternalAddMode(null)}
+                                        />
                                     </Paper>
                                 </Grid>
                             </Grid>
@@ -1386,62 +1323,15 @@ export const SolutionsPage: React.FC = () => {
                             <Grid container spacing={3}>
                                 <Grid size={{ xs: 12 }}>
                                     <Paper sx={{ p: 2 }}>
-                                        <List>
-                                            {(currentSolution.licenses || []).map((license: any, idx: number) => (
-                                                <ListItem
-                                                    key={license.id}
-                                                    secondaryAction={
-                                                        <Box>
-                                                            <IconButton edge="end" aria-label="edit" onClick={() => { setEditingLicense(license); setLicenseDialog(true); }}>
-                                                                <Edit />
-                                                            </IconButton>
-                                                            <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteLicense(license.id)}>
-                                                                <Delete />
-                                                            </IconButton>
-                                                        </Box>
-                                                    }
-                                                    sx={{
-                                                        borderBottom: `1px solid ${theme.palette.divider}`,
-                                                        bgcolor: idx % 2 === 0 ? alpha(theme.palette.info.main, 0.02) : 'transparent'
-                                                    }}
-                                                >
-                                                    <Box sx={{ mr: 2 }}>
-                                                        <VerifiedUser sx={{ color: license.isActive ? theme.palette.success.main : theme.palette.text.disabled }} />
-                                                    </Box>
-                                                    <ListItemText
-                                                        primary={
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                <InlineEditableText
-                                                                    value={license.name}
-                                                                    onSave={(val) => handleInlineSolutionLicenseUpdate(license.id, 'name', val)}
-                                                                    variant="subtitle1"
-                                                                />
-                                                                <Chip label={`Level ${license.level}`} size="small" variant="outlined" />
-                                                                {!license.isActive && <Chip label="Inactive" size="small" color="default" />}
-                                                            </Box>
-                                                        }
-                                                        secondary={
-                                                            <>
-                                                                <InlineEditableText
-                                                                    value={license.description || ''}
-                                                                    onSave={(val) => handleInlineSolutionLicenseUpdate(license.id, 'description', val)}
-                                                                    variant="body2"
-                                                                    color="text.secondary"
-                                                                    placeholder="Add description..."
-                                                                    fullWidth
-                                                                />
-                                                                {renderMappingInfo(license, 'licenses')}
-                                                            </>
-                                                        }
-                                                    />
-                                                </ListItem>
-                                            ))}
-                                            {(currentSolution.licenses || []).length === 0 && (
-                                                <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-                                                    No licenses defined
-                                                </Typography>
-                                            )}
-                                        </List>
+                                        <LicensesTable
+                                            items={currentSolution?.licenses || []}
+                                            onUpdate={solutionEditing.handleLicenseUpdate}
+                                            onDelete={solutionEditing.handleLicenseDelete}
+                                            onCreate={solutionEditing.handleLicenseCreate}
+                                            onReorder={() => {}} // Licenses are auto-sorted by level
+                                            externalAddMode={externalAddMode === 'licenses'}
+                                            onExternalAddComplete={() => setExternalAddMode(null)}
+                                        />
                                     </Paper>
                                 </Grid>
                             </Grid>
@@ -1451,38 +1341,15 @@ export const SolutionsPage: React.FC = () => {
                             <Grid container spacing={3}>
                                 <Grid size={{ xs: 12 }}>
                                     <Paper sx={{ p: 2 }}>
-                                        <TableContainer>
-                                            <Table size="small">
-                                                <TableHead>
-                                                    <TableRow sx={{ bgcolor: alpha(theme.palette.secondary.main, 0.08) }}>
-                                                        <TableCell sx={{ fontWeight: 'bold', color: theme.palette.secondary.dark }}>Attribute</TableCell>
-                                                        <TableCell sx={{ fontWeight: 'bold', color: theme.palette.secondary.dark }}>Value</TableCell>
-                                                    </TableRow>
-                                                </TableHead>
-                                                <TableBody>
-                                                    {getSortedAttributes(currentSolution?.customAttrs).map(([key, value], idx) => (
-                                                        <TableRow
-                                                            key={key}
-                                                            sx={{
-                                                                bgcolor: idx % 2 === 0 ? alpha(theme.palette.secondary.main, 0.02) : 'transparent'
-                                                            }}
-                                                        >
-                                                            <TableCell sx={{ fontWeight: 500 }}>{key}</TableCell>
-                                                            <TableCell>
-                                                                {typeof value === 'object' ? JSON.stringify(value) : String(value)}
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                    {getSortedAttributes(currentSolution?.customAttrs).length === 0 && (
-                                                        <TableRow>
-                                                            <TableCell colSpan={2} sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>
-                                                                No custom attributes defined
-                                                            </TableCell>
-                                                        </TableRow>
-                                                    )}
-                                                </TableBody>
-                                            </Table>
-                                        </TableContainer>
+                                        <AttributesTable
+                                            items={solutionEditing.getAttributesList(currentSolution?.customAttrs)}
+                                            onUpdate={solutionEditing.handleAttributeUpdate}
+                                            onDelete={solutionEditing.handleAttributeDelete}
+                                            onCreate={solutionEditing.handleAttributeCreate}
+                                            onReorder={solutionEditing.handleAttributeReorder}
+                                            externalAddMode={externalAddMode === 'customAttributes'}
+                                            onExternalAddComplete={() => setExternalAddMode(null)}
+                                        />
                                     </Paper>
                                 </Grid>
                             </Grid>
@@ -1492,47 +1359,15 @@ export const SolutionsPage: React.FC = () => {
                             <Grid container spacing={3}>
                                 <Grid size={{ xs: 12 }}>
                                     <Paper sx={{ p: 2 }}>
-                                        <List>
-                                            {solutionTags.map((tag: any, idx: number) => (
-                                                <ListItem
-                                                    key={tag.id}
-                                                    secondaryAction={
-                                                        <Box>
-                                                            <IconButton edge="end" aria-label="edit" onClick={() => { setEditingTag(tag); setTagDialog(true); }}>
-                                                                <Edit />
-                                                            </IconButton>
-                                                            <IconButton edge="end" aria-label="delete" onClick={() => handleDeleteTag(tag.id)}>
-                                                                <Delete />
-                                                            </IconButton>
-                                                        </Box>
-                                                    }
-                                                    sx={{
-                                                        borderBottom: `1px solid ${theme.palette.divider}`,
-                                                        bgcolor: idx % 2 === 0 ? alpha(theme.palette.primary.main, 0.02) : 'transparent'
-                                                    }}
-                                                >
-                                                    <Box sx={{ mr: 2, display: 'flex', alignItems: 'center' }}>
-                                                        <Label sx={{ color: tag.color, mr: 1 }} />
-                                                        <Tooltip title={tag?.description || tag?.name} arrow>
-                                                            <Chip
-                                                                label={tag?.name}
-                                                                size="small"
-                                                                sx={{
-                                                                    bgcolor: tag?.color,
-                                                                    color: '#fff',
-                                                                    '& .MuiChip-label': { fontWeight: 500 }
-                                                                }}
-                                                            />
-                                                        </Tooltip>
-                                                    </Box>
-                                                </ListItem>
-                                            ))}
-                                            {solutionTags.length === 0 && (
-                                                <Typography variant="body2" color="text.secondary" sx={{ p: 2, textAlign: 'center' }}>
-                                                    No tags defined. Click "Add Tag" to create one.
-                                                </Typography>
-                                            )}
-                                        </List>
+                                        <TagsTable
+                                            items={solutionTags || []}
+                                            onUpdate={solutionEditing.handleTagUpdate}
+                                            onDelete={solutionEditing.handleTagDelete}
+                                            onCreate={solutionEditing.handleTagCreate}
+                                            onReorder={solutionEditing.handleTagReorder}
+                                            externalAddMode={externalAddMode === 'tags'}
+                                            onExternalAddComplete={() => setExternalAddMode(null)}
+                                        />
                                     </Paper>
                                 </Grid>
                             </Grid>
@@ -1604,12 +1439,16 @@ export const SolutionsPage: React.FC = () => {
             {/* Dialogs */}
             <SolutionDialog
                 open={solutionDialog}
-                onClose={() => setSolutionDialog(false)}
+                onClose={() => {
+                    setSolutionDialog(false);
+                    setEditingSolutionId(null);
+                }}
                 onSave={() => {
                     // Refetch handled by mutation refetchQueries
                     setSolutionDialog(false);
+                    setEditingSolutionId(null);
                 }}
-                solution={editingSolution}
+                solutionId={editingSolutionId}
                 allProducts={allProducts}
                 initialTab={solutionDialogInitialTab}
             />
@@ -1620,7 +1459,7 @@ export const SolutionsPage: React.FC = () => {
                 onSave={handleSaveLicense}
                 license={editingLicense}
                 availableProductLicenses={availableProductLicenses}
-                title={editingLicense ? 'Edit Solution Entitlement' : 'Add Solution Entitlement'}
+                title={editingLicense ? 'Edit Solution License' : 'Add Solution License'}
             />
 
             <SolutionReleaseDialog
@@ -1715,3 +1554,249 @@ const SortableAttributeRow = ({ id, attrKey, value }: any) => {
         </TableRow>
     );
 };
+
+// Sortable Tag Row Component (Internal)
+const SortableSolutionTagRow = ({ tag, idx, onEdit, onDelete }: { tag: any; idx: number; onEdit: () => void; onDelete: () => void }) => {
+    const theme = useTheme();
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: tag.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        backgroundColor: isDragging ? alpha('#000', 0.05) : (idx % 2 === 0 ? alpha(theme.palette.primary.main, 0.02) : 'transparent'),
+        zIndex: isDragging ? 1 : undefined,
+    };
+
+    return (
+        <ListItem
+            ref={setNodeRef}
+            style={style}
+            sx={{
+                '&:hover .drag-handle': { opacity: 1 },
+                borderBottom: `1px solid ${theme.palette.divider}`
+            }}
+            secondaryAction={
+                <Box>
+                    <IconButton edge="end" onClick={onEdit}>
+                        <Edit />
+                    </IconButton>
+                    <IconButton edge="end" onClick={onDelete} color="error">
+                        <Delete />
+                    </IconButton>
+                </Box>
+            }
+        >
+            <IconButton
+                size="small"
+                className="drag-handle"
+                sx={{ opacity: 0.3, cursor: 'grab', mr: 1 }}
+                {...attributes}
+                {...listeners}
+            >
+                <DragIndicator fontSize="small" />
+            </IconButton>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box
+                    sx={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: '50%',
+                        backgroundColor: tag.color,
+                        flexShrink: 0
+                    }}
+                />
+                <ListItemText
+                    primary={tag.name}
+                    secondary={tag.description}
+                />
+            </Box>
+        </ListItem>
+    );
+};
+
+// Sortable Solution Outcome Row Component (Internal)
+const SortableSolutionOutcomeRow = ({
+    outcome,
+    idx,
+    inlineEditingOutcome,
+    setInlineEditingOutcome,
+    inlineOutcomeName,
+    setInlineOutcomeName,
+    handleSaveInlineOutcome,
+    handleDeleteOutcome
+}: {
+    outcome: any;
+    idx: number;
+    inlineEditingOutcome: string | null;
+    setInlineEditingOutcome: (id: string | null) => void;
+    inlineOutcomeName: string;
+    setInlineOutcomeName: (name: string) => void;
+    handleSaveInlineOutcome: (id: string) => void;
+    handleDeleteOutcome: (id: string) => void;
+}) => {
+    const theme = useTheme();
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: outcome.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        backgroundColor: isDragging ? alpha('#000', 0.05) : undefined,
+        zIndex: isDragging ? 1 : undefined,
+    };
+
+    return (
+        <ListItem
+            ref={setNodeRef}
+            style={style}
+            sx={{
+                cursor: 'default',
+                '&:hover': { bgcolor: 'action.hover' },
+                '&:hover .drag-handle': { opacity: 1 },
+                borderBottom: `1px solid ${theme.palette.divider}`,
+                bgcolor: idx % 2 === 0 ? alpha(theme.palette.success.main, 0.02) : 'transparent'
+            }}
+            secondaryAction={
+                <Box>
+                    {inlineEditingOutcome === outcome.id ? (
+                        <IconButton
+                            size="small"
+                            color="success"
+                            onClick={() => handleSaveInlineOutcome(outcome.id)}
+                        >
+                            <CheckCircle fontSize="small" />
+                        </IconButton>
+                    ) : (
+                        <IconButton
+                            size="small"
+                            onClick={() => {
+                                setInlineEditingOutcome(outcome.id);
+                                setInlineOutcomeName(outcome.name);
+                            }}
+                        >
+                            <Edit fontSize="small" />
+                        </IconButton>
+                    )}
+                    <IconButton
+                        size="small"
+                        onClick={inlineEditingOutcome === outcome.id ? () => setInlineEditingOutcome(null) : () => handleDeleteOutcome(outcome.id)}
+                        color="error"
+                    >
+                        <Delete fontSize="small" />
+                    </IconButton>
+                </Box>
+            }
+        >
+            <IconButton
+                size="small"
+                className="drag-handle"
+                sx={{ opacity: 0.3, cursor: 'grab', mr: 1 }}
+                {...attributes}
+                {...listeners}
+            >
+                <DragIndicator fontSize="small" />
+            </IconButton>
+            <Box sx={{ mr: 2 }}>
+                <CheckCircle sx={{ color: theme.palette.success.main }} />
+            </Box>
+            {inlineEditingOutcome === outcome.id ? (
+                <OutlinedInput
+                    fullWidth
+                    size="small"
+                    value={inlineOutcomeName}
+                    onChange={(e) => setInlineOutcomeName(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveInlineOutcome(outcome.id);
+                        if (e.key === 'Escape') setInlineEditingOutcome(null);
+                    }}
+                    autoFocus
+                />
+            ) : (
+                <Tooltip title={outcome.description || ''} placement="top" arrow>
+                    <ListItemText
+                        primary={<Typography fontWeight={500}>{outcome.name}</Typography>}
+                        secondary={outcome.description}
+                        onDoubleClick={() => {
+                            setInlineEditingOutcome(outcome.id);
+                            setInlineOutcomeName(outcome.name);
+                        }}
+                    />
+                </Tooltip>
+            )}
+        </ListItem>
+    );
+};
+
+// Sortable Solution Product Row Component (Internal)
+const SortableSolutionProductRow = ({
+    product,
+    idx,
+    onRemove
+}: {
+    product: any;
+    idx: number;
+    onRemove: () => void;
+}) => {
+    const theme = useTheme();
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging
+    } = useSortable({ id: product.id });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        backgroundColor: isDragging ? alpha('#000', 0.05) : (idx % 2 === 0 ? alpha(theme.palette.info.main, 0.02) : 'transparent'),
+        zIndex: isDragging ? 1 : undefined,
+    };
+
+    return (
+        <ListItem
+            ref={setNodeRef}
+            style={style}
+            sx={{
+                '&:hover .drag-handle': { opacity: 1 },
+                borderBottom: `1px solid ${theme.palette.divider}`
+            }}
+            secondaryAction={
+                <IconButton edge="end" onClick={onRemove} color="error" size="small">
+                    <Delete fontSize="small" />
+                </IconButton>
+            }
+        >
+            <IconButton
+                size="small"
+                className="drag-handle"
+                sx={{ opacity: 0.3, cursor: 'grab', mr: 1 }}
+                {...attributes}
+                {...listeners}
+            >
+                <DragIndicator fontSize="small" />
+            </IconButton>
+            <Box sx={{ mr: 2 }}>
+                <Inventory2 sx={{ color: theme.palette.info.main }} />
+            </Box>
+            <ListItemText
+                primary={<Typography fontWeight={500}>{product.name}</Typography>}
+            />
+        </ListItem>
+    );
+};
+

@@ -57,7 +57,7 @@ const GET_RELEASES_FOR_PRODUCT = gql`
   }
 `;
 
-interface EditEntitlementsDialogProps {
+interface EditLicensesDialogProps {
   open: boolean;
   onClose: () => void;
   customerProductId: string;
@@ -68,7 +68,7 @@ interface EditEntitlementsDialogProps {
   onSave: (licenseLevel: string, selectedOutcomeIds: string[], selectedReleaseIds: string[]) => void;
 }
 
-export function EditEntitlementsDialog({
+export function EditLicensesDialog({
   open,
   onClose,
   customerProductId,
@@ -77,7 +77,7 @@ export function EditEntitlementsDialog({
   currentSelectedOutcomes,
   currentSelectedReleases,
   onSave,
-}: EditEntitlementsDialogProps) {
+}: EditLicensesDialogProps) {
   // Helper function to map license level number to GraphQL enum value
   const mapLicenseLevelToEnum = (level: number): string => {
     const levelMap: { [key: number]: string } = {
@@ -212,7 +212,7 @@ export function EditEntitlementsDialog({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>Edit Product Entitlements</DialogTitle>
+      <DialogTitle>Edit Product Licenses</DialogTitle>
       <DialogContent>
         <Box sx={{ mt: 2 }}>
           <Alert severity="warning" sx={{ mb: 3 }}>

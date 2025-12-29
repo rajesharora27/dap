@@ -59,11 +59,42 @@ export const validateRelease = (data: any): string[] => {
     return errors;
 };
 
+export const validateName = (value: string, label = 'Name'): string[] => {
+  const errors: string[] = [];
+  if (!value || !value.trim()) {
+    errors.push(`${label} is required`);
+  }
+  return errors;
+};
+
+export const validateSequenceNumber = (value: number, label = 'Sequence number'): string[] => {
+  const errors: string[] = [];
+  if (value === undefined || value === null || Number.isNaN(Number(value))) {
+    errors.push(`${label} is required`);
+  } else if (Number(value) < 1) {
+    errors.push(`${label} must be at least 1`);
+  }
+  return errors;
+};
+
+export const validateWeight = (value: number, label = 'Weight'): string[] => {
+  const errors: string[] = [];
+  if (value === undefined || value === null || Number.isNaN(Number(value))) {
+    errors.push(`${label} is required`);
+  } else if (Number(value) < 0) {
+    errors.push(`${label} cannot be negative`);
+  }
+  return errors;
+};
+
 // Legacy support
 export const ValidationUtils = {
     validateProduct,
     validateCustomAttribute,
     validateLicense,
     validateOutcome,
-    validateRelease
+  validateRelease,
+  validateName,
+  validateSequenceNumber,
+  validateWeight
 };

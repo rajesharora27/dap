@@ -25,3 +25,14 @@ export const DELETE_OUTCOME = gql`
     deleteOutcome(id: $id)
   }
 `;
+
+export const REORDER_OUTCOMES = gql`
+  mutation ReorderOutcomes($productId: ID, $solutionId: ID, $outcomeIds: [ID!]!) {
+    reorderOutcomes(productId: $productId, solutionId: $solutionId, outcomeIds: $outcomeIds) {
+      id
+      name
+      description
+      displayOrder
+    }
+  }
+`;

@@ -796,7 +796,8 @@ export function App() {
   const [openAdoptionPlanPreview, setOpenAdoptionPlanPreview] = useState(false);
   const [previewAdoptionPlanId, setPreviewAdoptionPlanId] = useState<string | null>(null);
 
-  const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  // ProductDialog now queries its own data - no need for App.tsx to query
 
 
 
@@ -1841,12 +1842,12 @@ export function App() {
   // Custom Attributes export/import handlers (JSON format)
 
   const handleUpdateProduct = async (data: any) => {
-    if (!editingProduct) return;
+    if (!editingProductId) return;
     try {
       await client.mutate({
         mutation: UPDATE_PRODUCT,
         variables: {
-          id: editingProduct.id,
+          id: editingProductId,
           input: {
             name: data.name,
             description: data.description,
@@ -1855,7 +1856,7 @@ export function App() {
         }
       });
       setEditProductDialog(false);
-      setEditingProduct(null);
+      setEditingProductId(null);
       await refetchProducts();
     } catch (error) {
       console.error('Error updating product:', error);
@@ -2411,7 +2412,7 @@ export function App() {
                   <ProductsPage
                     key={selectedProduct}
                     onEditProduct={(product) => {
-                      setEditingProduct({ ...product });
+                      setEditingProductId(product.id);
                       setEditProductDialog(true);
                     }}
                   />
@@ -2516,7 +2517,6 @@ export function App() {
                 onSave={handleAddProductSave}
                 product={null}
                 title="Add New Product"
-                availableReleases={[]}
               />
 
               {/* Add Solution Dialog */}
@@ -2540,12 +2540,12 @@ export function App() {
                 open={editProductDialog}
                 onClose={() => {
                   setEditProductDialog(false);
+                  setEditingProductId(null);
                   setProductDialogInitialTab('general');
                 }}
                 onSave={handleUpdateProduct}
-                product={editingProduct}
+                productId={editingProductId}
                 title="Edit Product"
-                availableReleases={editingProduct?.releases || []}
                 initialTab={productDialogInitialTab}
               />
 

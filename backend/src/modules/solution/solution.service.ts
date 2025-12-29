@@ -136,17 +136,21 @@ export class SolutionService {
         return true;
     }
 
-    static async addProductToSolution(userId: string, solutionId: string, productId: string) {
-        // Calculate next order number automatically
-        const maxOrderProduct = await prisma.solutionProduct.findFirst({
-            where: { solutionId },
-            orderBy: { order: 'desc' }
-        });
-        const nextOrder = (maxOrderProduct?.order || 0) + 1;
+    static async addProductToSolution(userId: string, solutionId: string, productId: string, order?: number) {
+        let nextOrder = order;
+
+        if (nextOrder === undefined) {
+            // Calculate next order number automatically
+            const maxOrderProduct = await prisma.solutionProduct.findFirst({
+                where: { solutionId },
+                orderBy: { order: 'desc' }
+            });
+            nextOrder = (maxOrderProduct?.order || 0) + 1;
+        }
 
         await prisma.solutionProduct.upsert({
             where: { productId_solutionId: { productId, solutionId } },
-            update: {},
+            update: { order: nextOrder },
             create: { productId, solutionId, order: nextOrder }
         });
         await logAudit('ADD_PRODUCT_SOLUTION', 'Solution', solutionId, { productId, order: nextOrder }, userId);
@@ -156,6 +160,20 @@ export class SolutionService {
     static async removeProductFromSolution(userId: string, solutionId: string, productId: string) {
         await prisma.solutionProduct.deleteMany({ where: { solutionId, productId } });
         await logAudit('REMOVE_PRODUCT_SOLUTION', 'Solution', solutionId, { productId }, userId);
+        return true;
+    }
+
+    static async reorderProductsInSolution(userId: string, solutionId: string, productOrders: { productId: string; order: number }[]) {
+        // Use transaction to ensure all updates succeed or fail together
+        await prisma.$transaction(
+            productOrders.map(({ productId, order }) =>
+                prisma.solutionProduct.update({
+                    where: { productId_solutionId: { productId, solutionId } },
+                    data: { order }
+                })
+            )
+        );
+        await logAudit('REORDER_PRODUCTS_SOLUTION', 'Solution', solutionId, { productOrders }, userId);
         return true;
     }
 }

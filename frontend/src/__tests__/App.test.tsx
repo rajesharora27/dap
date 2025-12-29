@@ -28,7 +28,7 @@ describe('Product Management App Functionality', () => {
     test('CRUD button configuration for each submenu', () => {
         const crudButtons = {
             main: ['Edit Product', 'Export All', 'Import'],
-            licenses: ['Add Entitlement', 'Export', 'Import'],
+            licenses: ['Add License', 'Export', 'Import'],
             outcomes: ['Add Outcome', 'Export', 'Import'],
             customAttributes: ['Add Attribute', 'Edit All', 'Export', 'Import'],
             tasks: ['Add Task', 'Export', 'Import']
@@ -46,7 +46,7 @@ describe('Product Management App Functionality', () => {
         });
 
         // Specific Add buttons
-        expect(crudButtons.licenses).toContain('Add Entitlement');
+        expect(crudButtons.licenses).toContain('Add License');
         expect(crudButtons.outcomes).toContain('Add Outcome');
         expect(crudButtons.customAttributes).toContain('Add Attribute');
         expect(crudButtons.tasks).toContain('Add Task');
@@ -255,14 +255,14 @@ describe('Product Management Integration Workflows', () => {
     test('Main submenu comprehensive display validation', () => {
         const mainSubmenuSections = [
             'Product Details',
-            'Entitlements Summary',
+            'Licenses Summary',
             'Outcomes Summary',
             'Custom Attributes Summary'
         ];
 
         // Main should show overview of all sections (except tasks)
         expect(mainSubmenuSections).toContain('Product Details');
-        expect(mainSubmenuSections).toContain('Entitlements Summary');
+        expect(mainSubmenuSections).toContain('Licenses Summary');
         expect(mainSubmenuSections).toContain('Outcomes Summary');
         expect(mainSubmenuSections).toContain('Custom Attributes Summary');
 

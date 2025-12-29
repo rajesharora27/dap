@@ -72,17 +72,23 @@ export const ProductFieldResolvers = {
     },
 
     outcomes: async (parent: any) => {
-        return prisma.outcome.findMany({ where: { productId: parent.id } });
+        return prisma.outcome.findMany({
+            where: { productId: parent.id },
+            orderBy: { displayOrder: 'asc' }
+        });
     },
 
     licenses: async (parent: any) => {
-        return prisma.license.findMany({ where: { productId: parent.id, deletedAt: null } });
+        return prisma.license.findMany({
+            where: { productId: parent.id, deletedAt: null },
+            orderBy: { level: 'asc' }
+        });
     },
 
     releases: async (parent: any) => {
         return prisma.release.findMany({
             where: { productId: parent.id, deletedAt: null },
-            orderBy: { level: 'asc' }
+            orderBy: { level: 'desc' }
         });
     },
 

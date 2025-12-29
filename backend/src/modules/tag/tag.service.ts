@@ -230,4 +230,36 @@ export class TagService {
         await prisma.solutionTaskTag.deleteMany({ where: { taskId, tagId } });
         return prisma.task.findUnique({ where: { id: taskId } });
     }
+
+    // Reorder Tags
+    static async reorderProductTags(productId: string, tagIds: string[]) {
+        // Update displayOrder for each tag based on position in array
+        await prisma.$transaction(
+            tagIds.map((id, index) =>
+                prisma.productTag.update({
+                    where: { id },
+                    data: { displayOrder: index + 1 }
+                })
+            )
+        );
+        return prisma.productTag.findMany({
+            where: { productId },
+            orderBy: { displayOrder: 'asc' }
+        });
+    }
+
+    static async reorderSolutionTags(solutionId: string, tagIds: string[]) {
+        await prisma.$transaction(
+            tagIds.map((id, index) =>
+                prisma.solutionTag.update({
+                    where: { id },
+                    data: { displayOrder: index + 1 }
+                })
+            )
+        );
+        return prisma.solutionTag.findMany({
+            where: { solutionId },
+            orderBy: { displayOrder: 'asc' }
+        });
+    }
 }

@@ -1,11 +1,11 @@
 import * as React from 'react';
 import { useState } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Button, 
-  IconButton, 
-  List, 
+import {
+  Box,
+  Typography,
+  Button,
+  IconButton,
+  List,
   ListItemButton,
   ListItemText,
   ListItemSecondaryAction,
@@ -29,11 +29,11 @@ interface Props {
   onRefetch: () => void;
 }
 
-export const ProductManagement: React.FC<Props> = ({ 
-  products, 
-  selectedProduct, 
+export const ProductManagement: React.FC<Props> = ({
+  products,
+  selectedProduct,
   onProductSelect,
-  onRefetch 
+  onRefetch
 }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -70,8 +70,8 @@ export const ProductManagement: React.FC<Props> = ({
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">Products</Typography>
-        <Button 
-          variant="contained" 
+        <Button
+          variant="contained"
           startIcon={<Add />}
           onClick={handleAdd}
           size="small"
@@ -85,13 +85,13 @@ export const ProductManagement: React.FC<Props> = ({
           {products.map((product: any) => {
             const stats = getTaskStats(product);
             const isSelected = product.id === selectedProduct;
-            
+
             return (
-              <ListItemButton 
+              <ListItemButton
                 key={product.id}
                 selected={isSelected}
                 onClick={() => onProductSelect(product.id)}
-                sx={{ 
+                sx={{
                   '&:hover .action-buttons': { opacity: 1 },
                   bgcolor: isSelected ? 'action.selected' : 'inherit'
                 }}
@@ -103,9 +103,9 @@ export const ProductManagement: React.FC<Props> = ({
                         {product.name}
                       </Typography>
                       {product.status && (
-                        <Chip 
-                          label={product.status} 
-                          size="small" 
+                        <Chip
+                          label={product.status}
+                          size="small"
                           color={product.status === 'active' ? 'success' : 'default'}
                         />
                       )}
@@ -124,7 +124,7 @@ export const ProductManagement: React.FC<Props> = ({
                   }
                 />
                 <ListItemSecondaryAction>
-                  <Box 
+                  <Box
                     className="action-buttons"
                     sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 0.5 }}
                   >
@@ -149,7 +149,7 @@ export const ProductManagement: React.FC<Props> = ({
                     </IconButton>
                   </Box>
                 </ListItemSecondaryAction>
-                              </ListItemButton>
+              </ListItemButton>
             );
           })}
         </List>
@@ -161,7 +161,6 @@ export const ProductManagement: React.FC<Props> = ({
         onSave={handleSave}
         product={editingProduct}
         title={editingProduct ? 'Edit Product' : 'Add Product'}
-        availableReleases={[]}
       />
     </Box>
   );
