@@ -49,9 +49,9 @@ DAP is a customer adoption tracking system where an **Executive Dashboard** prov
 
 ## Component Naming Convention
 
-> **Full Documentation:** See `docs/NAMING_CONVENTION.md` for complete details.
+> **Full Documentation:** See [`docs/NAMING-CONVENTIONS.md`](./NAMING-CONVENTIONS.md) for complete naming standards.
 
-### Quick Reference
+### Quick Reference - Domain Terms
 
 | Term | Definition | When Created |
 |------|-----------|--------------|
@@ -63,6 +63,26 @@ DAP is a customer adoption tracking system where an **Executive Dashboard** prov
 | **SolutionAdoptionPlan** | Customer's copy of Solution tasks | When Solution assigned to Customer |
 | **CustomerTask** | Customer-specific task instance | Part of AdoptionPlan |
 | **CustomerSolutionTask** | Customer-specific task in solution | Part of SolutionAdoptionPlan |
+
+### Quick Reference - GraphQL Naming
+
+| Type | Pattern | Example | ❌ Avoid |
+|------|---------|---------|----------|
+| Query (single) | `{Entity}` | `Product`, `Customer` | `GetProduct`, `FetchCustomer` |
+| Query (list) | `{Entity}s` | `Products`, `Tasks` | `GetProducts`, `FetchTasks` |
+| Query (scoped) | `{Parent}{Entity}` | `ProductTasks`, `SolutionOutcomes` | `TasksForProduct` |
+| Mutation | `{Action}{Entity}` | `CreateProduct`, `DeleteTask` | `ProductCreate` |
+| Constant | `SCREAMING_SNAKE_CASE` | `PRODUCTS`, `CREATE_TASK` | `Products`, `createTask` |
+
+### Quick Reference - Code Naming
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| React Components | PascalCase | `ProductDialog`, `TaskList` |
+| Hooks | camelCase + `use` | `useProducts`, `useAuth` |
+| Variables | camelCase | `productName`, `isLoading` |
+| Constants | SCREAMING_SNAKE | `MAX_RETRIES`, `API_URL` |
+| Boolean vars | `is/has/can/should` | `isLoading`, `hasPermission` |
 
 ### Prompt Usage Tips
 
