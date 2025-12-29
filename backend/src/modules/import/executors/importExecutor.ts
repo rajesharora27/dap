@@ -22,6 +22,8 @@ import {
     ValidatedTagRow,
     ValidatedCustomAttributeRow,
     ValidatedTelemetryAttributeRow,
+    ValidatedProductRefRow,
+    ValidatedResourceRow,
 } from '../types';
 
 // ============================================================================
@@ -85,7 +87,9 @@ export async function executeImport(
         records.tags.length +
         records.tasks.length +
         records.customAttributes.length +
-        records.telemetryAttributes.length;
+        records.telemetryAttributes.length +
+        records.resources.length +
+        (records.productRefs ? records.productRefs.length : 0);
 
     try {
         // Report start
@@ -116,6 +120,12 @@ export async function executeImport(
                 telemetryAttributesCreated: 0,
                 telemetryAttributesUpdated: 0,
                 telemetryAttributesDeleted: 0,
+                productLinksCreated: 0,
+                productLinksUpdated: 0,
+                productLinksDeleted: 0,
+                resourcesCreated: 0,
+                resourcesUpdated: 0,
+                resourcesDeleted: 0,
             };
 
             const errors: ValidationError[] = [];
@@ -153,6 +163,16 @@ export async function executeImport(
             await executeOutcomes(ctx, records.outcomes);
             await executeReleases(ctx, records.releases);
             await executeTags(ctx, records.tags);
+
+            // Execute product links (Solutions only)
+            if (ctx.entityType === 'solution' && records.productRefs) {
+                await executeProductRefs(ctx, records.productRefs);
+            }
+
+            // Execute resources
+            if (records.resources && records.resources.length > 0) {
+                await processResources(ctx, records.resources);
+            }
 
             // Build lookup maps for task relations
             const [outcomes, releases, tags] = await Promise.all([
@@ -589,12 +609,50 @@ async function executeTags(
 
 async function executeCustomAttributes(
     ctx: ExecutionContext,
-    attributes: RecordPreview<ValidatedCustomAttributeRow>[]
+    customAttributes: RecordPreview<ValidatedCustomAttributeRow>[]
 ): Promise<void> {
-    // Solutions store attributes in JSON on the model itself, not in this table
-    if (ctx.entityType !== 'product') return;
+    // For Solutions, we use the JSON customAttrs field
+    if (ctx.entityType === 'solution') {
+        const solution = await ctx.prisma.solution.findUnique({
+            where: { id: ctx.entityId },
+            select: { customAttrs: true }
+        });
 
-    for (const preview of attributes) {
+        const currentAttrs = (solution?.customAttrs as Record<string, any>) || {};
+        let hasChanges = false;
+
+        for (const preview of customAttributes) {
+            if (preview.action === 'skip') continue;
+
+            const attr = preview.data;
+            if (preview.action === 'delete') {
+                if (currentAttrs[attr.key]) {
+                    delete currentAttrs[attr.key];
+                    hasChanges = true;
+                    ctx.stats.customAttributesDeleted++;
+                }
+            } else {
+                // Create or Update
+                if (currentAttrs[attr.key] !== attr.value) {
+                    currentAttrs[attr.key] = attr.value;
+                    hasChanges = true;
+                    if (preview.action === 'create') ctx.stats.customAttributesCreated++;
+                    else ctx.stats.customAttributesUpdated++;
+                }
+            }
+        }
+
+        if (hasChanges) {
+            await ctx.prisma.solution.update({
+                where: { id: ctx.entityId },
+                data: { customAttrs: currentAttrs }
+            });
+        }
+        return;
+    }
+
+    // For Products, we use the CustomAttribute table
+    for (const preview of customAttributes) {
         updateProgress(ctx, 'Importing custom attributes...');
         if (preview.action === 'skip') continue;
 
@@ -681,7 +739,7 @@ async function executeTelemetryAttributes(
                     row: preview.rowNumber,
                     column: 'taskName',
                     field: 'taskName',
-                    message: `Task "${row.taskName}" not found. skipping telemetry attribute.`,
+                    message: `Task "${row.taskName}" not found.skipping telemetry attribute.`,
                     code: 'TASK_NOT_FOUND',
                     severity: 'warning'
                 });
@@ -800,8 +858,119 @@ async function executeTelemetryAttributes(
 }
 
 // ============================================================================
+// Product Reference Operations (Solutions only)
+// ============================================================================
+
+async function executeProductRefs(
+    ctx: ExecutionContext,
+    productRefs: RecordPreview<ValidatedProductRefRow>[]
+): Promise<void> {
+    for (const preview of productRefs) {
+        updateProgress(ctx, 'Importing product links...');
+        if (preview.action === 'skip') continue;
+
+        const row = preview.data;
+
+        // We need to resolve the product ID by name
+        // (Validation phase ensures it exists)
+        const product = await ctx.prisma.product.findUnique({
+            where: { name: row.name },
+            select: { id: true }
+        });
+
+        if (!product) {
+            // Should not happen if validation passed, but safety check
+            ctx.errors.push({
+                sheet: 'Products',
+                row: preview.rowNumber,
+                column: 'name',
+                field: 'name',
+                value: row.name,
+                message: `Product "${row.name}" not found during execution`,
+                code: 'PRODUCT_NOT_FOUND',
+                severity: 'error'
+            });
+            continue;
+        }
+
+        if (preview.action === 'create') {
+            await ctx.prisma.solutionProduct.create({
+                data: {
+                    solutionId: ctx.entityId,
+                    productId: product.id,
+                    order: row.order
+                }
+            });
+            ctx.stats.productLinksCreated++;
+        } else if (preview.action === 'update') {
+            // Composite key update
+            await ctx.prisma.solutionProduct.update({
+                where: {
+                    productId_solutionId: {
+                        solutionId: ctx.entityId,
+                        productId: product.id
+                    }
+                },
+                data: {
+                    order: row.order
+                }
+            });
+            ctx.stats.productLinksUpdated++;
+        } else if (preview.action === 'delete') {
+            await ctx.prisma.solutionProduct.delete({
+                where: {
+                    productId_solutionId: {
+                        solutionId: ctx.entityId,
+                        productId: product.id
+                    }
+                }
+            });
+            ctx.stats.productLinksDeleted++;
+        }
+    }
+}
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
+
+async function processResources(ctx: ExecutionContext, resources: RecordPreview<ValidatedResourceRow>[]) {
+    // 1. Fetch current resources from JSON
+    const entity = ctx.entityType === 'product'
+        ? await ctx.prisma.product.findUnique({ where: { id: ctx.entityId }, select: { resources: true } })
+        : await ctx.prisma.solution.findUnique({ where: { id: ctx.entityId }, select: { resources: true } });
+
+    let currentResources = (entity?.resources as unknown as ValidatedResourceRow[]) || [];
+
+    for (const { action, data } of resources) {
+        if (action === 'create') {
+            currentResources.push(data);
+            ctx.stats.resourcesCreated++;
+        } else if (action === 'update') {
+            const index = currentResources.findIndex(r => r.label === data.label);
+            if (index !== -1) {
+                currentResources[index] = data;
+                ctx.stats.resourcesUpdated++;
+            }
+        } else if (action === 'delete') {
+            currentResources = currentResources.filter(r => r.label !== data.label);
+            ctx.stats.resourcesDeleted++;
+        }
+    }
+
+    // 2. Update entity with new JSON
+    if (ctx.entityType === 'product') {
+        await ctx.prisma.product.update({
+            where: { id: ctx.entityId },
+            data: { resources: currentResources as any }
+        });
+    } else {
+        await ctx.prisma.solution.update({
+            where: { id: ctx.entityId },
+            data: { resources: currentResources as any }
+        });
+    }
+}
 
 function createEmptyStats(): ImportStats {
     return {
@@ -827,5 +996,11 @@ function createEmptyStats(): ImportStats {
         telemetryAttributesCreated: 0,
         telemetryAttributesUpdated: 0,
         telemetryAttributesDeleted: 0,
+        productLinksCreated: 0,
+        productLinksUpdated: 0,
+        productLinksDeleted: 0,
+        resourcesCreated: 0,
+        resourcesUpdated: 0,
+        resourcesDeleted: 0,
     };
 }

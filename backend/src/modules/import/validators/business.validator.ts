@@ -30,6 +30,8 @@ import {
     TAG_DIFF_FIELDS,
     CUSTOM_ATTRIBUTE_DIFF_FIELDS,
     TELEMETRY_ATTRIBUTE_DIFF_FIELDS,
+    PRODUCT_REF_DIFF_FIELDS,
+    RESOURCE_DIFF_FIELDS,
 } from '../diff';
 
 /**
@@ -158,6 +160,14 @@ export class BusinessValidator {
             ? await this.fetchExistingCustomAttributes(existingEntity.id)
             : EMPTY_EXISTING_DATA;
 
+        const existingProductRefs = existingEntity && this.entityType === 'solution'
+            ? await this.fetchExistingProductRefs(existingEntity.id)
+            : EMPTY_EXISTING_DATA;
+
+        const existingResources = existingEntity
+            ? await this.fetchExistingResources(existingEntity.id)
+            : EMPTY_EXISTING_DATA;
+
         // Process each entity type (cast to unknown first to allow flexible typing)
         const records: RecordsSummary = {
             tasks: this.processRecords(
@@ -168,6 +178,27 @@ export class BusinessValidator {
                 TASK_DIFF_FIELDS,
                 false // detect deletions
             ) as RecordPreview<(typeof parsedData.tasks)[0]['data']>[],
+
+            // ... (other fields will be implicitly structured by the following calls in real execution, 
+            // but here we are initializing the object structure. Wait, 'records' is defined as object literal.
+            // I need to add 'resources: ...' to the object literal.
+
+            // The previous view of business.validator.ts showed lines 165-180.
+            // It showed 'tasks: ...' starting at line 173.
+            // I need to see the END of the object literal to add 'resources'.
+
+            // Let me look at view_file result from step 2908 again. 
+            // It only showed the beginning of 'records'. 
+            // I need to find where 'records' object literal ends to add 'resources'.
+
+            // I will abort this specific tool call and read more of business.validator.ts first.
+            // Actually, I can use the previous error message context or just read more.
+            // I'll read more to be safe.
+
+            // Wait, I can't abort a tool call in the middle of a list of tool calls in thought process easily.
+            // I will just read the file in a separate step before applying this specific change.
+            // So I will removed this last tool call from this turn.
+
             licenses: this.processRecords(
                 'Licenses',
                 parsedData.licenses.map(l => ({ row: l.row, data: l.data as unknown as Record<string, unknown> })),
@@ -236,6 +267,22 @@ export class BusinessValidator {
                 TELEMETRY_ATTRIBUTE_DIFF_FIELDS,
                 false // detect deletions
             ) as RecordPreview<(typeof parsedData.telemetryAttributes)[0]['data']>[],
+            productRefs: this.processRecords(
+                'Products',
+                parsedData.productRefs?.map(p => ({ row: p.row, data: p.data as unknown as Record<string, unknown> })) || [],
+                existingProductRefs,
+                'name',
+                PRODUCT_REF_DIFF_FIELDS,
+                false // detect deletions
+            ) as RecordPreview<(typeof parsedData.productRefs)[0]['data']>[],
+            resources: this.processRecords(
+                'Resources',
+                parsedData.resources.map(r => ({ row: r.row, data: r.data as unknown as Record<string, unknown> })),
+                existingResources,
+                'label', // Primary key
+                RESOURCE_DIFF_FIELDS,
+                true // detect deletions
+            ) as RecordPreview<(typeof parsedData.resources)[0]['data']>[],
         };
 
         // Validate task references and total weight
@@ -243,6 +290,11 @@ export class BusinessValidator {
 
         // Calculate summary
         const summary = this.calculateSummary(records);
+
+        // Validate Product Refs exist
+        if (this.entityType === 'solution') {
+            await this.validateProductExistence(records.productRefs);
+        }
 
         return {
             isValid: this.errors.length === 0,
@@ -585,6 +637,69 @@ export class BusinessValidator {
         return { byName: byNameMap, byId };
     }
 
+    private async fetchExistingProductRefs(solutionId: string): Promise<ExistingData> {
+        const map = new Map<string, ExistingRecord>();
+        const products = await this.prisma.solutionProduct.findMany({
+            where: { solutionId },
+            include: { product: true }
+        });
+
+        for (const sp of products) {
+            const data: Record<string, unknown> = {
+                id: sp.productId, // Use Product ID as the key ID
+                name: sp.product.name,
+                order: sp.order,
+                description: (sp.product as any).description
+            };
+
+            map.set(sp.product.name.toLowerCase(), {
+                id: sp.productId,
+                name: sp.product.name,
+                data
+            });
+        }
+
+        return this.createExistingData(map);
+    }
+
+    private async validateProductExistence(previews: RecordPreview<unknown>[]): Promise<void> {
+        // Collect all product names from create/update actions
+        const namesToCheck = new Set<string>();
+        for (const preview of previews) {
+            if (preview.action === 'skip' || preview.action === 'delete') continue;
+            const data = preview.data as any;
+            if (data.name) namesToCheck.add(data.name);
+        }
+
+        if (namesToCheck.size === 0) return;
+
+        // Check which ones exist
+        const found = await this.prisma.product.findMany({
+            where: {
+                name: { in: Array.from(namesToCheck) }
+            },
+            select: { name: true }
+        });
+
+        const foundNames = new Set(found.map(f => f.name.toLowerCase()));
+
+        for (const preview of previews) {
+            if (preview.action === 'skip' || preview.action === 'delete') continue;
+            const name = (preview.data as any).name;
+            if (name && !foundNames.has(name.toLowerCase())) {
+                this.addError(
+                    'Products',
+                    preview.rowNumber,
+                    'name',
+                    'name',
+                    name,
+                    `Product "${name}" does not exist in the database. Please create the product first or check for typos.`,
+                    'PRODUCT_NOT_FOUND'
+                );
+            }
+        }
+    }
+
     /**
      * Process records for a sheet type - determine create/update/skip action
      */
@@ -758,6 +873,45 @@ export class BusinessValidator {
         }
     }
 
+    private async fetchExistingResources(entityId: string): Promise<ExistingData> {
+        const map = new Map<string, ExistingRecord>();
+
+        // Fetch entity with resources
+        let entityResources: any[] = [];
+
+        if (this.entityType === 'product') {
+            const product = await this.prisma.product.findUnique({
+                where: { id: entityId },
+                select: { resources: true }
+            });
+            if (product?.resources && Array.isArray(product.resources)) {
+                entityResources = product.resources;
+            }
+        } else {
+            const solution = await this.prisma.solution.findUnique({
+                where: { id: entityId },
+                select: { resources: true }
+            });
+            if (solution?.resources && Array.isArray(solution.resources)) {
+                entityResources = solution.resources;
+            }
+        }
+
+        // Map resources to ExistingRecord format
+        // Use label as the unique ID since there are no real IDs
+        for (const r of entityResources) {
+            if (r.label && r.url) {
+                map.set(r.label.toLowerCase(), {
+                    id: r.label, // Use label as ID
+                    name: r.label,
+                    data: { label: r.label, url: r.url } as unknown as Record<string, unknown>,
+                });
+            }
+        }
+
+        return this.createExistingData(map);
+    }
+
     /**
      * Calculate summary statistics
      */
@@ -787,6 +941,8 @@ export class BusinessValidator {
         countActions(records.tags);
         countActions(records.customAttributes);
         countActions(records.telemetryAttributes);
+        if (records.productRefs) countActions(records.productRefs);
+        countActions(records.resources);
 
         return {
             totalRecords,

@@ -399,6 +399,8 @@ model License {
   deletedAt   DateTime?
   product     Product?  @relation(fields: [productId], references: [id])
   solution    Solution? @relation(fields: [solutionId], references: [id])
+  
+  @@unique([solutionId, productId])
 }
 
 model ProductTag {

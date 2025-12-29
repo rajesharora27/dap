@@ -83,6 +83,8 @@ export const importTypeDefs = gql`
     tags: [RecordPreview!]!
     customAttributes: [RecordPreview!]!
     telemetryAttributes: [RecordPreview!]!
+    productRefs: [RecordPreview!]!
+    resources: [RecordPreview!]!
   }
 
   type RecordPreview {
@@ -146,6 +148,9 @@ export const importTypeDefs = gql`
     telemetryAttributesCreated: Int!
     telemetryAttributesUpdated: Int!
     telemetryAttributesDeleted: Int!
+    productLinksCreated: Int!
+    productLinksUpdated: Int!
+    productLinksDeleted: Int!
   }
 
   type ImportCommitResult {

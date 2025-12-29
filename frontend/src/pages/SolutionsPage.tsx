@@ -12,7 +12,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { CSS } from '@dnd-kit/utilities';
 import { DragIndicator } from '@shared/components/FAIcon';
 
-import { SOLUTIONS, SOLUTION, DELETE_SOLUTION, UPDATE_SOLUTION, EXPORT_SOLUTION_V2, SolutionDialog, SolutionSummaryDashboard, useSolutionEditing } from '@features/solutions';
+import { SOLUTIONS, SOLUTION, DELETE_SOLUTION, UPDATE_SOLUTION, EXPORT_SOLUTION, SolutionDialog, SolutionSummaryDashboard, useSolutionEditing } from '@features/solutions';
 import { PRODUCTS } from '@features/products';
 import { TASKS_FOR_SOLUTION, REORDER_TASKS, UPDATE_TASK, DELETE_TASK, CREATE_TASK, TaskDialog } from '@features/tasks';
 import { SOLUTION_TAGS, CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG, SET_SOLUTION_TASK_TAGS, REORDER_SOLUTION_TAGS, TagDialog } from '@features/tags';
@@ -288,17 +288,17 @@ export const SolutionsPage: React.FC = () => {
         setIsExporting(true);
         try {
             const { data } = await client.query({
-                query: EXPORT_SOLUTION_V2,
+                query: EXPORT_SOLUTION,
                 variables: { solutionId: selectedSolution },
                 fetchPolicy: 'network-only'
             });
 
-            if (!data || !data.exportSolutionV2) {
-                console.error('No data returned from Export Solution V2');
+            if (!data || !data.exportSolution) {
+                console.error('No data returned from Export Solution');
                 return;
             }
 
-            const { filename, content, mimeType } = data.exportSolutionV2;
+            const { filename, content, mimeType } = data.exportSolution;
 
             // Convert base64 to blob and download
             const binaryString = window.atob(content);
@@ -319,6 +319,8 @@ export const SolutionsPage: React.FC = () => {
         } catch (error) {
             console.error('Export Solution V2 failed:', error);
             alert('Export Solution V2 failed');
+        } finally {
+            setIsExporting(false);
         }
     };
 

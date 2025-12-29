@@ -122,7 +122,7 @@ export const CUSTOMER_SOLUTION_TAGS = gql`
   }
 `;
 
-export const EXPORT_SOLUTION_V2 = gql`
+export const EXPORT_SOLUTION = gql`
   query ExportSolution($solutionId: ID!) {
     exportSolution(solutionId: $solutionId) {
       filename

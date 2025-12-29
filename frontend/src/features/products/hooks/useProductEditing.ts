@@ -293,9 +293,11 @@ export function useProductEditing(productId: string | null | undefined) {
     }
     updated[newKey] = newValue;
 
+    const cleanResources = (product.resources || []).map((r: any) => ({ label: r.label, url: r.url }));
+
     await client.mutate({
       mutation: UPDATE_PRODUCT,
-      variables: { id: productId, input: { name: product.name, resources: product.resources, customAttrs: updated } },
+      variables: { id: productId, input: { name: product.name, resources: cleanResources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -312,9 +314,11 @@ export function useProductEditing(productId: string | null | undefined) {
       updated._order = updated._order.filter((k: string) => k !== key);
     }
 
+    const cleanResources = (product.resources || []).map((r: any) => ({ label: r.label, url: r.url }));
+
     await client.mutate({
       mutation: UPDATE_PRODUCT,
-      variables: { id: productId, input: { name: product.name, resources: product.resources, customAttrs: updated } },
+      variables: { id: productId, input: { name: product.name, resources: cleanResources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -330,9 +334,11 @@ export function useProductEditing(productId: string | null | undefined) {
     if (!order.includes(key)) order.push(key);
     updated._order = order;
 
+    const cleanResources = (product.resources || []).map((r: any) => ({ label: r.label, url: r.url }));
+
     await client.mutate({
       mutation: UPDATE_PRODUCT,
-      variables: { id: productId, input: { name: product.name, resources: product.resources, customAttrs: updated } },
+      variables: { id: productId, input: { name: product.name, resources: cleanResources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -347,9 +353,11 @@ export function useProductEditing(productId: string | null | undefined) {
 
     const updated = { ...product.customAttrs, _order: newKeys };
 
+    const cleanResources = (product.resources || []).map((r: any) => ({ label: r.label, url: r.url }));
+
     await client.mutate({
       mutation: UPDATE_PRODUCT,
-      variables: { id: productId, input: { name: product.name, resources: product.resources, customAttrs: updated } },
+      variables: { id: productId, input: { name: product.name, resources: cleanResources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };

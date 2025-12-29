@@ -1025,8 +1025,13 @@ All DAP data is stored on `/data` partition (not root):
 
 ### Version 3.3.0 (December 29, 2025)
 
-#### Resources Tab Feature
-- **New Resources Tab**: Added a "Resources" tab to Products and Solutions pages (after Summary tab), replacing the "General" tab in dialogs.
+#### 2025-12-29 Updates
+- **Solution Custom Attributes:** Added full Import/Export support for Solution Custom Attributes (stored as JSON).
+- **Import Dry Run Fix:** Added missing "Resources" section to import preview dialog.
+- **Solution Export Fix:** Resolved spinning button issue and simplified Solution Info export columns.
+- **DnD GraphQL Fix:** Resolved `__typename` error in update mutations during DnD operations for Custom Attributes.
+- **Resources Tab:** Added dedicated Resources tab to Product and Solution dialogs, replacing the generic description field usage. Resources are now structured objects {label, url} and included in Import/Export.
+- **Summary Tab:** Updated Summary tab to display top 3 resources for quick access.
 - **Identical to Outcomes Tab**: Resources tab behavior mirrors Outcomes tab with DnD reordering, inline editing, shared hooks, and + icon add support.
 - **Shared Hooks**: `useProductEditing` and `useSolutionEditing` now include `handleResourceUpdate`, `handleResourceDelete`, `handleResourceCreate`, `handleResourceReorder` methods.
 - **ResourcesTable Component**: New component (`features/products/components/shared/ResourcesTable.tsx`) with SortableResourceRow using @dnd-kit for reordering.

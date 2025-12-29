@@ -58,9 +58,9 @@ import { useMutation, gql } from '@apollo/client';
 // GraphQL Mutations
 // ============================================================================
 
-const IMPORT_V2_DRY_RUN = gql`
-  mutation ImportV2DryRun($content: String!, $entityType: EntityType) {
-    importV2DryRun(content: $content, entityType: $entityType) {
+const IMPORT_DRY_RUN = gql`
+  mutation ImportDryRun($content: String!, $entityType: EntityType) {
+    importDryRun(content: $content, entityType: $entityType) {
       sessionId
       isValid
       entityType
@@ -77,6 +77,7 @@ const IMPORT_V2_DRY_RUN = gql`
         tags { rowNumber action data existingId changes { field displayOld displayNew } }
         customAttributes { rowNumber action data existingId changes { field displayOld displayNew } }
         telemetryAttributes { rowNumber action data existingId changes { field displayOld displayNew } }
+        resources { rowNumber action data existingId changes { field displayOld displayNew } }
       }
       errors { sheet row column field message code severity }
       warnings { sheet row column field message code severity }
@@ -93,9 +94,9 @@ const IMPORT_V2_DRY_RUN = gql`
   }
 `;
 
-const IMPORT_V2_COMMIT = gql`
-  mutation ImportV2Commit($sessionId: String!) {
-    importV2Commit(sessionId: $sessionId) {
+const IMPORT_COMMIT = gql`
+  mutation ImportCommit($sessionId: String!) {
+    importCommit(sessionId: $sessionId) {
       success
       entityId
       entityName
@@ -114,9 +115,9 @@ const IMPORT_V2_COMMIT = gql`
   }
 `;
 
-const IMPORT_V2_EXTEND_SESSION = gql`
-  mutation ImportV2ExtendSession($sessionId: String!) {
-    importV2ExtendSession(sessionId: $sessionId)
+const IMPORT_EXTEND_SESSION = gql`
+  mutation ImportExtendSession($sessionId: String!) {
+    importExtendSession(sessionId: $sessionId)
   }
 `;
 
@@ -145,6 +146,8 @@ interface DryRunResult {
         tags: RecordPreview[];
         customAttributes: RecordPreview[];
         telemetryAttributes: RecordPreview[];
+        resources: RecordPreview[];
+        productRefs: RecordPreview[];
     };
     errors: Array<{ sheet: string; row: number; column?: string; field?: string; message: string; code: string }>;
     warnings: Array<{ sheet: string; row: number; message: string }>;
@@ -189,9 +192,9 @@ export const BulkImportDialog: React.FC<BulkImportDialogProps> = ({
         step === 'committing'
     );
 
-    const [dryRun, { loading: dryRunLoading }] = useMutation(IMPORT_V2_DRY_RUN);
-    const [commit, { loading: commitLoading }] = useMutation(IMPORT_V2_COMMIT);
-    const [extendSession] = useMutation(IMPORT_V2_EXTEND_SESSION);
+    const [dryRun, { loading: dryRunLoading }] = useMutation(IMPORT_DRY_RUN);
+    const [commit, { loading: commitLoading }] = useMutation(IMPORT_COMMIT);
+    const [extendSession] = useMutation(IMPORT_EXTEND_SESSION);
 
     // Keep session alive while reviewing
     useEffect(() => {
@@ -229,7 +232,7 @@ export const BulkImportDialog: React.FC<BulkImportDialogProps> = ({
                 },
             });
 
-            setDryRunResult(result.data.importV2DryRun);
+            setDryRunResult(result.data.importDryRun);
             setStep('preview');
         } catch (error) {
             console.error('Dry run failed:', error);
@@ -249,13 +252,14 @@ export const BulkImportDialog: React.FC<BulkImportDialogProps> = ({
                 variables: { sessionId: dryRunResult.sessionId },
             });
 
-            if (result.data.importV2Commit.success) {
+            if (result.data.importCommit.success) {
                 setStep('complete');
                 onSuccess?.();
             } else {
-                setCommitError(result.data.importV2Commit.message);
+                setCommitError(result.data.importCommit.message);
                 setStep('preview');
             }
+
         } catch (error) {
             console.error('Commit failed:', error);
             setCommitError(`Import failed: ${error instanceof Error ? error.message : String(error)}`);
@@ -413,6 +417,7 @@ export const BulkImportDialog: React.FC<BulkImportDialogProps> = ({
                                 <RecordSection title="Tags" records={dryRunResult?.records.tags || []} />
                                 <RecordSection title="Custom Attributes" records={dryRunResult?.records.customAttributes || []} />
                                 <RecordSection title="Telemetry Attributes" records={dryRunResult?.records.telemetryAttributes || []} />
+                                <RecordSection title="Resources" records={dryRunResult?.records.resources || []} />
                             </Box>
                         </Box>
                     </Box>
@@ -635,6 +640,7 @@ const PreviewStep: React.FC<PreviewStepProps> = ({ result }) => {
             <RecordSection title="Tags" records={result.records.tags} />
             <RecordSection title="Custom Attributes" records={result.records.customAttributes} />
             <RecordSection title="Telemetry Attributes" records={result.records.telemetryAttributes} />
+            <RecordSection title="Resources" records={result.records.resources || []} />
         </Box>
     );
 };

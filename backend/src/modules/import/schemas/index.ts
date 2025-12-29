@@ -7,10 +7,7 @@
 
 import { z } from 'zod';
 
-const ResourceSchema = z.object({
-    label: z.string().min(1, "Label is required"),
-    url: z.string().url("Invalid URL format")
-});
+// ResourceSchema definition removed from here to be placed after dependencies
 
 // ============================================================================
 // Common Schemas
@@ -44,6 +41,19 @@ export const LicenseLevelSchema = z.preprocess(
         message: 'License level must be Essential, Advantage, or Signature',
     })
 );
+
+const ResourceSchema = z.object({
+    label: NonEmptyString.describe('Label is required'),
+    url: UrlSchema
+});
+
+export const ResourceRowSchema = z.object({
+    id: IdSchema,
+    label: NonEmptyString.describe('Label is required'),
+    url: UrlSchema
+});
+
+export type ResourceRow = z.infer<typeof ResourceRowSchema>;
 
 // ============================================================================
 // Product Schema
@@ -218,6 +228,19 @@ export const TelemetryAttributeRowSchema = z.object({
 export type TelemetryAttributeRow = z.infer<typeof TelemetryAttributeRowSchema>;
 
 // ============================================================================
+// Product Reference Schema (for Solutions)
+// ============================================================================
+
+export const ProductRefRowSchema = z.object({
+    id: IdSchema,
+    name: NonEmptyString.describe('Product name is required'),
+    order: z.number().int().default(0),
+    description: z.string().optional().nullable(),
+});
+
+export type ProductRefRow = z.infer<typeof ProductRefRowSchema>;
+
+// ============================================================================
 // Schema Registry (for dynamic validation)
 // ============================================================================
 
@@ -231,6 +254,7 @@ export const SchemaRegistry = {
     tag: TagRowSchema,
     customAttribute: CustomAttributeRowSchema,
     telemetryAttribute: TelemetryAttributeRowSchema,
+    productRef: ProductRefRowSchema,
 } as const;
 
 export type SchemaName = keyof typeof SchemaRegistry;

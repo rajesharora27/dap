@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApolloClient } from '@apollo/client';
-import { EXPORT_PRODUCT_V2 } from '../graphql/products.queries';
+import { EXPORT_PRODUCT } from '../graphql/products.queries';
 
 export const useProductImportExport = (
     selectedProduct: string | null,
@@ -21,17 +21,17 @@ export const useProductImportExport = (
         setIsExporting(true);
         try {
             const { data } = await client.query({
-                query: EXPORT_PRODUCT_V2,
+                query: EXPORT_PRODUCT,
                 variables: { productId: selectedProduct },
                 fetchPolicy: 'network-only'
             });
 
-            if (!data || !data.exportProductV2) {
+            if (!data || !data.exportProduct) {
                 console.error('No data returned from Export');
                 return;
             }
 
-            const { filename, content, mimeType } = data.exportProductV2;
+            const { filename, content, mimeType } = data.exportProduct;
 
             // Convert base64 to blob and download
             const binaryString = window.atob(content);

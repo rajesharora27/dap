@@ -100,6 +100,8 @@ export const ImportMutationResolvers = {
                     tags: result.records.tags.map(formatRecordPreview),
                     customAttributes: result.records.customAttributes.map(formatRecordPreview),
                     telemetryAttributes: result.records.telemetryAttributes.map(formatRecordPreview),
+                    productRefs: result.records.productRefs.map(formatRecordPreview),
+                    resources: result.records.resources.map(formatRecordPreview),
                 },
                 errors: result.errors,
                 warnings: result.warnings,

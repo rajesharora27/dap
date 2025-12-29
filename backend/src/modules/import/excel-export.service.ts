@@ -59,6 +59,7 @@ export interface ExportResult {
         releasesExported: number;
         resourcesExported: number;
         telemetryAttributesExported: number;
+        productLinksExported?: number; // Only for Solutions
     };
 }
 
@@ -264,15 +265,23 @@ export class ExcelExportService {
         workbook.creator = 'DAP Export Service V2';
 
         // 1. Solution Info
+        // 1. Solution Info
         const infoData = [{
             id: solution.id,
-            name: solution.name,
-            description: solution.description,
-            linkedProducts: solution.products.map((p: any) => p.product.name).sort()
+            name: solution.name
         }];
         this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[0], infoData);
 
-        // 2. Tasks
+        // 2. Products
+        // Create product references data
+        const productRefData = solution.products.map((p: any) => ({
+            name: p.product.name,
+            order: p.order,
+            description: p.product.description
+        }));
+        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[1], productRefData);
+
+        // 3. Tasks
         const taskData = solution.tasks.map((t: any) => ({
             id: t.id,
             name: t.name,
@@ -288,25 +297,36 @@ export class ExcelExportService {
             releases: t.releases.map((r: any) => r.release.name).sort(),
             tags: t.solutionTaskTags.map((tag: any) => tag.tag.name).sort()
         }));
-        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[1], taskData);
+        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[2], taskData);
 
-        // 3. Licenses, 4. Outcomes, 5. Releases, 6. Tags
-        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[2], solution.licenses.map((l: any) => ({ ...l, id: l.id })).sort((a: any, b: any) => a.level - b.level));
-        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[3], solution.outcomes.map((o: any) => ({ ...o, id: o.id })).sort((a: any, b: any) => a.name.localeCompare(b.name)));
-        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[4], solution.releases.map((r: any) => ({ ...r, id: r.id })).sort((a: any, b: any) => a.level - b.level));
-        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[5], solution.tags.map((t: any) => ({ ...t, id: t.id })).sort((a: any, b: any) => a.name.localeCompare(b.name)));
+        // 4. Licenses, 5. Outcomes, 6. Releases, 7. Tags
+        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[3], solution.licenses.map((l: any) => ({ ...l, id: l.id })).sort((a: any, b: any) => a.level - b.level));
+        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[4], solution.outcomes.map((o: any) => ({ ...o, id: o.id })).sort((a: any, b: any) => a.name.localeCompare(b.name)));
+        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[5], solution.releases.map((r: any) => ({ ...r, id: r.id })).sort((a: any, b: any) => a.level - b.level));
+        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[6], solution.tags.map((t: any) => ({ ...t, id: t.id })).sort((a: any, b: any) => a.name.localeCompare(b.name)));
 
-        // 7. Custom Attributes
-        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[6], []);
+        // 8. Custom Attributes
+        const attrData: any[] = [];
+        if (solution.customAttrs && typeof solution.customAttrs === 'object') {
+            Object.entries(solution.customAttrs).forEach(([key, value], index) => {
+                attrData.push({
+                    id: undefined,
+                    key: key,
+                    value: String(value),
+                    displayOrder: index
+                });
+            });
+        }
+        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[7], attrData);
 
-        // 8. Resources
+        // 9. Resources
         const resourcesData = (solution.resources || []).map((r: any) => ({
             label: r.label,
             url: r.url
         }));
-        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[7], resourcesData);
+        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[8], resourcesData);
 
-        // 9. Telemetry
+        // 10. Telemetry
         const telemetryData: any[] = [];
         solution.tasks.forEach((t: any) => {
             t.telemetryAttributes.forEach((ta: any) => {
@@ -320,9 +340,9 @@ export class ExcelExportService {
                 });
             });
         });
-        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[8], telemetryData);
+        this.createSheet(workbook, SOLUTION_WORKBOOK_SHEETS[9], telemetryData);
 
-        // 10. Instructions
+        // 11. Instructions
         this.createInstructionsSheet(workbook);
 
         const buffer = Buffer.from(await workbook.xlsx.writeBuffer());
@@ -335,6 +355,7 @@ export class ExcelExportService {
             mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             stats: {
                 tasksExported: taskData.length,
+                productLinksExported: productRefData.length,
                 customAttributesExported: 0,
                 licensesExported: solution.licenses.length,
                 outcomesExported: solution.outcomes.length,

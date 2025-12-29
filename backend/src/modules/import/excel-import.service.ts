@@ -80,6 +80,8 @@ export async function dryRun(
                 tags: [],
                 customAttributes: [],
                 telemetryAttributes: [],
+                productRefs: [],
+                resources: [],
             },
             errors: parseResult.errors,
             warnings: parseResult.warnings,

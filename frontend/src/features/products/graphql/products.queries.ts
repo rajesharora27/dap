@@ -171,7 +171,7 @@ export const CUSTOMER_PRODUCT_TAGS = gql`
   }
 `;
 
-export const EXPORT_PRODUCT_V2 = gql`
+export const EXPORT_PRODUCT = gql`
   query ExportProduct($productId: ID!) {
   exportProduct(productId: $productId) {
     filename

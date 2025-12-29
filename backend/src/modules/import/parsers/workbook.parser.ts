@@ -20,6 +20,8 @@ import {
     ValidatedTagRow,
     ValidatedCustomAttributeRow,
     ValidatedTelemetryAttributeRow,
+    ValidatedProductRefRow,
+    ValidatedResourceRow,
     ParsedWorkbook,
 } from '../types';
 import {
@@ -32,6 +34,8 @@ import {
     TAG_COLUMNS,
     CUSTOM_ATTRIBUTE_COLUMNS,
     TELEMETRY_ATTRIBUTE_COLUMNS,
+    PRODUCT_REF_COLUMNS,
+    RESOURCE_COLUMNS,
 } from '../columns';
 import {
     ProductRowSchema,
@@ -43,6 +47,8 @@ import {
     TagRowSchema,
     CustomAttributeRowSchema,
     TelemetryAttributeRowSchema,
+    ProductRefRowSchema,
+    ResourceRowSchema,
 } from '../schemas';
 import {
     findWorksheet,
@@ -138,6 +144,11 @@ export class WorkbookParser {
             const tags = this.parseSheet('Tags', TAG_COLUMNS, TagRowSchema);
             const customAttributes = this.parseSheet('Custom Attributes', CUSTOM_ATTRIBUTE_COLUMNS, CustomAttributeRowSchema);
             const telemetryAttributes = this.parseSheet('Telemetry', TELEMETRY_ATTRIBUTE_COLUMNS, TelemetryAttributeRowSchema);
+            const productRefs = this.entityType === 'solution'
+                ? this.parseSheet('Products', PRODUCT_REF_COLUMNS, ProductRefRowSchema)
+                : { rows: [], errors: [], warnings: [] };
+
+            const resources = this.parseSheet('Resources', RESOURCE_COLUMNS, ResourceRowSchema);
 
             // Build parsed workbook
             const data: ParsedWorkbook = {
@@ -150,6 +161,8 @@ export class WorkbookParser {
                 tags: tags.rows as Array<{ row: number; data: ValidatedTagRow }>,
                 customAttributes: customAttributes.rows as Array<{ row: number; data: ValidatedCustomAttributeRow }>,
                 telemetryAttributes: telemetryAttributes.rows as Array<{ row: number; data: ValidatedTelemetryAttributeRow }>,
+                productRefs: productRefs.rows as Array<{ row: number; data: ValidatedProductRefRow }>,
+                resources: resources.rows as Array<{ row: number; data: ValidatedResourceRow }>,
             };
 
             return {

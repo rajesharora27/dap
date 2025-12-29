@@ -320,9 +320,11 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
     }
     updated[newKey] = newValue;
 
+    const cleanResources = (solution.resources || []).map((r: any) => ({ label: r.label, url: r.url }));
+
     await client.mutate({
       mutation: UPDATE_SOLUTION,
-      variables: { id: solutionId, input: { name: solution.name, resources: solution.resources, customAttrs: updated } },
+      variables: { id: solutionId, input: { name: solution.name, resources: cleanResources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -339,9 +341,11 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
       updated._order = updated._order.filter((k: string) => k !== key);
     }
 
+    const cleanResources = (solution.resources || []).map((r: any) => ({ label: r.label, url: r.url }));
+
     await client.mutate({
       mutation: UPDATE_SOLUTION,
-      variables: { id: solutionId, input: { name: solution.name, resources: solution.resources, customAttrs: updated } },
+      variables: { id: solutionId, input: { name: solution.name, resources: cleanResources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -357,9 +361,11 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
     if (!order.includes(key)) order.push(key);
     updated._order = order;
 
+    const cleanResources = (solution.resources || []).map((r: any) => ({ label: r.label, url: r.url }));
+
     await client.mutate({
       mutation: UPDATE_SOLUTION,
-      variables: { id: solutionId, input: { name: solution.name, resources: solution.resources, customAttrs: updated } },
+      variables: { id: solutionId, input: { name: solution.name, resources: cleanResources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };
@@ -374,9 +380,11 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
 
     const updated = { ...solution.customAttrs, _order: newKeys };
 
+    const cleanResources = (solution.resources || []).map((r: any) => ({ label: r.label, url: r.url }));
+
     await client.mutate({
       mutation: UPDATE_SOLUTION,
-      variables: { id: solutionId, input: { name: solution.name, resources: solution.resources, customAttrs: updated } },
+      variables: { id: solutionId, input: { name: solution.name, resources: cleanResources, customAttrs: updated } },
       refetchQueries: REFETCH_QUERIES
     });
   };

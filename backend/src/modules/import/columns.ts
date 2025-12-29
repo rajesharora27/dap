@@ -14,14 +14,11 @@ import { ColumnDefinition, SheetDefinition } from './types';
 export const PRODUCT_INFO_COLUMNS: ColumnDefinition[] = [
     { key: 'id', header: 'ID', width: 40, type: 'string', hidden: true },
     { key: 'name', header: 'Product Name', width: 40, required: true, type: 'string' },
-    { key: 'description', header: 'Description', width: 60, type: 'string' },
 ];
 
 export const SOLUTION_INFO_COLUMNS: ColumnDefinition[] = [
     { key: 'id', header: 'ID', width: 40, type: 'string', hidden: true },
     { key: 'name', header: 'Solution Name', width: 40, required: true, type: 'string' },
-    { key: 'description', header: 'Description', width: 60, type: 'string' },
-    { key: 'linkedProducts', header: 'Linked Products', width: 50, type: 'array', arraySeparator: ',' },
 ];
 
 // ============================================================================
@@ -108,6 +105,17 @@ export const RESOURCE_COLUMNS: ColumnDefinition[] = [
 ];
 
 // ============================================================================
+// Product References Sheet (for Solutions)
+// ============================================================================
+
+export const PRODUCT_REF_COLUMNS: ColumnDefinition[] = [
+    { key: 'id', header: 'ID', width: 40, type: 'string', hidden: true },
+    { key: 'name', header: 'Product Name', width: 40, required: true, type: 'string' },
+    { key: 'order', header: 'Order', width: 10, type: 'number' },
+    { key: 'description', header: 'Description', width: 60, type: 'string' },
+];
+
+// ============================================================================
 // Telemetry Attributes Sheet
 // ============================================================================
 
@@ -139,6 +147,7 @@ export const PRODUCT_WORKBOOK_SHEETS: SheetDefinition[] = [
 
 export const SOLUTION_WORKBOOK_SHEETS: SheetDefinition[] = [
     { name: 'Solution Info', columns: SOLUTION_INFO_COLUMNS },
+    { name: 'Products', columns: PRODUCT_REF_COLUMNS },
     { name: 'Tasks', columns: TASK_COLUMNS },
     { name: 'Licenses', columns: LICENSE_COLUMNS },
     { name: 'Outcomes', columns: OUTCOME_COLUMNS },

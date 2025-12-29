@@ -29,9 +29,10 @@ describe('GraphQL API - Excel Export Integration', () => {
 
         app.use('/graphql', expressMiddleware(server, {
             context: async ({ req }: { req: express.Request }) => {
-                if (!req.headers.authorization) return { prisma, user: null };
+                if (!req.headers.authorization) return { prisma, user: null, productRefs: [] };
                 return {
                     prisma,
+                    productRefs: [], // Added for Solution Export/Import
                     user: {
                         id: testUser?.id,
                         userId: testUser?.id,

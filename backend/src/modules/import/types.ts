@@ -111,6 +111,19 @@ export interface RawTelemetryAttributeRow {
     apiEndpoint?: string | null;
 }
 
+export interface RawProductRefRow {
+    id?: string | null;
+    name?: string | null;
+    order?: number | string | null;
+    description?: string | null;
+}
+
+export interface RawResourceRow {
+    id?: string | null;
+    label?: string | null;
+    url?: string | null;
+}
+
 // ============================================================================
 // Validated Row Types (after Zod validation)
 // ============================================================================
@@ -190,6 +203,19 @@ export interface ValidatedTelemetryAttributeRow {
     apiEndpoint?: string;
 }
 
+export interface ValidatedResourceRow {
+    id?: string;
+    label: string;
+    url: string;
+}
+
+export interface ValidatedProductRefRow {
+    id?: string;
+    name: string;
+    order: number;
+    description?: string;
+}
+
 // ============================================================================
 // Validation Error/Warning Types
 // ============================================================================
@@ -262,6 +288,8 @@ export interface ParsedWorkbook {
     tags: Array<{ row: number; data: ValidatedTagRow }>;
     customAttributes: Array<{ row: number; data: ValidatedCustomAttributeRow }>;
     telemetryAttributes: Array<{ row: number; data: ValidatedTelemetryAttributeRow }>;
+    productRefs: Array<{ row: number; data: ValidatedProductRefRow }>; // Only for Solutions
+    resources: Array<{ row: number; data: ValidatedResourceRow }>;
 }
 
 // ============================================================================
@@ -282,6 +310,8 @@ export interface RecordsSummary {
     tags: RecordPreview<ValidatedTagRow>[];
     customAttributes: RecordPreview<ValidatedCustomAttributeRow>[];
     telemetryAttributes: RecordPreview<ValidatedTelemetryAttributeRow>[];
+    productRefs: RecordPreview<ValidatedProductRefRow>[];
+    resources: RecordPreview<ValidatedResourceRow>[];
 }
 
 export interface ImportSummary {
@@ -332,6 +362,12 @@ export interface ImportStats {
     telemetryAttributesCreated: number;
     telemetryAttributesUpdated: number;
     telemetryAttributesDeleted: number;
+    productLinksCreated: number;
+    productLinksDeleted: number;
+    productLinksUpdated: number;
+    resourcesCreated: number;
+    resourcesUpdated: number;
+    resourcesDeleted: number;
 }
 
 export interface ImportResult {
