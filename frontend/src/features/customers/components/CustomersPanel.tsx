@@ -97,22 +97,32 @@ const CUSTOMERS = gql`
       id
       name
       description
-      selectedOutcomes {
+      products {
         id
         name
-        description
-      }
-      selectedReleases {
-        id
-        name
-        level
-      }
-      adoptionPlan {
-        id
-        progressPercentage
-        totalTasks
-        completedTasks
-        lastSyncedAt
+        licenseLevel
+        customerSolutionId
+        product {
+          id
+          name
+        }
+        selectedOutcomes {
+          id
+          name
+          description
+        }
+        selectedReleases {
+          id
+          name
+          level
+        }
+        adoptionPlan {
+          id
+          progressPercentage
+          totalTasks
+          completedTasks
+          lastSyncedAt
+        }
       }
       solutions {
         id
