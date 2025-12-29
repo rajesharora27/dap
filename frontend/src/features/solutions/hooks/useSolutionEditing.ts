@@ -311,6 +311,10 @@ export function useSolutionEditing(solutionId: string | null | undefined) {
     if (!solution) return;
 
     const updated = { ...solution.customAttrs };
+    // Copy _order to avoid mutating frozen cache
+    if (updated._order) {
+      updated._order = [...updated._order];
+    }
     if (oldKey !== newKey) {
       delete updated[oldKey];
       if (updated._order) {

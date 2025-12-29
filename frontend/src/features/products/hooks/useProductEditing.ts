@@ -284,6 +284,10 @@ export function useProductEditing(productId: string | null | undefined) {
     if (!product) return;
 
     const updated = { ...product.customAttrs };
+    // Copy _order to avoid mutating frozen cache
+    if (updated._order) {
+      updated._order = [...updated._order];
+    }
     if (oldKey !== newKey) {
       delete updated[oldKey];
       if (updated._order) {
