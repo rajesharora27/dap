@@ -28,48 +28,7 @@ import {
 import { gql, useMutation, useQuery } from '@apollo/client';
 import { ExpandMore } from '@shared/components/FAIcon';
 import { ALL_OUTCOMES_ID, ALL_RELEASES_ID } from '@features/tasks';
-
-const SOLUTIONS_QUERY = gql`
-  query GetSolutionsWithDetails {
-    solutions(first: 100) {
-      edges {
-        node {
-          id
-          name
-          resources { label url }
-          outcomes {
-            id
-            name
-            description
-          }
-          releases {
-            id
-            name
-            description
-          }
-          products {
-            edges {
-              node {
-                id
-                name
-                outcomes {
-                  id
-                  name
-                  description
-                }
-                releases {
-                  id
-                  name
-                  description
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-`;
+import { SOLUTIONS_WITH_DETAILS } from '@features/solutions/graphql';
 
 const ASSIGN_SOLUTION_TO_CUSTOMER = gql`
   mutation AssignSolutionToCustomer($input: AssignSolutionToCustomerInput!) {
@@ -118,7 +77,7 @@ export const AssignSolutionDialog: React.FC<Props> = ({
   const [selectedReleaseIds, setSelectedReleaseIds] = useState<string[]>([]);
   const [error, setError] = useState('');
 
-  const { data: solutionsData, loading: solutionsLoading } = useQuery(SOLUTIONS_QUERY);
+  const { data: solutionsData, loading: solutionsLoading } = useQuery(SOLUTIONS_WITH_DETAILS);
 
   const [assignSolution, { loading: assignLoading }] = useMutation(ASSIGN_SOLUTION_TO_CUSTOMER);
   const [createAdoptionPlan, { loading: createPlanLoading }] = useMutation(

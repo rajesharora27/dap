@@ -51,6 +51,56 @@ export const SOLUTIONS = gql`
   }
 `;
 
+// Consolidated query for AssignSolutionDialog - replaces duplicate GetSolutionsWithDetails
+export const SOLUTIONS_WITH_DETAILS = gql`
+  query SolutionsWithDetails {
+    solutions(first: 100) {
+      edges {
+        node {
+          id
+          name
+          description
+          resources { label url }
+          outcomes {
+            id
+            name
+            description
+          }
+          releases {
+            id
+            name
+            description
+          }
+          licenses {
+            id
+            name
+            level
+            isActive
+          }
+          products {
+            edges {
+              node {
+                id
+                name
+                outcomes {
+                  id
+                  name
+                  description
+                }
+                releases {
+                  id
+                  name
+                  description
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 export const SOLUTION = gql`
   query SolutionDetail($id: ID!) {
     solution(id: $id) {

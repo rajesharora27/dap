@@ -77,17 +77,7 @@ export const PRODUCT = gql`
   }
 `;
 
-export const PRODUCT_TAGS = gql`
-  query ProductTags($productId: ID!) {
-   productTags(productId: $productId) {
-     id
-     name
-     color
-     description
-     displayOrder
-   }
-  }
-`;
+// PRODUCT_TAGS query removed - use PRODUCT_TAGS from @features/tags/graphql/queries instead
 
 export const PRODUCT_TASK_CONNECTION_FIELDS = gql`
   fragment ProductTaskConnectionFields on TaskConnection {
