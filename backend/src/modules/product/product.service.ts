@@ -19,6 +19,7 @@ export class ProductService {
         const product = await prisma.product.create({
             data: {
                 name: productData.name,
+                description: productData.description,
                 resources: productData.resources ?? undefined,
                 customAttrs: productData.customAttrs ?? undefined
             }

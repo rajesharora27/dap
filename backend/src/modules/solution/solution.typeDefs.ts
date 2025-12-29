@@ -4,6 +4,7 @@ export const solutionTypeDefs = gql`
   type Solution implements Node {
     id: ID!
     name: String!
+    description: String
     resources: [Resource!]
     products(first: Int, after: String): ProductConnection!
     tasks(first: Int, after: String, last: Int, before: String): TaskConnection!
@@ -21,6 +22,7 @@ export const solutionTypeDefs = gql`
 
   input SolutionInput { 
     name: String! 
+    description: String 
     resources: [ResourceInput!] 
     customAttrs: JSON 
   }

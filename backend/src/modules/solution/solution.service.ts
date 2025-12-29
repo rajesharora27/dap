@@ -16,6 +16,7 @@ export class SolutionService {
         const solution = await prisma.solution.create({
             data: {
                 name: solutionData.name,
+                description: solutionData.description,
                 resources: solutionData.resources ?? undefined,
                 customAttrs: solutionData.customAttrs ?? undefined
             }

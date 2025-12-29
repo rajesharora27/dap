@@ -7,6 +7,7 @@ const ResourceSchema = z.object({
 
 export const CreateSolutionSchema = z.object({
     name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+    description: z.string().optional().nullable(),
     resources: z.array(ResourceSchema).optional().nullable(),
     customAttrs: z.record(z.string(), z.any()).optional().nullable(),
     licenseIds: z.array(z.string()).optional()
@@ -14,6 +15,7 @@ export const CreateSolutionSchema = z.object({
 
 export const UpdateSolutionSchema = z.object({
     name: z.string().min(1, "Name is required").max(255, "Name is too long").optional(),
+    description: z.string().optional().nullable(),
     resources: z.array(ResourceSchema).optional().nullable(),
     customAttrs: z.record(z.string(), z.any()).optional().nullable(),
     licenseIds: z.array(z.string()).optional()

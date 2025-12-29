@@ -7,6 +7,7 @@ const ResourceSchema = z.object({
 
 export const CreateProductSchema = z.object({
     name: z.string().min(1, "Name is required").max(255, "Name is too long"),
+    description: z.string().optional().nullable(),
     resources: z.array(ResourceSchema).optional().nullable(),
     customAttrs: z.record(z.string(), z.any()).optional().nullable(),
     licenseIds: z.array(z.string()).optional()
@@ -14,6 +15,7 @@ export const CreateProductSchema = z.object({
 
 export const UpdateProductSchema = z.object({
     name: z.string().min(1, "Name is required").max(255, "Name is too long").optional(),
+    description: z.string().optional().nullable(),
     resources: z.array(ResourceSchema).optional().nullable(),
     statusPercent: z.number().min(0).max(100).optional().nullable(),
     customAttrs: z.record(z.string(), z.any()).optional().nullable(),
