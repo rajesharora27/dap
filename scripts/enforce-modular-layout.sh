@@ -13,14 +13,18 @@ set -euo pipefail
 root_dir="$(git rev-parse --show-toplevel)"
 cd "$root_dir"
 
-# Allow-list of non-modular infra paths (scripts, hooks, CI)
+# Allow-list of non-modular infra paths (scripts, hooks, CI, docs)
 allowed_infra=(
-  '^scripts/enforce-modular-layout\.sh$'
-  '^\.githooks/pre-commit$'
+  '^scripts/'
+  '^docs/'
+  '^deploy/'
   '^\.githooks/.*'
   '^\.github/.*'
   '^\.gitlab/.*'
   '^\.husky/.*'
+  '^\.env\.example$'
+  '^package\.json$'
+  '^README\.md$'
 )
 
 allowed_backend=(
