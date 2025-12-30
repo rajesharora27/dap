@@ -89,6 +89,7 @@ export function SortableTaskItem({
                         listeners={listeners}
                         locked={locked}
                         disableDrag={disableDrag}
+                        showNumber={false}
                     />
                 </TableCell>
 

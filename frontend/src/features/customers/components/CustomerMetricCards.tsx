@@ -9,7 +9,7 @@ import {
     useTheme,
     alpha
 } from '@mui/material';
-import { Assessment, Inventory as ProductIcon, Extension as SolutionIcon } from '@shared/components/FAIcon';
+import { Assessment, BoxIcon as ProductIcon, LightbulbOutlined as SolutionIcon } from '@shared/components/FAIcon';
 import { getProgressColor } from '@shared/utils/progressUtils';
 
 interface OverviewMetrics {
@@ -107,8 +107,12 @@ export function CustomerMetricCards({ overviewMetrics }: CustomerMetricCardsProp
             {/* Portfolio Split */}
             <Paper elevation={0} sx={{ flex: 1.5, border: '1px solid', borderColor: 'divider', p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 0.5 }}>
-                    <SolutionIcon sx={{ fontSize: 20, color: colors.solution }} />
-                    <ProductIcon sx={{ fontSize: 20, color: colors.product }} />
+                    <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
+                        <SolutionIcon sx={{ fontSize: 16, color: colors.solution }} />
+                    </Box>
+                    <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', alignItems: 'center' }}>
+                        <ProductIcon sx={{ fontSize: 16, color: colors.product }} />
+                    </Box>
                 </Box>
                 <Box sx={{ flex: 1 }}>
                     <Typography variant="body2" color="text.secondary" fontWeight={500}>Portfolio</Typography>

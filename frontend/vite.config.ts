@@ -91,7 +91,30 @@ export default defineConfig(({ mode }) => {
       sourcemap: isDev,
       target: isDev ? 'esnext' : 'es2018',
       minify: isDev ? false : 'esbuild',
-      cssCodeSplit: true
+      cssCodeSplit: true,
+      // Performance: Manual chunk splitting for optimal bundle sizes
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Core React vendor chunk
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            // Apollo/GraphQL chunk
+            'vendor-apollo': ['@apollo/client', 'graphql'],
+            // MUI core chunk
+            'vendor-mui-core': ['@mui/material', '@mui/system'],
+            // MUI icons (often large)
+            'vendor-mui-icons': ['@mui/icons-material'],
+            // Date/Chart libraries
+            'vendor-charts': ['recharts', 'date-fns'],
+            // DnD and utilities
+            'vendor-utils': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+            // Excel handling
+            'vendor-excel': ['xlsx', 'exceljs'],
+          },
+        },
+      },
+      // Increase chunk size warning limit for vendor chunks
+      chunkSizeWarningLimit: 600,
     },
     warmup: isDev
       ? {

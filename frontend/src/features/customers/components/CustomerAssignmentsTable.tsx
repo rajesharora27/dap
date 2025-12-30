@@ -26,8 +26,8 @@ import {
     Sync,
     MoreVert,
     Add,
-    Inventory as ProductIcon,
-    Extension as SolutionIcon,
+    BoxIcon as ProductIcon,
+    LightbulbOutlined as SolutionIcon,
     Edit,
     Delete,
 } from '@shared/components/FAIcon';
@@ -147,8 +147,18 @@ export function CustomerAssignmentsTable({
                     <IconButton onClick={(e) => setAssignMenuAnchor(e.currentTarget)}><Add /></IconButton>
                 </Tooltip>
                 <Menu anchorEl={assignMenuAnchor} open={Boolean(assignMenuAnchor)} onClose={() => setAssignMenuAnchor(null)}>
-                    <MenuItem onClick={() => { setAssignMenuAnchor(null); onAssignProduct(); }}><ProductIcon fontSize="small" sx={{ mr: 1, color: '#10B981' }} /> Assign Product</MenuItem>
-                    <MenuItem onClick={() => { setAssignMenuAnchor(null); onAssignSolution(); }}><SolutionIcon fontSize="small" sx={{ mr: 1, color: '#3B82F6' }} /> Assign Solution</MenuItem>
+                    <MenuItem onClick={() => { setAssignMenuAnchor(null); onAssignProduct(); }}>
+                        <Box sx={{ mr: 1, p: 0.5, borderRadius: 1, bgcolor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center' }}>
+                            <ProductIcon fontSize="small" sx={{ color: '#10B981' }} />
+                        </Box>
+                        Assign Product
+                    </MenuItem>
+                    <MenuItem onClick={() => { setAssignMenuAnchor(null); onAssignSolution(); }}>
+                        <Box sx={{ mr: 1, p: 0.5, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', display: 'flex', alignItems: 'center' }}>
+                            <SolutionIcon fontSize="small" sx={{ color: '#3B82F6' }} />
+                        </Box>
+                        Assign Solution
+                    </MenuItem>
                 </Menu>
             </Paper>
 
@@ -170,7 +180,15 @@ export function CustomerAssignmentsTable({
                                 <TableCell sx={{ fontWeight: 500 }}>{item.assignmentName}</TableCell>
                                 <TableCell>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        {item.type === 'solution' ? <SolutionIcon fontSize="small" sx={{ color: '#3B82F6' }} /> : <ProductIcon fontSize="small" sx={{ color: '#10B981' }} />}
+                                        {item.type === 'solution' ? (
+                                            <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
+                                                <SolutionIcon fontSize="small" sx={{ color: '#3B82F6' }} />
+                                            </Box>
+                                        ) : (
+                                            <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', alignItems: 'center' }}>
+                                                <ProductIcon fontSize="small" sx={{ color: '#10B981' }} />
+                                            </Box>
+                                        )}
                                         <Typography variant="body2">{item.itemName}</Typography>
                                         <Chip label={item.licenseLevel} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.625rem' }} />
                                     </Box>

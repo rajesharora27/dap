@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box } from '@mui/material';
-import { Lock } from './FAIcon';
+import { Lock, DragIndicator } from './FAIcon';
 
 interface SortableHandleProps {
     attributes?: any;
@@ -8,6 +8,7 @@ interface SortableHandleProps {
     index: number;
     locked?: boolean;
     disableDrag?: boolean;
+    showNumber?: boolean; // When false, shows drag icon instead of number
 }
 
 export const SortableHandle: React.FC<SortableHandleProps> = ({
@@ -15,7 +16,8 @@ export const SortableHandle: React.FC<SortableHandleProps> = ({
     listeners,
     index,
     locked,
-    disableDrag
+    disableDrag,
+    showNumber = true
 }) => {
     const isDisabled = locked || disableDrag;
 
@@ -45,8 +47,10 @@ export const SortableHandle: React.FC<SortableHandleProps> = ({
         >
             {locked ? (
                 <Lock sx={{ fontSize: '0.9rem', opacity: 0.5 }} />
-            ) : (
+            ) : showNumber ? (
                 index + 1
+            ) : (
+                <DragIndicator sx={{ fontSize: '1rem' }} />
             )}
         </Box>
     );

@@ -23,6 +23,7 @@ import { AutoBackupScheduler } from './modules/backup/auto-backup.scheduler';
 import { initSentry, captureException } from './shared/monitoring/sentry';
 import { ApolloServerPluginLandingPageLocalDefault, ApolloServerPluginLandingPageProductionDefault } from '@apollo/server/plugin/landingPage/default';
 import devToolsRouter, { addLogEntry } from './modules/dev-tools/dev-tools.router';
+import { queryComplexityPlugin, queryDepthPlugin } from './shared/graphql/queryComplexity';
 // Force restart to load permission enforcement - 2025-11-11
 
 export async function createApp() {
@@ -280,13 +281,28 @@ export async function createApp() {
   app.use('/api/dev', devToolsRouter);
 
   const schema = makeExecutableSchema({ typeDefs, resolvers });
+  
+  // Build Apollo plugins array with performance features
+  const apolloPlugins = [
+    // Query complexity limiting - prevents resource exhaustion
+    queryComplexityPlugin(schema, {
+      maxComplexity: 1000,
+      warnThreshold: 500,
+      enforceLimit: envConfig.isProd,
+    }),
+    // Query depth limiting - prevents deeply nested queries
+    queryDepthPlugin(15),
+    // Landing page based on environment
+    ...(envConfig.features.graphqlPlayground
+      ? [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })]
+      : [ApolloServerPluginLandingPageProductionDefault({ footer: false })]),
+  ];
+
   const apollo = new ApolloServer({
     schema,
     csrfPrevention: false,
     introspection: envConfig.features.introspection,
-    plugins: envConfig.features.graphqlPlayground
-      ? [ApolloServerPluginLandingPageLocalDefault({ includeCookies: true })]
-      : [ApolloServerPluginLandingPageProductionDefault({ footer: false })]
+    plugins: apolloPlugins,
   });
   await apollo.start();
   const graphqlMiddleware: any[] = [
