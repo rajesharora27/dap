@@ -177,4 +177,133 @@ export class SolutionService {
         await logAudit('REORDER_PRODUCTS_SOLUTION', 'Solution', solutionId, { productOrders }, userId);
         return true;
     }
+
+    // Helper to calculate progress for a set of tasks
+    static calculateSolutionTasksProgress(tasks: any[]): {
+        totalTasks: number;
+        completedTasks: number;
+        totalWeight: number;
+        completedWeight: number;
+        progressPercentage: number;
+    } {
+        // Filter out NOT_APPLICABLE tasks
+        const applicableTasks = tasks.filter(t => t.status !== 'NOT_APPLICABLE');
+
+        const totalTasks = applicableTasks.length;
+        const completedTasks = applicableTasks.filter(t => t.status === 'COMPLETED' || t.status === 'DONE').length;
+
+        const totalWeight = applicableTasks.reduce((sum, task) => {
+            const weight = typeof task.weight === 'object' && 'toNumber' in task.weight
+                ? task.weight.toNumber()
+                : Number(task.weight || 0);
+            return sum + weight;
+        }, 0);
+
+        const completedWeight = applicableTasks
+            .filter(t => t.status === 'COMPLETED' || t.status === 'DONE')
+            .reduce((sum, task) => {
+                const weight = typeof task.weight === 'object' && 'toNumber' in task.weight
+                    ? task.weight.toNumber()
+                    : Number(task.weight || 0);
+                return sum + weight;
+            }, 0);
+
+        const progressPercentage = totalWeight > 0 ? (completedWeight / totalWeight) * 100 : 0;
+
+        return {
+            totalTasks,
+            completedTasks,
+            totalWeight,
+            completedWeight,
+            progressPercentage: Math.round(progressPercentage * 100) / 100,
+        };
+    }
+
+    static async recalculateSolutionAdoptionPlanProgress(userId: string | undefined, solutionAdoptionPlanId: string) {
+        // Fetch plan with tasks and customer solution info
+        const plan = await prisma.solutionAdoptionPlan.findUnique({
+            where: { id: solutionAdoptionPlanId },
+            include: {
+                tasks: true,
+                products: true,
+                customerSolution: true
+            }
+        });
+
+        if (!plan) return null;
+
+        // Calculate solution-specific tasks progress
+        const solutionSpecificTasks = plan.tasks.filter((t: any) => t.sourceType === 'SOLUTION');
+        const progress = this.calculateSolutionTasksProgress(solutionSpecificTasks);
+        const solutionTasksComplete = solutionSpecificTasks.filter(
+            (t: any) => (t.status === 'COMPLETED' || t.status === 'DONE')
+        ).length;
+
+        // Calculate aggregated progress: solution tasks + product adoption plans
+        let totalTasksWithProducts = progress.totalTasks;
+        let completedTasksWithProducts = progress.completedTasks;
+        let totalWeightWithProducts = Number(progress.totalWeight);
+        let completedWeightWithProducts = Number(progress.completedWeight);
+
+        // Fetch customer products to get product adoption plan progress
+        // Use the strict naming convention to find associated products or direct link if possible
+        const customerProducts = await prisma.customerProduct.findMany({
+            where: {
+                customerId: plan.customerSolution.customerId,
+                customerSolutionId: plan.customerSolutionId // More reliable than name matching
+            },
+            include: {
+                adoptionPlan: true
+            }
+        });
+
+        for (const cp of customerProducts) {
+            if (cp.adoptionPlan) {
+                totalTasksWithProducts += cp.adoptionPlan.totalTasks;
+                completedTasksWithProducts += cp.adoptionPlan.completedTasks;
+                totalWeightWithProducts += Number(cp.adoptionPlan.totalWeight);
+                completedWeightWithProducts += Number(cp.adoptionPlan.completedWeight);
+            }
+        }
+
+        const overallProgressPercentage = totalWeightWithProducts > 0
+            ? (completedWeightWithProducts / totalWeightWithProducts) * 100
+            : 0;
+
+        // Update plan progress
+        await prisma.solutionAdoptionPlan.update({
+            where: { id: solutionAdoptionPlanId },
+            data: {
+                totalTasks: totalTasksWithProducts,
+                completedTasks: completedTasksWithProducts,
+                totalWeight: totalWeightWithProducts,
+                completedWeight: completedWeightWithProducts,
+                progressPercentage: overallProgressPercentage,
+                solutionTasksTotal: solutionSpecificTasks.length,
+                solutionTasksComplete,
+                lastSyncedAt: new Date()
+            }
+        });
+
+        // Return updated plan with all relations needed for GraphQL
+        return prisma.solutionAdoptionPlan.findUnique({
+            where: { id: solutionAdoptionPlanId },
+            include: {
+                tasks: true,
+                products: {
+                    orderBy: { sequenceNumber: 'asc' },
+                    include: {
+                        // product: true, // Removed as it is not a direct relation on SolutionAdoptionProduct
+                        // adoptionPlan: { include: { customerProduct: true, tasks: true } } // Removed as it is not a direct relation
+                    }
+                },
+                customerSolution: {
+                    include: {
+                        customer: true,
+                        solution: true
+                    }
+                }
+            }
+        });
+    }
 }

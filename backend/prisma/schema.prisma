@@ -166,7 +166,7 @@ model CustomerSolution {
   products          CustomerProduct[]     // Products created from this solution
   tags              CustomerSolutionTag[]
 
-  @@unique([customerId, solutionId])
+  @@unique([customerId, solutionId, name])
   @@index([customerId])
   @@index([solutionId])
 }

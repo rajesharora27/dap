@@ -36,218 +36,19 @@ const ALL_RELEASES_ID = '__ALL_RELEASES__';
 const ALL_OUTCOMES_ID = '__ALL_OUTCOMES__';
 const ALL_TAGS_ID = '__ALL_TAGS__';
 
-const GET_SOLUTION_ADOPTION_PLAN = gql`
-  query SolutionAdoptionPlan($id: ID!) {
-    solutionAdoptionPlan(id: $id) {
-      id
-      solutionName
-      solutionId
-      licenseLevel
-      selectedOutcomes {
-        id
-        name
-        description
-      }
-      selectedReleases {
-        id
-        name
-        description
-        level
-      }
-      progressPercentage
-      totalTasks
-      completedTasks
-      solutionTasksTotal
-      solutionTasksComplete
-      needsSync
-      lastSyncedAt
-      customerSolution {
-        id
-        name
-        tags {
-          id
-          name
-          color
-        }
-        solution {
-          id
-          name
-          outcomes {
-            id
-            name
-            description
-          }
-          releases {
-            id
-            name
-            description
-            level
-          }
-        }
-      }
-      products {
-        id
-        productId
-        productName
-        status
-        progressPercentage
-        totalTasks
-        completedTasks
-        productAdoptionPlan {
-          id
-          progressPercentage
-          totalTasks
-          completedTasks
-          tasks {
-            id
-            name
-            description
-            notes
-            status
-            weight
-            sequenceNumber
-            statusUpdatedAt
-            statusUpdatedBy
-            statusUpdateSource
-            statusNotes
-            licenseLevel
-            howToDoc
-            howToVideo
-            telemetryAttributes {
-              id
-              name
-              description
-              dataType
-              successCriteria
-              isMet
-              values {
-                id
-                value
-                createdAt
-                notes
-                criteriaMet
-              }
-            }
-            outcomes {
-              id
-              name
-            }
-            releases {
-              id
-              name
-              level
-            }
-            tags {
-              id
-              name
-              color
-            }
-          }
-        }
-      }
-      tasks {
-        id
-        originalTaskId
-        name
-        description
-        notes
-        status
-        weight
-        sequenceNumber
-        sourceType
-        sourceProductId
-        statusUpdatedAt
-        statusUpdatedBy
-        statusUpdateSource
-        statusNotes
-        licenseLevel
-        howToDoc
-        howToVideo
-        telemetryAttributes {
-          id
-          name
-          description
-          dataType
-          successCriteria
-          isMet
-          values {
-            id
-            value
-            createdAt
-            notes
-            criteriaMet
-          }
-        }
-        tags {
-          id
-          name
-          color
-        }
-        outcomes {
-          id
-          name
-        }
-        releases {
-          id
-          name
-          level
-        }
-      }
-    }
-  }
-`;
+import {
+  SOLUTION_ADOPTION_PLAN,
+  SYNC_SOLUTION_ADOPTION_PLAN,
+  EXPORT_TELEMETRY_TEMPLATE,
+  EXPORT_SOLUTION_TELEMETRY_TEMPLATE,
+  UPDATE_TASK_STATUS
+} from '@features/customers';
 
 const UPDATE_CUSTOMER_SOLUTION_TASK_STATUS = gql`
   mutation UpdateCustomerSolutionTaskStatus($input: UpdateCustomerSolutionTaskStatusInput!) {
     updateCustomerSolutionTaskStatus(input: $input) {
       id
       status
-    }
-  }
-`;
-
-const UPDATE_CUSTOMER_TASK_STATUS = gql`
-  mutation UpdateCustomerTaskStatus($input: UpdateCustomerTaskStatusInput!) {
-    updateCustomerTaskStatus(input: $input) {
-      id
-      status
-      statusUpdatedAt
-      statusUpdatedBy
-      statusUpdateSource
-      statusNotes
-    }
-  }
-`;
-
-const SYNC_SOLUTION_ADOPTION_PLAN = gql`
-  mutation SyncSolutionAdoptionPlan($solutionAdoptionPlanId: ID!) {
-    syncSolutionAdoptionPlan(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
-      id
-      progressPercentage
-    }
-  }
-`;
-
-// Export telemetry template for product adoption plan
-const EXPORT_PRODUCT_TELEMETRY_TEMPLATE = gql`
-  mutation ExportTelemetryTemplate($adoptionPlanId: ID!) {
-    exportAdoptionPlanTelemetryTemplate(adoptionPlanId: $adoptionPlanId) {
-      url
-      filename
-      taskCount
-      attributeCount
-    }
-  }
-`;
-
-// Export telemetry template for solution adoption plan
-const EXPORT_SOLUTION_TELEMETRY_TEMPLATE = gql`
-  mutation ExportSolutionTelemetryTemplate($solutionAdoptionPlanId: ID!) {
-    exportSolutionAdoptionPlanTelemetryTemplate(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
-      url
-      filename
-      taskCount
-      attributeCount
     }
   }
 `;
@@ -296,7 +97,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     );
   };
 
-  const { data, loading, error: queryError, refetch } = useQuery(GET_SOLUTION_ADOPTION_PLAN, {
+  const { data, loading, error: queryError, refetch } = useQuery(SOLUTION_ADOPTION_PLAN, {
     variables: { id: solutionAdoptionPlanId },
     skip: !solutionAdoptionPlanId
   });
@@ -318,7 +119,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     onError: (err) => setError(err.message)
   });
 
-  const [updateProductTaskStatus] = useMutation(UPDATE_CUSTOMER_TASK_STATUS, {
+  const [updateProductTaskStatus] = useMutation(UPDATE_TASK_STATUS, {
     refetchQueries: ['Customers', 'SolutionAdoptionPlan'],
     awaitRefetchQueries: true,
     onCompleted: () => {
@@ -341,7 +142,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
 
 
   // Export product telemetry template mutation
-  const [exportProductTelemetryTemplate] = useMutation(EXPORT_PRODUCT_TELEMETRY_TEMPLATE, {
+  const [exportProductTelemetryTemplate] = useMutation(EXPORT_TELEMETRY_TEMPLATE, {
     onCompleted: async (data) => {
       const { url, filename } = data.exportAdoptionPlanTelemetryTemplate;
       try {

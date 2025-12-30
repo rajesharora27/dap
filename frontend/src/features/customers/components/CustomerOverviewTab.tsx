@@ -77,7 +77,8 @@ interface CustomerSolution {
 // Union type for table row items
 interface TableItem {
     id: string;
-    name: string;
+    assignmentName: string;
+    itemName: string;
     licenseLevel: string;
     type: 'product' | 'solution';
     source: 'direct' | 'solution';
@@ -142,9 +143,14 @@ export function CustomerOverviewTab({
         // Add products
         (products || []).forEach((cp) => {
             const isSolution = !!cp.customerSolutionId;
+            // For solution-derived products, the name is "Assignment - Solution - Product"
+            // We want to display just the "Assignment" part
+            const assignmentName = isSolution ? cp.name.split(' - ')[0] : cp.name;
+
             items.push({
                 id: cp.id,
-                name: cp.product?.name || cp.name,
+                assignmentName: assignmentName,
+                itemName: cp.product?.name || 'Unknown Product',
                 licenseLevel: cp.licenseLevel,
                 type: 'product',
                 source: isSolution ? 'solution' : 'direct',
@@ -158,7 +164,8 @@ export function CustomerOverviewTab({
         (solutions || []).forEach((cs) => {
             items.push({
                 id: cs.id,
-                name: cs.solution?.name || cs.name,
+                assignmentName: cs.name,
+                itemName: cs.solution?.name || 'Unknown Solution',
                 licenseLevel: cs.licenseLevel,
                 type: 'solution',
                 source: 'direct',
@@ -187,7 +194,8 @@ export function CustomerOverviewTab({
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter((item) =>
-                item.name.toLowerCase().includes(query)
+                item.assignmentName.toLowerCase().includes(query) ||
+                item.itemName.toLowerCase().includes(query)
             );
         }
 
@@ -371,7 +379,6 @@ export function CustomerOverviewTab({
                     <Box sx={{ flex: 1 }} />
 
                     {/* Assign Button with Dropdown */}
-                    {/* Assign Button with Dropdown */}
                     <Tooltip title="Assign Product or Solution">
                         <IconButton
                             color="secondary"
@@ -399,17 +406,18 @@ export function CustomerOverviewTab({
                     <Table sx={{ tableLayout: 'fixed', width: '100%' }}>
                         <TableHead>
                             <TableRow sx={{ bgcolor: 'grey.100', position: 'sticky', top: 0, zIndex: 1 }}>
-                                <TableCell sx={{ fontWeight: 600, width: '35%' }}>Name</TableCell>
+                                <TableCell sx={{ fontWeight: 600, width: '20%' }}>Assignment Name</TableCell>
+                                <TableCell sx={{ fontWeight: 600, width: '25%' }}>Product / Solution</TableCell>
                                 <TableCell sx={{ fontWeight: 600, width: '10%' }}>Source</TableCell>
-                                <TableCell sx={{ fontWeight: 600, width: '35%' }}>Adoption Progress</TableCell>
-                                <TableCell sx={{ fontWeight: 600, width: '15%', textAlign: 'right' }}>Last Sync</TableCell>
+                                <TableCell sx={{ fontWeight: 600, width: '30%' }}>Adoption Progress</TableCell>
+                                <TableCell sx={{ fontWeight: 600, width: '10%', textAlign: 'right' }}>Last Sync</TableCell>
                                 <TableCell sx={{ fontWeight: 600, width: '5%', textAlign: 'center' }}>Actions</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {filteredItems.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5}>
+                                    <TableCell colSpan={6}>
                                         <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 4 }}>
                                             {filterMode === 'products' ? 'No products assigned' :
                                                 filterMode === 'solutions' ? 'No solutions assigned' :
@@ -439,14 +447,7 @@ export function CustomerOverviewTab({
                                         >
                                             <TableCell sx={{ py: 1.5 }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    {isSolution ? (
-                                                        <SolutionIcon fontSize="small" sx={{ color: 'primary.main' }} />
-                                                    ) : isFromSolution ? (
-                                                        <ProductIcon fontSize="small" sx={{ color: 'primary.main' }} />
-                                                    ) : (
-                                                        <ProductIcon fontSize="small" sx={{ color: 'success.main' }} />
-                                                    )}
-                                                    <Typography variant="body2" fontWeight={500} noWrap>{item.name}</Typography>
+                                                    <Typography variant="body2" fontWeight={500} noWrap>{item.assignmentName}</Typography>
                                                     <Chip
                                                         label={item.licenseLevel}
                                                         size="small"
@@ -454,6 +455,18 @@ export function CustomerOverviewTab({
                                                         variant="outlined"
                                                         sx={{ height: 20, fontSize: '0.7rem', flexShrink: 0 }}
                                                     />
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell sx={{ py: 1.5 }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    {isSolution ? (
+                                                        <SolutionIcon fontSize="small" sx={{ color: 'primary.main' }} />
+                                                    ) : isFromSolution ? (
+                                                        <ProductIcon fontSize="small" sx={{ color: 'primary.main' }} />
+                                                    ) : (
+                                                        <ProductIcon fontSize="small" sx={{ color: 'success.main' }} />
+                                                    )}
+                                                    <Typography variant="body2" noWrap>{item.itemName}</Typography>
                                                 </Box>
                                             </TableCell>
                                             <TableCell sx={{ py: 1.5 }}>

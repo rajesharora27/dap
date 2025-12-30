@@ -41,7 +41,7 @@ const EXAMPLE_QUERIES: Example[] = [
     {
         name: 'List All Products',
         description: 'Fetch all products with basic fields',
-        query: `query GetProducts {
+        query: `query Products {
   products {
     edges {
       node {
@@ -59,7 +59,7 @@ const EXAMPLE_QUERIES: Example[] = [
     {
         name: 'Get Product by ID',
         description: 'Fetch a specific product by ID',
-        query: `query GetProduct($id: ID!) {
+        query: `query Product($id: ID!) {
   product(id: $id) {
     id
     name
@@ -81,7 +81,7 @@ const EXAMPLE_QUERIES: Example[] = [
     {
         name: 'List Solutions',
         description: 'Fetch all solutions with related data',
-        query: `query GetSolutions {
+        query: `query Solutions {
   solutions {
     edges {
       node {
@@ -118,7 +118,7 @@ const EXAMPLE_QUERIES: Example[] = [
     {
         name: 'List Customers',
         description: 'Fetch all customers',
-        query: `query GetCustomers {
+        query: `query Customers {
   customers {
     id
     name

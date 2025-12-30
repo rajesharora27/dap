@@ -43,6 +43,7 @@ import {
   CircularProgress,
   Badge
 } from '@mui/material';
+import { ADOPTION_PLAN } from '../graphql/queries';
 import {
   Add,
   Edit,
@@ -156,88 +157,7 @@ const CUSTOMERS = gql`
 `;
 
 
-const GET_ADOPTION_PLAN = gql`
-  query AdoptionPlan($id: ID!) {
-    adoptionPlan(id: $id) {
-      id
-      progressPercentage
-      totalTasks
-      completedTasks
-      totalWeight
-      completedWeight
-      needsSync
-      lastSyncedAt
-      licenseLevel
-      filterPreference {
-        id
-        filterReleases
-        filterOutcomes
-        filterTags
-      }
-      selectedOutcomes {
-        id
-        name
-      }
-      selectedReleases {
-        id
-        name
-        level
-      }
-      customerProduct {
-        tags {
-          id
-          name
-          color
-          description
-        }
-      }
-      tasks {
-        id
-        name
-        description
-        notes
-        status
-        weight
-        sequenceNumber
-        statusUpdatedAt
-        statusUpdatedBy
-        statusUpdateSource
-        statusNotes
-        licenseLevel
-        howToDoc
-        howToVideo
-        telemetryAttributes {
-          id
-          name
-          description
-          dataType
-          successCriteria
-          isMet
-          values {
-            id
-            value
-            criteriaMet
-          }
-        }
-        outcomes {
-          id
-          name
-        }
-        releases {
-          id
-          name
-          level
-        }
-        tags {
-          id
-          name
-          color
-          description
-        }
-      }
-    }
-  }
-`;
+
 
 const CREATE_CUSTOMER = gql`
   mutation CreateCustomerPanel($input: CustomerInput!) {
@@ -780,7 +700,7 @@ export function CustomersPanel({ selectedCustomerId, onRequestAddCustomer, force
 
   const adoptionPlanId = selectedCustomerProduct?.adoptionPlan?.id;
 
-  const { data: planData, loading: planLoading, error: planError, refetch: refetchPlan } = useQuery(GET_ADOPTION_PLAN, {
+  const { data: planData, loading: planLoading, error: planError, refetch: refetchPlan } = useQuery(ADOPTION_PLAN, {
     variables: { id: adoptionPlanId },
     skip: !adoptionPlanId,
     fetchPolicy: 'cache-and-network',

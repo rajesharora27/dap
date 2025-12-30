@@ -288,37 +288,18 @@ export const TaskMutationResolvers = {
         return TaskService.processDeletionQueue(limit);
     },
 
-    reorderTasks: async (_: any, { input }: any, ctx: any) => {
+    reorderTasks: async (_: any, args: any, ctx: any) => {
         requireUser(ctx);
-        // Map input structure if needed. index.ts had { productId, solutionId, order } unpacked from args or input?
-        // Let's check signature from index.ts:
-        // reorderTasks: async (_: any, { productId, solutionId, order }: any, ctx: any) => {
-        // Warning: index.ts used flat args, verify if schema is input object or flat args.
-        // If schema says reorderTasks(productId: ID, ...), then args has them directly.
-        // My TaskService expects flat args.
 
-        const { productId, solutionId, order } = input || {}; // Handle if input is wrapped object or if args are flattened.
-        // Ideally we need to see schema.graphql.
-        // Assuming args have them directly if standard mutation.
-        // Let's assume the previous index.ts signature `(_: any, { productId, solutionId, order }: any, ...)` means 3 args.
-        // BUT my implementation `reorderTasks: async (_: any, { input }: any, ctx: any)` assumed input object.
-        // I should probably support both or match index.ts.
-        // The index.ts signature implies they are arguments, NOT input object!
-        // So I should change destructuring.
+        const { productId, solutionId, order } = args;
 
-        const effectiveProductId = productId || (input && input.productId);
-        const effectiveSolutionId = solutionId || (input && input.solutionId);
-        const effectiveOrder = order || (input && input.taskIds) || (input && input.order);
-
-
-
-        if (effectiveProductId) {
-            await requirePermission(ctx, ResourceType.PRODUCT, effectiveProductId, PermissionLevel.WRITE);
-        } else if (effectiveSolutionId) {
-            await requirePermission(ctx, ResourceType.SOLUTION, effectiveSolutionId, PermissionLevel.WRITE);
+        if (productId) {
+            await requirePermission(ctx, ResourceType.PRODUCT, productId, PermissionLevel.WRITE);
+        } else if (solutionId) {
+            await requirePermission(ctx, ResourceType.SOLUTION, solutionId, PermissionLevel.WRITE);
         }
 
-        return TaskService.reorderTasks(ctx.user.id, effectiveProductId || effectiveSolutionId, effectiveOrder, !!effectiveProductId);
+        return TaskService.reorderTasks(ctx.user.id, productId || solutionId, order, !!productId);
     },
 
 

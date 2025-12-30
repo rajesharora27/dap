@@ -523,8 +523,7 @@ export class TaskService {
         try {
             // First, get the task to know its product/solution and sequence number
             const taskToDelete = await prisma.task.findUnique({
-                where: { id },
-                select: { productId: true, solutionId: true, sequenceNumber: true }
+                where: { id }
             });
 
             if (!taskToDelete) {
@@ -564,7 +563,12 @@ export class TaskService {
             console.log(`Task deleted successfully: ${id}`);
 
             await logAudit('DELETE_TASK', 'Task', id, {}, userId);
-            return true;
+            // Return the task that was deleted (captured before deletion)
+            // We need to ensure it has the ID since it's the most critical field for the frontend
+            return {
+                ...taskToDelete,
+                id // Ensure ID is present
+            };
         } catch (error: any) {
             console.error(`Failed to delete task ${id}:`, error.message);
             throw new Error(`Failed to delete task: ${error.message}`);

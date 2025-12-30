@@ -414,7 +414,8 @@ export const ProductsPage: React.FC<ProductsPageProps> = ({ onEditProduct }) => 
                 await client.mutate({
                     mutation: REORDER_TASKS,
                     variables: { productId: selectedProduct, order: newOrder },
-                    refetchQueries: ['ProductTasks']
+                    refetchQueries: ['ProductTasks'],
+                    awaitRefetchQueries: true
                 });
             } catch (error) {
                 console.error('Error reordering tasks:', error);

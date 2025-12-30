@@ -3,47 +3,8 @@ import { ensureRole, requireUser } from '../../shared/auth/auth-helpers';
 import { logAudit } from '../../shared/utils/audit';
 import { LicenseLevel, TaskSourceType, SolutionProductStatus } from '@prisma/client';
 
-
-// Helper function to calculate progress for solution adoption plans
-function calculateSolutionProgress(tasks: any[]): {
-  totalTasks: number;
-  completedTasks: number;
-  totalWeight: number;
-  completedWeight: number;
-  progressPercentage: number;
-} {
-  // Filter out NOT_APPLICABLE tasks
-  const applicableTasks = tasks.filter(t => t.status !== 'NOT_APPLICABLE');
-
-  const totalTasks = applicableTasks.length;
-  const completedTasks = applicableTasks.filter(t => t.status === 'COMPLETED' || t.status === 'DONE').length;
-
-  const totalWeight = applicableTasks.reduce((sum, task) => {
-    const weight = typeof task.weight === 'object' && 'toNumber' in task.weight
-      ? task.weight.toNumber()
-      : Number(task.weight || 0);
-    return sum + weight;
-  }, 0);
-
-  const completedWeight = applicableTasks
-    .filter(t => t.status === 'COMPLETED' || t.status === 'DONE')
-    .reduce((sum, task) => {
-      const weight = typeof task.weight === 'object' && 'toNumber' in task.weight
-        ? task.weight.toNumber()
-        : Number(task.weight || 0);
-      return sum + weight;
-    }, 0);
-
-  const progressPercentage = totalWeight > 0 ? (completedWeight / totalWeight) * 100 : 0;
-
-  return {
-    totalTasks,
-    completedTasks,
-    totalWeight,
-    completedWeight,
-    progressPercentage: Math.round(progressPercentage * 100) / 100,
-  };
-}
+import { SolutionService } from './solution.service';
+// Helper function to calculate progress for solution adoption plans -- Moved to SolutionService
 
 // Helper function to evaluate telemetry criteria
 function evaluateCriteria(criteria: any, value: any): boolean {
@@ -97,6 +58,7 @@ function evaluateCriteria(criteria: any, value: any): boolean {
 }
 
 import { solutionReportingService } from './solution-reporting.service';
+import { CustomerAdoptionService } from '../customer/customer-adoption.service';
 
 // Query Resolvers
 export const SolutionAdoptionQueryResolvers = {
@@ -243,14 +205,16 @@ export const SolutionAdoptionMutationResolvers = {
     const prismaLicenseLevel = licenseLevel.toUpperCase() as LicenseLevel;
 
     // Check if assignment already exists
-    const existing = await prisma.customerSolution.findUnique({
+    const existing = await prisma.customerSolution.findFirst({
       where: {
-        customerId_solutionId: { customerId, solutionId }
+        customerId,
+        solutionId,
+        name
       }
     });
 
     if (existing) {
-      throw new Error('This solution is already assigned to this customer');
+      throw new Error(`This solution is already assigned to this customer with the name "${name}"`);
     }
 
     // Get solution with all underlying products
@@ -654,7 +618,7 @@ export const SolutionAdoptionMutationResolvers = {
         description: task.description,
         estMinutes: task.estMinutes,
         weight: task.weight,
-        sequenceNumber: globalSequence++,
+        sequenceNumber: task.sequenceNumber,
         howToDoc: task.howToDoc || [],
         howToVideo: task.howToVideo || [],
         notes: task.notes,
@@ -668,7 +632,7 @@ export const SolutionAdoptionMutationResolvers = {
 
     // Calculate initial progress from solution tasks only
     // Product task progress will come from their separate AdoptionPlan records
-    const progress = calculateSolutionProgress(allTasksToAdd);
+    const progress = SolutionService.calculateSolutionTasksProgress(allTasksToAdd);
     const solutionTasksCount = allTasksToAdd.length;
 
     // Create adoption plan with all tasks
@@ -1098,7 +1062,7 @@ export const SolutionAdoptionMutationResolvers = {
 
       console.log(`syncSolutionProducts: Found ${customerProducts.length} customer products`);
 
-      const { CustomerAdoptionMutationResolvers } = require('./customerAdoption');
+      const { CustomerAdoptionMutationResolvers } = require('../customer/customer-adoption.resolver');
       const syncResults: { productId: string; productName: string; synced: boolean; error?: string }[] = [];
 
       for (const cp of customerProducts) {
@@ -1138,85 +1102,11 @@ export const SolutionAdoptionMutationResolvers = {
         // We continue even if this fails, as products might have synced fine
       }
 
-      // Recalculate overall progress
-      // Re-fetch tasks after updates
-      const updatedPlanWithTasks = await prisma.solutionAdoptionPlan.findUnique({
-        where: { id: solutionAdoptionPlanId },
-        include: {
-          tasks: true,
-          products: true
-        }
-      });
-
-      if (updatedPlanWithTasks) {
-        const solutionSpecificTasks = updatedPlanWithTasks.tasks.filter((t: any) => t.sourceType === 'SOLUTION');
-        const progress = calculateSolutionProgress(solutionSpecificTasks);
-        const solutionTasksComplete = solutionSpecificTasks.filter(
-          (t: any) => (t.status === 'COMPLETED' || t.status === 'DONE')
-        ).length;
-
-        // Calculate aggregated progress: solution tasks + synced product adoption plans
-        let totalTasksWithProducts = progress.totalTasks;
-        let completedTasksWithProducts = progress.completedTasks;
-        let totalWeightWithProducts = Number(progress.totalWeight);
-        let completedWeightWithProducts = Number(progress.completedWeight);
-
-        // Re-fetch updated customer products to get latest progress
-        const updatedCustomerProducts = await prisma.customerProduct.findMany({
-          where: {
-            customerId: plan.customerSolution.customerId,
-            name: {
-              startsWith: `${plan.customerSolution.name} - `
-            }
-          },
-          include: {
-            adoptionPlan: true
-          }
-        });
-
-        for (const cp of updatedCustomerProducts) {
-          if (cp.adoptionPlan) {
-            totalTasksWithProducts += cp.adoptionPlan.totalTasks;
-            completedTasksWithProducts += cp.adoptionPlan.completedTasks;
-            totalWeightWithProducts += Number(cp.adoptionPlan.totalWeight);
-            completedWeightWithProducts += Number(cp.adoptionPlan.completedWeight);
-          }
-        }
-
-        const overallProgressPercentage = totalWeightWithProducts > 0
-          ? (completedWeightWithProducts / totalWeightWithProducts) * 100
-          : 0;
-
-        // Update plan progress
-        await prisma.solutionAdoptionPlan.update({
-          where: { id: solutionAdoptionPlanId },
-          data: {
-            totalTasks: totalTasksWithProducts,
-            completedTasks: completedTasksWithProducts,
-            totalWeight: totalWeightWithProducts,
-            completedWeight: completedWeightWithProducts,
-            progressPercentage: overallProgressPercentage,
-            solutionTasksTotal: solutionSpecificTasks.length,
-            solutionTasksComplete,
-            lastSyncedAt: new Date()
-          }
-        });
-      }
-
-      // Fetch final updated plan
-      const finalPlan = await prisma.solutionAdoptionPlan.findUnique({
-        where: { id: solutionAdoptionPlanId },
-        include: {
-          tasks: true,
-          products: true,
-          customerSolution: {
-            include: {
-              customer: true,
-              solution: true
-            }
-          }
-        }
-      });
+      // Recalculate overall progress using centralized service
+      const finalPlan = await SolutionService.recalculateSolutionAdoptionPlanProgress(
+        ctx.user?.id,
+        solutionAdoptionPlanId
+      );
 
       console.log(`syncSolutionProducts completed: synced ${syncResults.filter(r => r.synced).length}/${syncResults.length} products`);
 
@@ -1522,85 +1412,11 @@ export const SolutionAdoptionMutationResolvers = {
       }
     }
 
-    // Recalculate overall progress
-    // Re-fetch tasks after updates
-    const updatedPlanWithTasks = await prisma.solutionAdoptionPlan.findUnique({
-      where: { id: solutionAdoptionPlanId },
-      include: {
-        tasks: true,
-        products: true
-      }
-    });
-
-    if (updatedPlanWithTasks) {
-      const solutionSpecificTasks = updatedPlanWithTasks.tasks.filter((t: any) => t.sourceType === 'SOLUTION');
-      const progress = calculateSolutionProgress(solutionSpecificTasks);
-      const solutionTasksComplete = solutionSpecificTasks.filter(
-        (t: any) => (t.status === 'COMPLETED' || t.status === 'DONE')
-      ).length;
-
-      // Calculate aggregated progress: solution tasks + product adoption plans
-      let totalTasksWithProducts = progress.totalTasks;
-      let completedTasksWithProducts = progress.completedTasks;
-      let totalWeightWithProducts = Number(progress.totalWeight);
-      let completedWeightWithProducts = Number(progress.completedWeight);
-
-      // Fetch customer products to get product adoption plan progress
-      const customerProducts = await prisma.customerProduct.findMany({
-        where: {
-          customerId: plan.customerSolution.customerId,
-          name: {
-            startsWith: `${plan.customerSolution.name} - `
-          }
-        },
-        include: {
-          adoptionPlan: true
-        }
-      });
-
-      for (const cp of customerProducts) {
-        if (cp.adoptionPlan) {
-          totalTasksWithProducts += cp.adoptionPlan.totalTasks;
-          completedTasksWithProducts += cp.adoptionPlan.completedTasks;
-          totalWeightWithProducts += Number(cp.adoptionPlan.totalWeight);
-          completedWeightWithProducts += Number(cp.adoptionPlan.completedWeight);
-        }
-      }
-
-      const overallProgressPercentage = totalWeightWithProducts > 0
-        ? (completedWeightWithProducts / totalWeightWithProducts) * 100
-        : 0;
-
-      // Update plan progress
-      await prisma.solutionAdoptionPlan.update({
-        where: { id: solutionAdoptionPlanId },
-        data: {
-          totalTasks: totalTasksWithProducts,
-          completedTasks: completedTasksWithProducts,
-          totalWeight: totalWeightWithProducts,
-          completedWeight: completedWeightWithProducts,
-          progressPercentage: overallProgressPercentage,
-          solutionTasksTotal: solutionSpecificTasks.length,
-          solutionTasksComplete,
-          lastSyncedAt: new Date()
-        }
-      });
-    }
-
-    // Fetch final updated plan
-    const finalPlan = await prisma.solutionAdoptionPlan.findUnique({
-      where: { id: solutionAdoptionPlanId },
-      include: {
-        tasks: true,
-        products: true,
-        customerSolution: {
-          include: {
-            customer: true,
-            solution: true
-          }
-        }
-      }
-    });
+    // Use centralized service to calculate and return final plan
+    const finalPlan = await SolutionService.recalculateSolutionAdoptionPlanProgress(
+      ctx.user?.id,
+      solutionAdoptionPlanId
+    );
 
     return finalPlan!;
   },
@@ -1641,7 +1457,7 @@ export const SolutionAdoptionMutationResolvers = {
       throw new Error('Customer solution not found');
     }
 
-    const { CustomerAdoptionMutationResolvers } = require('./customerAdoption');
+    const { CustomerAdoptionMutationResolvers } = require('../customer/customer-adoption.resolver');
     const syncResults: { productId: string; productName: string; synced: boolean; error?: string }[] = [];
 
     // Ensure all products from the solution definition exist for this customer solution
@@ -1753,6 +1569,14 @@ export const SolutionAdoptionMutationResolvers = {
 
     console.log(`syncSolutionAdoptionPlan STEP 2: Re-fetched ${updatedCustomerProducts.length} products after sync`);
 
+    // Recursive Sync: Ensure all underlying product adoption plans are synced with their product definitions
+    for (const cp of updatedCustomerProducts) {
+      if (cp.adoptionPlan) {
+        console.log(`Recursively syncing adoption plan for product: ${cp.product?.name}`);
+        await CustomerAdoptionService.syncAdoptionPlan(ctx.user?.id, cp.adoptionPlan.id);
+      }
+    }
+
     // STEP 2.5: Re-filter solution tasks and sync with latest solution definition
     // Get the full customer solution with solution tasks
     const customerSolutionFull = await prisma.customerSolution.findUnique({
@@ -1846,15 +1670,19 @@ export const SolutionAdoptionMutationResolvers = {
           // Filter by outcomes (if any selected)
           if (selectedOutcomes.length > 0) {
             const taskOutcomeIds = task.outcomes.map((to: any) => to.outcome.id);
-            const hasMatchingOutcome = taskOutcomeIds.some((id: string) => selectedOutcomes.includes(id));
-            if (!hasMatchingOutcome) return false;
+            if (taskOutcomeIds.length > 0) {
+              const hasMatchingOutcome = taskOutcomeIds.some((id: string) => selectedOutcomes.includes(id));
+              if (!hasMatchingOutcome) return false;
+            }
           }
 
           // Filter by releases (if any selected)
           if (selectedReleases.length > 0) {
             const taskReleaseIds = task.releases.map((tr: any) => tr.release.id);
-            const hasMatchingRelease = taskReleaseIds.some((id: string) => selectedReleases.includes(id));
-            if (!hasMatchingRelease) return false;
+            if (taskReleaseIds.length > 0) {
+              const hasMatchingRelease = taskReleaseIds.some((id: string) => selectedReleases.includes(id));
+              if (!hasMatchingRelease) return false;
+            }
           }
 
           return true;
@@ -1878,34 +1706,17 @@ export const SolutionAdoptionMutationResolvers = {
             });
           } else if (isEligible) {
             // Update task with any changes from the solution definition
-            const hasChanges =
-              existingTask.name !== originalTask.name ||
-              existingTask.description !== originalTask.description ||
-              existingTask.estMinutes !== (originalTask.estMinutes || 0) ||
-              Number(existingTask.weight) !== Number(originalTask.weight) ||
-              existingTask.licenseLevel !== originalTask.licenseLevel ||
-              JSON.stringify(existingTask.howToDoc) !== JSON.stringify(originalTask.howToDoc || []) ||
-              JSON.stringify(existingTask.howToVideo) !== JSON.stringify(originalTask.howToVideo || []) ||
-              existingTask.notes !== originalTask.notes;
-
-            if (hasChanges || existingTask.status === 'NOT_APPLICABLE') {
-              await prisma.customerSolutionTask.update({
-                where: { id: existingTask.id },
-                data: {
-                  name: originalTask.name,
-                  description: originalTask.description,
-                  estMinutes: originalTask.estMinutes || 0,
-                  weight: originalTask.weight,
-                  licenseLevel: originalTask.licenseLevel,
-                  howToDoc: originalTask.howToDoc || [],
-                  howToVideo: originalTask.howToVideo || [],
-                  notes: originalTask.notes,
-                  // Re-enable if it was NOT_APPLICABLE but now eligible
-                  ...(existingTask.status === 'NOT_APPLICABLE' ? { status: 'NOT_STARTED' } : {})
-                }
-              });
-
-            }
+            // Always update task with definition data to ensure reliability (including sequence sync)
+            const taskData = CustomerAdoptionService.getTaskDataForSync(originalTask);
+            await prisma.customerSolutionTask.update({
+              where: { id: existingTask.id },
+              data: {
+                ...taskData,
+                sequenceNumber: originalTask.sequenceNumber, // Ensure sequence is updated to match definition
+                // Re-enable if it was NOT_APPLICABLE but now eligible
+                ...(existingTask.status === 'NOT_APPLICABLE' ? { status: 'NOT_STARTED' } : {})
+              }
+            });
 
             // Sync telemetry attributes for existing task
             const originalAttrIds = originalTask.telemetryAttributes?.map((a: any) => a.id) || [];
@@ -1959,6 +1770,30 @@ export const SolutionAdoptionMutationResolvers = {
               }
             }
 
+            // Sync Outcomes - delete and recreate for consistency with product sync
+            await prisma.customerTaskOutcome.deleteMany({ where: { customerSolutionTaskId: existingTask.id } });
+            if (originalTask.outcomes && originalTask.outcomes.length > 0) {
+              await prisma.customerTaskOutcome.createMany({
+                data: originalTask.outcomes.map((to: any) => ({
+                  customerSolutionTaskId: existingTask.id,
+                  outcomeId: to.outcome.id
+                })),
+                skipDuplicates: true
+              });
+            }
+
+            // Sync Releases - delete and recreate for consistency with product sync
+            await prisma.customerTaskRelease.deleteMany({ where: { customerSolutionTaskId: existingTask.id } });
+            if (originalTask.releases && originalTask.releases.length > 0) {
+              await prisma.customerTaskRelease.createMany({
+                data: originalTask.releases.map((tr: any) => ({
+                  customerSolutionTaskId: existingTask.id,
+                  releaseId: tr.release.id
+                })),
+                skipDuplicates: true
+              });
+            }
+
             // Sync Tags
             await prisma.customerSolutionTaskTag.deleteMany({ where: { customerSolutionTaskId: existingTask.id } });
             if (originalTask.solutionTaskTags) {
@@ -1987,22 +1822,16 @@ export const SolutionAdoptionMutationResolvers = {
       for (const solutionTask of eligibleSolutionTasks) {
         if (!existingTaskMap.has(solutionTask.id)) {
           maxSequence++;
+          const taskData = CustomerAdoptionService.getTaskDataForSync(solutionTask);
           const customerTask = await prisma.customerSolutionTask.create({
             data: {
+              ...taskData,
               solutionAdoptionPlanId: plan.id,
               originalTaskId: solutionTask.id,
               sourceType: 'SOLUTION',
               sourceProductId: null,
-              name: solutionTask.name,
-              description: solutionTask.description,
-              notes: solutionTask.notes,
-              sequenceNumber: maxSequence,
-              estMinutes: solutionTask.estMinutes || 0,
-              weight: solutionTask.weight,
-              licenseLevel: solutionTask.licenseLevel,
+              sequenceNumber: solutionTask.sequenceNumber, // Use definition's sequence number
               status: 'NOT_STARTED',
-              howToDoc: solutionTask.howToDoc || [],
-              howToVideo: solutionTask.howToVideo || []
             }
           });
 
@@ -2073,7 +1902,7 @@ export const SolutionAdoptionMutationResolvers = {
     });
 
     const solutionSpecificTasks = updatedPlan!.tasks.filter((t: any) => t.sourceType === 'SOLUTION');
-    const progress = calculateSolutionProgress(solutionSpecificTasks);
+    const progress = SolutionService.calculateSolutionTasksProgress(solutionSpecificTasks);
     const solutionTasksComplete = solutionSpecificTasks.filter(
       (t: any) => (t.status === 'COMPLETED' || t.status === 'DONE')
     ).length;
@@ -2199,7 +2028,11 @@ export const SolutionAdoptionMutationResolvers = {
           orderBy: { sequenceNumber: 'asc' }
         },
         products: {
-          orderBy: { sequenceNumber: 'asc' }
+          orderBy: { sequenceNumber: 'asc' },
+          include: {
+            // product: true, // Removed as it is not a direct relation on SolutionAdoptionProduct
+            // adoptionPlan: { include: { customerProduct: true, tasks: true } } // Removed as it is not a direct relation
+          }
         }
       }
     });
@@ -2227,11 +2060,10 @@ export const SolutionAdoptionMutationResolvers = {
       }
     });
 
-    // Trigger progress recalculation
-    await SolutionAdoptionMutationResolvers.syncSolutionAdoptionPlan(
-      _,
-      { solutionAdoptionPlanId: customerTask.solutionAdoptionPlanId },
-      ctx
+    // Trigger progress recalculation (lightweight)
+    await SolutionService.recalculateSolutionAdoptionPlanProgress(
+      ctx.user?.id,
+      customerTask.solutionAdoptionPlanId
     );
 
     await logAudit('UPDATE_SOLUTION_TASK_STATUS', 'CustomerSolutionTask', customerSolutionTaskId, { input }, ctx.user?.id);
@@ -2277,11 +2109,10 @@ export const SolutionAdoptionMutationResolvers = {
       )
     );
 
-    // Trigger progress recalculation
-    await SolutionAdoptionMutationResolvers.syncSolutionAdoptionPlan(
-      _,
-      { solutionAdoptionPlanId },
-      ctx
+    // Trigger progress recalculation (lightweight)
+    await SolutionService.recalculateSolutionAdoptionPlanProgress(
+      ctx.user?.id,
+      solutionAdoptionPlanId
     );
 
     await logAudit('BULK_UPDATE_SOLUTION_TASK_STATUS', 'CustomerSolutionTask', undefined, {
@@ -2612,50 +2443,29 @@ export const SolutionAdoptionProductResolvers = {
   },
   productAdoptionPlan: async (parent: any) => {
     // Find the CustomerProduct for this product within the solution
-    // The CustomerProduct name follows the pattern: "{assignmentName} - {solutionName} - {productName}"
+    // Prioritize direct link via customerSolutionId
+
     const solutionAdoptionPlan = await prisma.solutionAdoptionPlan.findUnique({
       where: { id: parent.solutionAdoptionPlanId },
-      include: {
-        customerSolution: {
-          include: {
-            solution: true
-          }
-        }
-      }
+      select: { customerSolutionId: true }
     });
 
     if (!solutionAdoptionPlan) return null;
 
-    // Use the correct 3-part naming pattern: assignmentName - solutionName - productName
-    const expectedProductName = `${solutionAdoptionPlan.customerSolution.name} - ${solutionAdoptionPlan.customerSolution.solution.name} - ${parent.productName}`;
-
-    // Find the CustomerProduct with this name
+    // Find the CustomerProduct linked to this specific customer solution
     const customerProduct = await prisma.customerProduct.findFirst({
       where: {
-        customerId: solutionAdoptionPlan.customerSolution.customerId,
-        name: expectedProductName
+        customerSolutionId: solutionAdoptionPlan.customerSolutionId,
+        productId: parent.productId
       },
       include: {
         adoptionPlan: {
           include: {
-            tasks: {
+            customerProduct: {
               include: {
-                telemetryAttributes: {
-                  include: {
-                    values: {
-                      orderBy: { createdAt: 'desc' },
-                      take: 1
-                    }
-                  }
-                },
-                outcomes: {
-                  include: { outcome: true }
-                },
-                releases: {
-                  include: { release: true }
-                }
-              },
-              orderBy: { sequenceNumber: 'asc' }
+                tags: true,
+                product: true
+              }
             }
           }
         }
@@ -3030,70 +2840,11 @@ async function syncSolutionDefinitionFn(_: any, { solutionAdoptionPlanId }: any,
     }
   }
 
-  // Recalculate overall progress
-  // Re-fetch tasks after updates
-  const updatedPlanWithTasks = await prisma.solutionAdoptionPlan.findUnique({
-    where: { id: solutionAdoptionPlanId },
-    include: {
-      tasks: true,
-      products: true
-    }
-  });
-
-  if (updatedPlanWithTasks) {
-    const solutionSpecificTasks = updatedPlanWithTasks.tasks.filter((t: any) => t.sourceType === 'SOLUTION');
-    const progress = calculateSolutionProgress(solutionSpecificTasks);
-    const solutionTasksComplete = solutionSpecificTasks.filter(
-      (t: any) => (t.status === 'COMPLETED' || t.status === 'DONE')
-    ).length;
-
-    // Calculate aggregated progress: solution tasks + product adoption plans
-    let totalTasksWithProducts = progress.totalTasks;
-    let completedTasksWithProducts = progress.completedTasks;
-    let totalWeightWithProducts = Number(progress.totalWeight);
-    let completedWeightWithProducts = Number(progress.completedWeight);
-
-    // Fetch customer products to get product adoption plan progress
-    const customerProducts = await prisma.customerProduct.findMany({
-      where: {
-        customerId: plan.customerSolution.customerId,
-        name: {
-          startsWith: `${plan.customerSolution.name} - `
-        }
-      },
-      include: {
-        adoptionPlan: true
-      }
-    });
-
-    for (const cp of customerProducts) {
-      if (cp.adoptionPlan) {
-        totalTasksWithProducts += cp.adoptionPlan.totalTasks;
-        completedTasksWithProducts += cp.adoptionPlan.completedTasks;
-        totalWeightWithProducts += Number(cp.adoptionPlan.totalWeight);
-        completedWeightWithProducts += Number(cp.adoptionPlan.completedWeight);
-      }
-    }
-
-    const overallProgressPercentage = totalWeightWithProducts > 0
-      ? (completedWeightWithProducts / totalWeightWithProducts) * 100
-      : 0;
-
-    // Update plan progress
-    await prisma.solutionAdoptionPlan.update({
-      where: { id: solutionAdoptionPlanId },
-      data: {
-        totalTasks: totalTasksWithProducts,
-        completedTasks: completedTasksWithProducts,
-        totalWeight: totalWeightWithProducts,
-        completedWeight: completedWeightWithProducts,
-        progressPercentage: overallProgressPercentage,
-        solutionTasksTotal: solutionSpecificTasks.length,
-        solutionTasksComplete,
-        lastSyncedAt: new Date()
-      }
-    });
-  }
+  // Recalculate overall progress using centralized service
+  await SolutionService.recalculateSolutionAdoptionPlanProgress(
+    ctx.user?.id,
+    solutionAdoptionPlanId
+  );
 
   // Fetch final updated plan
   const finalPlan = await prisma.solutionAdoptionPlan.findUnique({

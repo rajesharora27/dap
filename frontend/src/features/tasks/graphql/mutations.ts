@@ -110,7 +110,9 @@ export const UPDATE_TASK = gql`
 
 export const DELETE_TASK = gql`
   mutation DeleteTask($id: ID!) {
-    queueTaskSoftDelete(id: $id)
+    queueTaskSoftDelete(id: $id) {
+      id
+    }
   }
 `;
 

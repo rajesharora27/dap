@@ -52,10 +52,12 @@ export const CUSTOMERS = gql`
   }
 `;
 
-export const GET_ADOPTION_PLAN = gql`
+export const ADOPTION_PLAN = gql`
   query AdoptionPlan($id: ID!) {
     adoptionPlan(id: $id) {
       id
+      productId
+      productName
       progressPercentage
       totalTasks
       completedTasks
@@ -63,6 +65,8 @@ export const GET_ADOPTION_PLAN = gql`
       completedWeight
       needsSync
       lastSyncedAt
+      createdAt
+      updatedAt
       licenseLevel
       filterPreference {
         id
@@ -80,15 +84,26 @@ export const GET_ADOPTION_PLAN = gql`
         level
       }
       customerProduct {
+        name
+        customerSolutionId
         tags {
           id
           name
           color
           description
         }
+        customerSolution {
+          id
+          name
+          solution {
+            id
+            name
+          }
+        }
       }
       tasks {
         id
+        originalTaskId
         name
         description
         notes
@@ -99,20 +114,41 @@ export const GET_ADOPTION_PLAN = gql`
         statusUpdatedBy
         statusUpdateSource
         statusNotes
+        isComplete
+        completedAt
         licenseLevel
         howToDoc
         howToVideo
+        telemetryProgress {
+          totalAttributes
+          requiredAttributes
+          metAttributes
+          metRequiredAttributes
+          completionPercentage
+          allRequiredMet
+        }
         telemetryAttributes {
           id
+          originalAttributeId
           name
           description
           dataType
+          isRequired
           successCriteria
+          order
+          isActive
           isMet
+          lastCheckedAt
           values {
             id
             value
             criteriaMet
+          }
+          latestValue {
+            id
+            value
+            source
+            createdAt
           }
         }
         outcomes {
@@ -135,7 +171,7 @@ export const GET_ADOPTION_PLAN = gql`
   }
 `;
 
-export const GET_CUSTOMER_SOLUTIONS = gql`
+export const CUSTOMER_SOLUTIONS = gql`
   query CustomerSolutions($customerId: ID!) {
     customer(id: $customerId) {
       id
@@ -159,15 +195,163 @@ export const GET_CUSTOMER_SOLUTIONS = gql`
   }
 `;
 
-export const GET_SOLUTION_ADOPTION_PLAN = gql`
+export const SOLUTION_ADOPTION_PLAN = gql`
   query SolutionAdoptionPlan($id: ID!) {
     solutionAdoptionPlan(id: $id) {
       id
+      solutionName
+      solutionId
+      licenseLevel
+      selectedOutcomes {
+        id
+        name
+        description
+      }
+      selectedReleases {
+        id
+        name
+        description
+        level
+      }
       progressPercentage
       totalTasks
       completedTasks
+      solutionTasksTotal
+      solutionTasksComplete
       needsSync
       lastSyncedAt
+      customerSolution {
+        id
+        name
+        tags {
+          id
+          name
+          color
+        }
+        solution {
+          id
+          name
+          outcomes {
+            id
+            name
+            description
+          }
+          releases {
+            id
+            name
+            description
+            level
+          }
+        }
+      }
+      products {
+        id
+        productId
+        productName
+        status
+        progressPercentage
+        totalTasks
+        completedTasks
+        productAdoptionPlan {
+          id
+          progressPercentage
+          totalTasks
+          completedTasks
+          tasks {
+            id
+            name
+            description
+            notes
+            status
+            weight
+            sequenceNumber
+            statusUpdatedAt
+            statusUpdatedBy
+            statusUpdateSource
+            statusNotes
+            licenseLevel
+            howToDoc
+            howToVideo
+            telemetryAttributes {
+              id
+              name
+              description
+              dataType
+              successCriteria
+              isMet
+              values {
+                id
+                value
+                createdAt
+                notes
+                criteriaMet
+              }
+            }
+            outcomes {
+              id
+              name
+            }
+            releases {
+              id
+              name
+              level
+            }
+            tags {
+              id
+              name
+              color
+            }
+          }
+        }
+      }
+      tasks {
+        id
+        originalTaskId
+        name
+        description
+        notes
+        status
+        weight
+        sequenceNumber
+        sourceType
+        sourceProductId
+        statusUpdatedAt
+        statusUpdatedBy
+        statusUpdateSource
+        statusNotes
+        licenseLevel
+        howToDoc
+        howToVideo
+        telemetryAttributes {
+          id
+          name
+          description
+          dataType
+          successCriteria
+          isMet
+          values {
+            id
+            value
+            createdAt
+            notes
+            criteriaMet
+          }
+        }
+        tags {
+          id
+          name
+          color
+        }
+        outcomes {
+          id
+          name
+        }
+        releases {
+          id
+          name
+          level
+        }
+      }
     }
   }
 `;

@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 3.3.0
-**Last Updated:** December 29, 2025 (Resources Tab Feature)
+**Version:** 3.4.0
+**Last Updated:** December 29, 2025 (Solution Sync Improvements)
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -1100,6 +1100,19 @@ All DAP data is stored on `/data` partition (not root):
 - **Visual Consistency**: Replaced text-based chips with standardized icons (Article, Video) across all task lists.
 - **Terminology Updates**: Renamed "Telemetry" column to "Validation Criteria" to better reflect business purpose.
 - **Bug Fixes**: Resolved issue where Tags were hidden in Solution Adoption Plans due to data stripping and stale column preferences.
+
+### Version 3.4.0 (December 29, 2025)
+
+#### Robust Solution Sync & Architecture Refactor
+
+**Overview**: Significant improvements to the solution synchronization engine and extraction of shared business logic into a dedicated service.
+
+**Key Changes:**
+1.  **CustomerAdoptionService**: Created a new backend service (`backend/src/modules/customer/customer-adoption.service.ts`) to centralize AdoptionPlan and SolutionAdoptionPlan synchronization logic.
+2.  **Explicit Sequence Sync**: Guaranteed task ordering by explicitly synchronizing `sequenceNumber` from the source product/solution definitions during both creation and sync operations.
+3.  **Recursive Syncing**: Implemented recursive synchronization where syncing a Solution Adoption Plan automatically triggers a refresh of all underlying Product Adoption Plans.
+4.  **Field Parity**: Ensured all task metadata (outcomes, releases, description, weights, tags, telemetry attributes) are robustly updated when a source definition changes.
+5.  **Deleted Attributes Cleanup**: Improved the cleanup of orphaned telemetry attributes and outcomes during the sync process to prevent data stale-out.
 
 ### Version 2.9.5 (December 22, 2025)
 

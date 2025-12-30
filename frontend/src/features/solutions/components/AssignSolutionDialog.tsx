@@ -176,10 +176,11 @@ export const AssignSolutionDialog: React.FC<Props> = ({
             name: solutionName.trim(),
             licenseLevel,
             selectedOutcomeIds: filteredOutcomeIds,
-            selectedReleaseIds: filteredReleaseIds
+            selectedReleaseIds: filteredReleaseIds,
+            includedProductIds: underlyingProducts.map((p: any) => p.id)
           }
         },
-        refetchQueries: ['Customers', 'GET_CUSTOMER_SOLUTIONS']
+        refetchQueries: ['Customers', 'CustomerSolutions']
       });
 
       const customerSolutionId = assignResult.data?.assignSolutionToCustomer?.id;
@@ -193,7 +194,7 @@ export const AssignSolutionDialog: React.FC<Props> = ({
         variables: {
           customerSolutionId
         },
-        refetchQueries: ['GET_CUSTOMER_SOLUTIONS', 'Customers']
+        refetchQueries: ['CustomerSolutions', 'Customers']
       });
 
       // Success!

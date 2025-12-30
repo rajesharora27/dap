@@ -64,7 +64,9 @@ const CREATE_OUTCOME = gql`
 
 const QUEUE_TASK_DELETION = gql`
   mutation QueueTaskSoftDelete($id: ID!) {
-    queueTaskSoftDelete(id: $id)
+    queueTaskSoftDelete(id: $id) {
+      id
+    }
   }
 `;
 

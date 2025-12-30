@@ -34,99 +34,9 @@ import {
   Sync,
   Assessment,
 } from '@shared/components/FAIcon';
+import { ADOPTION_PLAN } from '../graphql/queries';
 
-const GET_ADOPTION_PLAN = gql`
-  query AdoptionPlan($id: ID!) {
-    adoptionPlan(id: $id) {
-      id
-      productId
-      productName
-      licenseLevel
-      totalTasks
-      completedTasks
-      totalWeight
-      completedWeight
-      progressPercentage
-      needsSync
-      lastSyncedAt
-      createdAt
-      updatedAt
-      customerProduct {
-        name
-        customerSolutionId
-        customerSolution {
-          id
-          name
-          solution {
-            id
-            name
-          }
-        }
-      }
-      selectedOutcomes {
-        id
-        name
-      }
-      tasks {
-        id
-        originalTaskId
-        name
-        description
-        estMinutes
-        weight
-        sequenceNumber
-        priority
-        licenseLevel
-        status
-        statusUpdatedAt
-        statusUpdatedBy
-        statusUpdateSource
-        statusNotes
-        isComplete
-        completedAt
-        howToDoc
-        howToVideo
-        notes
-        telemetryProgress {
-          totalAttributes
-          requiredAttributes
-          metAttributes
-          metRequiredAttributes
-          completionPercentage
-          allRequiredMet
-        }
-        telemetryAttributes {
-          id
-          originalAttributeId
-          name
-          description
-          dataType
-          isRequired
-          successCriteria
-          order
-          isActive
-          isMet
-          lastCheckedAt
-          latestValue {
-            id
-            value
-            source
-            createdAt
-          }
-        }
-        outcomes {
-          id
-          name
-        }
-        releases {
-          id
-          name
-          level
-        }
-      }
-    }
-  }
-`;
+
 
 const SYNC_ADOPTION_PLAN = gql`
   mutation SyncAdoptionPlan($adoptionPlanId: ID!) {
@@ -176,7 +86,7 @@ export const AdoptionPlanDialog: React.FC<Props> = ({ open, onClose, adoptionPla
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
 
-  const { data, loading, refetch } = useQuery(GET_ADOPTION_PLAN, {
+  const { data, loading, refetch } = useQuery(ADOPTION_PLAN, {
     variables: { id: adoptionPlanId },
     skip: !adoptionPlanId || !open,
     fetchPolicy: 'cache-and-network',
@@ -437,9 +347,7 @@ export const AdoptionPlanDialog: React.FC<Props> = ({ open, onClose, adoptionPla
                               color={getStatusColor(task.status) as any}
                               size="small"
                             />
-                            {task.priority && (
-                              <Chip label={task.priority} size="small" variant="outlined" />
-                            )}
+
                           </Box>
                           {task.description && (
                             <Typography variant="caption" color="text.secondary" sx={{ pl: 3 }}>

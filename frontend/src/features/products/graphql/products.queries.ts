@@ -180,6 +180,4 @@ export const EXPORT_PRODUCT = gql`
 }
 `;
 
-// Aliases for transition
-export const GET_PRODUCTS = PRODUCTS;
-export const GET_PRODUCT = PRODUCT;
+

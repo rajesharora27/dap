@@ -22,121 +22,22 @@ import {
 } from '@mui/material';
 import { Add, Edit, Delete, Download, Upload, Assessment, Sync } from '@shared/components/FAIcon';
 import { gql, useQuery, useMutation } from '@apollo/client';
+import {
+  CUSTOMER_SOLUTIONS,
+  SOLUTION_ADOPTION_PLAN,
+  CREATE_SOLUTION_ADOPTION_PLAN,
+  REMOVE_SOLUTION_FROM_CUSTOMER,
+  SYNC_SOLUTION_ADOPTION_PLAN,
+  EXPORT_SOLUTION_TELEMETRY_TEMPLATE,
+  IMPORT_SOLUTION_TELEMETRY
+} from '../graphql';
 import { AssignSolutionDialog } from './AssignSolutionDialog';
 import { EditSolutionLicensesDialog } from './EditSolutionLicensesDialog';
 import { SolutionAdoptionPlanView } from '@features/adoption-plans';
 import { importSolutionTelemetry, downloadFileFromUrl } from '@/features/telemetry/utils/telemetryOperations';
 
 
-const GET_CUSTOMER_SOLUTIONS = gql`
-  query CustomerSolutions($customerId: ID!) {
-    customer(id: $customerId) {
-      id
-      name
-      solutions {
-        id
-        name
-        licenseLevel
-        solution {
-          id
-          name
-        }
-        adoptionPlan {
-          id
-          progressPercentage
-          needsSync
-          lastSyncedAt
-        }
-      }
-    }
-  }
-`;
 
-const CREATE_SOLUTION_ADOPTION_PLAN = gql`
-  mutation CreateSolutionAdoptionPlan($customerSolutionId: ID!) {
-    createSolutionAdoptionPlan(customerSolutionId: $customerSolutionId) {
-      id
-      progressPercentage
-    }
-  }
-`;
-
-
-
-const REMOVE_SOLUTION_FROM_CUSTOMER = gql`
-  mutation RemoveSolutionFromCustomer($id: ID!) {
-    removeSolutionFromCustomerEnhanced(id: $id) {
-      success
-      message
-    }
-  }
-`;
-
-const GET_SOLUTION_ADOPTION_PLAN = gql`
-  query SolutionAdoptionPlan($id: ID!) {
-    solutionAdoptionPlan(id: $id) {
-      id
-      progressPercentage
-      totalTasks
-      completedTasks
-      needsSync
-      lastSyncedAt
-    }
-  }
-`;
-
-const EXPORT_SOLUTION_TELEMETRY_TEMPLATE = gql`
-  mutation ExportSolutionTelemetryTemplate($solutionAdoptionPlanId: ID!) {
-    exportSolutionAdoptionPlanTelemetryTemplate(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
-      url
-      filename
-      taskCount
-      attributeCount
-    }
-  }
-`;
-
-const IMPORT_SOLUTION_TELEMETRY = gql`
-  mutation ImportSolutionTelemetry($solutionAdoptionPlanId: ID!, $file: Upload!) {
-    importSolutionAdoptionPlanTelemetry(solutionAdoptionPlanId: $solutionAdoptionPlanId, file: $file) {
-      success
-      batchId
-      summary {
-        tasksProcessed
-        attributesUpdated
-        criteriaEvaluated
-        errors
-      }
-      taskResults {
-        taskId
-        taskName
-        attributesUpdated
-        criteriaMet
-        criteriaTotal
-        completionPercentage
-        errors
-      }
-    }
-  }
-`;
-
-const SYNC_SOLUTION_ADOPTION_PLAN = gql`
-  mutation SyncSolutionAdoptionPlan($solutionAdoptionPlanId: ID!) {
-    syncSolutionAdoptionPlan(solutionAdoptionPlanId: $solutionAdoptionPlanId) {
-      id
-      progressPercentage
-      needsSync
-      lastSyncedAt
-      products {
-        id
-        status
-        progressPercentage
-        totalTasks
-        completedTasks
-      }
-    }
-  }
-`;
 
 interface Props {
   customerId: string;
@@ -148,7 +49,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
   const [editLicensesDialogOpen, setEditLicensesDialogOpen] = useState(false);
   const [deleteConfirmDialogOpen, setDeleteConfirmDialogOpen] = useState(false);
 
-  const { data, loading, error, refetch } = useQuery(GET_CUSTOMER_SOLUTIONS, {
+  const { data, loading, error, refetch } = useQuery(CUSTOMER_SOLUTIONS, {
     variables: { customerId },
     skip: !customerId,
     fetchPolicy: 'network-only'
@@ -198,7 +99,7 @@ export const CustomerSolutionPanel: React.FC<Props> = ({ customerId }) => {
 
   const adoptionPlanIdForQuery = selectedSolutionData?.adoptionPlan?.id;
 
-  const { data: planData, refetch: refetchPlan } = useQuery(GET_SOLUTION_ADOPTION_PLAN, {
+  const { data: planData, refetch: refetchPlan } = useQuery(SOLUTION_ADOPTION_PLAN, {
     variables: { id: adoptionPlanIdForQuery },
     skip: !selectedSolutionId || !selectedSolutionData?.adoptionPlan
   });
