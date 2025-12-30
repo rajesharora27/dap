@@ -30,6 +30,8 @@ import {
   Collapse,
   Menu,
   MenuItem as MenuItemLink,
+  useTheme,
+  alpha,
 } from '@mui/material';
 import {
   ExpandMore,
@@ -98,6 +100,7 @@ interface AdoptionTaskTableProps {
   titleColor?: string;
   bgColor?: string;
   borderColor?: string;
+  accentColor?: string;
   filterInfo?: string;
   showHeader?: boolean;
   defaultExpanded?: boolean;
@@ -120,14 +123,23 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
   onUpdateTaskStatus,
   title = 'Tasks',
   titleIcon = '📋',
-  titleColor = '#049FD9',
-  bgColor = 'rgba(4, 159, 217, 0.08)',
-  borderColor = '#049FD9',
+  accentColor,
+  titleColor,
+  bgColor,
+  borderColor,
   filterInfo,
   showHeader = true,
   defaultExpanded = true,
   visibleColumns = DEFAULT_ADOPTION_VISIBLE_COLUMNS,
 }) => {
+  const theme = useTheme();
+
+  // Default values based on accentColor
+  const finalAccentColor = accentColor || '#049FD9';
+  const finalTitleColor = titleColor || finalAccentColor;
+  const finalBgColor = bgColor || alpha(finalAccentColor, 0.08);
+  const finalBorderColor = borderColor || finalAccentColor;
+
   // Helper function to check if a column is visible
   const isColumnVisible = (columnKey: string) => visibleColumns.includes(columnKey);
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -623,10 +635,10 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          bgcolor: bgColor,
+          bgcolor: finalBgColor,
           cursor: 'pointer',
           borderLeft: '4px solid',
-          borderLeftColor: borderColor,
+          borderLeftColor: finalBorderColor,
           transition: 'all 0.2s ease',
           '&:hover': {
             filter: 'brightness(0.95)',
@@ -635,13 +647,13 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
         onClick={() => setExpanded(!expanded)}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
-          <IconButton size="small" sx={{ color: titleColor }}>
+          <IconButton size="small" sx={{ color: finalTitleColor }}>
             {expanded ? <ExpandLess /> : <ExpandMore />}
           </IconButton>
 
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Typography variant="h6" sx={{ color: titleColor, fontWeight: 600 }}>
+              <Typography variant="h6" sx={{ color: finalTitleColor, fontWeight: 600 }}>
                 {titleIcon} {title}
               </Typography>
               <Chip
@@ -653,12 +665,12 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
                   fontWeight: 600,
                 }}
               />
-              <Typography variant="body2" sx={{ color: titleColor, opacity: 0.8 }}>
+              <Typography variant="body2" sx={{ color: finalTitleColor, opacity: 0.8 }}>
                 {completedTasks} of {applicableTasks.length} tasks
               </Typography>
             </Box>
             {filterInfo && (
-              <Typography variant="caption" sx={{ color: titleColor, opacity: 0.7, mt: 0.5, display: 'block' }}>
+              <Typography variant="caption" sx={{ color: finalTitleColor, opacity: 0.7, mt: 0.5, display: 'block' }}>
                 🔍 {filterInfo}
               </Typography>
             )}

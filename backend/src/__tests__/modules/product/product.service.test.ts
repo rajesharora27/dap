@@ -65,16 +65,16 @@ describe('ProductService', () => {
     it('should create a product with resources', async () => {
       const product = await ProductService.createProduct(testUser.id, {
         name: 'Product with Resources',
-        resources: {
-          documentation: 'https://docs.example.com',
-          support: 'https://support.example.com',
-        },
+        resources: [
+          { label: 'Documentation', url: 'https://docs.example.com' },
+          { label: 'Support', url: 'https://support.example.com' },
+        ],
       });
 
-      expect(product.resources).toEqual({
-        documentation: 'https://docs.example.com',
-        support: 'https://support.example.com',
-      });
+      expect(product.resources).toEqual([
+        { label: 'Documentation', url: 'https://docs.example.com' },
+        { label: 'Support', url: 'https://support.example.com' },
+      ]);
     });
 
     it('should associate licenses when licenseIds provided', async () => {

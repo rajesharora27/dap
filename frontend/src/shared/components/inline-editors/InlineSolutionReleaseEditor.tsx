@@ -235,6 +235,7 @@ export function InlineSolutionReleaseEditor({
         <SortableEntityItem
             id={release.id || `new-${index}`}
             primary={release.name}
+            index={index}
             secondary={
                 <Box>
                     <Typography variant="body2">Level: {release.level}{release.description ? ` - ${release.description}` : ''}</Typography>

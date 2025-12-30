@@ -32,6 +32,7 @@ const LicenseRow = ({
     onDelete
 }: {
     license: any;
+    index: number;
     isEditing: boolean;
     onEditStart: () => void;
     onEditCancel: () => void;

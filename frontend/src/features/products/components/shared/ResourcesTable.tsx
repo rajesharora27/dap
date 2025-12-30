@@ -21,6 +21,7 @@ import {
 import { Resource } from '@shared/types';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
+import { SortableHandle } from '@shared/components/SortableHandle';
 
 interface ResourcesTableProps {
     items: Resource[];
@@ -98,16 +99,12 @@ const SortableResourceRow = ({
     return (
         <TableRow ref={setNodeRef} style={style} sx={{ '&:hover .drag-handle': { opacity: 1 } }}>
             {!readOnly && (
-                <TableCell width="50px">
-                    <IconButton
-                        size="small"
-                        className="drag-handle"
-                        sx={{ opacity: 0.3, cursor: 'grab' }}
-                        {...attributes}
-                        {...listeners}
-                    >
-                        <DragIndicator fontSize="small" />
-                    </IconButton>
+                <TableCell width="40px" sx={{ textAlign: 'center' }}>
+                    <SortableHandle
+                        index={index}
+                        attributes={attributes}
+                        listeners={listeners}
+                    />
                 </TableCell>
             )}
 
@@ -228,7 +225,7 @@ export const ResourcesTable: React.FC<ResourcesTableProps> = ({
     const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
         tableId: 'resources-table',
         columns: [
-            { key: 'drag', minWidth: 50, defaultWidth: 50 },
+            { key: 'drag', minWidth: 40, defaultWidth: 40 },
             { key: 'name', minWidth: 150, defaultWidth: 300 },
             { key: 'url', minWidth: 200, defaultWidth: 400 },
             { key: 'actions', minWidth: 100, defaultWidth: 120 },

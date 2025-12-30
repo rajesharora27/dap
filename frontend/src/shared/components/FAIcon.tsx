@@ -61,6 +61,7 @@ import {
     faBuilding as farBuilding,
     faCircleUser as farCircleUser,
     faFolder as farFolder,
+    faCirclePlay as farCirclePlay,
 } from '@fortawesome/free-regular-svg-icons';
 
 // Solid icons (for icons not available in regular or need filled style)
@@ -341,7 +342,7 @@ export const Person = createIcon(farUser, 'Person');
 export const PersonOutline = createIcon(farUser, 'PersonOutline');
 export const Business = createIcon(faBuilding, 'Business');
 export const Task = createIcon(farRectangleList, 'Task');
-export const Assignment = createIcon(faClipboardList, 'Assignment');
+export const Assignment = createIcon(farClipboard, 'Assignment');
 export const Extension = createIcon(farObjectGroup, 'Extension');
 export const ExtensionSolid = createIcon(faPuzzlePiece, 'ExtensionSolid');
 export const Category = createIcon(faSitemap, 'Category');
@@ -523,7 +524,7 @@ export const DeleteOutline = createIcon(farTrashCan, 'DeleteOutline');
 export const AccountCircle = createIcon(faCircleUser, 'AccountCircle');
 export const TrendingDown = createIcon(faChartLine, 'TrendingDown'); // Uses same icon, styled differently
 export const NotInterested = createIcon(faBan, 'NotInterested');
-export const OndemandVideo = createIcon(faVideo, 'OndemandVideo');
+export const OndemandVideo = createIcon(farCirclePlay, 'OndemandVideo');
 export const AssignmentTurnedIn = createIcon(faClipboardCheck, 'AssignmentTurnedIn');
 export const Memory = createIcon(faMemory, 'Memory');
 export const Commit = createIcon(faCodeBranch, 'Commit');

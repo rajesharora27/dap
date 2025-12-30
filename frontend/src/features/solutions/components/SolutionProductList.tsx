@@ -21,6 +21,7 @@ import {
   Divider
 } from '@mui/material';
 import { Add, Delete, DragIndicator, ArrowUpward, ArrowDownward } from '@shared/components/FAIcon';
+import { SortableHandle } from '@shared/components/SortableHandle';
 import { useMutation } from '@apollo/client';
 import {
   ADD_PRODUCT_TO_SOLUTION_ENHANCED,
@@ -170,13 +171,10 @@ export const SolutionProductList: React.FC<Props> = ({
                     gap: 1
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 80 }}>
-                    <DragIndicator sx={{ color: 'text.disabled' }} />
-                    <Chip
-                      label={`#${index + 1}`}
-                      size="small"
-                      color="primary"
-                      variant="outlined"
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 40 }}>
+                    <SortableHandle
+                      index={index}
+                      disableDrag={true} // Not draggable yet in this component
                     />
                   </Box>
 

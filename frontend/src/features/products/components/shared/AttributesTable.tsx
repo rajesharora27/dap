@@ -20,6 +20,7 @@ import {
 } from '@mui/icons-material';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
+import { SortableHandle } from '@shared/components/SortableHandle';
 
 export interface AttributeItem {
     key: string;
@@ -41,6 +42,7 @@ interface AttributesTableProps {
 const SortableAttributeRow = ({
     attrKey,
     value,
+    index,
     isEditing,
     onEditStart,
     onEditCancel,
@@ -49,6 +51,7 @@ const SortableAttributeRow = ({
 }: {
     attrKey: string;
     value: any;
+    index: number;
     isEditing: boolean;
     onEditStart: () => void;
     onEditCancel: () => void;
@@ -107,16 +110,12 @@ const SortableAttributeRow = ({
 
     return (
         <TableRow ref={setNodeRef} style={style} sx={{ '&:hover .drag-handle': { opacity: 1 } }}>
-            <TableCell width="50px">
-                <IconButton
-                    size="small"
-                    className="drag-handle"
-                    sx={{ opacity: 0.3, cursor: 'grab' }}
-                    {...attributes}
-                    {...listeners}
-                >
-                    <DragIndicator fontSize="small" />
-                </IconButton>
+            <TableCell width="40px" sx={{ textAlign: 'center' }}>
+                <SortableHandle
+                    index={index}
+                    attributes={attributes}
+                    listeners={listeners}
+                />
             </TableCell>
 
             {isEditing ? (
@@ -217,7 +216,7 @@ export const AttributesTable: React.FC<AttributesTableProps> = ({
     const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
         tableId: 'attributes-table',
         columns: [
-            { key: 'drag', minWidth: 50, defaultWidth: 50 },
+            { key: 'drag', minWidth: 40, defaultWidth: 40 },
             { key: 'key', minWidth: 100, defaultWidth: 300 },
             { key: 'value', minWidth: 200, defaultWidth: 400 },
             { key: 'actions', minWidth: 100, defaultWidth: 120 },
@@ -376,11 +375,12 @@ export const AttributesTable: React.FC<AttributesTableProps> = ({
                             items={localItems.map((i) => i.key)}
                             strategy={verticalListSortingStrategy}
                         >
-                            {localItems.map((attr) => (
+                            {localItems.map((attr, index) => (
                                 <SortableAttributeRow
                                     key={attr.key}
                                     attrKey={attr.key}
                                     value={attr.value}
+                                    index={index}
                                     isEditing={editingKey === attr.key}
                                     onEditStart={() => !readOnly && setEditingKey(attr.key)}
                                     onEditCancel={() => setEditingKey(null)}

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Solution } from '../types';
 import { Box, Paper, Typography, LinearProgress, Chip, useTheme, alpha, Divider, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
 import { Speed as SpeedIcon, CheckCircle as CheckCircleIcon, Assignment as TaskIcon, Extension as ProductIcon, Description as DocIcon, OndemandVideo as VideoIcon } from '@shared/components/FAIcon';
+import { getProgressColor } from '../../../shared/utils/progressUtils';
 
 interface SolutionSummaryDashboardProps {
     solution: Solution;
@@ -133,16 +134,16 @@ export const SolutionSummaryDashboard: React.FC<SolutionSummaryDashboardProps> =
     const colors = {
         primary: '#0F172A',
         secondary: '#64748B',
-        accentBlue: '#059669',
+        accentBlue: '#3B82F6',
         vibrantCyan: '#06B6D4',
-        solidGreen: '#16A34A',
-        ciscoBlue: '#0284C7',
+        solidGreen: '#10B981',
+        ciscoBlue: '#3B82F6',
         divider: '#E2E8F0',
         bg: '#F1F5F9', // Light Gray-Blue
         headerBg: '#F8FAFC'
     };
 
-    const telemetryColor = metrics.telemetryCoverage > 70 ? colors.vibrantCyan : metrics.telemetryCoverage > 40 ? '#F59E0B' : '#EF4444';
+    const telemetryColor = getProgressColor(metrics.telemetryCoverage);
 
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, bgcolor: colors.bg, minHeight: '100%', p: 0 }}>

@@ -24,6 +24,7 @@ import {
 } from '@shared/components/FAIcon';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
+import { SortableHandle } from '@shared/components/SortableHandle';
 import { useQuery, useMutation } from '@apollo/client';
 import {
     GET_MY_TODOS,
@@ -56,6 +57,7 @@ export interface TodoTabRef {
 
 interface SortableTodoItemProps {
     todo: any;
+    index: number;
     onToggle: (id: string, isCompleted: boolean) => void;
     onDelete: (id: string) => void;
     onUpdate: (id: string, updates: any) => void;
@@ -68,6 +70,7 @@ interface SortableTodoItemProps {
 
 const SortableTodoItem: React.FC<SortableTodoItemProps> = ({
     todo,
+    index,
     onToggle,
     onDelete,
     onUpdate,
@@ -123,21 +126,12 @@ const SortableTodoItem: React.FC<SortableTodoItemProps> = ({
                 '& .MuiTableCell-root': { py: 1.5, borderBottom: cellBorder }
             }}
         >
-            <TableCell width={dragHandleWidth} sx={{ px: 1, borderRight: cellBorder }}>
-                <Box
-                    className="drag-handle"
-                    {...attributes}
-                    {...listeners}
-                    sx={{
-                        display: 'flex',
-                        cursor: 'grab',
-                        opacity: 0.3,
-                        '&:active': { cursor: 'grabbing' },
-                        '&:hover': { opacity: 1 }
-                    }}
-                >
-                    <DragHandle fontSize="small" />
-                </Box>
+            <TableCell width={dragHandleWidth} sx={{ px: 1, borderRight: cellBorder, textAlign: 'center' }}>
+                <SortableHandle
+                    index={index}
+                    attributes={attributes}
+                    listeners={listeners}
+                />
             </TableCell>
             <TableCell width={checkboxWidth} align="center" sx={{ borderRight: cellBorder }}>
                 <Checkbox
@@ -385,10 +379,11 @@ export const TodoTab = forwardRef<TodoTabRef, {}>((props, ref) => {
                                 onDragEnd={handleDragEnd}
                             >
                                 <SortableContext items={localTodos.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                                    {localTodos.map((todo: any) => (
+                                    {localTodos.map((todo: any, index: number) => (
                                         <SortableTodoItem
                                             key={todo.id}
                                             todo={todo}
+                                            index={index}
                                             onToggle={handleToggleTodo}
                                             onDelete={handleDeleteTodo}
                                             onUpdate={handleUpdateTodo}

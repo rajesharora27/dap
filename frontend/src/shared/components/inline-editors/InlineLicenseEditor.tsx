@@ -122,6 +122,7 @@ export function InlineLicenseEditor({
         <SortableEntityItem
             id={license.id || `new-${index}`}
             primary={`${license.name} (Level ${license.level})`}
+            index={index}
             secondary={license.description}
             badge={
                 <Box sx={{ display: 'flex', gap: 0.5 }}>

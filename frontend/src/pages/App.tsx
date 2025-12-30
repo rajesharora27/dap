@@ -69,7 +69,8 @@ import {
   ArrowUpward as ArrowUpIcon,
   ArrowDownward as ArrowDownIcon,
   VerticalAlignTop as VerticalAlignTopIcon,
-  VerticalAlignBottom as VerticalAlignBottomIcon
+  VerticalAlignBottom as VerticalAlignBottomIcon,
+  Add
 } from '@mui/icons-material';
 
 import { useAuth, LoginPage } from '@features/auth';
@@ -365,10 +366,23 @@ function AuthenticatedApp() {
               <ListItemText primary="Getting Started" />
             </ListItemButton>
 
-            {/* Products */}
-            <ListItemButton
-              selected={selectedSection === 'products'}
-              onClick={() => navigate('/products')}
+            <ListItem
+              disablePadding
+              secondaryAction={
+                <Tooltip title="Add Product">
+                  <IconButton
+                    edge="end"
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/products?add=true');
+                    }}
+                    sx={{ color: '#10B981', mr: 1 }}
+                  >
+                    <Add fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              }
               sx={{
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(4, 159, 217, 0.08)',
@@ -378,14 +392,32 @@ function AuthenticatedApp() {
                 '&.Mui-selected:hover': { backgroundColor: 'rgba(4, 159, 217, 0.12)' }
               }}
             >
-              <ListItemIcon><ProductIcon /></ListItemIcon>
-              <ListItemText primary="Products" />
-            </ListItemButton>
+              <ListItemButton
+                selected={selectedSection === 'products'}
+                onClick={() => navigate('/products')}
+              >
+                <ListItemIcon><ProductIcon /></ListItemIcon>
+                <ListItemText primary="Products" />
+              </ListItemButton>
+            </ListItem>
 
-            {/* Solutions */}
-            <ListItemButton
-              selected={selectedSection === 'solutions'}
-              onClick={() => navigate('/solutions')}
+            <ListItem
+              disablePadding
+              secondaryAction={
+                <Tooltip title="Add Solution">
+                  <IconButton
+                    edge="end"
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/solutions?add=true');
+                    }}
+                    sx={{ color: '#3B82F6', mr: 1 }}
+                  >
+                    <Add fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              }
               sx={{
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(237, 108, 2, 0.08)',
@@ -395,14 +427,32 @@ function AuthenticatedApp() {
                 '&.Mui-selected:hover': { backgroundColor: 'rgba(237, 108, 2, 0.12)' }
               }}
             >
-              <ListItemIcon><SolutionIcon /></ListItemIcon>
-              <ListItemText primary="Solutions" />
-            </ListItemButton>
+              <ListItemButton
+                selected={selectedSection === 'solutions'}
+                onClick={() => navigate('/solutions')}
+              >
+                <ListItemIcon><SolutionIcon /></ListItemIcon>
+                <ListItemText primary="Solutions" />
+              </ListItemButton>
+            </ListItem>
 
-            {/* Customers */}
-            <ListItemButton
-              selected={selectedSection === 'customers'}
-              onClick={() => navigate('/customers')}
+            <ListItem
+              disablePadding
+              secondaryAction={
+                <Tooltip title="Add Customer">
+                  <IconButton
+                    edge="end"
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate('/customers?add=true');
+                    }}
+                    sx={{ color: '#2e7d32', mr: 1 }}
+                  >
+                    <Add fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              }
               sx={{
                 '&.Mui-selected': {
                   backgroundColor: 'rgba(46, 125, 50, 0.08)',
@@ -412,9 +462,14 @@ function AuthenticatedApp() {
                 '&.Mui-selected:hover': { backgroundColor: 'rgba(46, 125, 50, 0.12)' }
               }}
             >
-              <ListItemIcon><CustomerIcon /></ListItemIcon>
-              <ListItemText primary="Customers" />
-            </ListItemButton>
+              <ListItemButton
+                selected={selectedSection === 'customers'}
+                onClick={() => navigate('/customers')}
+              >
+                <ListItemIcon><CustomerIcon /></ListItemIcon>
+                <ListItemText primary="Customers" />
+              </ListItemButton>
+            </ListItem>
 
             {/* My Diary */}
             <ListItemButton

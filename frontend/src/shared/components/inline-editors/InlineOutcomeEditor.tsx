@@ -85,6 +85,7 @@ export function InlineOutcomeEditor({
         <SortableEntityItem
             id={outcome.id || `new-${index}`}
             primary={outcome.name}
+            index={index}
             secondary={outcome.description}
             badge={outcome.isNew ? <Chip label="New" size="small" color="success" variant="outlined" /> : undefined}
             onEdit={onStartEdit}

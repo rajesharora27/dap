@@ -163,7 +163,8 @@ export async function withRetry<T>(
     maxAttempts = 3,
     delayMs = 1000,
     backoffMultiplier = 2,
-    retryOn = () => true,
+    // By default, don't retry AppErrors (they're typically business logic errors)
+    retryOn = (error: unknown) => !AppError.isAppError(error),
   } = options;
 
   let lastError: unknown;
@@ -175,16 +176,20 @@ export async function withRetry<T>(
     } catch (error) {
       lastError = error;
 
-      // Don't retry AppErrors unless specifically configured
-      if (AppError.isAppError(error) && !retryOn(error)) {
-        throw error;
+      // Check if we should retry this error
+      const shouldRetry = attempt < maxAttempts && retryOn(error);
+
+      if (!shouldRetry) {
+        // If it's an AppError, throw it unchanged; otherwise wrap it
+        if (AppError.isAppError(error)) {
+          throw error;
+        }
+        break;
       }
 
-      if (attempt < maxAttempts && retryOn(error)) {
-        console.warn(`[withRetry] Attempt ${attempt} failed, retrying in ${currentDelay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, currentDelay));
-        currentDelay *= backoffMultiplier;
-      }
+      console.warn(`[withRetry] Attempt ${attempt} failed, retrying in ${currentDelay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, currentDelay));
+      currentDelay *= backoffMultiplier;
     }
   }
 

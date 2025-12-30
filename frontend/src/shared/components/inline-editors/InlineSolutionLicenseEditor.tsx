@@ -245,6 +245,7 @@ export function InlineSolutionLicenseEditor({
         <SortableEntityItem
             id={license.id || `new-${index}`}
             primary={`${license.name} (Level ${license.level})`}
+            index={index}
             secondary={
                 <Box>
                     {license.description && <Typography variant="body2">{license.description}</Typography>}

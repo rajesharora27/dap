@@ -400,6 +400,7 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
         totalTasks={plan.totalTasks}
         percentage={plan.progressPercentage}
         productsCount={plan.products.length}
+        color="#3B82F6"
       />
 
       {/* Interactive Filters for Solution Tasks */}

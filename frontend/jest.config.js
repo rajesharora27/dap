@@ -35,14 +35,16 @@ export default {
   
   // Files to test
   testMatch: [
-    '<rootDir>/src/**/__tests__/**/*.{ts,tsx}',
+    '<rootDir>/src/**/__tests__/**/*.test.{ts,tsx}',
     '<rootDir>/src/**/*.{spec,test}.{ts,tsx}'
   ],
   
   // Files to ignore
   testPathIgnorePatterns: [
     '/node_modules/',
-    '/dist/'
+    '/dist/',
+    '/testUtils.ts',
+    '/e2e/'
   ],
   
   // Transform ignore patterns

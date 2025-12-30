@@ -22,6 +22,7 @@ import {
 } from '@shared/components/FAIcon';
 import { AdoptionTaskTable, TaskData } from './AdoptionTaskTable';
 import { adoptionPlanColors } from '@shared/theme/tabStyles';
+import { getProgressColor } from '@shared/utils/progressUtils';
 
 interface SolutionTasksGroupProps {
   progress: number;
@@ -160,7 +161,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
                     borderRadius: 4,
                     bgcolor: 'rgba(0,0,0,0.1)',
                     '& .MuiLinearProgress-bar': {
-                      bgcolor: colors.titleColor,
+                      bgcolor: getProgressColor(progress),
                       borderRadius: 4,
                     }
                   }}

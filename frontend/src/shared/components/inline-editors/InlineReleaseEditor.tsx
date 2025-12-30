@@ -109,6 +109,7 @@ export function InlineReleaseEditor({
         <SortableEntityItem
             id={release.id || `new-${index}`}
             primary={release.name}
+            index={index}
             secondary={`Level: ${release.level}${release.description ? ` - ${release.description}` : ''}`}
             badge={release.isNew ? <Chip label="New" size="small" color="success" variant="outlined" /> : undefined}
             onEdit={onStartEdit}

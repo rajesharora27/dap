@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Box,
   Alert,
@@ -69,6 +70,20 @@ function CustomersPanelContent({ forceTab, hideTabs }: CustomersPanelProps) {
     open: false,
     customer: null
   });
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('add') === 'true') {
+      openAddCustomer();
+      // Clear the param after opening
+      const newParams = new URLSearchParams(location.search);
+      newParams.delete('add');
+      navigate({ search: newParams.toString() }, { replace: true });
+    }
+  }, [location.search, openAddCustomer, navigate]);
 
   // Sync activeTab with forceTab when it changes
   useEffect(() => {
@@ -174,7 +189,7 @@ function CustomersPanelContent({ forceTab, hideTabs }: CustomersPanelProps) {
                       label={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           Products Assigned
-                          <Box component="span" onClick={(e) => { e.stopPropagation(); openAssignProduct(); }} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', color: 'primary.main', '&:hover': { backgroundColor: 'rgba(4, 159, 217, 0.1)' } }}><Add fontSize="small" /></Box>
+                          <Box component="span" onClick={(e) => { e.stopPropagation(); openAssignProduct(); }} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', color: '#10B981', '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' } }}><Add fontSize="small" /></Box>
                         </Box>
                       }
                       value="products"
@@ -183,7 +198,7 @@ function CustomersPanelContent({ forceTab, hideTabs }: CustomersPanelProps) {
                       label={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                           Solutions Assigned
-                          <Box component="span" onClick={(e) => { e.stopPropagation(); openAssignSolution(); }} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', color: 'primary.main', '&:hover': { backgroundColor: 'rgba(4, 159, 217, 0.1)' } }}><Add fontSize="small" /></Box>
+                          <Box component="span" onClick={(e) => { e.stopPropagation(); openAssignSolution(); }} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', color: '#3B82F6', '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.1)' } }}><Add fontSize="small" /></Box>
                         </Box>
                       }
                       value="solutions"

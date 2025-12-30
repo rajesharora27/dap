@@ -43,21 +43,21 @@ export const getTabsStyles = (): SxProps<Theme> => ({
  */
 export const adoptionPlanColors = {
   product: {
-    titleColor: '#00897B',
-    bgColor: '#E0F2F1',
-    borderColor: '#00897B',
+    titleColor: '#10B981',
+    bgColor: 'rgba(16, 185, 129, 0.08)',
+    borderColor: '#10B981',
     titleIcon: '📦',
   },
   solution: {
-    titleColor: 'primary.main',
-    bgColor: 'rgba(4, 159, 217, 0.05)',
-    borderColor: 'primary.main',
+    titleColor: '#3B82F6',
+    bgColor: 'rgba(59, 130, 246, 0.08)',
+    borderColor: '#3B82F6',
     titleIcon: '🎯',
   },
   default: {
-    titleColor: 'primary.main',
-    bgColor: 'rgba(4, 159, 217, 0.08)',
-    borderColor: 'primary.main',
+    titleColor: '#3B82F6',
+    bgColor: 'rgba(59, 130, 246, 0.08)',
+    borderColor: '#3B82F6',
     titleIcon: '📋',
   },
 };

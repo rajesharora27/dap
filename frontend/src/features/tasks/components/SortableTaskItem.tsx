@@ -21,11 +21,26 @@ import {
 } from '@shared/components/FAIcon';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { SortableHandle } from '@shared/components/SortableHandle';
+import { Lock as LockIcon } from '@shared/components/FAIcon';
 
 // Default visible columns (all visible)
 const DEFAULT_VISIBLE_COLUMNS = ['tags', 'resources', 'implPercent', 'validationCriteria'];
 
-export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeightChange, onSequenceChange, onTagChange, availableTags, disableDrag, locked = false, visibleColumns = DEFAULT_VISIBLE_COLUMNS }: any) {
+export function SortableTaskItem({
+    task,
+    index,
+    onEdit,
+    onDelete,
+    onDoubleClick,
+    onWeightChange,
+    onSequenceChange,
+    onTagChange,
+    availableTags,
+    disableDrag,
+    locked = false,
+    visibleColumns = DEFAULT_VISIBLE_COLUMNS
+}: any) {
     const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
     const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
     const [tagMenuAnchor, setTagMenuAnchor] = useState<{ el: HTMLElement; task: any } | null>(null);
@@ -67,12 +82,14 @@ export function SortableTaskItem({ task, onEdit, onDelete, onDoubleClick, onWeig
                 }}
             >
                 {/* Drag handle */}
-                <TableCell sx={{ width: 30, minWidth: 30, padding: '4px 2px', cursor: (disableDrag || locked) ? 'default' : 'grab' }} {...(!(disableDrag || locked) ? attributes : {})} {...(!(disableDrag || locked) ? listeners : {})}>
-                    {!(disableDrag || locked) ? (
-                        <DragIndicator sx={{ color: 'text.secondary', fontSize: '1rem' }} />
-                    ) : (
-                        locked && <Lock sx={{ color: 'text.disabled', fontSize: '0.9rem', opacity: 0.5 }} />
-                    )}
+                <TableCell sx={{ width: 40, minWidth: 40, padding: '4px 2px', cursor: (disableDrag || locked) ? 'default' : 'grab' }}>
+                    <SortableHandle
+                        index={index}
+                        attributes={attributes}
+                        listeners={listeners}
+                        locked={locked}
+                        disableDrag={disableDrag}
+                    />
                 </TableCell>
 
                 {/* Sequence number - editable */}

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
     Box, Paper, Typography, FormControl, InputLabel, Select, MenuItem, Button,
-    IconButton, Tabs, Tab, CircularProgress, Tooltip
+    IconButton, Tabs, Tab, CircularProgress, Tooltip, Divider
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Add, Delete, ImportExport } from '@shared/components/FAIcon'; // Fix import: ImportExport -> FileUpload/FileDownload or find correct icon
@@ -257,8 +258,8 @@ export function ProductsPageContent() {
             if (data?.exportProduct) {
                 const { filename, content, mimeType } = data.exportProduct;
 
-                // Create download link
-                const blob = new Blob([content], { type: mimeType });
+                // Convert base64 to blob and download
+                const blob = new Blob([Uint8Array.from(atob(content), c => c.charCodeAt(0))], { type: mimeType });
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
@@ -278,6 +279,20 @@ export function ProductsPageContent() {
 
 
 
+    const location = useLocation();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('add') === 'true') {
+            openAddProduct();
+            // Clear the param after opening
+            const newParams = new URLSearchParams(location.search);
+            newParams.delete('add');
+            navigate({ search: newParams.toString() }, { replace: true });
+        }
+    }, [location.search, openAddProduct, navigate]);
+
     if (loadingProducts) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
@@ -289,47 +304,79 @@ export function ProductsPageContent() {
     return (
         <Box sx={{ p: 3, maxWidth: 1600, margin: '0 auto' }}>
             {/* Header & Selector */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 300 }}>
-                    <Typography variant="h5" sx={{ fontWeight: 600, color: 'text.primary' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+                <Box>
+                    <Typography variant="h5" sx={{ fontWeight: 700, color: 'text.primary', mr: 2 }}>
                         Products
                     </Typography>
-                    <FormControl size="small" fullWidth>
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <FormControl size="small" sx={{ minWidth: 280 }}>
                         <InputLabel>Select Product</InputLabel>
                         <Select
                             value={selectedProductId || ''}
-                            onChange={(e) => setSelectedProductId(e.target.value)}
+                            onChange={(e) => {
+                                if (e.target.value === '__NEW__') openAddProduct();
+                                else setSelectedProductId(e.target.value);
+                            }}
                             label="Select Product"
                         >
                             {products.map((p) => (
                                 <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
                             ))}
+                            <Divider />
+                            <MenuItem value="__NEW__" sx={{ color: '#10B981', fontWeight: 600 }}>
+                                <Add fontSize="small" sx={{ mr: 1, color: '#10B981' }} /> Add Product
+                            </MenuItem>
                         </Select>
                     </FormControl>
+
                 </Box>
+
                 <Box sx={{ display: 'flex', gap: 1 }}>
                     <Button
                         variant="outlined"
+                        size="small"
                         startIcon={<FileUpload />}
                         onClick={() => setImportDialogOpen(true)}
+                        sx={{ height: 40 }}
                     >
                         Import
                     </Button>
                     <Button
                         variant="outlined"
+                        size="small"
                         startIcon={<FileDownload />}
                         onClick={handleExportProduct}
                         disabled={!selectedProductId}
+                        sx={{ height: 40 }}
                     >
                         Export
                     </Button>
-                    <Button
-                        variant="contained"
-                        startIcon={<Add />}
-                        onClick={openAddProduct}
-                    >
-                        New Product
-                    </Button>
+                    {selectedProductId && (
+                        <>
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                startIcon={<Edit />}
+                                onClick={openEditProduct}
+                                sx={{ height: 40 }}
+                            >
+                                Edit
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                size="small"
+                                color="error"
+                                startIcon={<Delete />}
+                                onClick={handleDeleteProduct}
+                                sx={{ height: 40 }}
+                            >
+                                Delete
+                            </Button>
+                        </>
+                    )}
                 </Box>
             </Box>
 
@@ -339,25 +386,6 @@ export function ProductsPageContent() {
                     <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                             <Typography variant="h6">{selectedProduct.name}</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 1 }}>
-                            <Button
-                                variant="outlined"
-                                startIcon={<Edit sx={{ fontSize: 18 }} />}
-                                size="small"
-                                onClick={() => openEditProduct(selectedProduct)}
-                            >
-                                Edit
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                color="error"
-                                startIcon={<Delete sx={{ fontSize: 18 }} />}
-                                size="small"
-                                onClick={handleDeleteProduct}
-                            >
-                                Delete
-                            </Button>
                         </Box>
                     </Box>
 

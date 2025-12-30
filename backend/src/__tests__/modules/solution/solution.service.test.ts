@@ -65,16 +65,16 @@ describe('SolutionService', () => {
     it('should create a solution with resources', async () => {
       const solution = await SolutionService.createSolution(testUser.id, {
         name: 'Solution with Resources',
-        resources: {
-          overview: 'https://example.com/overview',
-          implementation: 'https://example.com/impl',
-        },
+        resources: [
+          { label: 'Overview', url: 'https://example.com/overview' },
+          { label: 'Implementation', url: 'https://example.com/impl' },
+        ],
       });
 
-      expect(solution.resources).toEqual({
-        overview: 'https://example.com/overview',
-        implementation: 'https://example.com/impl',
-      });
+      expect(solution.resources).toEqual([
+        { label: 'Overview', url: 'https://example.com/overview' },
+        { label: 'Implementation', url: 'https://example.com/impl' },
+      ]);
     });
   });
 

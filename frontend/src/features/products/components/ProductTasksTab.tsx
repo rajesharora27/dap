@@ -497,10 +497,11 @@ export function ProductTasksTab() {
 
                         <TableBody>
                             <SortableContext items={filteredTasks.map((t: any) => t.id)} strategy={verticalListSortingStrategy}>
-                                {filteredTasks.map((task: any) => (
+                                {filteredTasks.map((task: any, index: number) => (
                                     <SortableTaskItem
                                         key={task.id}
                                         task={task}
+                                        index={index}
                                         onEdit={(t: any) => openEditTask(t)}
                                         onDelete={handleDeleteTask}
                                         onDoubleClick={(t: any) => openEditTask(t)}

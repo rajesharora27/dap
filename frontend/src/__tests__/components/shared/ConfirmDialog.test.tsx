@@ -5,7 +5,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
-import ConfirmDialog from '../../../shared/components/ConfirmDialog';
+import { ConfirmDialog } from '../../../shared/components/ConfirmDialog';
 
 const theme = createTheme();
 
@@ -68,7 +68,7 @@ describe('ConfirmDialog', () => {
 
   it('uses custom confirm text when provided', () => {
     renderWithTheme(
-      <ConfirmDialog {...defaultProps} confirmText="Delete" />
+      <ConfirmDialog {...defaultProps} confirmLabel="Delete" />
     );
 
     expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
@@ -76,7 +76,7 @@ describe('ConfirmDialog', () => {
 
   it('uses custom cancel text when provided', () => {
     renderWithTheme(
-      <ConfirmDialog {...defaultProps} cancelText="Go Back" />
+      <ConfirmDialog {...defaultProps} cancelLabel="Go Back" />
     );
 
     expect(screen.getByRole('button', { name: /go back/i })).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe('ConfirmDialog', () => {
 
   it('applies danger color for destructive actions', () => {
     renderWithTheme(
-      <ConfirmDialog {...defaultProps} confirmColor="error" />
+      <ConfirmDialog {...defaultProps} severity="error" />
     );
 
     const confirmButton = screen.getByRole('button', { name: /confirm/i });

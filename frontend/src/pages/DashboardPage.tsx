@@ -27,6 +27,7 @@ import {
     Person as PersonIcon,
     Handshake as SupportIcon
 } from '@shared/components/FAIcon';
+import { getProgressColor } from '@shared/utils/progressUtils';
 
 // GraphQL Queries (Expanded for Real Data)
 const DASHBOARD_DATA = gql`
@@ -78,9 +79,9 @@ const DASHBOARD_DATA = gql`
 `;
 
 // Helper for Progress Bar
-const SimpleLinearProgress: React.FC<{ value: number; color?: string }> = ({ value, color = '#3B82F6' }) => (
+const SimpleLinearProgress: React.FC<{ value: number; color?: string }> = ({ value, color }) => (
     <Box sx={{ width: '100%', height: 6, bgcolor: '#F1F5F9', borderRadius: 3, overflow: 'hidden' }}>
-        <Box sx={{ width: `${Math.min(100, Math.max(0, value))}%`, height: '100%', bgcolor: color, borderRadius: 3, transition: 'width 0.5s ease-in-out' }} />
+        <Box sx={{ width: `${Math.min(100, Math.max(0, value))}%`, height: '100%', bgcolor: color || getProgressColor(value), borderRadius: 3, transition: 'width 0.5s ease-in-out' }} />
     </Box>
 );
 
@@ -299,7 +300,7 @@ export const DashboardPage = () => {
             name: c.name,
             progress: c.overviewMetrics?.adoption || 0,
             status: c.overviewMetrics?.adoption >= 90 ? 'Completed' : c.overviewMetrics?.adoption > 20 ? 'In-Progress' : 'Onboarding',
-            color: c.overviewMetrics?.adoption >= 90 ? '#1E3A8A' : c.overviewMetrics?.adoption > 20 ? '#10B981' : '#3B82F6'
+            color: getProgressColor(c.overviewMetrics?.adoption || 0)
         })).sort((a: any, b: any) => b.progress - a.progress).slice(0, 5); // Top 5
     }, [customers]);
 

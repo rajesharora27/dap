@@ -1405,7 +1405,7 @@ export const SolutionDialog: React.FC<Props> = ({
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleAttributeDragEnd}>
             <SortableContext items={getSortedAttributes(customAttrs).map(([k]) => k)} strategy={verticalListSortingStrategy}>
               <List dense>
-                {getSortedAttributes(customAttrs).map(([key, value]) => (
+                {getSortedAttributes(customAttrs).map(([key, value], index) => (
                   inlineAttrKey === key ? (
                     <Box
                       key={key}
@@ -1444,6 +1444,7 @@ export const SolutionDialog: React.FC<Props> = ({
                       key={key}
                       attrKey={key}
                       value={value}
+                      index={index}
                       onEdit={() => beginInlineAttrEdit(key, value)}
                       onDelete={() => handleDeleteCustomAttribute(key)}
                     />

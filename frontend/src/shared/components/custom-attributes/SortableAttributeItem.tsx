@@ -14,8 +14,9 @@ import {
 } from '@shared/components/FAIcon';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { SortableHandle } from '@shared/components/SortableHandle';
 
-export function SortableAttributeItem({ attrKey, value, onEdit, onDelete, onDoubleClick }: any) {
+export function SortableAttributeItem({ attrKey, value, index, onEdit, onDelete, onDoubleClick }: any) {
     const {
         attributes,
         listeners,
@@ -46,22 +47,11 @@ export function SortableAttributeItem({ attrKey, value, onEdit, onDelete, onDoub
             }}
             onDoubleClick={onDoubleClick}
         >
-            <Box
-                {...attributes}
-                {...listeners}
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    pr: 1,
-                    cursor: 'grab',
-                    color: 'text.secondary',
-                    opacity: 0.7,
-                    touchAction: 'none',
-                    '&:hover': { opacity: 1, color: 'text.primary' }
-                }}
-            >
-                <DragIndicator fontSize="small" />
-            </Box>
+            <SortableHandle
+                index={index}
+                attributes={attributes}
+                listeners={listeners}
+            />
 
             <ListItemText
                 primary={<Typography variant="subtitle2" fontWeight="bold">{attrKey}</Typography>}

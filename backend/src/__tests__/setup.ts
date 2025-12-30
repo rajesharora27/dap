@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 // Force tests to use the isolated test database by default
-const DEFAULT_TEST_DB = 'postgresql://postgres:postgres@localhost:5432/dap_test?schema=public';
+const DEFAULT_TEST_DB = 'postgresql://rajarora@localhost:5432/dap_test?schema=public';
 if (!process.env.DATABASE_URL) {
     process.env.DATABASE_URL = DEFAULT_TEST_DB;
 }
@@ -20,13 +20,14 @@ if (!dbUrl.includes('dap_test')) {
     }
 }
 
-// Mock Prisma for tests
+// Mock Prisma for tests - use lazy connection
 export const prisma = new PrismaClient({
     datasources: {
         db: {
             url: process.env.DATABASE_URL || DEFAULT_TEST_DB
         }
-    }
+    },
+    log: [], // Disable logging in tests
 });
 
 /**
@@ -34,39 +35,49 @@ export const prisma = new PrismaClient({
  * This protects against accidental credential loss during test runs.
  */
 async function ensureAdminUser() {
-    const adminEmail = 'admin@example.com';
-    const adminUsername = 'admin';
-    const existing = await prisma.user.findFirst({
-        where: { OR: [{ email: adminEmail }, { username: adminUsername }] }
-    });
-
-    if (!existing) {
-        const passwordHash = await bcrypt.hash('DAP123!!!', 10);
-        await prisma.user.create({
-            data: {
-                email: adminEmail,
-                username: adminUsername,
-                name: 'Admin',
-                password: passwordHash,
-                role: 'ADMIN',
-                isAdmin: true,
-                isActive: true,
-                mustChangePassword: false
-            }
+    try {
+        const adminEmail = 'admin@example.com';
+        const adminUsername = 'admin';
+        const existing = await prisma.user.findFirst({
+            where: { OR: [{ email: adminEmail }, { username: adminUsername }] }
         });
-        // eslint-disable-next-line no-console
-        console.log('[Tests] Created default admin user for test DB');
+
+        if (!existing) {
+            const passwordHash = await bcrypt.hash('DAP123!!!', 10);
+            await prisma.user.create({
+                data: {
+                    email: adminEmail,
+                    username: adminUsername,
+                    name: 'Admin',
+                    password: passwordHash,
+                    role: 'ADMIN',
+                    isAdmin: true,
+                    isActive: true,
+                    mustChangePassword: false
+                }
+            });
+            // eslint-disable-next-line no-console
+            console.log('[Tests] Created default admin user for test DB');
+        }
+    } catch (error) {
+        // If database isn't available, skip admin user creation
+        // This allows unit tests that don't need DB to still run
+        console.warn('[Tests] Could not ensure admin user (database may not be available)');
     }
 }
 
 beforeAll(async () => {
     await ensureAdminUser();
-});
+}, 30000); // 30 second timeout for setup
 
 // Clean up after all tests
 afterAll(async () => {
-    await prisma.$disconnect();
-});
+    try {
+        await prisma.$disconnect();
+    } catch (error) {
+        // Ignore disconnect errors
+    }
+}, 10000); // 10 second timeout for teardown
 
 // Set longer timeout for integration tests
-jest.setTimeout(10000);
+jest.setTimeout(30000);

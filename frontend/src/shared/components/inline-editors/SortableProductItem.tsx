@@ -11,6 +11,7 @@ import {
 } from '@shared/components/FAIcon';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { SortableHandle } from '@shared/components/SortableHandle';
 
 export interface ProductData {
     id: string;
@@ -62,27 +63,16 @@ export function SortableProductItem({
                 </IconButton>
             }
         >
-            <Box
-                {...attributes}
-                {...listeners}
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    pr: 1.5,
-                    cursor: 'grab',
-                    color: 'text.secondary',
-                    opacity: 0.7,
-                    touchAction: 'none',
-                    '&:hover': { opacity: 1, color: 'text.primary' },
-                }}
-            >
-                <DragIndicator fontSize="small" />
-            </Box>
+            <SortableHandle
+                index={index}
+                attributes={attributes}
+                listeners={listeners}
+            />
 
             <ListItemText
                 primary={
                     <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
-                        {index + 1}. {product.name}
+                        {product.name}
                     </Typography>
                 }
             />

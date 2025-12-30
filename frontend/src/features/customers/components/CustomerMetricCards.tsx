@@ -4,8 +4,13 @@ import {
     Paper,
     Typography,
     CircularProgress as MuiCircularProgress,
+    LinearProgress,
+    Divider,
+    useTheme,
+    alpha
 } from '@mui/material';
 import { Assessment, Inventory as ProductIcon, Extension as SolutionIcon } from '@shared/components/FAIcon';
+import { getProgressColor } from '@shared/utils/progressUtils';
 
 interface OverviewMetrics {
     adoption: number;
@@ -23,6 +28,15 @@ interface CustomerMetricCardsProps {
 }
 
 export function CustomerMetricCards({ overviewMetrics }: CustomerMetricCardsProps) {
+    const theme = useTheme();
+
+    // Standard Colors
+    const colors = {
+        solution: '#3B82F6', // Blue
+        product: '#10B981',  // Green
+        task: theme.palette.primary.main
+    };
+
     return (
         <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
             {/* Overall Adoption */}
@@ -39,8 +53,7 @@ export function CustomerMetricCards({ overviewMetrics }: CustomerMetricCardsProp
                         value={overviewMetrics.adoption}
                         size={56}
                         sx={{
-                            color: overviewMetrics.adoption >= 70 ? 'success.main' :
-                                overviewMetrics.adoption >= 40 ? 'warning.main' : 'error.main'
+                            color: getProgressColor(overviewMetrics.adoption)
                         }}
                     />
                     <Box
@@ -51,8 +64,7 @@ export function CustomerMetricCards({ overviewMetrics }: CustomerMetricCardsProp
                         }}
                     >
                         <Typography variant="body2" fontWeight={700} sx={{
-                            color: overviewMetrics.adoption >= 70 ? 'success.main' :
-                                overviewMetrics.adoption >= 40 ? 'warning.main' : 'error.main'
+                            color: getProgressColor(overviewMetrics.adoption)
                         }}>
                             {Math.round(overviewMetrics.adoption)}%
                         </Typography>
@@ -61,36 +73,60 @@ export function CustomerMetricCards({ overviewMetrics }: CustomerMetricCardsProp
                 <Box>
                     <Typography variant="body2" color="text.secondary">Overall Adoption</Typography>
                     <Typography variant="h6" fontWeight={600} color="text.primary">
-                        {overviewMetrics.adoption >= 70 ? 'Healthy' : overviewMetrics.adoption >= 40 ? 'At Risk' : 'Critical'}
+                        {overviewMetrics.adoption >= 66 ? 'Healthy' : overviewMetrics.adoption >= 33 ? 'At Risk' : 'Critical'}
                     </Typography>
                 </Box>
             </Paper>
 
-            {/* Tasks */}
-            <Paper elevation={0} sx={{ flex: 1, border: '1px solid', borderColor: 'divider', p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Assessment sx={{ fontSize: 40, color: 'primary.main' }} />
-                <Box>
-                    <Typography variant="body2" color="text.secondary">Tasks</Typography>
-                    <Typography variant="h6" fontWeight={600} color="text.primary">
-                        {overviewMetrics.completedTasks}/{overviewMetrics.totalTasks}
-                    </Typography>
+            {/* Tasks Summary Progress Bar */}
+            <Paper elevation={0} sx={{ flex: 1.2, border: '1px solid', borderColor: 'divider', p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Assessment sx={{ fontSize: 32, color: getProgressColor(overviewMetrics.totalTasks > 0 ? (overviewMetrics.completedTasks / overviewMetrics.totalTasks) * 100 : 0) }} />
+                <Box sx={{ flex: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1 }}>
+                        <Typography variant="body2" color="text.secondary" fontWeight={500}>Tasks Progress</Typography>
+                        <Typography variant="body2" fontWeight={700} color="text.primary">
+                            {overviewMetrics.completedTasks} <Typography component="span" variant="caption" color="text.secondary">/ {overviewMetrics.totalTasks}</Typography>
+                        </Typography>
+                    </Box>
+                    <LinearProgress
+                        variant="determinate"
+                        value={overviewMetrics.totalTasks > 0 ? (overviewMetrics.completedTasks / overviewMetrics.totalTasks) * 100 : 0}
+                        sx={{
+                            height: 6,
+                            borderRadius: 3,
+                            bgcolor: alpha(getProgressColor(overviewMetrics.totalTasks > 0 ? (overviewMetrics.completedTasks / overviewMetrics.totalTasks) * 100 : 0), 0.1),
+                            '& .MuiLinearProgress-bar': {
+                                bgcolor: getProgressColor(overviewMetrics.totalTasks > 0 ? (overviewMetrics.completedTasks / overviewMetrics.totalTasks) * 100 : 0),
+                                borderRadius: 3
+                            }
+                        }}
+                    />
                 </Box>
             </Paper>
 
-            {/* Portfolio */}
-            <Paper elevation={0} sx={{ flex: 1, border: '1px solid', borderColor: 'divider', p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+            {/* Portfolio Split */}
+            <Paper elevation={0} sx={{ flex: 1.5, border: '1px solid', borderColor: 'divider', p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 0.5 }}>
-                    <SolutionIcon sx={{ fontSize: 20, color: 'primary.main' }} />
-                    <ProductIcon sx={{ fontSize: 20, color: 'success.main' }} />
+                    <SolutionIcon sx={{ fontSize: 20, color: colors.solution }} />
+                    <ProductIcon sx={{ fontSize: 20, color: colors.product }} />
                 </Box>
-                <Box>
-                    <Typography variant="body2" color="text.secondary">Portfolio</Typography>
-                    <Typography variant="h6" fontWeight={600} color="text.primary">
-                        <Box component="span" sx={{ color: 'primary.main' }}>{overviewMetrics.solutionsCount}</Box>
-                        {' Sol.'}, {' '}
-                        <Box component="span" sx={{ color: 'success.main' }}>{overviewMetrics.directProductsCount + overviewMetrics.solutionProductsCount}</Box>
-                        {' Prod.'}
-                    </Typography>
+                <Box sx={{ flex: 1 }}>
+                    <Typography variant="body2" color="text.secondary" fontWeight={500}>Portfolio</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mt: 0.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                            <Typography variant="h6" fontWeight={700} sx={{ color: colors.solution, lineHeight: 1 }}>
+                                {overviewMetrics.solutionsCount}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>SOLUTIONS</Typography>
+                        </Box>
+                        <Divider orientation="vertical" flexItem sx={{ height: 20, my: 'auto' }} />
+                        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                            <Typography variant="h6" fontWeight={700} sx={{ color: colors.product, lineHeight: 1 }}>
+                                {overviewMetrics.directProductsCount}<Typography component="span" variant="h6" fontWeight={400} sx={{ color: 'text.secondary', mx: 0.2 }}>+</Typography>{overviewMetrics.solutionProductsCount}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" fontWeight={600}>PRODUCTS</Typography>
+                        </Box>
+                    </Box>
                 </Box>
             </Paper>
         </Box>

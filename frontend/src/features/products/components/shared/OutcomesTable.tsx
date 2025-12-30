@@ -21,6 +21,7 @@ import {
 import { Outcome } from '@features/product-outcomes';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
+import { SortableHandle } from '@shared/components/SortableHandle';
 
 interface OutcomesTableProps {
     items: any[];
@@ -36,6 +37,7 @@ interface OutcomesTableProps {
 
 const SortableOutcomeRow = ({
     outcome,
+    index,
     isEditing,
     onEditStart,
     onEditCancel,
@@ -43,6 +45,7 @@ const SortableOutcomeRow = ({
     onDelete
 }: {
     outcome: any;
+    index: number;
     isEditing: boolean;
     onEditStart: () => void;
     onEditCancel: () => void;
@@ -94,16 +97,12 @@ const SortableOutcomeRow = ({
 
     return (
         <TableRow ref={setNodeRef} style={style} sx={{ '&:hover .drag-handle': { opacity: 1 } }}>
-            <TableCell width="50px">
-                <IconButton
-                    size="small"
-                    className="drag-handle"
-                    sx={{ opacity: 0.3, cursor: 'grab' }}
-                    {...attributes}
-                    {...listeners}
-                >
-                    <DragIndicator fontSize="small" />
-                </IconButton>
+            <TableCell width="40px" sx={{ textAlign: 'center' }}>
+                <SortableHandle
+                    index={index}
+                    attributes={attributes}
+                    listeners={listeners}
+                />
             </TableCell>
 
             {isEditing ? (
@@ -202,7 +201,7 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
     const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
         tableId: 'outcomes-table',
         columns: [
-            { key: 'drag', minWidth: 50, defaultWidth: 50 },
+            { key: 'drag', minWidth: 40, defaultWidth: 40 },
             { key: 'name', minWidth: 150, defaultWidth: 300 },
             { key: 'description', minWidth: 200, defaultWidth: 400 },
             { key: 'actions', minWidth: 100, defaultWidth: 120 },
@@ -354,12 +353,13 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
                             items={localItems.map((i) => i.id || i._tempId)}
                             strategy={verticalListSortingStrategy}
                         >
-                            {localItems.map((outcome) => {
+                            {localItems.map((outcome, index) => {
                                 const id = outcome.id || outcome._tempId;
                                 return (
                                     <SortableOutcomeRow
                                         key={id}
                                         outcome={outcome}
+                                        index={index}
                                         isEditing={editingId === id}
                                         onEditStart={() => !readOnly && setEditingId(id)}
                                         onEditCancel={() => setEditingId(null)}

@@ -21,6 +21,7 @@ import {
 import { ProductTag } from '@features/products/types';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
+import { SortableHandle } from '@shared/components/SortableHandle';
 
 interface TagsTableProps {
     items: any[];
@@ -36,6 +37,7 @@ interface TagsTableProps {
 
 const SortableTagRow = ({
     tag,
+    index,
     isEditing,
     onEditStart,
     onEditCancel,
@@ -43,6 +45,7 @@ const SortableTagRow = ({
     onDelete
 }: {
     tag: any;
+    index: number;
     isEditing: boolean;
     onEditStart: () => void;
     onEditCancel: () => void;
@@ -95,16 +98,12 @@ const SortableTagRow = ({
 
     return (
         <TableRow ref={setNodeRef} style={style} sx={{ '&:hover .drag-handle': { opacity: 1 } }}>
-            <TableCell width="50px">
-                <IconButton
-                    size="small"
-                    className="drag-handle"
-                    sx={{ opacity: 0.3, cursor: 'grab' }}
-                    {...attributes}
-                    {...listeners}
-                >
-                    <DragIndicator fontSize="small" />
-                </IconButton>
+            <TableCell width="40px" sx={{ textAlign: 'center' }}>
+                <SortableHandle
+                    index={index}
+                    attributes={attributes}
+                    listeners={listeners}
+                />
             </TableCell>
 
             {isEditing ? (
@@ -230,7 +229,7 @@ export const TagsTable: React.FC<TagsTableProps> = ({
     const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
         tableId: 'tags-table',
         columns: [
-            { key: 'drag', minWidth: 50, defaultWidth: 50 },
+            { key: 'drag', minWidth: 40, defaultWidth: 40 },
             { key: 'name', minWidth: 150, defaultWidth: 300 },
             { key: 'description', minWidth: 200, defaultWidth: 400 },
             { key: 'actions', minWidth: 100, defaultWidth: 120 },
@@ -398,12 +397,13 @@ export const TagsTable: React.FC<TagsTableProps> = ({
                             items={localItems.map((i) => i.id || i._tempId)}
                             strategy={verticalListSortingStrategy}
                         >
-                            {localItems.map((tag) => {
+                            {localItems.map((tag, index) => {
                                 const id = tag.id || tag._tempId;
                                 return (
                                     <SortableTagRow
                                         key={id}
                                         tag={tag}
+                                        index={index}
                                         isEditing={editingId === id}
                                         onEditStart={() => !readOnly && setEditingId(id)}
                                         onEditCancel={() => setEditingId(null)}

@@ -153,7 +153,12 @@ export function CustomerSolutionsTab() {
     const emptyMessage = (
         <Box sx={{ textAlign: 'center', py: 6, px: 3, backgroundColor: 'background.default', borderRadius: 2, border: '1px dashed', borderColor: 'divider' }}>
             <Typography variant="h6" color="text.secondary" gutterBottom>No Solutions Assigned Yet</Typography>
-            <Button variant="contained" startIcon={<Add />} onClick={() => setAssignDialogOpen(true)} sx={{ mt: 2 }}>
+            <Button
+                variant="contained"
+                startIcon={<Add />}
+                onClick={() => setAssignDialogOpen(true)}
+                sx={{ mt: 2, bgcolor: '#3B82F6', '&:hover': { bgcolor: '#2563EB' } }}
+            >
                 Assign First Solution
             </Button>
         </Box>
@@ -169,6 +174,7 @@ export function CustomerSolutionsTab() {
                 assignNewLabel="Assign New Solution"
                 actions={selectedSolutionId ? headerActions : []}
                 emptyMessage={emptyMessage}
+                themeColor="#3B82F6"
             />
 
             {selectedCustomerSolution?.adoptionPlan && (

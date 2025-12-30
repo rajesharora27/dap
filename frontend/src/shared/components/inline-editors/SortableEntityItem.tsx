@@ -15,10 +15,12 @@ import {
 } from '@shared/components/FAIcon';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { SortableHandle } from '../SortableHandle';
 
 export interface SortableEntityItemProps {
     id: string;
     primary: string;
+    index: number;
     secondary?: React.ReactNode;
     badge?: React.ReactNode;
     onEdit: () => void;
@@ -30,6 +32,7 @@ export interface SortableEntityItemProps {
 export function SortableEntityItem({
     id,
     primary,
+    index,
     secondary,
     badge,
     onEdit,
@@ -67,22 +70,12 @@ export function SortableEntityItem({
             }}
             onClick={onEdit}
         >
-            <Box
-                {...attributes}
-                {...listeners}
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    pr: 1,
-                    cursor: disabled ? 'default' : 'grab',
-                    color: 'text.secondary',
-                    opacity: disabled ? 0.3 : 0.7,
-                    touchAction: 'none',
-                    '&:hover': { opacity: disabled ? 0.3 : 1, color: 'text.primary' },
-                }}
-            >
-                <DragIndicator fontSize="small" />
-            </Box>
+            <SortableHandle
+                index={index}
+                attributes={attributes}
+                listeners={listeners}
+                disableDrag={disabled}
+            />
 
             <ListItemText
                 primary={

@@ -155,6 +155,8 @@ export const ProductAdoptionPlanView: React.FC<ProductAdoptionPlanViewProps> = (
         tags: t.tags,
     }));
 
+    const productGreen = '#10B981';
+
     return (
         <Box>
             <AdoptionPlanProgressCard
@@ -162,6 +164,7 @@ export const ProductAdoptionPlanView: React.FC<ProductAdoptionPlanViewProps> = (
                 completedTasks={filteredProgress.completedTasks}
                 totalTasks={filteredProgress.totalTasks}
                 percentage={filteredProgress.percentage}
+                color={productGreen}
             />
 
             <AdoptionPlanFilterSection
@@ -187,6 +190,7 @@ export const ProductAdoptionPlanView: React.FC<ProductAdoptionPlanViewProps> = (
                 onUpdateTaskStatus={onUpdateTaskStatus}
                 showHeader={false}
                 visibleColumns={visibleColumns}
+                accentColor={productGreen}
             />
         </Box>
     );

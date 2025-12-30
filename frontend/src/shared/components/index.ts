@@ -11,6 +11,7 @@ export { default as ErrorBoundary } from './ErrorBoundary';
 export { ThemeSelector } from './ThemeSelector';
 export { ColumnVisibilityToggle, TASK_COLUMNS, DEFAULT_VISIBLE_COLUMNS } from './ColumnVisibilityToggle';
 export { ResizableTableCell } from './ResizableTableCell';
+export { SortableHandle } from './SortableHandle';
 export { Breadcrumbs } from './Breadcrumbs';
 export { ConfirmDialog } from './ConfirmDialog';
 

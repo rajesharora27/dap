@@ -21,7 +21,7 @@
  */
 
 import { faker } from '@faker-js/faker';
-import { PrismaClient, ResourceType, PermissionLevel } from '@prisma/client';
+import { PrismaClient, ResourceType, PermissionLevel, SystemRole, LicenseLevel, Prisma } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 // IMPORTANT: Explicitly configure to use test database to prevent wiping development data
@@ -41,7 +41,7 @@ interface CreateUserOptions {
   username?: string;
   name?: string;
   password?: string;
-  role?: string;
+  role?: SystemRole;
   isAdmin?: boolean;
   isActive?: boolean;
   mustChangePassword?: boolean;
@@ -53,8 +53,8 @@ interface CreateUserOptions {
 interface CreateProductOptions {
   name?: string;
   description?: string;
-  customAttrs?: Record<string, unknown>;
-  resources?: Record<string, unknown>;
+  customAttrs?: Prisma.InputJsonValue;
+  resources?: Prisma.InputJsonValue;
 }
 
 /**
@@ -63,8 +63,8 @@ interface CreateProductOptions {
 interface CreateSolutionOptions {
   name?: string;
   description?: string;
-  customAttrs?: Record<string, unknown>;
-  resources?: Record<string, unknown>;
+  customAttrs?: Prisma.InputJsonValue;
+  resources?: Prisma.InputJsonValue;
 }
 
 /**
@@ -84,7 +84,7 @@ interface CreateTaskOptions {
   estMinutes?: number;
   weight?: number;
   sequenceNumber?: number;
-  licenseLevel?: string;
+  licenseLevel?: LicenseLevel;
   howToDoc?: string[];
   howToVideo?: string[];
 }
@@ -121,7 +121,7 @@ export class TestFactory {
         username: overrides.username || faker.internet.username(),
         name: overrides.name || faker.person.fullName(),
         password: hashedPassword,
-        role: overrides.role || 'USER',
+        role: overrides.role || SystemRole.USER,
         isAdmin: overrides.isAdmin || false,
         isActive: overrides.isActive !== undefined ? overrides.isActive : true,
         mustChangePassword: overrides.mustChangePassword || false,
@@ -137,7 +137,7 @@ export class TestFactory {
    */
   static async createAdminUser(overrides: CreateUserOptions = {}) {
     return this.createUser({
-      role: 'ADMIN',
+      role: SystemRole.ADMIN,
       isAdmin: true,
       ...overrides,
     });
@@ -155,7 +155,7 @@ export class TestFactory {
         name: overrides.name || faker.commerce.productName(),
         description: overrides.description || faker.commerce.productDescription(),
         customAttrs: overrides.customAttrs || {},
-        resources: overrides.resources || {},
+        resources: overrides.resources || [],
       }
     });
   }
@@ -178,7 +178,7 @@ export class TestFactory {
         estMinutes: overrides.estMinutes || faker.number.int({ min: 15, max: 480 }),
         weight: overrides.weight || faker.number.float({ min: 0, max: 100, fractionDigits: 2 }),
         sequenceNumber,
-        licenseLevel: overrides.licenseLevel || 'ESSENTIAL',
+        licenseLevel: overrides.licenseLevel || LicenseLevel.ESSENTIAL,
         howToDoc: overrides.howToDoc || [],
         howToVideo: overrides.howToVideo || [],
       }
@@ -207,7 +207,7 @@ export class TestFactory {
    * @param overrides - Optional field overrides
    * @returns Created license record
    */
-  static async createLicense(productId: string, overrides: Record<string, unknown> = {}) {
+  static async createLicense(productId: string, overrides: Record<string, any> = {}) {
     return prisma.license.create({
       data: {
         productId,
@@ -226,7 +226,7 @@ export class TestFactory {
    * @param overrides - Optional field overrides
    * @returns Created outcome record
    */
-  static async createOutcome(productId: string, overrides: Record<string, unknown> = {}) {
+  static async createOutcome(productId: string, overrides: Record<string, any> = {}) {
     return prisma.outcome.create({
       data: {
         productId,
@@ -248,7 +248,7 @@ export class TestFactory {
         name: overrides.name || faker.commerce.productName(),
         description: overrides.description || faker.commerce.productDescription(),
         customAttrs: overrides.customAttrs || {},
-        resources: overrides.resources || {},
+        resources: overrides.resources || [],
       }
     });
   }
@@ -260,7 +260,7 @@ export class TestFactory {
    * @param overrides - Optional field overrides
    * @returns Created release record
    */
-  static async createRelease(productId: string, overrides: Record<string, unknown> = {}) {
+  static async createRelease(productId: string, overrides: Record<string, any> = {}) {
     return prisma.release.create({
       data: {
         productId,
@@ -278,7 +278,7 @@ export class TestFactory {
    * @param overrides - Optional field overrides
    * @returns Created tag record
    */
-  static async createProductTag(productId: string, overrides: Record<string, unknown> = {}) {
+  static async createProductTag(productId: string, overrides: Record<string, any> = {}) {
     return prisma.productTag.create({
       data: {
         productId,
@@ -296,7 +296,7 @@ export class TestFactory {
    * @param overrides - Optional field overrides
    * @returns Created tag record
    */
-  static async createSolutionTag(solutionId: string, overrides: Record<string, unknown> = {}) {
+  static async createSolutionTag(solutionId: string, overrides: Record<string, any> = {}) {
     return prisma.solutionTag.create({
       data: {
         solutionId,
@@ -348,13 +348,15 @@ export class TestFactory {
    * 
    * @param customerId - Customer ID
    * @param productId - Product ID
+   * @param name - Assignment name (e.g. "Primary Implementation")
    * @returns Created assignment record
    */
-  static async assignProductToCustomer(customerId: string, productId: string) {
+  static async assignProductToCustomer(customerId: string, productId: string, name: string = 'Test Assignment') {
     return prisma.customerProduct.create({
       data: {
         customerId,
         productId,
+        name,
       }
     });
   }
@@ -364,13 +366,15 @@ export class TestFactory {
    * 
    * @param customerId - Customer ID
    * @param solutionId - Solution ID
+   * @param name - Assignment name
    * @returns Created assignment record
    */
-  static async assignSolutionToCustomer(customerId: string, solutionId: string) {
+  static async assignSolutionToCustomer(customerId: string, solutionId: string, name: string = 'Test Solution Assignment') {
     return prisma.customerSolution.create({
       data: {
         customerId,
         solutionId,
+        name,
       }
     });
   }

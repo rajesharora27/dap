@@ -140,6 +140,7 @@ export function InlineTagEditor({
         <SortableEntityItem
             id={tag.id || `new-${index}`}
             primary={tag.name}
+            index={index}
             secondary={tag.description}
             badge={
                 <Box sx={{ display: 'flex', gap: 0.5 }}>

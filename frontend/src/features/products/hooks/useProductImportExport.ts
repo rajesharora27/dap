@@ -34,12 +34,7 @@ export const useProductImportExport = (
             const { filename, content, mimeType } = data.exportProduct;
 
             // Convert base64 to blob and download
-            const binaryString = window.atob(content);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            const blob = new Blob([bytes], { type: mimeType });
+            const blob = new Blob([Uint8Array.from(atob(content), c => c.charCodeAt(0))], { type: mimeType });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;

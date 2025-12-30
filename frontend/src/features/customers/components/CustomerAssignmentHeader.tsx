@@ -38,6 +38,7 @@ interface CustomerAssignmentHeaderProps {
     actions?: AssignmentHeaderAction[];
     selectLabel?: string;
     emptyMessage?: React.ReactNode;
+    themeColor?: string;
 }
 
 export const CustomerAssignmentHeader: React.FC<CustomerAssignmentHeaderProps> = ({
@@ -48,7 +49,8 @@ export const CustomerAssignmentHeader: React.FC<CustomerAssignmentHeaderProps> =
     assignNewLabel,
     actions = [],
     selectLabel = "Select Deployment",
-    emptyMessage
+    emptyMessage,
+    themeColor
 }) => {
     return (
         <Paper
@@ -61,7 +63,7 @@ export const CustomerAssignmentHeader: React.FC<CustomerAssignmentHeaderProps> =
                 border: '1.5px solid #E0E0E0'
             }}
         >
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                 <FormControl sx={{ minWidth: 300, flexGrow: { xs: 1, sm: 0 } }} size="small">
                     <InputLabel>{selectLabel}</InputLabel>
                     <Select
@@ -78,8 +80,8 @@ export const CustomerAssignmentHeader: React.FC<CustomerAssignmentHeaderProps> =
                             </MenuItem>
                         ))}
                         <Divider />
-                        <MenuItem value="__NEW__" sx={{ color: 'primary.main', fontWeight: 600 }}>
-                            <Add fontSize="small" sx={{ mr: 1 }} /> {assignNewLabel}
+                        <MenuItem value="__NEW__" sx={{ color: themeColor || 'primary.main', fontWeight: 600 }}>
+                            <Add fontSize="small" sx={{ mr: 1, color: themeColor }} /> {assignNewLabel}
                         </MenuItem>
                     </Select>
                 </FormControl>

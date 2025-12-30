@@ -25,6 +25,7 @@ import {
 } from '@shared/components/FAIcon';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
+import { SortableHandle } from '@shared/components/SortableHandle';
 import { useQuery, useMutation } from '@apollo/client';
 import {
     GET_MY_BOOKMARKS,
@@ -57,6 +58,7 @@ export interface BookmarkTabRef {
 
 interface SortableBookmarkItemProps {
     bookmark: any;
+    index: number;
     onDelete: (id: string) => void;
     onUpdate: (id: string, updates: any) => void;
     titleWith: number;
@@ -68,6 +70,7 @@ interface SortableBookmarkItemProps {
 
 const SortableBookmarkItem: React.FC<SortableBookmarkItemProps> = ({
     bookmark,
+    index,
     onDelete,
     onUpdate,
     titleWith,
@@ -127,21 +130,12 @@ const SortableBookmarkItem: React.FC<SortableBookmarkItemProps> = ({
                 '& .MuiTableCell-root': { py: 1.5, borderBottom: cellBorder }
             }}
         >
-            <TableCell width={dragHandleWidth} sx={{ px: 1, borderRight: cellBorder }}>
-                <Box
-                    className="drag-handle"
-                    {...attributes}
-                    {...listeners}
-                    sx={{
-                        display: 'flex',
-                        cursor: 'grab',
-                        opacity: 0.3,
-                        '&:active': { cursor: 'grabbing' },
-                        '&:hover': { opacity: 1 }
-                    }}
-                >
-                    <DragHandle fontSize="small" />
-                </Box>
+            <TableCell width={dragHandleWidth} sx={{ px: 1, borderRight: cellBorder, textAlign: 'center' }}>
+                <SortableHandle
+                    index={index}
+                    attributes={attributes}
+                    listeners={listeners}
+                />
             </TableCell>
             <TableCell sx={{ width: titleWith, minWidth: titleWith, maxWidth: titleWith, borderRight: cellBorder }}>
                 {isEditing ? (
@@ -381,10 +375,11 @@ export const BookmarkTab = forwardRef<BookmarkTabRef, {}>((props, ref) => {
                                 onDragEnd={handleDragEnd}
                             >
                                 <SortableContext items={localBookmarks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
-                                    {localBookmarks.map((bookmark: any) => (
+                                    {localBookmarks.map((bookmark: any, index: number) => (
                                         <SortableBookmarkItem
                                             key={bookmark.id}
                                             bookmark={bookmark}
+                                            index={index}
                                             onDelete={handleDeleteBookmark}
                                             onUpdate={handleUpdateBookmark}
                                             titleWith={columnWidths['title']}

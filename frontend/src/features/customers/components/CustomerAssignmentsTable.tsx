@@ -31,6 +31,7 @@ import {
     Edit,
     Delete,
 } from '@shared/components/FAIcon';
+import { getProgressColor } from '@shared/utils/progressUtils';
 import { ColumnVisibilityToggle } from '@shared/components';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
@@ -143,11 +144,11 @@ export function CustomerAssignmentsTable({
                 </ToggleButtonGroup>
                 <Box sx={{ flex: 1 }} />
                 <Tooltip title="Assign">
-                    <IconButton color="secondary" onClick={(e) => setAssignMenuAnchor(e.currentTarget)}><Add /></IconButton>
+                    <IconButton onClick={(e) => setAssignMenuAnchor(e.currentTarget)}><Add /></IconButton>
                 </Tooltip>
                 <Menu anchorEl={assignMenuAnchor} open={Boolean(assignMenuAnchor)} onClose={() => setAssignMenuAnchor(null)}>
-                    <MenuItem onClick={() => { setAssignMenuAnchor(null); onAssignProduct(); }}><ProductIcon fontSize="small" sx={{ mr: 1, color: 'success.main' }} /> Assign Product</MenuItem>
-                    <MenuItem onClick={() => { setAssignMenuAnchor(null); onAssignSolution(); }}><SolutionIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} /> Assign Solution</MenuItem>
+                    <MenuItem onClick={() => { setAssignMenuAnchor(null); onAssignProduct(); }}><ProductIcon fontSize="small" sx={{ mr: 1, color: '#10B981' }} /> Assign Product</MenuItem>
+                    <MenuItem onClick={() => { setAssignMenuAnchor(null); onAssignSolution(); }}><SolutionIcon fontSize="small" sx={{ mr: 1, color: '#3B82F6' }} /> Assign Solution</MenuItem>
                 </Menu>
             </Paper>
 
@@ -169,7 +170,7 @@ export function CustomerAssignmentsTable({
                                 <TableCell sx={{ fontWeight: 500 }}>{item.assignmentName}</TableCell>
                                 <TableCell>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        {item.type === 'solution' ? <SolutionIcon fontSize="small" color="primary" /> : <ProductIcon fontSize="small" color="success" />}
+                                        {item.type === 'solution' ? <SolutionIcon fontSize="small" sx={{ color: '#3B82F6' }} /> : <ProductIcon fontSize="small" sx={{ color: '#10B981' }} />}
                                         <Typography variant="body2">{item.itemName}</Typography>
                                         <Chip label={item.licenseLevel} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.625rem' }} />
                                     </Box>
@@ -177,8 +178,21 @@ export function CustomerAssignmentsTable({
                                 <TableCell><Chip label={item.source} size="small" variant="filled" color={item.source === 'solution' ? 'info' : 'default'} sx={{ height: 20, fontSize: '0.625rem' }} /></TableCell>
                                 <TableCell>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                        <LinearProgress variant="determinate" value={item.progress} sx={{ flex: 1, height: 6, borderRadius: 3 }} />
-                                        <Typography variant="caption" fontWeight={600}>{Math.round(item.progress)}%</Typography>
+                                        <LinearProgress
+                                            variant="determinate"
+                                            value={item.progress}
+                                            sx={{
+                                                flex: 1,
+                                                height: 6,
+                                                borderRadius: 3,
+                                                bgcolor: 'rgba(0,0,0,0.05)',
+                                                '& .MuiLinearProgress-bar': {
+                                                    bgcolor: getProgressColor(item.progress),
+                                                    borderRadius: 3
+                                                }
+                                            }}
+                                        />
+                                        <Typography variant="caption" fontWeight={600} sx={{ color: getProgressColor(item.progress) }}>{Math.round(item.progress)}%</Typography>
                                     </Box>
                                 </TableCell>
                                 <TableCell><Typography variant="caption" color="text.secondary">{formatSyncedTime(item.lastSyncedAt)}</Typography></TableCell>
