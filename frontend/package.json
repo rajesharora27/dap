@@ -11,6 +11,10 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "jest --passWithNoTests",
+    "test:coverage": "jest --coverage --passWithNoTests",
+    "test:watch": "jest --watch",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "codegen": "graphql-codegen --config codegen.yml --skipDocumentsValidation",
     "codegen:watch": "graphql-codegen --config codegen.yml --skipDocumentsValidation --watch"
   },

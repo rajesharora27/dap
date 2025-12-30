@@ -6,6 +6,15 @@
     "node": ">=22"
   },
   "scripts": {
+    "test": "npm run test:backend && npm run test:frontend",
+    "test:backend": "cd backend && npm test",
+    "test:frontend": "cd frontend && npm test",
+    "test:coverage": "npm run test:coverage:backend && npm run test:coverage:frontend",
+    "test:coverage:backend": "cd backend && npm run test:coverage",
+    "test:coverage:frontend": "cd frontend && npm test -- --coverage",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:headed": "npx playwright test --headed",
     "lint": "npm run lint:backend && npm run lint:frontend",
     "lint:backend": "cd backend && npm run lint",
     "lint:frontend": "cd frontend && npm run lint",
@@ -20,9 +29,11 @@
     "check:circular:frontend": "cd frontend && npx madge --circular --extensions ts,tsx src/",
     "check:deps": "npm run check:circular",
     "check:quality": "npm run lint && npm run typecheck && npm run check:circular",
+    "check:all": "npm run check:quality && npm run test:coverage",
     "quality": "npm run check:quality"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
     "madge": "^8.0.0",
     "prisma": "^6.15.0"
   },

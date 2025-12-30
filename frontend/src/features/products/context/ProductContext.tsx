@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useQuery, useMutation, useApolloClient } from '@apollo/client';
-import { PRODUCTS, PRODUCT, DELETE_PRODUCT, UPDATE_PRODUCT, CREATE_PRODUCT, TASKS_FOR_PRODUCT } from '../graphql';
+import { PRODUCTS, PRODUCT, DELETE_PRODUCT, UPDATE_PRODUCT, CREATE_PRODUCT } from '../graphql';
+import { TASKS_FOR_PRODUCT } from '@features/tasks';
 import { Product } from '../types';
 import { DEFAULT_VISIBLE_COLUMNS } from '@shared/components/ColumnVisibilityToggle';
 

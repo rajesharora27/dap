@@ -90,6 +90,13 @@ export const PRODUCT_TASK_CONNECTION_FIELDS = gql`
         priority
         dueDate
         customAttrs
+        estMinutes
+        weight
+        sequenceNumber
+        licenseLevel
+        notes
+        howToDoc
+        howToVideo
         assignees {
           id
           firstName
@@ -112,6 +119,25 @@ export const PRODUCT_TASK_CONNECTION_FIELDS = gql`
           id
           name
         }
+        telemetryAttributes {
+          id
+          name
+          description
+          dataType
+          isRequired
+          successCriteria
+          order
+          isActive
+          isSuccessful
+          currentValue {
+            id
+            value
+            source
+            createdAt
+          }
+        }
+        isCompleteBasedOnTelemetry
+        telemetryCompletionPercentage
       }
     }
     pageInfo {

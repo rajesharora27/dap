@@ -13,11 +13,12 @@ set -euo pipefail
 root_dir="$(git rev-parse --show-toplevel)"
 cd "$root_dir"
 
-# Allow-list of non-modular infra paths (scripts, hooks, CI, docs)
+# Allow-list of non-modular infra paths (scripts, hooks, CI, docs, tests)
 allowed_infra=(
   '^scripts/'
   '^docs/'
   '^deploy/'
+  '^e2e/'
   '^\.githooks/.*'
   '^\.github/.*'
   '^\.gitlab/.*'
@@ -25,6 +26,7 @@ allowed_infra=(
   '^\.env\.example$'
   '^package\.json$'
   '^README\.md$'
+  '^playwright\.config\.ts$'
 )
 
 allowed_backend=(
@@ -54,10 +56,12 @@ allowed_frontend=(
   '^frontend/src/__tests__/'
   '^frontend/src/generated/'
   '^frontend/src/vite-env\.d\.ts$'
+  '^frontend/__mocks__/'
   '^frontend/eslint\.config\.mjs$'
   '^frontend/vite\.config\.ts$'
   '^frontend/tsconfig\.json$'
   '^frontend/package\.json$'
+  '^frontend/jest\.config\.js$'
 )
 
 is_allowed() {
@@ -116,4 +120,3 @@ if ((${#violations[@]})); then
 fi
 
 exit 0
-
