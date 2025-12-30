@@ -15,7 +15,8 @@ if (typeof window !== 'undefined' && (!window.crypto || !window.crypto.randomUUI
 }
 
 import * as ReactDOM from 'react-dom/client';
-import App from './pages/App';
+import { BrowserRouter } from 'react-router-dom';
+import { App } from './pages/App';
 import { AuthProvider } from '@features/auth';
 import { ApolloClientWrapper } from '@/providers/ApolloClientProvider';
 import { AppThemeProvider } from './theme/ThemeProvider';
@@ -28,13 +29,15 @@ initSentry();
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary>
-      <AuthProvider>
-        <ApolloClientWrapper>
-          <AppThemeProvider>
-            <App />
-          </AppThemeProvider>
-        </ApolloClientWrapper>
-      </AuthProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <ApolloClientWrapper>
+            <AppThemeProvider>
+              <App />
+            </AppThemeProvider>
+          </ApolloClientWrapper>
+        </AuthProvider>
+      </BrowserRouter>
     </ErrorBoundary>
   </React.StrictMode>
 );

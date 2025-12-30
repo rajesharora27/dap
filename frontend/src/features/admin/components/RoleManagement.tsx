@@ -49,6 +49,8 @@ import {
   Close as CloseIcon
 } from '@shared/components/FAIcon';
 import { gql, useQuery, useMutation } from '@apollo/client';
+import { useResizableColumns } from '@shared/hooks/useResizableColumns';
+import { ResizableTableCell } from '@shared/components/ResizableTableCell';
 
 // GraphQL Queries
 const GET_ROLES = gql`
@@ -65,10 +67,8 @@ const GET_ROLES = gql`
         email
       }
       permissions {
-        id
         resourceType
         resourceId
-        resourceName
         permissionLevel
       }
     }
@@ -83,7 +83,6 @@ const GET_ROLE = gql`
       description
       userCount
       permissions {
-        id
         resourceType
         resourceId
         permissionLevel
@@ -110,7 +109,6 @@ const GET_USER_ROLES = gql`
       name
       description
       permissions {
-        id
         resourceType
         resourceId
         permissionLevel
@@ -137,7 +135,6 @@ const CREATE_ROLE = gql`
       name
       description
       permissions {
-        id
         resourceType
         resourceId
         permissionLevel
@@ -153,7 +150,6 @@ const UPDATE_ROLE = gql`
       name
       description
       permissions {
-        id
         resourceType
         resourceId
         permissionLevel
@@ -190,10 +186,8 @@ interface Role {
 }
 
 interface RolePermission {
-  id: string;
   resourceType: string;
   resourceId: string | null;
-  resourceName?: string | null;
   permissionLevel: string;
 }
 
@@ -263,6 +257,18 @@ export const RoleManagement: React.FC = () => {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Resizable columns
+  const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
+    tableId: 'role-management-table',
+    columns: [
+      { key: 'name', minWidth: 100, defaultWidth: 150 },
+      { key: 'description', minWidth: 150, defaultWidth: 250 },
+      { key: 'users', minWidth: 150, defaultWidth: 200 },
+      { key: 'permissions', minWidth: 200, defaultWidth: 350 },
+      { key: 'actions', minWidth: 100, defaultWidth: 140 },
+    ],
+  });
 
   // Queries
   const { data: rolesData, loading: rolesLoading, error: rolesError, refetch: refetchRoles } = useQuery(GET_ROLES);
@@ -471,15 +477,15 @@ export const RoleManagement: React.FC = () => {
   // Calculate effective permissions with bidirectional flow
   const getEffectivePermissions = () => {
     const hierarchy: { [key: string]: number } = { READ: 1, WRITE: 2, ADMIN: 3 };
-    
+
     const hasAllProducts = permissionBuilder.products.mode === 'all';
     const hasAllSolutions = permissionBuilder.solutions.mode === 'all';
     const hasSpecificProducts = permissionBuilder.products.mode === 'specific' && permissionBuilder.products.selectedIds.length > 0;
     const hasSpecificSolutions = permissionBuilder.solutions.mode === 'specific' && permissionBuilder.solutions.selectedIds.length > 0;
-    
+
     const productLevel = permissionBuilder.products.permissionLevel;
     const solutionLevel = permissionBuilder.solutions.permissionLevel;
-    
+
     const result: {
       products: { level: string; source: 'explicit' | 'inherited'; note?: string };
       solutions: { level: string; source: 'explicit' | 'inherited'; note?: string };
@@ -489,15 +495,15 @@ export const RoleManagement: React.FC = () => {
       products: { level: 'NONE', source: 'explicit' },
       solutions: { level: 'NONE', source: 'explicit' }
     };
-    
+
     // Calculate effective product permissions
     if (hasAllProducts) {
       result.products = { level: productLevel, source: 'explicit' };
-      
+
       // If specific solutions have higher permissions, products in those solutions get elevated
       if (hasSpecificSolutions && hierarchy[solutionLevel] > hierarchy[productLevel]) {
-        result.specificSolutions = { 
-          count: permissionBuilder.solutions.selectedIds.length, 
+        result.specificSolutions = {
+          count: permissionBuilder.solutions.selectedIds.length,
           level: solutionLevel,
           names: permissionBuilder.solutions.selectedIds.map(id => solutions.find((s: Resource) => s.id === id)?.name || id)
         };
@@ -509,11 +515,11 @@ export const RoleManagement: React.FC = () => {
     } else if (hasSpecificProducts) {
       result.specificProducts = { count: permissionBuilder.products.selectedIds.length, level: productLevel };
     }
-    
+
     // Calculate effective solution permissions
     if (hasAllSolutions) {
       result.solutions = { level: solutionLevel, source: 'explicit' };
-      
+
       // Check if product permission overrides
       if (hasAllProducts && hierarchy[productLevel] > hierarchy[solutionLevel]) {
         result.solutions = { level: productLevel, source: 'inherited', note: `Elevated from all-products ${productLevel}` };
@@ -522,8 +528,8 @@ export const RoleManagement: React.FC = () => {
       // Inherited from all products
       if (hasSpecificSolutions) {
         result.solutions = { level: productLevel, source: 'inherited', note: 'Other solutions inherit from all-products' };
-        result.specificSolutions = { 
-          count: permissionBuilder.solutions.selectedIds.length, 
+        result.specificSolutions = {
+          count: permissionBuilder.solutions.selectedIds.length,
           level: solutionLevel,
           names: permissionBuilder.solutions.selectedIds.map(id => solutions.find((s: Resource) => s.id === id)?.name || id)
         };
@@ -531,19 +537,19 @@ export const RoleManagement: React.FC = () => {
         result.solutions = { level: productLevel, source: 'inherited', note: 'From all-products permission' };
       }
     } else if (hasSpecificSolutions) {
-      result.specificSolutions = { 
-        count: permissionBuilder.solutions.selectedIds.length, 
+      result.specificSolutions = {
+        count: permissionBuilder.solutions.selectedIds.length,
         level: solutionLevel,
         names: permissionBuilder.solutions.selectedIds.map(id => solutions.find((s: Resource) => s.id === id)?.name || id)
       };
     }
-    
+
     return result;
   };
 
   const handleSubmit = async () => {
     setErrorMsg('');
-    
+
     // Validation
     if (!formData.name.trim()) {
       setErrorMsg('Role name is required');
@@ -551,14 +557,14 @@ export const RoleManagement: React.FC = () => {
     }
 
     const permissions = buildPermissionsFromBuilder();
-    
+
     // Note: It's OK to have zero permissions (role with no access)
     // But if you want to enforce at least one permission, uncomment:
     // if (permissions.length === 0) {
     //   setErrorMsg('Please define at least one permission for this role.');
     //   return;
     // }
-    
+
     console.log('Built permissions:', permissions);
 
     if (editingRole) {
@@ -603,7 +609,7 @@ export const RoleManagement: React.FC = () => {
 
         // Refetch roles to update the UI
         await refetchRoles();
-        
+
         // Close dialog and show success message
         setRoleDialog(false);
         setSuccessMsg('Role and user assignments updated successfully!');
@@ -628,10 +634,10 @@ export const RoleManagement: React.FC = () => {
           }
         });
         console.log('Role created successfully:', result);
-        
+
         // Refetch roles to update the UI
         await refetchRoles();
-        
+
         // Close dialog and show success message
         setRoleDialog(false);
         setSuccessMsg('Role created successfully!');
@@ -679,58 +685,58 @@ export const RoleManagement: React.FC = () => {
       const updated = { ...prev };
       const section = updated[resourceType];
       const index = section.selectedIds.indexOf(resourceId);
-      
+
       if (index > -1) {
         section.selectedIds = section.selectedIds.filter(id => id !== resourceId);
       } else {
         section.selectedIds = [...section.selectedIds, resourceId];
       }
-      
+
       return updated;
     });
   };
 
   const getPermissionSummary = (permissions: RolePermission[]): React.ReactNode => {
     if (permissions.length === 0) return 'No permissions';
-    
+
     const byType: { [key: string]: RolePermission[] } = {};
-    
+
     permissions.forEach(p => {
       if (!byType[p.resourceType]) byType[p.resourceType] = [];
       byType[p.resourceType].push(p);
     });
-    
+
     const productPerms = byType['PRODUCT'] || [];
     const solutionPerms = byType['SOLUTION'] || [];
     const customerPerms = byType['CUSTOMER'] || [];
-    
+
     const allProducts = productPerms.find(p => p.resourceId === null);
     const allSolutions = solutionPerms.find(p => p.resourceId === null);
     const allCustomers = customerPerms.find(p => p.resourceId === null);
-    
+
     const specificProducts = productPerms.filter(p => p.resourceId !== null);
     const specificSolutions = solutionPerms.filter(p => p.resourceId !== null);
-    
+
     const summary: React.ReactNode[] = [];
     const hierarchy: { [key: string]: number } = { READ: 1, WRITE: 2, ADMIN: 3 };
-    
+
     // Handle PRODUCTS display
     if (allProducts) {
       // Check if any specific solutions grant higher permissions than all-products
-      const hasHigherSolutionPerms = specificSolutions.some(s => 
+      const hasHigherSolutionPerms = specificSolutions.some(s =>
         hierarchy[s.permissionLevel] > hierarchy[allProducts.permissionLevel]
       );
-      
+
       if (hasHigherSolutionPerms) {
         // Show: All Products (READ) except: 1 solution(s) → elevated access
         summary.push(
           <Box key="products" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
             <Chip label={`All Products (${allProducts.permissionLevel})`} size="small" color="primary" />
             <Typography variant="caption" color="text.secondary">except:</Typography>
-            <Tooltip title={`Products in these solutions have higher permissions: ${specificSolutions.filter(s => hierarchy[s.permissionLevel] > hierarchy[allProducts.permissionLevel]).map(s => `${s.resourceName || s.resourceId} (${s.permissionLevel})`).join(', ')}`}>
-              <Chip 
-                label={`${specificSolutions.filter(s => hierarchy[s.permissionLevel] > hierarchy[allProducts.permissionLevel]).length} solution(s) → elevated`} 
-                size="small" 
+            <Tooltip title={`Products in these solutions have higher permissions: ${specificSolutions.filter(s => hierarchy[s.permissionLevel] > hierarchy[allProducts.permissionLevel]).map(s => `${resourcesData?.availableResources?.find((r: Resource) => r.id === s.resourceId)?.name || s.resourceId} (${s.permissionLevel})`).join(', ')}`}>
+              <Chip
+                label={`${specificSolutions.filter(s => hierarchy[s.permissionLevel] > hierarchy[allProducts.permissionLevel]).length} solution(s) → elevated`}
+                size="small"
                 color="warning"
                 icon={<Box component="span" sx={{ fontSize: '12px' }}>⬆</Box>}
               />
@@ -749,13 +755,13 @@ export const RoleManagement: React.FC = () => {
         <Chip key="products" label={`${specificProducts.length} Product(s)`} size="small" variant="outlined" />
       );
     }
-    
+
     // Handle SOLUTIONS display
     if (allSolutions && allProducts) {
       // Both "all products" and "all solutions" exist - compare levels
       const productLevel = hierarchy[allProducts.permissionLevel] || 0;
       const solutionLevel = hierarchy[allSolutions.permissionLevel] || 0;
-      
+
       if (productLevel > solutionLevel) {
         // Product permission is higher → solutions get elevated
         summary.push(
@@ -793,19 +799,19 @@ export const RoleManagement: React.FC = () => {
       if (allProducts) {
         // Case: ALL PRODUCTS + SPECIFIC SOLUTIONS (SASE SME case)
         const solutionChips = specificSolutions.map(s => (
-          <Chip 
+          <Chip
             key={s.resourceId}
-            label={`${s.resourceName || 'Solution'} (${s.permissionLevel})`}
-            size="small" 
+            label={`${resourcesData?.availableResources?.find((r: Resource) => r.id === s.resourceId)?.name || 'Solution'} (${s.permissionLevel})`}
+            size="small"
             color="secondary"
           />
         ));
-        
+
         summary.push(
           <Box key="solutions" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-            <Chip 
-              label={`Other Solutions (${allProducts.permissionLevel})`} 
-              size="small" 
+            <Chip
+              label={`Other Solutions (${allProducts.permissionLevel})`}
+              size="small"
               color="success"
               variant="outlined"
               icon={<Box component="span" sx={{ fontSize: '12px' }}>✓</Box>}
@@ -817,14 +823,14 @@ export const RoleManagement: React.FC = () => {
       } else {
         // Only specific solutions, no all-products
         const solutionChips = specificSolutions.map(s => (
-          <Chip 
+          <Chip
             key={s.resourceId}
-            label={`${s.resourceName || 'Solution'} (${s.permissionLevel})`}
-            size="small" 
+            label={`${resourcesData?.availableResources?.find((r: Resource) => r.id === s.resourceId)?.name || 'Solution'} (${s.permissionLevel})`}
+            size="small"
             color="primary"
           />
         ));
-        
+
         summary.push(
           <Box key="solutions" sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
             {solutionChips}
@@ -835,9 +841,9 @@ export const RoleManagement: React.FC = () => {
       // ALL PRODUCTS but NO solutions at all → all solutions inherit
       summary.push(
         <Box key="solutions" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
-          <Chip 
-            label={`All Solutions (${allProducts.permissionLevel})`} 
-            size="small" 
+          <Chip
+            label={`All Solutions (${allProducts.permissionLevel})`}
+            size="small"
             color="success"
             variant="outlined"
             icon={<Box component="span" sx={{ fontSize: '12px' }}>✓</Box>}
@@ -848,7 +854,7 @@ export const RoleManagement: React.FC = () => {
         </Box>
       );
     }
-    
+
     if (allCustomers) {
       summary.push(
         <Chip key="customers" label={`All Customers (${allCustomers.permissionLevel})`} size="small" color="primary" />
@@ -858,9 +864,9 @@ export const RoleManagement: React.FC = () => {
         <Chip key="customers" label={`${customerPerms.length} Customer(s)`} size="small" variant="outlined" />
       );
     }
-    
+
     if (summary.length === 0) return 'No permissions';
-    
+
     return <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>{summary}</Box>;
   };
 
@@ -922,17 +928,45 @@ export const RoleManagement: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell><strong>Role Name</strong></TableCell>
-              <TableCell><strong>Description</strong></TableCell>
-              <TableCell><strong>Users</strong></TableCell>
-              <TableCell><strong>Permissions</strong></TableCell>
+              <ResizableTableCell
+                width={columnWidths['name']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('name')}
+                isResizing={isResizing}
+              >
+                <strong>Role Name</strong>
+              </ResizableTableCell>
+              <ResizableTableCell
+                width={columnWidths['description']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('description')}
+                isResizing={isResizing}
+              >
+                <strong>Description</strong>
+              </ResizableTableCell>
+              <ResizableTableCell
+                width={columnWidths['users']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('users')}
+                isResizing={isResizing}
+              >
+                <strong>Users</strong>
+              </ResizableTableCell>
+              <ResizableTableCell
+                width={columnWidths['permissions']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('permissions')}
+                isResizing={isResizing}
+              >
+                <strong>Permissions</strong>
+              </ResizableTableCell>
               <TableCell align="right"><strong>Actions</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {roles.map((role: Role) => (
-              <TableRow 
-                key={role.id} 
+              <TableRow
+                key={role.id}
                 hover
                 onDoubleClick={() => handleEditRole(role)}
                 sx={{ cursor: 'pointer' }}
@@ -1034,7 +1068,7 @@ export const RoleManagement: React.FC = () => {
             <Divider sx={{ my: 1 }} />
 
             <Typography variant="h6">Permissions</Typography>
-            
+
             <Tabs value={permissionTab} onChange={(_, v) => setPermissionTab(v)}>
               <Tab label="Products" />
               <Tab label="Solutions" />
@@ -1102,7 +1136,7 @@ export const RoleManagement: React.FC = () => {
                               {products.map((product: Resource) => {
                                 const isSelected = permissionBuilder.products.selectedIds.includes(product.id);
                                 const currentLevel = permissionBuilder.products.specificPermissions[product.id] || 'READ';
-                                
+
                                 return (
                                   <TableRow key={product.id} hover>
                                     <TableCell padding="checkbox">
@@ -1112,12 +1146,12 @@ export const RoleManagement: React.FC = () => {
                                           const newSelectedIds = e.target.checked
                                             ? [...permissionBuilder.products.selectedIds, product.id]
                                             : permissionBuilder.products.selectedIds.filter(id => id !== product.id);
-                                          
+
                                           const newSpecificPermissions = { ...permissionBuilder.products.specificPermissions };
                                           if (e.target.checked && !newSpecificPermissions[product.id]) {
                                             newSpecificPermissions[product.id] = 'READ';
                                           }
-                                          
+
                                           setPermissionBuilder({
                                             ...permissionBuilder,
                                             products: {
@@ -1167,7 +1201,7 @@ export const RoleManagement: React.FC = () => {
                     )}
                   </Box>
                 )}
-                
+
                 {/* Permission Flow Info */}
                 {permissionBuilder.products.mode === 'all' && (
                   <Alert severity="info" sx={{ mt: 2 }}>
@@ -1242,7 +1276,7 @@ export const RoleManagement: React.FC = () => {
                               {solutions.map((solution: Resource) => {
                                 const isSelected = permissionBuilder.solutions.selectedIds.includes(solution.id);
                                 const currentLevel = permissionBuilder.solutions.specificPermissions[solution.id] || 'READ';
-                                
+
                                 return (
                                   <TableRow key={solution.id} hover>
                                     <TableCell padding="checkbox">
@@ -1252,12 +1286,12 @@ export const RoleManagement: React.FC = () => {
                                           const newSelectedIds = e.target.checked
                                             ? [...permissionBuilder.solutions.selectedIds, solution.id]
                                             : permissionBuilder.solutions.selectedIds.filter(id => id !== solution.id);
-                                          
+
                                           const newSpecificPermissions = { ...permissionBuilder.solutions.specificPermissions };
                                           if (e.target.checked && !newSpecificPermissions[solution.id]) {
                                             newSpecificPermissions[solution.id] = 'READ';
                                           }
-                                          
+
                                           setPermissionBuilder({
                                             ...permissionBuilder,
                                             solutions: {
@@ -1307,7 +1341,7 @@ export const RoleManagement: React.FC = () => {
                     )}
                   </Box>
                 )}
-                
+
                 {/* Permission Flow Info */}
                 <Alert severity="info" sx={{ mt: 2 }}>
                   <Typography variant="body2">
@@ -1392,7 +1426,7 @@ export const RoleManagement: React.FC = () => {
                               {customers.map((customer: Resource) => {
                                 const isSelected = permissionBuilder.customers.selectedIds.includes(customer.id);
                                 const currentLevel = permissionBuilder.customers.specificPermissions[customer.id] || 'READ';
-                                
+
                                 return (
                                   <TableRow key={customer.id} hover>
                                     <TableCell padding="checkbox">
@@ -1402,12 +1436,12 @@ export const RoleManagement: React.FC = () => {
                                           const newSelectedIds = e.target.checked
                                             ? [...permissionBuilder.customers.selectedIds, customer.id]
                                             : permissionBuilder.customers.selectedIds.filter(id => id !== customer.id);
-                                          
+
                                           const newSpecificPermissions = { ...permissionBuilder.customers.specificPermissions };
                                           if (e.target.checked && !newSpecificPermissions[customer.id]) {
                                             newSpecificPermissions[customer.id] = 'READ';
                                           }
-                                          
+
                                           setPermissionBuilder({
                                             ...permissionBuilder,
                                             customers: {
@@ -1478,10 +1512,10 @@ export const RoleManagement: React.FC = () => {
                         {selected.map((userId) => {
                           const user = usersData?.users?.find((u: any) => u.id === userId);
                           return (
-                            <Chip 
-                              key={userId} 
-                              label={user?.username || userId} 
-                              size="small" 
+                            <Chip
+                              key={userId}
+                              label={user?.username || userId}
+                              size="small"
                               color="secondary"
                               variant="outlined"
                             />
@@ -1494,8 +1528,8 @@ export const RoleManagement: React.FC = () => {
                     {usersData?.users?.map((user: any) => (
                       <MenuItem key={user.id} value={user.id}>
                         <Checkbox checked={selectedUsers.indexOf(user.id) > -1} />
-                        <ListItemText 
-                          primary={user.username} 
+                        <ListItemText
+                          primary={user.username}
                           secondary={user.email}
                         />
                       </MenuItem>
@@ -1515,8 +1549,8 @@ export const RoleManagement: React.FC = () => {
                     </Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                       {editingRole.users.map((user: any) => (
-                        <Chip 
-                          key={user.id} 
+                        <Chip
+                          key={user.id}
                           label={`${user.username} (${user.email})`}
                           size="small"
                           color="primary"
@@ -1529,7 +1563,7 @@ export const RoleManagement: React.FC = () => {
               </Box>
             )}
           </Box>
-          
+
           {/* Effective Permissions Preview */}
           <Box sx={{ mt: 3, p: 2, bgcolor: 'background.default', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
             <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
@@ -1538,7 +1572,7 @@ export const RoleManagement: React.FC = () => {
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
               This shows the actual permissions that will be applied after bidirectional flow rules.
             </Typography>
-            
+
             {(() => {
               const effective = getEffectivePermissions();
               return (
@@ -1551,7 +1585,7 @@ export const RoleManagement: React.FC = () => {
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', ml: 2 }}>
                       {effective.products.level !== 'NONE' ? (
                         <>
-                          <Chip 
+                          <Chip
                             label={`All Products: ${effective.products.level}`}
                             size="small"
                             color={effective.products.source === 'explicit' ? 'primary' : 'success'}
@@ -1565,7 +1599,7 @@ export const RoleManagement: React.FC = () => {
                           )}
                           {effective.products.note && (
                             <Tooltip title={effective.products.note}>
-                              <Chip 
+                              <Chip
                                 label="mixed permissions"
                                 size="small"
                                 color="warning"
@@ -1575,7 +1609,7 @@ export const RoleManagement: React.FC = () => {
                           )}
                         </>
                       ) : effective.specificProducts ? (
-                        <Chip 
+                        <Chip
                           label={`${effective.specificProducts.count} specific product(s): ${effective.specificProducts.level}`}
                           size="small"
                           color="primary"
@@ -1592,7 +1626,7 @@ export const RoleManagement: React.FC = () => {
                       </Typography>
                     )}
                   </Box>
-                  
+
                   {/* Solutions Section */}
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: 'medium', mb: 1 }}>
@@ -1603,7 +1637,7 @@ export const RoleManagement: React.FC = () => {
                         <>
                           {effective.solutions.source === 'inherited' && !effective.specificSolutions ? (
                             <>
-                              <Chip 
+                              <Chip
                                 label={`All Solutions: ${effective.solutions.level}`}
                                 size="small"
                                 color="success"
@@ -1618,7 +1652,7 @@ export const RoleManagement: React.FC = () => {
                             <>
                               {effective.solutions.note && (
                                 <>
-                                  <Chip 
+                                  <Chip
                                     label={`Other Solutions: ${effective.solutions.level}`}
                                     size="small"
                                     color="success"
@@ -1629,7 +1663,7 @@ export const RoleManagement: React.FC = () => {
                                 </>
                               )}
                               <Tooltip title={effective.specificSolutions.names?.join(', ') || 'Specific solutions'}>
-                                <Chip 
+                                <Chip
                                   label={`${effective.specificSolutions.count} solution(s): ${effective.specificSolutions.level}`}
                                   size="small"
                                   color="secondary"
@@ -1637,7 +1671,7 @@ export const RoleManagement: React.FC = () => {
                               </Tooltip>
                             </>
                           ) : (
-                            <Chip 
+                            <Chip
                               label={`All Solutions: ${effective.solutions.level}`}
                               size="small"
                               color={effective.solutions.source === 'explicit' ? 'primary' : 'success'}
@@ -1648,7 +1682,7 @@ export const RoleManagement: React.FC = () => {
                         </>
                       ) : effective.specificSolutions ? (
                         <Tooltip title={effective.specificSolutions.names?.join(', ') || 'Specific solutions'}>
-                          <Chip 
+                          <Chip
                             label={`${effective.specificSolutions.count} specific solution(s): ${effective.specificSolutions.level}`}
                             size="small"
                             color="primary"
@@ -1666,7 +1700,7 @@ export const RoleManagement: React.FC = () => {
                       </Typography>
                     )}
                   </Box>
-                  
+
                   {/* Customers Section */}
                   <Box>
                     <Typography variant="body2" sx={{ fontWeight: 'medium', mb: 1 }}>
@@ -1674,13 +1708,13 @@ export const RoleManagement: React.FC = () => {
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', ml: 2 }}>
                       {permissionBuilder.customers.mode === 'all' ? (
-                        <Chip 
+                        <Chip
                           label={`All Customers: ${permissionBuilder.customers.permissionLevel}`}
                           size="small"
                           color="primary"
                         />
                       ) : permissionBuilder.customers.selectedIds.length > 0 ? (
-                        <Chip 
+                        <Chip
                           label={`${permissionBuilder.customers.selectedIds.length} specific customer(s): ${permissionBuilder.customers.permissionLevel}`}
                           size="small"
                           color="primary"
@@ -1695,9 +1729,9 @@ export const RoleManagement: React.FC = () => {
                 </Box>
               );
             })()}
-            
+
             <Divider sx={{ my: 2 }} />
-            
+
             <Alert severity="info" sx={{ mt: 1 }}>
               <Typography variant="caption">
                 <strong>Legend:</strong>{' '}

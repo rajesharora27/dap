@@ -5,18 +5,22 @@ import {
   Typography,
   Button,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Paper,
   Chip,
-  Divider,
   Accordion,
   AccordionSummary,
   AccordionDetails
 } from '@mui/material';
 import { Add, Edit, Delete, ExpandMore } from '@shared/components/FAIcon';
 import { useMutation, gql } from '@apollo/client';
+import { useResizableColumns } from '@shared/hooks/useResizableColumns';
+import { ResizableTableCell } from '@shared/components/ResizableTableCell';
 
 import { CREATE_TASK, DELETE_TASK, Task } from '@features/tasks';
 
@@ -38,6 +42,18 @@ export const SolutionTaskManagement: React.FC<Props> = ({
 }) => {
   const [createTask] = useMutation(CREATE_TASK, { onCompleted: onRefetch });
   const [deleteTask] = useMutation(DELETE_TASK, { onCompleted: onRefetch });
+
+  // Resizable columns state
+  const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
+    tableId: 'solution-task-management',
+    columns: [
+      { key: 'sequence', minWidth: 40, defaultWidth: 60 },
+      { key: 'name', minWidth: 150, defaultWidth: 250 },
+      { key: 'details', minWidth: 150, defaultWidth: 200 },
+      { key: 'description', minWidth: 200, defaultWidth: 300 },
+      { key: 'actions', minWidth: 100, defaultWidth: 100 },
+    ],
+  });
 
   const handleAddTask = async () => {
     const maxSeq = Math.max(...solutionTasks.map(t => t.sequenceNumber || 0), 0);
@@ -93,91 +109,118 @@ export const SolutionTaskManagement: React.FC<Props> = ({
           </Button>
         </Box>
 
-        <Paper variant="outlined">
-          <List>
-            {solutionTasks.map((task: Task, index: number) => (
-              <React.Fragment key={task.id}>
-                {index > 0 && <Divider />}
-                <ListItem
-                  sx={{
-                    '&:hover .action-buttons': { opacity: 1 },
-                    display: 'flex',
-                    gap: 1
-                  }}
+        <TableContainer component={Paper} variant="outlined">
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <ResizableTableCell
+                  width={columnWidths['sequence']}
+                  resizable
+                  resizeHandleProps={getResizeHandleProps('sequence')}
+                  isResizing={isResizing}
                 >
-                  <Chip
-                    label={`#${task.sequenceNumber}`}
-                    size="small"
-                    sx={{ minWidth: 50 }}
-                  />
-
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body1">
-                          {task.name}
-                        </Typography>
-                        <Chip
-                          label={task.licenseLevel || 'Essential'}
+                  #
+                </ResizableTableCell>
+                <ResizableTableCell
+                  width={columnWidths['name']}
+                  resizable
+                  resizeHandleProps={getResizeHandleProps('name')}
+                  isResizing={isResizing}
+                >
+                  Task Name
+                </ResizableTableCell>
+                <ResizableTableCell
+                  width={columnWidths['details']}
+                  resizable
+                  resizeHandleProps={getResizeHandleProps('details')}
+                  isResizing={isResizing}
+                >
+                  Details
+                </ResizableTableCell>
+                <ResizableTableCell
+                  width={columnWidths['description']}
+                  resizable
+                  resizeHandleProps={getResizeHandleProps('description')}
+                  isResizing={isResizing}
+                >
+                  Description
+                </ResizableTableCell>
+                <ResizableTableCell
+                  width={columnWidths['actions']}
+                  align="right"
+                  resizable
+                  resizeHandleProps={getResizeHandleProps('actions')}
+                  isResizing={isResizing}
+                >
+                  Actions
+                </ResizableTableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {solutionTasks.map((task: Task) => (
+                <TableRow key={task.id} hover>
+                  <TableCell>{task.sequenceNumber}</TableCell>
+                  <TableCell sx={{ fontWeight: 500 }}>{task.name}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <Chip
+                        label={task.licenseLevel || 'Essential'}
+                        size="small"
+                        color={getLicenseLevelColor(task.licenseLevel || 'Essential')}
+                        sx={{ height: 20, fontSize: '0.75rem' }}
+                      />
+                      <Chip
+                        label={`${task.estMinutes}m`}
+                        size="small"
+                        variant="outlined"
+                        sx={{ height: 20, fontSize: '0.75rem' }}
+                      />
+                      <Chip
+                        label={`${task.weight}%`}
+                        size="small"
+                        variant="outlined"
+                        sx={{ height: 20, fontSize: '0.75rem' }}
+                      />
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 300 }}>
+                      {task.description}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="right">
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5 }}>
+                      {onEditTask && (
+                        <IconButton
                           size="small"
-                          color={getLicenseLevelColor(task.licenseLevel || 'Essential')}
-                        />
-                        <Chip
-                          label={`${task.estMinutes}min`}
-                          size="small"
-                          variant="outlined"
-                        />
-                        <Chip
-                          label={`${task.weight}%`}
-                          size="small"
-                          variant="outlined"
-                        />
-                      </Box>
-                    }
-                    secondary={task.description}
-                  />
-
-                  <Box
-                    className="action-buttons"
-                    sx={{
-                      display: 'flex',
-                      gap: 0.5,
-                      opacity: 0,
-                      transition: 'opacity 0.2s'
-                    }}
-                  >
-                    {onEditTask && (
+                          onClick={() => onEditTask(task)}
+                        >
+                          <Edit fontSize="small" />
+                        </IconButton>
+                      )}
                       <IconButton
                         size="small"
-                        onClick={() => onEditTask(task)}
+                        color="error"
+                        onClick={() => handleDeleteTask(task.id)}
                       >
-                        <Edit fontSize="small" />
+                        <Delete fontSize="small" />
                       </IconButton>
-                    )}
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => handleDeleteTask(task.id)}
-                    >
-                      <Delete fontSize="small" />
-                    </IconButton>
-                  </Box>
-                </ListItem>
-              </React.Fragment>
-            ))}
-
-            {solutionTasks.length === 0 && (
-              <Box sx={{ p: 3, textAlign: 'center' }}>
-                <Typography variant="body2" color="text.secondary">
-                  No solution-specific tasks. These are tasks unique to this solution.
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Product tasks are shown below (read-only).
-                </Typography>
-              </Box>
-            )}
-          </List>
-        </Paper>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ))}
+              {solutionTasks.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    <Typography variant="body2" color="text.secondary" sx={{ py: 3 }}>
+                      No solution-specific tasks. These are tasks unique to this solution.
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       </Box>
 
       {/* Product Tasks (Read-only reference) */}
@@ -194,33 +237,38 @@ export const SolutionTaskManagement: React.FC<Props> = ({
                   <Chip label={`${tasks.length} tasks`} size="small" />
                 </Box>
               </AccordionSummary>
-              <AccordionDetails>
-                <List dense>
-                  {tasks.map((task: Task) => (
-                    <ListItem key={task.id}>
-                      <Chip
-                        label={`#${task.sequenceNumber}`}
-                        size="small"
-                        sx={{ minWidth: 50, mr: 1 }}
-                      />
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2">
-                              {task.name}
-                            </Typography>
-                            <Chip
-                              label={task.licenseLevel || 'Essential'}
-                              size="small"
-                              color={getLicenseLevelColor(task.licenseLevel || 'Essential')}
-                            />
-                          </Box>
-                        }
-                        secondary={task.description}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
+              <AccordionDetails sx={{ p: 0 }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell width="50px">#</TableCell>
+                      <TableCell>Task Name</TableCell>
+                      <TableCell>License</TableCell>
+                      <TableCell>Description</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {tasks.map((task: Task) => (
+                      <TableRow key={task.id}>
+                        <TableCell>{task.sequenceNumber}</TableCell>
+                        <TableCell sx={{ fontWeight: 500 }}>{task.name}</TableCell>
+                        <TableCell>
+                          <Chip
+                            label={task.licenseLevel || 'Essential'}
+                            size="small"
+                            color={getLicenseLevelColor(task.licenseLevel || 'Essential')}
+                            sx={{ height: 20, fontSize: '0.75rem' }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 400 }}>
+                            {task.description}
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </AccordionDetails>
             </Accordion>
           ))}

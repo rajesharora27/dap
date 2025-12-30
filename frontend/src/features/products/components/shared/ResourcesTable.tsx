@@ -19,6 +19,8 @@ import {
     CheckCircle, Cancel as CancelIcon, Add as AddIcon, OpenInNew as OpenInNewIcon
 } from '@mui/icons-material';
 import { Resource } from '@shared/types';
+import { useResizableColumns } from '@shared/hooks/useResizableColumns';
+import { ResizableTableCell } from '@shared/components/ResizableTableCell';
 
 interface ResourcesTableProps {
     items: Resource[];
@@ -222,6 +224,17 @@ export const ResourcesTable: React.FC<ResourcesTableProps> = ({
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
+    // Resizable columns
+    const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
+        tableId: 'resources-table',
+        columns: [
+            { key: 'drag', minWidth: 50, defaultWidth: 50 },
+            { key: 'name', minWidth: 150, defaultWidth: 300 },
+            { key: 'url', minWidth: 200, defaultWidth: 400 },
+            { key: 'actions', minWidth: 100, defaultWidth: 120 },
+        ],
+    });
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (over && active.id !== over.id) {
@@ -294,10 +307,39 @@ export const ResourcesTable: React.FC<ResourcesTableProps> = ({
                 <Table size="small">
                     <TableHead>
                         <TableRow>
-                            {!readOnly && <TableCell width="50px" />}
-                            <TableCell width="30%">Resource Name</TableCell>
-                            <TableCell>URL</TableCell>
-                            <TableCell align="right" width="120px">Actions</TableCell>
+                            {!readOnly && (
+                                <ResizableTableCell
+                                    width={columnWidths['drag']}
+                                    resizable
+                                    resizeHandleProps={getResizeHandleProps('drag')}
+                                    isResizing={isResizing}
+                                />
+                            )}
+                            <ResizableTableCell
+                                width={columnWidths['name']}
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('name')}
+                                isResizing={isResizing}
+                            >
+                                Resource Name
+                            </ResizableTableCell>
+                            <ResizableTableCell
+                                width={columnWidths['url']}
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('url')}
+                                isResizing={isResizing}
+                            >
+                                URL
+                            </ResizableTableCell>
+                            <ResizableTableCell
+                                width={columnWidths['actions']}
+                                align="right"
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('actions')}
+                                isResizing={isResizing}
+                            >
+                                Actions
+                            </ResizableTableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>

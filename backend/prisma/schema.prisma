@@ -29,6 +29,8 @@ model User {
   permissions        Permission[]
   userRoles          UserRole[]
   grantedPermissions Permission[] @relation("GrantedBy")
+  diaryTodos         DiaryTodo[]
+  diaryBookmarks     DiaryBookmark[]
 }
 
 model Session {
@@ -949,4 +951,31 @@ model CustomerSolutionTaskTag {
   @@unique([customerSolutionTaskId, tagId])
   @@index([customerSolutionTaskId])
   @@index([tagId])
+}
+
+model DiaryTodo {
+  id             String   @id @default(cuid())
+  userId         String
+  task           String
+  description    String?
+  isCompleted    Boolean  @default(false)
+  sequenceNumber Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model DiaryBookmark {
+  id             String   @id @default(cuid())
+  userId         String
+  title          String
+  url            String
+  sequenceNumber Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }

@@ -9,6 +9,12 @@ export { SolutionDialog } from './components/SolutionDialog';
 export { SolutionPreviewDialog } from './components/SolutionPreviewDialog';
 export { SolutionTaskManagement } from './components/SolutionTaskManagement';
 export { SolutionSummaryDashboard } from './components/SolutionSummaryDashboard';
+export { SolutionsPageContent } from './components/SolutionsPageContent';
+export { SolutionTasksTab } from './components/SolutionTasksTab';
+export { SolutionMetadataSection } from './components/SolutionMetadataSection';
+
+// State
+export * from './context/SolutionContext';
 
 // Hooks
 export * from './hooks';

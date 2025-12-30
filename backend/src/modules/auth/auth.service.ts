@@ -50,6 +50,7 @@ export class AuthService {
       sessionId,
       username: user.username,
       email: user.email,
+      fullName: user.fullName,
       isAdmin: user.isAdmin,
       mustChangePassword: user.mustChangePassword,
       permissions: this.formatPermissionsForToken(permissions),

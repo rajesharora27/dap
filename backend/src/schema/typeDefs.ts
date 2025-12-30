@@ -14,6 +14,7 @@ import { aiTypeDefs } from '../modules/ai/ai.typeDefs';
 import { backupTypeDefs } from '../modules/backup/backup.typeDefs';
 import { searchTypeDefs } from '../modules/search/search.typeDefs';
 import { changeTrackingTypeDefs } from '../modules/change-tracking/change-tracking.typeDefs';
+import { diaryTypeDefs } from '../modules/my-diary/diary.typeDefs';
 
 export const typeDefs = [
   commonTypeDefs,
@@ -30,5 +31,6 @@ export const typeDefs = [
   aiTypeDefs,
   backupTypeDefs,
   searchTypeDefs,
-  changeTrackingTypeDefs
+  changeTrackingTypeDefs,
+  diaryTypeDefs
 ];

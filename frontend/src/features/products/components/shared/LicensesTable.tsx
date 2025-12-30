@@ -8,6 +8,8 @@ import {
     CheckCircle, Cancel as CancelIcon, Add as AddIcon
 } from '@mui/icons-material';
 import { License } from '@features/product-licenses';
+import { useResizableColumns } from '@shared/hooks/useResizableColumns';
+import { ResizableTableCell } from '@shared/components/ResizableTableCell';
 
 interface LicensesTableProps {
     items: any[];
@@ -163,7 +165,7 @@ export const LicensesTable: React.FC<LicensesTableProps> = ({
 }) => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [internalAdding, setInternalAdding] = useState(false);
-    
+
     // Use external control if provided, otherwise internal
     const isAdding = externalAddMode !== undefined ? externalAddMode : internalAdding;
 
@@ -177,6 +179,17 @@ export const LicensesTable: React.FC<LicensesTableProps> = ({
     const sortedItems = useMemo(() => {
         return [...items].sort((a, b) => (a.level || 0) - (b.level || 0));
     }, [items]);
+
+    // Resizable columns
+    const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
+        tableId: 'licenses-table',
+        columns: [
+            { key: 'nameLevel', minWidth: 150, defaultWidth: 300 },
+            { key: 'description', minWidth: 200, defaultWidth: 400 },
+            { key: 'active', minWidth: 80, defaultWidth: 100 },
+            { key: 'actions', minWidth: 100, defaultWidth: 120 },
+        ],
+    });
 
     const handleCreate = () => {
         if (newName.trim()) {
@@ -192,7 +205,7 @@ export const LicensesTable: React.FC<LicensesTableProps> = ({
             }
         }
     };
-    
+
     const handleCancelAdd = () => {
         setNewName('');
         setNewDesc('');
@@ -227,10 +240,39 @@ export const LicensesTable: React.FC<LicensesTableProps> = ({
             <Table size="small">
                 <TableHead>
                     <TableRow>
-                        <TableCell width="35%">Name/Level</TableCell>
-                        <TableCell>Description</TableCell>
-                        <TableCell width="10%">Active</TableCell>
-                        <TableCell align="right" width="120px">Actions</TableCell>
+                        <ResizableTableCell
+                            width={columnWidths['nameLevel']}
+                            resizable
+                            resizeHandleProps={getResizeHandleProps('nameLevel')}
+                            isResizing={isResizing}
+                        >
+                            Name/Level
+                        </ResizableTableCell>
+                        <ResizableTableCell
+                            width={columnWidths['description']}
+                            resizable
+                            resizeHandleProps={getResizeHandleProps('description')}
+                            isResizing={isResizing}
+                        >
+                            Description
+                        </ResizableTableCell>
+                        <ResizableTableCell
+                            width={columnWidths['active']}
+                            resizable
+                            resizeHandleProps={getResizeHandleProps('active')}
+                            isResizing={isResizing}
+                        >
+                            Active
+                        </ResizableTableCell>
+                        <ResizableTableCell
+                            width={columnWidths['actions']}
+                            align="right"
+                            resizable
+                            resizeHandleProps={getResizeHandleProps('actions')}
+                            isResizing={isResizing}
+                        >
+                            Actions
+                        </ResizableTableCell>
                     </TableRow>
                 </TableHead>
                 <TableBody>

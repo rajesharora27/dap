@@ -603,177 +603,144 @@ export const BackupManagementPanel: React.FC = () => {
 
           {/* Backup List */}
           {!loading && !error && (
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 6 }}>
-                <Typography variant="h6" gutterBottom>
-                  Available Backups
-                </Typography>
-                {backups.length === 0 ? (
-                  <Alert severity="info">
-                    No backups available. Create your first backup to get started.
-                  </Alert>
-                ) : (
-                  <List>
-                    {backups.map((backup) => (
-                      <ListItem
-                        key={backup.id}
-                        disablePadding
-                        sx={{
-                          border: '1px solid',
-                          borderColor: 'divider',
-                          borderRadius: 1,
-                          mb: 1,
-                        }}
-                      >
-                        <ListItemButton
-                          selected={selectedBackup === backup.filename}
-                          onClick={() => setSelectedBackup(backup.filename)}
+            <Box>
+              <Typography variant="h6" gutterBottom>
+                Available Backups
+              </Typography>
+              {backups.length === 0 ? (
+                <Alert severity="info">
+                  No backups available. Create your first backup to get started.
+                </Alert>
+              ) : (
+                <List disablePadding>
+                  {backups.map((backup) => {
+                    const isSelected = selectedBackup === backup.filename;
+                    return (
+                      <React.Fragment key={backup.id}>
+                        <ListItem
+                          disablePadding
+                          sx={{
+                            border: '1px solid',
+                            borderColor: isSelected ? 'primary.main' : 'divider',
+                            borderRadius: 1,
+                            mb: isSelected ? 0 : 1,
+                            borderBottomLeftRadius: isSelected ? 0 : undefined,
+                            borderBottomRightRadius: isSelected ? 0 : undefined,
+                            bgcolor: isSelected ? 'action.selected' : 'transparent',
+                          }}
                         >
-                          <Storage sx={{ mr: 2, color: 'primary.main' }} />
-                          <ListItemText
-                            primary={
-                              <Typography variant="subtitle2" noWrap>
-                                {backup.filename}
-                              </Typography>
-                            }
-                            secondary={
-                              <Stack direction="row" spacing={1} alignItems="center">
-                                <Schedule fontSize="small" />
-                                <Typography variant="caption">
-                                  {formatDate(backup.timestamp)}
+                          <ListItemButton
+                            selected={isSelected}
+                            onClick={() => setSelectedBackup(isSelected ? null : backup.filename)}
+                          >
+                            <Storage sx={{ mr: 2, color: 'primary.main' }} />
+                            <ListItemText
+                              primary={
+                                <Typography variant="subtitle2" noWrap>
+                                  {backup.filename}
                                 </Typography>
-                                <Chip label={formatSize(backup.size)} size="small" />
-                              </Stack>
-                            }
-                          />
-                        </ListItemButton>
-                        <ListItemSecondaryAction>
-                          <Tooltip title="Download">
-                            <IconButton
-                              edge="end"
-                              onClick={() => handleDownload(backup.filename)}
-                              disabled={isProcessing}
-                            >
-                              <Download />
-                            </IconButton>
-                          </Tooltip>
-                        </ListItemSecondaryAction>
-                      </ListItem>
-                    ))}
-                  </List>
-                )}
-              </Grid>
+                              }
+                              secondary={
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                  <Schedule fontSize="small" />
+                                  <Typography variant="caption">
+                                    {formatDate(backup.timestamp)}
+                                  </Typography>
+                                  <Chip label={formatSize(backup.size)} size="small" />
+                                </Stack>
+                              }
+                            />
+                          </ListItemButton>
+                          <ListItemSecondaryAction>
+                            <Tooltip title="Download">
+                              <IconButton
+                                edge="end"
+                                onClick={() => handleDownload(backup.filename)}
+                                disabled={isProcessing}
+                              >
+                                <Download />
+                              </IconButton>
+                            </Tooltip>
+                          </ListItemSecondaryAction>
+                        </ListItem>
 
-              {/* Backup Details */}
-              <Grid size={{ xs: 12, md: 6 }}>
-                {selectedBackupData ? (
-                  <Card>
-                    <CardContent>
-                      <Typography variant="h6" gutterBottom>
-                        Backup Details
-                      </Typography>
-                      <Divider sx={{ mb: 2 }} />
-
-                      <Stack spacing={2}>
-                        <Box>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            Filename
-                          </Typography>
-                          <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
-                            {selectedBackupData.filename}
-                          </Typography>
-                        </Box>
-
-                        <Box>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            Created
-                          </Typography>
-                          <Typography variant="body2">
-                            {formatDate(selectedBackupData.timestamp)}
-                          </Typography>
-                        </Box>
-
-                        <Box>
-                          <Typography variant="subtitle2" color="text.secondary">
-                            Size
-                          </Typography>
-                          <Typography variant="body2">
-                            {formatSize(selectedBackupData.size)}
-                          </Typography>
-                        </Box>
-
-                        <Box>
-                          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                            Record Counts
-                          </Typography>
-                          <Grid container spacing={1}>
-                            <Grid size={{ xs: 6 }}>
-                              <Typography variant="caption" display="block">
-                                Users: {selectedBackupData.recordCounts.users}
-                              </Typography>
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                              <Typography variant="caption" display="block">
-                                Products: {selectedBackupData.recordCounts.products}
-                              </Typography>
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                              <Typography variant="caption" display="block">
-                                Solutions: {selectedBackupData.recordCounts.solutions}
-                              </Typography>
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                              <Typography variant="caption" display="block">
-                                Customers: {selectedBackupData.recordCounts.customers}
-                              </Typography>
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                              <Typography variant="caption" display="block">
-                                Tasks: {selectedBackupData.recordCounts.tasks}
-                              </Typography>
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                              <Typography variant="caption" display="block">
-                                Adoption Plans: {selectedBackupData.recordCounts.adoptionPlans}
-                              </Typography>
-                            </Grid>
-                          </Grid>
-                        </Box>
-
-                        <Divider />
-
-                        <Stack direction="row" spacing={2}>
-                          <Button
-                            variant="contained"
-                            color="primary"
-                            startIcon={<Restore />}
-                            onClick={() => handleRestoreConfirm(selectedBackupData.filename)}
-                            disabled={isProcessing}
-                            fullWidth
-                          >
-                            Restore
-                          </Button>
-                          <Button
+                        {/* Inline Details - Shown right below this backup when selected */}
+                        {isSelected && (
+                          <Card
                             variant="outlined"
-                            color="error"
-                            startIcon={<Delete />}
-                            onClick={() => handleDeleteConfirm(selectedBackupData.filename)}
-                            disabled={isProcessing}
-                            fullWidth
+                            sx={{
+                              mb: 1,
+                              borderTop: 0,
+                              borderTopLeftRadius: 0,
+                              borderTopRightRadius: 0,
+                              borderColor: 'primary.main',
+                            }}
                           >
-                            Delete
-                          </Button>
-                        </Stack>
-                      </Stack>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Alert severity="info">
-                    Select a backup to view details and perform actions
-                  </Alert>
-                )}
-              </Grid>
-            </Grid>
+                            <CardContent sx={{ py: 2 }}>
+                              <Grid container spacing={2} alignItems="flex-start">
+                                <Grid size={{ xs: 12, sm: 4, md: 3 }}>
+                                  <Typography variant="subtitle2" color="text.secondary">
+                                    Created
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    {formatDate(backup.timestamp)}
+                                  </Typography>
+                                </Grid>
+
+                                <Grid size={{ xs: 12, sm: 4, md: 3 }}>
+                                  <Typography variant="subtitle2" color="text.secondary">
+                                    Size
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    {formatSize(backup.size)}
+                                  </Typography>
+                                </Grid>
+
+                                <Grid size={{ xs: 12, sm: 4, md: 6 }}>
+                                  <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                    Record Counts
+                                  </Typography>
+                                  <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                    <Chip size="small" label={`Users: ${backup.recordCounts.users}`} />
+                                    <Chip size="small" label={`Products: ${backup.recordCounts.products}`} />
+                                    <Chip size="small" label={`Solutions: ${backup.recordCounts.solutions}`} />
+                                    <Chip size="small" label={`Customers: ${backup.recordCounts.customers}`} />
+                                    <Chip size="small" label={`Tasks: ${backup.recordCounts.tasks}`} />
+                                  </Stack>
+                                </Grid>
+                              </Grid>
+
+                              <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+                                <Button
+                                  variant="contained"
+                                  color="primary"
+                                  size="small"
+                                  startIcon={<Restore />}
+                                  onClick={() => handleRestoreConfirm(backup.filename)}
+                                  disabled={isProcessing}
+                                >
+                                  Restore
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  color="error"
+                                  size="small"
+                                  startIcon={<Delete />}
+                                  onClick={() => handleDeleteConfirm(backup.filename)}
+                                  disabled={isProcessing}
+                                >
+                                  Delete
+                                </Button>
+                              </Stack>
+                            </CardContent>
+                          </Card>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </List>
+              )}
+            </Box>
           )}
         </Stack>
       </Paper>

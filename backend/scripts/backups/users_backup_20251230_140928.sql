@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict mjnmc4i82khBlCs7sFKxfgr9n6MYpGxZ4TOdkf36fRfeAvMqIc9l9EVGiqlTpaA
+\restrict V0gBWjClhx9DffX6rVBWs1DhfLZXMhA7aoTrqXdpS6EQ88ozcGlmIUOHmSdELJw
 
 -- Dumped from database version 16.11 (Homebrew)
 -- Dumped by pg_dump version 16.11 (Homebrew)
@@ -22,17 +22,41 @@ SET row_security = off;
 -- Data for Name: User; Type: TABLE DATA; Schema: public; Owner: rajarora
 --
 
-INSERT INTO public."User" (id, email, username, name, password, "createdAt", "fullName", "isActive", "isAdmin", "mustChangePassword", "updatedAt", role) VALUES ('cmjj1960y0000lwc59io7kwom', 'admin@dynamicadoptionplans.com', 'admin', 'Admin', '$2a$10$X5me6DG5RCx953aUgaVmBukmlhrzfbiZvQbtCqZVkFNXEbJBa4dCS', '2025-12-23 20:23:59.17', 'System Administrator', true, true, false, '2025-12-23 20:23:59.17', 'ADMIN');
 INSERT INTO public."User" (id, email, username, name, password, "createdAt", "fullName", "isActive", "isAdmin", "mustChangePassword", "updatedAt", role) VALUES ('cmjj38w5h0004e9ewq6tsixb3', 'cssuser@cxsaaslab.com', 'cssuser', NULL, '$2a$10$a5PhLtxS/kSlQFBzQu9ok.MuKfaqEkMjPUMcjv.CY2Kbvbyu5DAIG', '2025-12-23 21:19:45.606', 'CSS User', true, false, false, '2025-12-23 21:19:55.57', 'USER');
 INSERT INTO public."User" (id, email, username, name, password, "createdAt", "fullName", "isActive", "isAdmin", "mustChangePassword", "updatedAt", role) VALUES ('cmjj39h1d000de9ewpohuhssk', 'smeuser@cxsaaslab.com', 'smeuser', NULL, '$2a$10$UgdqAxUK53wPeIHWHqPvZORLr/KR6gCCR.pevnuPj2CKxVv.jIO/m', '2025-12-23 21:20:12.673', 'SME User', true, false, false, '2025-12-23 21:20:21.75', 'USER');
 INSERT INTO public."User" (id, email, username, name, password, "createdAt", "fullName", "isActive", "isAdmin", "mustChangePassword", "updatedAt", role) VALUES ('cmjj3a30p000me9ewly7u34lx', 'dapuser@cxsaaslab.com', 'dapuser', NULL, '$2a$10$sGEu8Skl3HQZ7fiaD6An3O9SCU0N93wngvhkip5AbRSTW2kTfBlPW', '2025-12-23 21:20:41.162', 'DAP User', true, false, false, '2025-12-23 21:20:52.013', 'USER');
+INSERT INTO public."User" (id, email, username, name, password, "createdAt", "fullName", "isActive", "isAdmin", "mustChangePassword", "updatedAt", role) VALUES ('cmjj9lso90000pja2arg5sp77', 'test_verify_user@example.com', 'test_verify_user', 'Test Verify User', 'hashedpassword', '2025-12-24 00:17:45.321', '', true, false, true, '2025-12-24 00:17:45.321', 'USER');
+INSERT INTO public."User" (id, email, username, name, password, "createdAt", "fullName", "isActive", "isAdmin", "mustChangePassword", "updatedAt", role) VALUES ('cmjswfqm400008g1wf1il529k', 'user@example.com', 'user', NULL, '$2a$10$fJSsT/MtnrJIn8Yo7KzQeOo7zbTL9n/570iGmcHCDoOopVVpNk80q', '2025-12-30 18:06:49.468', 'Standard User', true, false, false, '2025-12-30 18:06:49.468', 'USER');
+INSERT INTO public."User" (id, email, username, name, password, "createdAt", "fullName", "isActive", "isAdmin", "mustChangePassword", "updatedAt", role) VALUES ('cmjj1960y0000lwc59io7kwom', 'rajarora@cisco.com', 'admin', 'Admin', '$2a$10$X5me6DG5RCx953aUgaVmBukmlhrzfbiZvQbtCqZVkFNXEbJBa4dCS', '2025-12-23 20:23:59.17', 'Raj Arora', true, true, false, '2025-12-30 19:08:55.917', 'ADMIN');
+
+
+--
+-- Data for Name: AuditLog; Type: TABLE DATA; Schema: public; Owner: rajarora
+--
+
+INSERT INTO public."AuditLog" (id, "userId", action, entity, "entityId", details, "createdAt", "ipAddress", "resourceId", "resourceType") VALUES ('cmjj85eej000310bq4le01j1j', NULL, 'CREATE_CUSTOMER', 'Customer', 'cmjj85eef000210bq3tyhw9tl', '{"input": {"name": "TEST RESTORE CUSTOMER", "description": "This customer should disappear after restore"}}', '2025-12-23 23:37:00.715', NULL, NULL, NULL);
+INSERT INTO public."AuditLog" (id, "userId", action, entity, "entityId", details, "createdAt", "ipAddress", "resourceId", "resourceType") VALUES ('cmjj85swd000710bqavuq902h', NULL, 'CREATE_CUSTOMER', 'Customer', 'cmjj85swc000610bqwxxjc023', '{"input": {"name": "TEST RESTORE CUSTOMER", "description": "This customer should disappear after restore"}}', '2025-12-23 23:37:19.502', NULL, NULL, NULL);
+INSERT INTO public."AuditLog" (id, "userId", action, entity, "entityId", details, "createdAt", "ipAddress", "resourceId", "resourceType") VALUES ('cmjswivs900034r800caaklam', 'cmjj1960y0000lwc59io7kwom', 'login', NULL, NULL, '{"message": "User logged in successfully"}', '2025-12-30 18:09:16.138', NULL, NULL, NULL);
+INSERT INTO public."AuditLog" (id, "userId", action, entity, "entityId", details, "createdAt", "ipAddress", "resourceId", "resourceType") VALUES ('cmjswjyfr00074r8079wbex3v', 'cmjj1960y0000lwc59io7kwom', 'login', NULL, NULL, '{"message": "User logged in successfully"}', '2025-12-30 18:10:06.232', NULL, NULL, NULL);
+INSERT INTO public."AuditLog" (id, "userId", action, entity, "entityId", details, "createdAt", "ipAddress", "resourceId", "resourceType") VALUES ('cmjsymwhp0007auav8d5i7vuu', 'cmjj1960y0000lwc59io7kwom', 'login', NULL, NULL, '{"message": "User logged in successfully"}', '2025-12-30 19:08:22.909', NULL, NULL, NULL);
+INSERT INTO public."AuditLog" (id, "userId", action, entity, "entityId", details, "createdAt", "ipAddress", "resourceId", "resourceType") VALUES ('cmjsynlym0009auav87x6g25v', 'cmjj1960y0000lwc59io7kwom', 'update_user', NULL, NULL, '{"message": "Updated user admin"}', '2025-12-30 19:08:55.919', NULL, 'cmjj1960y0000lwc59io7kwom', 'user');
+INSERT INTO public."AuditLog" (id, "userId", action, entity, "entityId", details, "createdAt", "ipAddress", "resourceId", "resourceType") VALUES ('cmjsynzgo000dauav2xmm4sbp', 'cmjj1960y0000lwc59io7kwom', 'login', NULL, NULL, '{"message": "User logged in successfully"}', '2025-12-30 19:09:13.416', NULL, NULL, NULL);
+
+
+--
+-- Data for Name: ChangeSet; Type: TABLE DATA; Schema: public; Owner: rajarora
+--
+
 
 
 --
 -- Data for Name: Session; Type: TABLE DATA; Schema: public; Owner: rajarora
 --
 
-INSERT INTO public."Session" (id, "userId", "createdAt", "updatedAt", "expiresAt") VALUES ('cmjj388md0001e9ewpmhe3tkn', 'cmjj1960y0000lwc59io7kwom', '2025-12-23 21:19:15.109', '2025-12-23 21:19:15.109', '2025-12-30 21:19:15.109');
+INSERT INTO public."Session" (id, "userId", "createdAt", "updatedAt", "expiresAt") VALUES ('cmjswivs600014r80zbflncbg', 'cmjj1960y0000lwc59io7kwom', '2025-12-30 18:09:16.134', '2025-12-30 18:09:16.134', '2026-01-06 18:09:16.133');
+INSERT INTO public."Session" (id, "userId", "createdAt", "updatedAt", "expiresAt") VALUES ('cmjswjyfq00054r804gzxluc8', 'cmjj1960y0000lwc59io7kwom', '2025-12-30 18:10:06.23', '2025-12-30 18:10:06.23', '2026-01-06 18:10:06.23');
+INSERT INTO public."Session" (id, "userId", "createdAt", "updatedAt", "expiresAt") VALUES ('cmjsymwhn0005auavg93gofi8', 'cmjj1960y0000lwc59io7kwom', '2025-12-30 19:08:22.907', '2025-12-30 19:08:22.907', '2026-01-06 19:08:22.907');
+INSERT INTO public."Session" (id, "userId", "createdAt", "updatedAt", "expiresAt") VALUES ('cmjsynzgm000bauavpyjk4lv4', 'cmjj1960y0000lwc59io7kwom', '2025-12-30 19:09:13.415', '2025-12-30 19:09:13.415', '2026-01-06 19:09:13.414');
 
 
 --
@@ -81,5 +105,5 @@ INSERT INTO public."UserRole" (id, "userId", "roleId", "roleName", "createdAt") 
 -- PostgreSQL database dump complete
 --
 
-\unrestrict mjnmc4i82khBlCs7sFKxfgr9n6MYpGxZ4TOdkf36fRfeAvMqIc9l9EVGiqlTpaA
+\unrestrict V0gBWjClhx9DffX6rVBWs1DhfLZXMhA7aoTrqXdpS6EQ88ozcGlmIUOHmSdELJw
 

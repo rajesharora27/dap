@@ -106,7 +106,7 @@ interface Props {
   outcomes?: Outcome[];
   availableLicenses?: License[];
   availableReleases?: Release[];
-  availableTags?: ProductTag[];
+  availableTags?: { id: string; name: string; color: string; description?: string }[];
 }
 
 export const TaskDialog: React.FC<Props> = ({

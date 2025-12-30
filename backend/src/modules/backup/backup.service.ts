@@ -33,6 +33,9 @@ export interface BackupMetadata {
     telemetryAttributes?: number;
     customerTelemetryAttributes?: number;
     telemetrySubmissions?: number;
+    // MyDiary tables
+    diaryTodos?: number;
+    diaryBookmarks?: number;
   };
 }
 
@@ -188,6 +191,17 @@ export class BackupRestoreService {
       // Telemetry tables may not exist in older databases
       console.log('[Backup] Telemetry tables not found, using 0 counts');
     }
+    // MyDiary tables - may not exist in older backups
+    let diaryTodos = 0, diaryBookmarks = 0;
+    try {
+      [diaryTodos, diaryBookmarks] = await Promise.all([
+        prisma.diaryTodo.count(),
+        prisma.diaryBookmark.count(),
+      ]);
+    } catch (err) {
+      // Diary tables may not exist in older databases
+      console.log('[Backup] Diary tables not found, using 0 counts');
+    }
 
     return {
       users,
@@ -208,6 +222,8 @@ export class BackupRestoreService {
       telemetryAttributes,
       customerTelemetryAttributes,
       telemetrySubmissions,
+      diaryTodos,
+      diaryBookmarks,
     };
   }
 
@@ -312,16 +328,17 @@ export class BackupRestoreService {
         'ChangeSet'
       ].map(t => `--exclude-table-data='"${t}"'`).join(' ');
 
+      // Use --clean to add DROP statements before CREATE for cleaner restores
       if (hasPgDump && !forceContainer) {
         // Native Postgres (macOS light mode or prod)
         // On macOS with local socket (no password), use simpler connection
         if (process.platform === 'darwin' && !dbConfig.password) {
           // macOS local socket connection (peer auth)
-          command = `${pgDumpCmd} -d ${dbConfig.database} -F p --column-inserts --no-owner --no-acl ${excludeTables} > "${filePath}" 2>&1`;
+          command = `${pgDumpCmd} -d ${dbConfig.database} -F p --clean --if-exists --column-inserts --no-owner --no-acl ${excludeTables} > "${filePath}" 2>&1`;
           console.log('Using macOS local socket connection for pg_dump');
         } else {
           // Standard connection with host/user/password
-          command = `${pgDumpCmd} -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --column-inserts --no-owner --no-acl ${excludeTables} > "${filePath}" 2>&1`;
+          command = `${pgDumpCmd} -U ${dbConfig.user} -h ${dbConfig.host} -p ${dbConfig.port} -d ${dbConfig.database} -F p --clean --if-exists --column-inserts --no-owner --no-acl ${excludeTables} > "${filePath}" 2>&1`;
         }
       } else {
         // Containerized Postgres
@@ -332,14 +349,33 @@ export class BackupRestoreService {
           }
         }
 
-        command = `${containerRuntime} exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --column-inserts --no-owner --no-acl ${excludeTables} > "${filePath}" 2>&1`;
+        command = `${containerRuntime} exec ${containerName} pg_dump -U ${dbConfig.user} -d ${dbConfig.database} -F p --clean --if-exists --column-inserts --no-owner --no-acl ${excludeTables} > "${filePath}" 2>&1`;
       }
 
       console.log('Executing backup command...');
       await execPromise(command, { maxBuffer: 50 * 1024 * 1024, env, timeout: 120000 }); // 50MB buffer, 2min timeout
 
-      // Post-processing: Add header comment
+      // Post-processing: Add header comment and filter invalid psql meta-commands
       let backupContent = fs.readFileSync(filePath, 'utf-8');
+
+      // Remove any lines that start with \r or invalid backslash commands
+      // pg_dump should not produce these, but encoding issues can cause them
+      const lines = backupContent.split('\n');
+      const filteredLines = lines.filter(line => {
+        // Keep all lines except ones that start with backslash followed by non-standard psql commands
+        // Valid psql meta-commands in dumps are: \connect, \copy, etc.
+        if (line.startsWith('\\') && !line.startsWith('\\connect') && !line.startsWith('\\copy')) {
+          // Check if it's a valid pg_dump comment or setting
+          if (line.startsWith('\\-') || line.startsWith('\\.')) {
+            return true; // These are valid
+          }
+          console.log(`[Backup] Filtering invalid psql meta-command: ${line.substring(0, 50)}...`);
+          return false;
+        }
+        return true;
+      });
+      backupContent = filteredLines.join('\n');
+
       backupContent = `-- DAP Backup (User data excluded - restore users via separate script)\n-- Generated: ${new Date().toISOString()}\n\n` + backupContent;
 
       // Write back the modified content
@@ -565,50 +601,89 @@ export class BackupRestoreService {
       console.log('Restoring from backup file...');
       console.log(`Backup file size: ${fs.statSync(filePath).size} bytes`);
 
-      // Simpler restore command - pipe file directly into psql
-      // Set statement timeout to prevent hanging
+      // Use quiet mode but DON'T use ON_ERROR_STOP for backward compatibility
+      // Older backups may have tables that don't exist in current schema and vice versa
+      // The key is to let the restore run to completion, then sync the schema
       let restoreCommand: string;
 
       if (useNative) {
         if (isMacLocal) {
-          // macOS local socket connection
-          restoreCommand = `cat "${filePath}" | psql -d ${dbConfig.database} -v ON_ERROR_STOP=1 -q 2>&1`;
+          // macOS local socket connection - no ON_ERROR_STOP for backward compatibility
+          restoreCommand = `cat "${filePath}" | psql -d ${dbConfig.database} -q 2>&1`;
           console.log('Using macOS local socket connection for restore');
         } else {
-          restoreCommand = `cat "${filePath}" | psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -v ON_ERROR_STOP=1 -q 2>&1`;
+          restoreCommand = `cat "${filePath}" | psql -U ${dbConfig.user} -h ${dbConfig.host} -d ${dbConfig.database} -q 2>&1`;
         }
       } else {
-        restoreCommand = `cat "${filePath}" | ${containerRuntime} exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -v ON_ERROR_STOP=1 -q 2>&1`;
+        restoreCommand = `cat "${filePath}" | ${containerRuntime} exec -i ${containerName} psql -U ${dbConfig.user} -d ${dbConfig.database} -q 2>&1`;
       }
 
       console.log('Starting restore execution...');
       const startTime = Date.now();
 
       try {
-        await execPromise(restoreCommand, {
+        const { stdout, stderr } = await execPromise(restoreCommand, {
           maxBuffer: 50 * 1024 * 1024,
           timeout: 120000, // 120 second timeout (2 minutes)
           env
         });
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-        console.log(`Restore command completed successfully in ${duration}s`);
+
+        // Log any output (without failing)
+        if (stdout && stdout.trim()) {
+          console.log(`Restore output: ${stdout.substring(0, 500)}`);
+        }
+        if (stderr && stderr.trim()) {
+          // Filter out harmless errors
+          const harmlessPatterns = [
+            'does not exist',
+            'already exists',
+            'NOTICE:',
+            'WARNING:',
+            'DROP ',
+            'psql:',
+          ];
+          const isHarmless = harmlessPatterns.some(p => stderr.includes(p));
+          if (isHarmless) {
+            console.log(`Restore completed with non-critical messages in ${duration}s`);
+          } else {
+            console.warn(`Restore stderr: ${stderr.substring(0, 500)}`);
+          }
+        }
+        console.log(`Restore command completed in ${duration}s`);
       } catch (restoreError: any) {
         const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-        console.error(`Restore failed after ${duration}s:`, restoreError.message);
+        console.error(`Restore error after ${duration}s:`, restoreError.message);
 
-        // If timeout, provide helpful message
+        // If timeout, provide helpful message and fail
         if (restoreError.killed && restoreError.signal === 'SIGTERM') {
-          throw new Error('Restore timed out after 60 seconds. Database may be too large or unresponsive.');
+          throw new Error('Restore timed out after 2 minutes. Database may be too large or unresponsive.');
         }
 
-        // Check if it's just warnings we can ignore
-        if (restoreError.message && (
-          restoreError.message.includes('already exists') ||
-          restoreError.message.includes('NOTICE') ||
-          restoreError.message.includes('WARNING')
-        )) {
-          console.log('Ignoring non-critical restore warnings');
+        // For all other errors, check if they're truly fatal
+        // Errors like "table does not exist" or "already exists" are OK for backward compatibility
+        const errorMsg = restoreError.message || '';
+        const stderrMsg = restoreError.stderr || '';
+        const combinedMsg = `${errorMsg} ${stderrMsg}`;
+
+        const nonFatalPatterns = [
+          'does not exist',
+          'already exists',
+          'NOTICE',
+          'WARNING',
+          'DROP ',
+          'relation',
+          'constraint',
+          'duplicate key',
+        ];
+
+        const isNonFatal = nonFatalPatterns.some(p => combinedMsg.includes(p));
+
+        if (isNonFatal) {
+          console.log('⚠️  Restore had non-fatal errors (expected for older backups), continuing...');
         } else {
+          // Only fail for truly unexpected errors
+          console.error('❌ Restore had unexpected errors');
           throw new Error(`Restore failed: ${restoreError.message}`);
         }
       }

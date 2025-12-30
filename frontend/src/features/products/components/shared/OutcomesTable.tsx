@@ -19,6 +19,8 @@ import {
     CheckCircle, Cancel as CancelIcon, Add as AddIcon
 } from '@mui/icons-material';
 import { Outcome } from '@features/product-outcomes';
+import { useResizableColumns } from '@shared/hooks/useResizableColumns';
+import { ResizableTableCell } from '@shared/components/ResizableTableCell';
 
 interface OutcomesTableProps {
     items: any[];
@@ -175,7 +177,7 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
 }) => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [internalAdding, setInternalAdding] = useState(false);
-    
+
     // Use external control if provided, otherwise internal
     const isAdding = externalAddMode !== undefined ? externalAddMode : internalAdding;
 
@@ -196,16 +198,27 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
+    // Resizable columns
+    const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
+        tableId: 'outcomes-table',
+        columns: [
+            { key: 'drag', minWidth: 50, defaultWidth: 50 },
+            { key: 'name', minWidth: 150, defaultWidth: 300 },
+            { key: 'description', minWidth: 200, defaultWidth: 400 },
+            { key: 'actions', minWidth: 100, defaultWidth: 120 },
+        ],
+    });
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (over && active.id !== over.id) {
             const oldIndex = localItems.findIndex((item) => (item.id || item._tempId) === active.id);
             const newIndex = localItems.findIndex((item) => (item.id || item._tempId) === over.id);
-            
+
             // Update local state IMMEDIATELY for visual feedback
             const newLocalItems = arrayMove(localItems, oldIndex, newIndex);
             setLocalItems(newLocalItems);
-            
+
             // Then call the handler (which triggers async mutation)
             const newOrder = newLocalItems.map(i => i.id || i._tempId);
             onReorder(newOrder);
@@ -224,7 +237,7 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
             }
         }
     };
-    
+
     const handleCancelAdd = () => {
         setNewName('');
         setNewDesc('');
@@ -262,10 +275,37 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
                 <Table size="small">
                     <TableHead>
                         <TableRow>
-                            <TableCell width="50px" />
-                            <TableCell>Name</TableCell>
-                            <TableCell>Description</TableCell>
-                            <TableCell align="right" width="120px">Actions</TableCell>
+                            <ResizableTableCell
+                                width={columnWidths['drag']}
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('drag')}
+                                isResizing={isResizing}
+                            />
+                            <ResizableTableCell
+                                width={columnWidths['name']}
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('name')}
+                                isResizing={isResizing}
+                            >
+                                Name
+                            </ResizableTableCell>
+                            <ResizableTableCell
+                                width={columnWidths['description']}
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('description')}
+                                isResizing={isResizing}
+                            >
+                                Description
+                            </ResizableTableCell>
+                            <ResizableTableCell
+                                width={columnWidths['actions']}
+                                align="right"
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('actions')}
+                                isResizing={isResizing}
+                            >
+                                Actions
+                            </ResizableTableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>

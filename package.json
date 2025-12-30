@@ -1,11 +1,25 @@
 {
+  "name": "dap",
+  "version": "3.4.0",
+  "private": true,
   "engines": {
     "node": ">=22"
   },
+  "scripts": {
+    "check:circular": "npm run check:circular:backend && npm run check:circular:frontend",
+    "check:circular:backend": "cd backend && npx madge --circular --extensions ts src/",
+    "check:circular:frontend": "cd frontend && npx madge --circular --extensions ts,tsx src/",
+    "check:deps": "npm run check:circular",
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint"
+  },
   "devDependencies": {
+    "madge": "^8.0.0",
     "prisma": "^6.15.0"
   },
   "dependencies": {
-    "@prisma/client": "^6.15.0"
+    "@prisma/client": "^6.15.0",
+    "react-router-dom": "^7.11.0"
   }
 }

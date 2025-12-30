@@ -60,6 +60,7 @@ import {
     faGem as farGem,
     faBuilding as farBuilding,
     faCircleUser as farCircleUser,
+    faFolder as farFolder,
 } from '@fortawesome/free-regular-svg-icons';
 
 // Solid icons (for icons not available in regular or need filled style)
@@ -339,10 +340,13 @@ export const People = createIcon(faUsers, 'People');
 export const Person = createIcon(farUser, 'Person');
 export const PersonOutline = createIcon(farUser, 'PersonOutline');
 export const Business = createIcon(faBuilding, 'Business');
-export const Task = createIcon(faListCheck, 'Task');
+export const Task = createIcon(farRectangleList, 'Task');
 export const Assignment = createIcon(faClipboardList, 'Assignment');
-export const Extension = createIcon(faPuzzlePiece, 'Extension');
+export const Extension = createIcon(farObjectGroup, 'Extension');
+export const ExtensionSolid = createIcon(faPuzzlePiece, 'ExtensionSolid');
 export const Category = createIcon(faSitemap, 'Category');
+export const Book = createIcon(faBook, 'Book');
+export const PlaylistAddCheck = createIcon(faListCheck, 'PlaylistAddCheck');
 
 // ==========================================
 // Data & Content Icons
@@ -441,7 +445,7 @@ export const PlaylistPlay = createIcon(faPlay, 'PlaylistPlay');
 // Business/Analytics Icons
 // ==========================================
 export const Dashboard = createIcon(faChartPie, 'Dashboard');
-export const Assessment = createIcon(faChartLine, 'Assessment');
+export const Assessment = createIcon(farChartBar, 'Assessment');
 export const BarChart = createIcon(farChartBar, 'BarChart');
 export const TrendingUp = createIcon(faChartLine, 'TrendingUp');
 export const Speed = createIcon(faGauge, 'Speed');
@@ -531,7 +535,8 @@ export const CreateNewFolder = createIcon(faFolderPlus, 'CreateNewFolder');
 export const CallSplit = createIcon(faCodeFork, 'CallSplit');
 export const NotStarted = createIcon(faCirclePlay, 'NotStarted');
 export const Block = createIcon(faBan, 'Block');
-export const Inventory = createIcon(faCubes, 'Inventory');
+export const Inventory = createIcon(farFolder, 'Inventory');
+export const InventorySolid = createIcon(faCubes, 'InventorySolid');
 export const Scale = createIcon(faScaleBalanced, 'Scale');
 export const ErrorOutline = createIcon(faCircleExclamation, 'ErrorOutline');
 export const ColorLens = createIcon(faPaintBrush, 'ColorLens');
@@ -702,6 +707,8 @@ export const Icons = {
     AdminPanelSettings,
     Logout,
     AISparkle,
+    Book,
+    PlaylistAddCheck,
 };
 
 export default Icons;

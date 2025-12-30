@@ -18,9 +18,11 @@ import {
   ListItemText,
   Tooltip
 } from '@mui/material';
-import { Sync, Assessment, FilterList } from '@shared/components/FAIcon';
+import { Sync, Assessment } from '@shared/components/FAIcon';
 import { ColumnVisibilityToggle } from '@shared/components/ColumnVisibilityToggle';
 import { ADOPTION_TASK_COLUMNS, DEFAULT_ADOPTION_VISIBLE_COLUMNS } from './AdoptionTaskTable';
+import { AdoptionPlanProgressCard } from './AdoptionPlanProgressCard';
+import { AdoptionPlanFilterSection } from './AdoptionPlanFilterSection';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { ProductAdoptionGroup } from './ProductAdoptionGroup';
 import { SolutionTasksGroup } from './SolutionTasksGroup';
@@ -392,282 +394,33 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
         </Alert>
       )}
 
-      {/* Overall Progress Card - Compact */}
-      <Paper
-        elevation={0}
-        sx={{
-          p: 2,
-          mb: 2,
-          border: '1.5px solid',
-          borderColor: '#E0E0E0',
-          borderRadius: 2,
-          bgcolor: 'background.paper'
-        }}
-      >
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="subtitle1" fontWeight="600">Overall Progress</Typography>
-            <Chip
-              label={plan.licenseLevel}
-              size="small"
-              color="primary"
-              sx={{ height: 20, fontSize: '0.75rem', fontWeight: 600 }}
-            />
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Typography variant="body2" color="text.secondary">
-              <strong>{plan.completedTasks}</strong> of <strong>{plan.totalTasks}</strong> tasks
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              •
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              <strong>{plan.products.length}</strong> products
-            </Typography>
-          </Box>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <LinearProgress
-            variant="determinate"
-            value={plan.progressPercentage}
-            sx={{ flex: 1, height: 10, borderRadius: 5 }}
-          />
-          <Typography variant="body1" fontWeight="700" color="primary" sx={{ minWidth: 50, textAlign: 'right' }}>
-            {Math.round(plan.progressPercentage)}%
-          </Typography>
-        </Box>
-      </Paper>
+      <AdoptionPlanProgressCard
+        licenseLevel={plan.licenseLevel}
+        completedTasks={plan.completedTasks}
+        totalTasks={plan.totalTasks}
+        percentage={plan.progressPercentage}
+        productsCount={plan.products.length}
+      />
 
       {/* Interactive Filters for Solution Tasks */}
       {allSolutionTasks.length > 0 && (
-        <Paper
-          elevation={0}
-          sx={{
-            p: 2,
-            mb: 0,
-            bgcolor: 'background.paper',
-            border: '1px solid',
-            borderColor: 'divider',
-            borderRadius: '8px 8px 0 0',
-            borderBottom: 'none'
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <FilterList fontSize="small" sx={{ color: 'text.secondary' }} />
-            <Typography variant="subtitle2" fontWeight="600" color="text.secondary">
-              Filter Solution Tasks
-            </Typography>
-            {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) ||
-              (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID)) ||
-              (filterTags.length > 0 && !filterTags.includes(ALL_TAGS_ID))) && (
-                <Chip
-                  label={`Showing ${solutionTasks.length} of ${allSolutionTasks.length} tasks`}
-                  size="small"
-                  color="primary"
-                  sx={{
-                    ml: 1,
-                    fontWeight: 600
-                  }}
-                />
-              )}
-          </Box>
-
-
-
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mt: 2 }}>
-            {/* Tags Filter */}
-            {availableTags.length > 0 ? (
-              <FormControl sx={{ minWidth: 250 }} size="small">
-                <InputLabel>Tags</InputLabel>
-                <Select
-                  multiple
-                  value={filterTags}
-                  onChange={(e) => {
-                    const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
-                    if (value.includes(ALL_TAGS_ID)) {
-                      if (filterTags.includes(ALL_TAGS_ID)) {
-                        setFilterTags([]);
-                      } else {
-                        setFilterTags([ALL_TAGS_ID]);
-                      }
-                    } else {
-                      setFilterTags(value);
-                    }
-                  }}
-                  input={<OutlinedInput label="Tags" />}
-                  renderValue={(selected) => {
-                    if (selected.includes(ALL_TAGS_ID)) return 'All Tags';
-                    if (selected.length === 0) return 'All Tags';
-                    return (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {selected.map((value) => {
-                          const tag = availableTags.find((t: any) => t.id === value);
-                          return (
-                            <Chip
-                              key={value}
-                              label={tag?.name || 'Unknown'}
-                              size="small"
-                              sx={{
-                                bgcolor: tag?.color,
-                                color: '#fff',
-                                height: 20,
-                                '& .MuiChip-label': { px: 1, fontSize: '0.75rem', fontWeight: 600 }
-                              }}
-                            />
-                          );
-                        })}
-                      </Box>
-                    );
-                  }}
-                >
-                  <MenuItem value={ALL_TAGS_ID}>
-                    <Checkbox checked={filterTags.includes(ALL_TAGS_ID) || filterTags.length === 0} />
-                    <ListItemText primary="All Tags" />
-                  </MenuItem>
-                  {availableTags.map((tag: any) => (
-                    <MenuItem key={tag.id} value={tag.id}>
-                      <Checkbox checked={filterTags.includes(tag.id)} disabled={filterTags.includes(ALL_TAGS_ID)} />
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Box
-                          sx={{
-                            width: 12,
-                            height: 12,
-                            borderRadius: '50%',
-                            bgcolor: tag.color
-                          }}
-                        />
-                        <ListItemText primary={tag.name} />
-                      </Box>
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            ) : (
-              <Alert severity="info" sx={{ flex: 1 }}>
-                <Typography variant="caption">
-                  No tags available.
-                </Typography>
-              </Alert>
-            )}
-
-            {/* Outcomes Filter */}
-            {availableOutcomes.length > 0 ? (
-              <FormControl sx={{ minWidth: 250 }} size="small">
-                <InputLabel>Outcomes</InputLabel>
-                <Select
-                  multiple
-                  value={filterOutcomes}
-                  onChange={(e) => {
-                    const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
-                    if (value.includes(ALL_OUTCOMES_ID)) {
-                      if (filterOutcomes.includes(ALL_OUTCOMES_ID)) {
-                        setFilterOutcomes([]);
-                      } else {
-                        setFilterOutcomes([ALL_OUTCOMES_ID]);
-                      }
-                    } else {
-                      setFilterOutcomes(value);
-                    }
-                  }}
-                  input={<OutlinedInput label="Outcomes" />}
-                  renderValue={(selected) => {
-                    if (selected.includes(ALL_OUTCOMES_ID)) return 'All Outcomes';
-                    if (selected.length === 0) return 'All Outcomes';
-                    return `${selected.length} selected`;
-                  }}
-                >
-                  <MenuItem value={ALL_OUTCOMES_ID}>
-                    <Checkbox checked={filterOutcomes.includes(ALL_OUTCOMES_ID) || filterOutcomes.length === 0} />
-                    <ListItemText primary="All Outcomes" />
-                  </MenuItem>
-                  {availableOutcomes.map((outcome: any) => (
-                    <MenuItem key={outcome.id} value={outcome.id}>
-                      <Checkbox checked={filterOutcomes.includes(outcome.id)} disabled={filterOutcomes.includes(ALL_OUTCOMES_ID)} />
-                      <ListItemText primary={outcome.name} />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            ) : (
-              <Alert severity="info" sx={{ flex: 1 }}>
-                <Typography variant="caption">
-                  No outcomes tagged on solution tasks. Add outcomes to tasks to enable outcome filtering.
-                </Typography>
-              </Alert>
-            )}
-
-            {/* Releases Filter */}
-            {availableReleases.length > 0 ? (
-              <FormControl sx={{ minWidth: 250 }} size="small">
-                <InputLabel>Releases</InputLabel>
-                <Select
-                  multiple
-                  value={filterReleases}
-                  onChange={(e) => {
-                    const value = typeof e.target.value === 'string' ? [e.target.value] : e.target.value;
-                    if (value.includes(ALL_RELEASES_ID)) {
-                      if (filterReleases.includes(ALL_RELEASES_ID)) {
-                        setFilterReleases([]);
-                      } else {
-                        setFilterReleases([ALL_RELEASES_ID]);
-                      }
-                    } else {
-                      setFilterReleases(value);
-                    }
-                  }}
-                  input={<OutlinedInput label="Releases" />}
-                  renderValue={(selected) => {
-                    if (selected.includes(ALL_RELEASES_ID)) return 'All Releases';
-                    if (selected.length === 0) return 'All Releases';
-                    return `${selected.length} selected`;
-                  }}
-                >
-                  <MenuItem value={ALL_RELEASES_ID}>
-                    <Checkbox checked={filterReleases.includes(ALL_RELEASES_ID) || filterReleases.length === 0} />
-                    <ListItemText primary="All Releases" />
-                  </MenuItem>
-                  {availableReleases.map((release: any) => (
-                    <MenuItem key={release.id} value={release.id}>
-                      <Checkbox checked={filterReleases.includes(release.id)} disabled={filterReleases.includes(ALL_RELEASES_ID)} />
-                      <ListItemText primary={`${release.name} (v${release.level})`} />
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            ) : (
-              <Alert severity="info" sx={{ flex: 1 }}>
-                <Typography variant="caption">
-                  No releases tagged on solution tasks. Add releases to tasks to enable release filtering.
-                </Typography>
-              </Alert>
-            )}
-
-            {/* Clear Filters Button */}
-            {((filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) ||
-              (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID)) ||
-              (filterTags.length > 0 && !filterTags.includes(ALL_TAGS_ID))) && (
-                <Button
-                  variant="text"
-                  size="small"
-                  onClick={() => {
-                    setFilterReleases([]);
-                    setFilterOutcomes([]);
-                    setFilterTags([]);
-                  }}
-                  sx={{ alignSelf: 'center' }}
-                >
-                  Clear Filters
-                </Button>
-              )}
-
-            {/* Column Visibility Toggle */}
-            <ColumnVisibilityToggle
-              visibleColumns={visibleColumns}
-              onToggleColumn={handleToggleColumn}
-              columns={ADOPTION_TASK_COLUMNS}
-            />
-          </Box>
-        </Paper>
+        <AdoptionPlanFilterSection
+          filterTags={filterTags}
+          setFilterTags={setFilterTags}
+          availableTags={availableTags}
+          filterOutcomes={filterOutcomes}
+          setFilterOutcomes={setFilterOutcomes}
+          availableOutcomes={availableOutcomes}
+          filterReleases={filterReleases}
+          setFilterReleases={setFilterReleases}
+          availableReleases={availableReleases}
+          visibleColumns={visibleColumns}
+          onToggleColumn={handleToggleColumn}
+          columns={ADOPTION_TASK_COLUMNS}
+          totalFilteredTasks={solutionTasks.length}
+          totalTasks={allSolutionTasks.length}
+          title="Filter Solution Tasks"
+        />
       )}
 
       {/* Solution-Specific Tasks - Shown First */}

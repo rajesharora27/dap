@@ -3,9 +3,13 @@ import { useState } from 'react';
 import { Resource } from '@shared/types';
 import { gql, useQuery, useSubscription, useMutation, useApolloClient } from '@apollo/client';
 import {
-  List,
-  ListItemButton,
-  ListItemText,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
   Box,
   Button,
   Stack,
@@ -30,6 +34,9 @@ import { ProductDialog } from './ProductDialog';
 import { License, CREATE_LICENSE, UPDATE_LICENSE, DELETE_LICENSE } from '@features/product-licenses';
 import { Outcome } from '@features/product-outcomes';
 import { Release } from '@features/product-releases';
+import { useResizableColumns } from '@shared/hooks/useResizableColumns';
+import { ResizableTableCell } from '@shared/components/ResizableTableCell';
+import { ConfirmDialog } from '@shared/components';
 
 const PRODUCTS = gql`query ProductsPanelFetch($first:Int,$after:String,$last:Int,$before:String){ 
   products(first:$first,after:$after,last:$last,before:$before){ 
@@ -126,6 +133,23 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; name: string }>({
+    open: false,
+    id: '',
+    name: ''
+  });
+
+  // Resizable columns integration
+  const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
+    tableId: 'products-catalog-table',
+    columns: [
+      { key: 'name', minWidth: 200, defaultWidth: 350 },
+      { key: 'modified', minWidth: 120, defaultWidth: 180 },
+      { key: 'tasks', minWidth: 80, defaultWidth: 100 },
+      { key: 'licenses', minWidth: 80, defaultWidth: 100 },
+      { key: 'actions', minWidth: 100, defaultWidth: 120 },
+    ],
+  });
 
   const conn = data?.products;
 
@@ -511,31 +535,34 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
     }
   };
 
-  const handleDelete = async (id: string, name: string) => {
-    if (confirm(`Delete product "${name}"?`)) {
-      try {
-        console.log(`🗑️ Deleting product: ${name} (${id})`);
+  const handleDelete = (id: string, name: string) => {
+    setDeleteConfirm({ open: true, id, name });
+  };
 
-        // Execute the deletion
-        await deleteProduct({ variables: { id } });
-        console.log('✅ Product deletion mutation completed');
+  const handleConfirmDelete = async () => {
+    const { id, name } = deleteConfirm;
+    try {
+      console.log(`🗑️ Deleting product: ${name} (${id})`);
 
-        // Wait for backend consistency
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // Execute the deletion
+      await deleteProduct({ variables: { id } });
+      console.log('✅ Product deletion mutation completed');
 
-        // Clear Apollo cache to force fresh data
-        console.log('🧹 Clearing Apollo cache...');
-        await client.clearStore();
+      // Wait for backend consistency
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
-        // Force a refetch to ensure UI updates
-        console.log('🔄 Refetching products...');
-        await refetch();
+      // Clear Apollo cache to force fresh data
+      console.log('🧹 Clearing Apollo cache...');
+      await client.clearStore();
 
-        console.log('🎉 Product deletion completed successfully');
-      } catch (error: any) {
-        console.error('❌ Product deletion failed:', error);
-        alert(`Failed to delete product: ${error.message}`);
-      }
+      // Force a refetch to ensure UI updates
+      console.log('🔄 Refetching products...');
+      await refetch();
+
+      console.log('🎉 Product deletion completed successfully');
+    } catch (error: any) {
+      console.error('❌ Product deletion failed:', error);
+      alert(`Failed to delete product: ${error.message}`);
     }
   };
   return <Box>
@@ -593,67 +620,119 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
         Sorted by {sortBy === 'lastModified' ? 'last modified' : 'name'} • {sortDirection === 'DESC' ? (sortBy === 'lastModified' ? 'newest first' : 'Z to A') : (sortBy === 'lastModified' ? 'oldest first' : 'A to Z')}
       </Typography>
     </Box>
-    <List dense>
-      {sortedProducts.map((e: any) => (<ListItemButton key={e.node.id} onClick={() => onSelect(e.node.id)}>
-        <ListItemText
-          primary={
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-              {e.node.name}
-              <Chip
-                size="small"
-                label={`${e.node.statusPercent}%`}
-                color={e.node.statusPercent === 100 ? 'success' : e.node.statusPercent > 0 ? 'primary' : 'default'}
-              />
-            </Box>
-          }
-          secondary={
-            <Box sx={{ mt: 0.5 }}>
-              {/* Product info */}
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
-                <Tooltip title={`Last modified: ${new Date(getCursorTimestamp(e.cursor)).toLocaleString()}`}>
+    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+      <Table size="small">
+        <TableHead>
+          <TableRow sx={{ backgroundColor: 'action.hover' }}>
+            <ResizableTableCell
+              width={columnWidths['name']}
+              resizable
+              resizeHandleProps={getResizeHandleProps('name')}
+              isResizing={isResizing}
+            >
+              <Typography variant="caption" fontWeight="bold">PRODUCT NAME</Typography>
+            </ResizableTableCell>
+            <ResizableTableCell
+              width={columnWidths['modified']}
+              resizable
+              resizeHandleProps={getResizeHandleProps('modified')}
+              isResizing={isResizing}
+            >
+              <Typography variant="caption" fontWeight="bold">LAST MODIFIED</Typography>
+            </ResizableTableCell>
+            <ResizableTableCell
+              width={columnWidths['tasks']}
+              resizable
+              resizeHandleProps={getResizeHandleProps('tasks')}
+              isResizing={isResizing}
+            >
+              <Typography variant="caption" fontWeight="bold">TASKS</Typography>
+            </ResizableTableCell>
+            <ResizableTableCell
+              width={columnWidths['licenses']}
+              resizable
+              resizeHandleProps={getResizeHandleProps('licenses')}
+              isResizing={isResizing}
+            >
+              <Typography variant="caption" fontWeight="bold">LICENSES</Typography>
+            </ResizableTableCell>
+            <TableCell width={columnWidths['actions']}>
+              <Typography variant="caption" fontWeight="bold">ACTIONS</Typography>
+            </TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {sortedProducts.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                <Typography variant="body2" color="text.secondary">No products found</Typography>
+              </TableCell>
+            </TableRow>
+          ) : (
+            sortedProducts.map((e: any) => (
+              <TableRow
+                key={e.node.id}
+                hover
+                onClick={() => onSelect(e.node.id)}
+                sx={{ cursor: 'pointer' }}
+              >
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    {e.node.name}
+                    <Chip
+                      size="small"
+                      label={`${e.node.statusPercent}%`}
+                      color={e.node.statusPercent === 100 ? 'success' : e.node.statusPercent > 0 ? 'primary' : 'default'}
+                      sx={{ height: 18, fontSize: '0.65rem' }}
+                    />
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Tooltip title={`Last modified: ${new Date(getCursorTimestamp(e.cursor)).toLocaleString()}`}>
+                    <Typography variant="caption">
+                      {formatDate(getCursorTimestamp(e.cursor))}
+                    </Typography>
+                  </Tooltip>
+                </TableCell>
+                <TableCell>
                   <Chip
-                    icon={<Update />}
                     size="small"
-                    label={`Modified ${formatDate(getCursorTimestamp(e.cursor))}`}
+                    label={(e.node.tasks?.edges || []).length}
                     variant="outlined"
                     sx={{ fontSize: '0.7rem', height: '20px' }}
                   />
-                </Tooltip>
-                <Chip
-                  size="small"
-                  label={`${(e.node.tasks?.edges || []).length} tasks`}
-                  variant="outlined"
-                  sx={{ fontSize: '0.7rem', height: '20px' }}
-                />
-                <Chip
-                  size="small"
-                  label={`${(e.node.licenses || []).length} licenses`}
-                  variant="outlined"
-                  sx={{ fontSize: '0.7rem', height: '20px' }}
-                />
-              </Box>
-
-              {/* Action buttons */}
-              <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5 }}>
-                <IconButton
-                  size="small"
-                  onClick={(ev) => { ev.stopPropagation(); openEditDialog(e.node); }}
-                >
-                  <Edit fontSize="small" />
-                </IconButton>
-                <IconButton
-                  size="small"
-                  onClick={(ev) => { ev.stopPropagation(); handleDelete(e.node.id, e.node.name); }}
-                  color="error"
-                >
-                  <Delete fontSize="small" />
-                </IconButton>
-              </Box>
-            </Box>
-          }
-        />
-      </ListItemButton>))}
-    </List>
+                </TableCell>
+                <TableCell>
+                  <Chip
+                    size="small"
+                    label={(e.node.licenses || []).length}
+                    variant="outlined"
+                    sx={{ fontSize: '0.7rem', height: '20px' }}
+                  />
+                </TableCell>
+                <TableCell onClick={(ev) => ev.stopPropagation()}>
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <IconButton
+                      size="small"
+                      onClick={() => openEditDialog(e.node)}
+                    >
+                      <Edit fontSize="small" />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleDelete(e.node.id, e.node.name)}
+                      color="error"
+                    >
+                      <Delete fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
     <Box display="flex" justifyContent="space-between" px={1} pb={1}>
       <Button size="small" disabled={!conn?.pageInfo.hasPreviousPage} onClick={loadPrev}>Previous</Button>
       <Button size="small" disabled={!conn?.pageInfo.hasNextPage} onClick={loadNext}>Next</Button>
@@ -665,6 +744,16 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
       onSave={handleSave}
       product={editingProduct}
       title={editingProduct ? 'Edit Product' : 'Create Product'}
+    />
+
+    <ConfirmDialog
+      open={deleteConfirm.open}
+      title="Delete Product"
+      message={`Are you sure you want to delete product "${deleteConfirm.name}"? This action cannot be undone.`}
+      confirmLabel="Delete"
+      onConfirm={handleConfirmDelete}
+      onCancel={() => setDeleteConfirm({ ...deleteConfirm, open: false })}
+      severity="error"
     />
   </Box>;
 };

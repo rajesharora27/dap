@@ -279,7 +279,10 @@ const InsightCard: React.FC<{
 export const DashboardPage = () => {
     const theme = useTheme();
     const { user } = useAuth();
-    const { loading, data, error } = useQuery(DASHBOARD_DATA, { fetchPolicy: 'cache-and-network' });
+    const { loading, data, error } = useQuery(DASHBOARD_DATA, {
+        skip: !user,
+        // Remove aggressive cache-and-network to prevent loops on error
+    });
 
     // Raw Data Access
     const products = data?.products?.edges?.map((e: any) => e.node) || [];
@@ -414,39 +417,8 @@ export const DashboardPage = () => {
             maxWidth: 1600,
             mx: 'auto'
         }}>
-            {/* === 1. Welcome Header === */}
-            <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <Box>
-                    <Typography variant="h4" sx={{ fontWeight: 700, color: '#0F172A', letterSpacing: '-0.02em', mb: 0.5 }}>
-                        Welcome back, {user?.fullName || user?.name || user?.username || 'User'}
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Chip
-                            label={roleBadge.label}
-                            size="small"
-                            icon={roleBadge.icon}
-                            sx={{
-                                bgcolor: '#0F172A', // Slate 900
-                                color: 'white',
-                                fontWeight: 700,
-                                fontSize: '0.65rem',
-                                height: 20,
-                                borderRadius: '4px',
-                                px: 0.5,
-                                '& .MuiChip-icon': { color: 'white' }
-                            }}
-                        />
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500 }}>
-                            System Status: Operational
-                        </Typography>
-                    </Box>
-                </Box>
-                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
-                    {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                </Typography>
-            </Box>
 
-            {/* === 2. Top Context Ribbon === */}
+            {/* === 1. Top Context Ribbon === */}
             <Paper
                 elevation={0}
                 sx={{

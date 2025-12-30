@@ -18,6 +18,8 @@ import {
     Edit as EditIcon, Delete as DeleteIcon, DragIndicator,
     CheckCircle, Cancel as CancelIcon, Add as AddIcon
 } from '@mui/icons-material';
+import { useResizableColumns } from '@shared/hooks/useResizableColumns';
+import { ResizableTableCell } from '@shared/components/ResizableTableCell';
 
 export interface AttributeItem {
     key: string;
@@ -190,7 +192,7 @@ export const AttributesTable: React.FC<AttributesTableProps> = ({
 }) => {
     const [editingKey, setEditingKey] = useState<string | null>(null);
     const [internalAdding, setInternalAdding] = useState(false);
-    
+
     // Use external control if provided, otherwise internal
     const isAdding = externalAddMode !== undefined ? externalAddMode : internalAdding;
 
@@ -211,16 +213,27 @@ export const AttributesTable: React.FC<AttributesTableProps> = ({
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
+    // Resizable columns
+    const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
+        tableId: 'attributes-table',
+        columns: [
+            { key: 'drag', minWidth: 50, defaultWidth: 50 },
+            { key: 'key', minWidth: 100, defaultWidth: 300 },
+            { key: 'value', minWidth: 200, defaultWidth: 400 },
+            { key: 'actions', minWidth: 100, defaultWidth: 120 },
+        ],
+    });
+
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
         if (over && active.id !== over.id) {
             const oldIndex = localItems.findIndex((item) => item.key === active.id);
             const newIndex = localItems.findIndex((item) => item.key === over.id);
-            
+
             // Update local state IMMEDIATELY for visual feedback
             const newLocalItems = arrayMove(localItems, oldIndex, newIndex);
             setLocalItems(newLocalItems);
-            
+
             // Then call the handler (which triggers async mutation)
             const newKeys = newLocalItems.map(i => i.key);
             onReorder(newKeys);
@@ -247,7 +260,7 @@ export const AttributesTable: React.FC<AttributesTableProps> = ({
             }
         }
     };
-    
+
     const handleCancelAdd = () => {
         setNewKey('');
         setNewValue('');
@@ -285,10 +298,37 @@ export const AttributesTable: React.FC<AttributesTableProps> = ({
                 <Table size="small">
                     <TableHead>
                         <TableRow>
-                            <TableCell width="50px" />
-                            <TableCell width="30%">Key</TableCell>
-                            <TableCell>Value</TableCell>
-                            <TableCell align="right" width="120px">Actions</TableCell>
+                            <ResizableTableCell
+                                width={columnWidths['drag']}
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('drag')}
+                                isResizing={isResizing}
+                            />
+                            <ResizableTableCell
+                                width={columnWidths['key']}
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('key')}
+                                isResizing={isResizing}
+                            >
+                                Key
+                            </ResizableTableCell>
+                            <ResizableTableCell
+                                width={columnWidths['value']}
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('value')}
+                                isResizing={isResizing}
+                            >
+                                Value
+                            </ResizableTableCell>
+                            <ResizableTableCell
+                                width={columnWidths['actions']}
+                                align="right"
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('actions')}
+                                isResizing={isResizing}
+                            >
+                                Actions
+                            </ResizableTableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>

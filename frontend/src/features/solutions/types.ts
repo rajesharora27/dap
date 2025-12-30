@@ -21,6 +21,7 @@ export interface Solution {
             node: any
         }>
     };
+    tags?: SolutionTag[];
 }
 
 export interface SolutionInput {

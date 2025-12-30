@@ -48,6 +48,7 @@ import {
   InlineTagEditor,
   AddTagForm,
 } from '@shared/components/inline-editors';
+import { ConfirmDialog } from '@shared/components';
 
 // GraphQL & Hook - SAME CODE as SolutionsPage
 import { SOLUTION } from '../graphql/solutions.queries';
@@ -286,6 +287,17 @@ export const SolutionDialog: React.FC<Props> = ({
   const [inlineAttrKey, setInlineAttrKey] = useState<string | null>(null);
   const [inlineAttrDraft, setInlineAttrDraft] = useState<{ key: string; value: string }>({ key: '', value: '' });
   const [productToAdd, setProductToAdd] = useState<string>('');
+  const [confirmState, setConfirmState] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    open: false,
+    title: '',
+    message: '',
+    onConfirm: () => { }
+  });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -476,14 +488,20 @@ export const SolutionDialog: React.FC<Props> = ({
     if (isEditMode && solutionOutcomes[index].id) {
       await solutionEditing.handleOutcomeDelete(solutionOutcomes[index].id);
     } else {
-      if (!confirm(`Delete outcome "${solutionOutcomes[index].name}"?`)) return;
-      const updatedOutcomes = [...solutionOutcomes];
-      if (updatedOutcomes[index].id) {
-        updatedOutcomes[index] = { ...updatedOutcomes[index], delete: true };
-      } else {
-        updatedOutcomes.splice(index, 1);
-      }
-      setSolutionOutcomes(updatedOutcomes);
+      setConfirmState({
+        open: true,
+        title: 'Delete Outcome',
+        message: `Are you sure you want to delete outcome "${solutionOutcomes[index].name}"?`,
+        onConfirm: () => {
+          const updatedOutcomes = [...solutionOutcomes];
+          if (updatedOutcomes[index].id) {
+            updatedOutcomes[index] = { ...updatedOutcomes[index], delete: true };
+          } else {
+            updatedOutcomes.splice(index, 1);
+          }
+          setSolutionOutcomes(updatedOutcomes);
+        }
+      });
     }
   };
 
@@ -530,23 +548,28 @@ export const SolutionDialog: React.FC<Props> = ({
   };
 
   const handleDeleteRelease = async (index: number) => {
-    if (!confirm(`Delete release "${releases[index].name}"?`)) return;
-
-    if (isEditMode && releases[index].id) {
-      await deleteReleaseMut({
-        variables: { id: releases[index].id },
-        refetchQueries: ['Solutions', 'SolutionDetail']
-      });
-      await refetchSolution();
-    } else {
-      const updatedReleases = [...releases];
-      if (updatedReleases[index].id) {
-        updatedReleases[index] = { ...updatedReleases[index], delete: true };
-      } else {
-        updatedReleases.splice(index, 1);
+    setConfirmState({
+      open: true,
+      title: 'Delete Release',
+      message: `Are you sure you want to delete release "${releases[index].name}"?`,
+      onConfirm: async () => {
+        if (isEditMode && releases[index].id) {
+          await deleteReleaseMut({
+            variables: { id: releases[index].id },
+            refetchQueries: ['Solutions', 'SolutionDetail']
+          });
+          await refetchSolution();
+        } else {
+          const updatedReleases = [...releases];
+          if (updatedReleases[index].id) {
+            updatedReleases[index] = { ...updatedReleases[index], delete: true };
+          } else {
+            updatedReleases.splice(index, 1);
+          }
+          setReleases(updatedReleases);
+        }
       }
-      setReleases(updatedReleases);
-    }
+    });
   };
 
   const handleReleaseDragEnd = (event: any) => {
@@ -586,23 +609,28 @@ export const SolutionDialog: React.FC<Props> = ({
   };
 
   const handleDeleteLicense = async (index: number) => {
-    if (!confirm(`Delete license "${licenses[index].name}"?`)) return;
-
-    if (isEditMode && licenses[index].id) {
-      await deleteLicenseMut({
-        variables: { id: licenses[index].id },
-        refetchQueries: ['Solutions', 'SolutionDetail']
-      });
-      await refetchSolution();
-    } else {
-      const updatedLicenses = [...licenses];
-      if (updatedLicenses[index].id) {
-        updatedLicenses[index] = { ...updatedLicenses[index], delete: true };
-      } else {
-        updatedLicenses.splice(index, 1);
+    setConfirmState({
+      open: true,
+      title: 'Delete License',
+      message: `Are you sure you want to delete license "${licenses[index].name}"?`,
+      onConfirm: async () => {
+        if (isEditMode && licenses[index].id) {
+          await deleteLicenseMut({
+            variables: { id: licenses[index].id },
+            refetchQueries: ['Solutions', 'SolutionDetail']
+          });
+          await refetchSolution();
+        } else {
+          const updatedLicenses = [...licenses];
+          if (updatedLicenses[index].id) {
+            updatedLicenses[index] = { ...updatedLicenses[index], delete: true };
+          } else {
+            updatedLicenses.splice(index, 1);
+          }
+          setLicenses(updatedLicenses);
+        }
       }
-      setLicenses(updatedLicenses);
-    }
+    });
   };
 
   const handleLicenseDragEnd = (event: any) => {
@@ -647,14 +675,20 @@ export const SolutionDialog: React.FC<Props> = ({
     if (isEditMode && tags[index].id) {
       await solutionEditing.handleTagDelete(tags[index].id);
     } else {
-      if (!confirm(`Delete tag "${tags[index].name}"?`)) return;
-      const updatedTags = [...tags];
-      if (updatedTags[index].id) {
-        updatedTags[index] = { ...updatedTags[index], delete: true };
-      } else {
-        updatedTags.splice(index, 1);
-      }
-      setTags(updatedTags);
+      setConfirmState({
+        open: true,
+        title: 'Delete Tag',
+        message: `Are you sure you want to delete tag "${tags[index].name}"?`,
+        onConfirm: () => {
+          const updatedTags = [...tags];
+          if (updatedTags[index].id) {
+            updatedTags[index] = { ...updatedTags[index], delete: true };
+          } else {
+            updatedTags.splice(index, 1);
+          }
+          setTags(updatedTags);
+        }
+      });
     }
   };
 
@@ -666,13 +700,19 @@ export const SolutionDialog: React.FC<Props> = ({
       // Use shared hook for immediate persistence
       await solutionEditing.handleAttributeDelete(key);
     } else {
-      if (!confirm(`Delete attribute "${key}"?`)) return;
-      const updatedCustomAttrs = { ...customAttrs };
-      delete updatedCustomAttrs[key];
-      if (updatedCustomAttrs._order) {
-        updatedCustomAttrs._order = updatedCustomAttrs._order.filter((k: string) => k !== key);
-      }
-      setCustomAttrs(updatedCustomAttrs);
+      setConfirmState({
+        open: true,
+        title: 'Delete Attribute',
+        message: `Are you sure you want to delete attribute "${key}"?`,
+        onConfirm: () => {
+          const updatedCustomAttrs = { ...customAttrs };
+          delete updatedCustomAttrs[key];
+          if (updatedCustomAttrs._order) {
+            updatedCustomAttrs._order = updatedCustomAttrs._order.filter((k: string) => k !== key);
+          }
+          setCustomAttrs(updatedCustomAttrs);
+        }
+      });
     }
   };
 
@@ -1454,6 +1494,16 @@ export const SolutionDialog: React.FC<Props> = ({
           {loading ? 'Saving...' : isEditMode ? 'Done' : 'Create Solution'}
         </Button>
       </DialogActions>
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmLabel="Delete"
+        onConfirm={confirmState.onConfirm}
+        onCancel={() => setConfirmState({ ...confirmState, open: false })}
+        severity="error"
+      />
     </Dialog>
   );
 };

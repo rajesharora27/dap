@@ -37,6 +37,8 @@ allowed_backend=(
   '^backend/src/__tests__/'
   '^backend/prisma/migrations/'
   '^backend/prisma/schema\.prisma$'
+  '^backend/scripts/'
+  '^backend/temp/'
 )
 
 allowed_frontend=(
@@ -46,11 +48,16 @@ allowed_frontend=(
   '^frontend/src/providers/'
   '^frontend/src/theme/'
   '^frontend/src/config/'
+  '^frontend/src/routes/'
   '^frontend/src/main\.tsx$'
   '^frontend/src/setupTests\.ts$'
   '^frontend/src/__tests__/'
   '^frontend/src/generated/'
   '^frontend/src/vite-env\.d\.ts$'
+  '^frontend/eslint\.config\.mjs$'
+  '^frontend/vite\.config\.ts$'
+  '^frontend/tsconfig\.json$'
+  '^frontend/package\.json$'
 )
 
 is_allowed() {

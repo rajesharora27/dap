@@ -34,6 +34,17 @@ const CHANGE_PASSWORD = gql`
   }
 `;
 
+const UPDATE_PROFILE = gql`
+  mutation UpdateProfile($userId: ID!, $input: UpdateUserInput!) {
+    updateUser(userId: $userId, input: $input) {
+      id
+      email
+      fullName
+      username
+    }
+  }
+`;
+
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -89,6 +100,7 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
   });
 
   const [changePassword, { loading: changingPassword }] = useMutation(CHANGE_PASSWORD);
+  const [updateProfile, { loading: updatingProfile }] = useMutation(UPDATE_PROFILE);
 
   const user = data?.me;
 
@@ -162,20 +174,40 @@ export const UserProfileDialog: React.FC<UserProfileDialogProps> = ({ open, onCl
     setErrorMsg('');
     setSuccessMsg('');
 
-    // For now, just update the local user state
-    // You can add a mutation to update user profile on backend if needed
-    if (authUser) {
-      const updatedUser = {
-        ...authUser,
-        fullName,
-        email
-      };
-      setUser(updatedUser);
+    if (!user?.id) {
+      setErrorMsg('User not found');
+      return;
+    }
+
+    try {
+      const { data: updateData } = await updateProfile({
+        variables: {
+          userId: user.id,
+          input: {
+            fullName,
+            email
+          }
+        }
+      });
+
+      // Update local auth context with new data
+      if (authUser && updateData?.updateUser) {
+        const updatedUser = {
+          ...authUser,
+          fullName: updateData.updateUser.fullName,
+          email: updateData.updateUser.email
+        };
+        setUser(updatedUser);
+      }
+
       setSuccessMsg('Profile updated successfully!');
+      refetch(); // Refresh data from server
 
       setTimeout(() => {
         handleClose();
       }, 2000);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to update profile');
     }
   };
 

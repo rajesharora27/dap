@@ -31,6 +31,7 @@ import {
 } from '@shared/components/FAIcon';
 import { useTheme } from '@/theme/ThemeProvider';
 import { getThemeOptions, themes, CustomThemeConfig } from '@/theme/themes';
+import { ConfirmDialog } from './ConfirmDialog';
 
 export const ThemeSelector: React.FC = () => {
   const { currentTheme, customThemes, setTheme, addCustomTheme, updateCustomTheme, deleteCustomTheme, getCustomThemeById } = useTheme();
@@ -58,6 +59,7 @@ export const ThemeSelector: React.FC = () => {
       },
     },
   });
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const handleThemeChange = (event: any) => {
     setTheme(event.target.value);
@@ -125,8 +127,13 @@ export const ThemeSelector: React.FC = () => {
   };
 
   const handleDeleteCustomTheme = (themeId: string) => {
-    if (window.confirm('Are you sure you want to delete this custom theme?')) {
-      deleteCustomTheme(themeId);
+    setDeleteId(themeId);
+  };
+
+  const handleConfirmDelete = () => {
+    if (deleteId) {
+      deleteCustomTheme(deleteId);
+      setDeleteId(null);
     }
   };
 
@@ -531,6 +538,16 @@ export const ThemeSelector: React.FC = () => {
           </Paper>
         </Collapse>
       </Stack>
+
+      <ConfirmDialog
+        open={!!deleteId}
+        title="Delete Custom Theme"
+        message="Are you sure you want to delete this custom theme? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteId(null)}
+        severity="error"
+      />
     </Paper>
   );
 };

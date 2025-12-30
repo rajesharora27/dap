@@ -39,6 +39,8 @@ import {
 } from '@shared/components/FAIcon';
 import { getStatusBackgroundColor, getStatusColor, getUpdateSourceChipColor } from '@shared/theme/statusStyles';
 import { TaskDetailsDialog, TaskDetailsData } from '@features/tasks/components/TaskDetailsDialog';
+import { useResizableColumns } from '@shared/hooks/useResizableColumns';
+import { ResizableTableCell } from '@shared/components/ResizableTableCell';
 
 export interface TaskData {
   id: string;
@@ -141,6 +143,21 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
   const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
   const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
 
+  // Resizable columns
+  const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
+    tableId: 'adoption-task-table',
+    columns: [
+      { key: 'sequence', minWidth: 40, defaultWidth: 50 },
+      { key: 'task', minWidth: 150, defaultWidth: 300 },
+      { key: 'tags', minWidth: 80, defaultWidth: 120 },
+      { key: 'resources', minWidth: 80, defaultWidth: 120 },
+      { key: 'weight', minWidth: 60, defaultWidth: 80 },
+      { key: 'telemetry', minWidth: 100, defaultWidth: 140 },
+      { key: 'updatedVia', minWidth: 80, defaultWidth: 100 },
+      { key: 'action', minWidth: 100, defaultWidth: 160 },
+    ],
+  });
+
   const handleRowDoubleClick = (task: TaskData) => {
     setSelectedTask(task);
     setTaskDetailsOpen(true);
@@ -173,36 +190,73 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
       <Table size="small">
         <TableHead>
           <TableRow sx={{ backgroundColor: 'action.hover' }}>
-            <TableCell width={50}>
+            <ResizableTableCell
+              width={columnWidths['sequence']}
+              resizable
+              resizeHandleProps={getResizeHandleProps('sequence')}
+              isResizing={isResizing}
+            >
               <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>#</Typography>
-            </TableCell>
-            <TableCell>
+            </ResizableTableCell>
+            <ResizableTableCell
+              width={columnWidths['task']}
+              resizable
+              resizeHandleProps={getResizeHandleProps('task')}
+              isResizing={isResizing}
+            >
               <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Task</Typography>
-            </TableCell>
+            </ResizableTableCell>
             {isColumnVisible('tags') && (
-              <TableCell width={120}>
+              <ResizableTableCell
+                width={columnWidths['tags']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('tags')}
+                isResizing={isResizing}
+              >
                 <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Tags</Typography>
-              </TableCell>
+              </ResizableTableCell>
             )}
             {isColumnVisible('resources') && (
-              <TableCell width={120}>
+              <ResizableTableCell
+                width={columnWidths['resources']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('resources')}
+                isResizing={isResizing}
+              >
                 <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Resources</Typography>
-              </TableCell>
+              </ResizableTableCell>
             )}
             {isColumnVisible('weight') && (
-              <TableCell width={80} sx={{ whiteSpace: 'nowrap' }}>
+              <ResizableTableCell
+                width={columnWidths['weight']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('weight')}
+                isResizing={isResizing}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
                 <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Weight</Typography>
-              </TableCell>
+              </ResizableTableCell>
             )}
             {isColumnVisible('telemetry') && (
-              <TableCell width={140} sx={{ whiteSpace: 'nowrap' }}>
+              <ResizableTableCell
+                width={columnWidths['telemetry']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('telemetry')}
+                isResizing={isResizing}
+                sx={{ whiteSpace: 'nowrap' }}
+              >
                 <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Validation Criteria</Typography>
-              </TableCell>
+              </ResizableTableCell>
             )}
             {isColumnVisible('updatedVia') && (
-              <TableCell width={100}>
+              <ResizableTableCell
+                width={columnWidths['updatedVia']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('updatedVia')}
+                isResizing={isResizing}
+              >
                 <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Updated Via</Typography>
-              </TableCell>
+              </ResizableTableCell>
             )}
             <TableCell width={160}>
               <Typography variant="caption" fontWeight="bold" sx={{ textTransform: 'uppercase', fontSize: '0.7rem' }}>Action</Typography>

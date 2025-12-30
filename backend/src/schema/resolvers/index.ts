@@ -70,6 +70,7 @@ import {
 } from '../../modules/task';
 import { ChangeTrackingQueryResolvers, ChangeTrackingMutationResolvers } from '../../modules/change-tracking/change-tracking.resolver';
 import { SearchQueryResolvers, SearchResolvers } from '../../modules/search/search.resolver';
+import { diaryResolvers } from '../../modules/my-diary/diary.resolver';
 import { pubsub, PUBSUB_EVENTS } from '../../shared/pubsub/pubsub';
 import { solutionReportingService } from '../../modules/solution/solution-reporting.service';
 import { requireUser } from '../../shared/auth/auth-helpers';
@@ -123,6 +124,7 @@ export const resolvers = {
     ...SearchQueryResolvers,
     ...ImportQueryResolvers,
     ...AuditQueryResolvers,
+    ...diaryResolvers.Query,
 
     node: async (_: any, { id }: any) => {
       // Generic fallback node resolver if domain resolvers don't handle it
@@ -150,7 +152,8 @@ export const resolvers = {
     ...AuthMutationResolvers,
     ...AIMutationResolvers,
     ...ImportMutationResolvers,
-    ...ChangeTrackingMutationResolvers
+    ...ChangeTrackingMutationResolvers,
+    ...diaryResolvers.Mutation
   },
 
   Subscription: {

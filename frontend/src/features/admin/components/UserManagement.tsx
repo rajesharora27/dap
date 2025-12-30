@@ -40,6 +40,8 @@ import {
   Cancel
 } from '@shared/components/FAIcon';
 import { gql, useQuery, useMutation } from '@apollo/client';
+import { useResizableColumns } from '@shared/hooks/useResizableColumns';
+import { ResizableTableCell } from '@shared/components/ResizableTableCell';
 
 // GraphQL Queries
 const GET_USERS = gql`
@@ -182,6 +184,20 @@ export const UserManagement: React.FC = () => {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Resizable columns
+  const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
+    tableId: 'user-management-table',
+    columns: [
+      { key: 'username', minWidth: 100, defaultWidth: 150 },
+      { key: 'fullName', minWidth: 100, defaultWidth: 150 },
+      { key: 'email', minWidth: 120, defaultWidth: 200 },
+      { key: 'systemRole', minWidth: 80, defaultWidth: 100 },
+      { key: 'assignedRoles', minWidth: 120, defaultWidth: 180 },
+      { key: 'status', minWidth: 80, defaultWidth: 100 },
+      { key: 'actions', minWidth: 100, defaultWidth: 140 },
+    ],
+  });
 
   // Queries
   const { data, loading, error, refetch } = useQuery(GET_USERS);
@@ -332,7 +348,7 @@ export const UserManagement: React.FC = () => {
 
   const handleSubmit = async () => {
     setErrorMsg('');
-    
+
     // Validation
     if (!formData.username.trim() || !formData.email.trim()) {
       setErrorMsg('Username and email are required');
@@ -381,7 +397,7 @@ export const UserManagement: React.FC = () => {
         // Refetch everything to ensure UI is up to date
         await refetchUserRoles();
         await refetch(); // Refetch the main user list
-        
+
         // Close dialog and show success message
         setUserDialog(false);
         setSuccessMsg('User and roles updated successfully!');
@@ -463,19 +479,61 @@ export const UserManagement: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell><strong>Username</strong></TableCell>
-              <TableCell><strong>Full Name</strong></TableCell>
-              <TableCell><strong>Email</strong></TableCell>
-              <TableCell><strong>System Role</strong></TableCell>
-              <TableCell><strong>Assigned Roles</strong></TableCell>
-              <TableCell><strong>Status</strong></TableCell>
+              <ResizableTableCell
+                width={columnWidths['username']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('username')}
+                isResizing={isResizing}
+              >
+                <strong>Username</strong>
+              </ResizableTableCell>
+              <ResizableTableCell
+                width={columnWidths['fullName']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('fullName')}
+                isResizing={isResizing}
+              >
+                <strong>Full Name</strong>
+              </ResizableTableCell>
+              <ResizableTableCell
+                width={columnWidths['email']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('email')}
+                isResizing={isResizing}
+              >
+                <strong>Email</strong>
+              </ResizableTableCell>
+              <ResizableTableCell
+                width={columnWidths['systemRole']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('systemRole')}
+                isResizing={isResizing}
+              >
+                <strong>System Role</strong>
+              </ResizableTableCell>
+              <ResizableTableCell
+                width={columnWidths['assignedRoles']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('assignedRoles')}
+                isResizing={isResizing}
+              >
+                <strong>Assigned Roles</strong>
+              </ResizableTableCell>
+              <ResizableTableCell
+                width={columnWidths['status']}
+                resizable
+                resizeHandleProps={getResizeHandleProps('status')}
+                isResizing={isResizing}
+              >
+                <strong>Status</strong>
+              </ResizableTableCell>
               <TableCell align="right"><strong>Actions</strong></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {users.map((user: User) => (
-              <TableRow 
-                key={user.id} 
+              <TableRow
+                key={user.id}
                 hover
                 onDoubleClick={() => handleEditUser(user)}
                 sx={{ cursor: 'pointer' }}
@@ -590,7 +648,7 @@ export const UserManagement: React.FC = () => {
               }
               label="Administrator"
             />
-            
+
             {/* Role Assignment Section */}
             {editingUser && (
               <Box sx={{ mt: 2 }}>
@@ -609,10 +667,10 @@ export const UserManagement: React.FC = () => {
                         {selected.map((roleId) => {
                           const role = rolesData?.roles?.find((r: any) => r.id === roleId);
                           return (
-                            <Chip 
-                              key={roleId} 
-                              label={role?.name || roleId} 
-                              size="small" 
+                            <Chip
+                              key={roleId}
+                              label={role?.name || roleId}
+                              size="small"
                               color="secondary"
                               variant="outlined"
                             />
@@ -625,8 +683,8 @@ export const UserManagement: React.FC = () => {
                     {rolesData?.roles?.map((role: any) => (
                       <MenuItem key={role.id} value={role.id}>
                         <Checkbox checked={selectedRoles.indexOf(role.id) > -1} />
-                        <ListItemText 
-                          primary={role.name} 
+                        <ListItemText
+                          primary={role.name}
                           secondary={role.description}
                         />
                       </MenuItem>
@@ -641,7 +699,7 @@ export const UserManagement: React.FC = () => {
                 </Alert>
               </Box>
             )}
-            
+
             {!editingUser && (
               <Alert severity="info">
                 New user will be created with default password <strong>DAP123</strong>.

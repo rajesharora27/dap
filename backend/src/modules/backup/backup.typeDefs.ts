@@ -13,6 +13,9 @@ export const backupTypeDefs = gql`
     tasks: Int
     customerTasks: Int
     customerSolutionTasks: Int
+    # MyDiary tables
+    diaryTodos: Int
+    diaryBookmarks: Int
   }
 
   type BackupFile {
