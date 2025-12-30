@@ -104,11 +104,11 @@ export const PRODUCT_TASK_CONNECTION_FIELDS = gql`
           id
           name
         }
-        release {
+        releases {
           id
           name
         }
-        outcome {
+        outcomes {
           id
           name
         }

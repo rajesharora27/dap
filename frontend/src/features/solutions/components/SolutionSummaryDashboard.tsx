@@ -5,6 +5,7 @@ import { Speed as SpeedIcon, CheckCircle as CheckCircleIcon, Assignment as TaskI
 
 interface SolutionSummaryDashboardProps {
     solution: Solution;
+    tasks: any[];
     onOutcomeClick?: (outcomeName: string) => void;
 }
 
@@ -55,10 +56,10 @@ const CircularGauge: React.FC<{ value: number; color: string }> = ({ value, colo
     );
 };
 
-export const SolutionSummaryDashboard: React.FC<SolutionSummaryDashboardProps> = ({ solution, onOutcomeClick }) => {
+export const SolutionSummaryDashboard: React.FC<SolutionSummaryDashboardProps> = ({ solution, tasks, onOutcomeClick }) => {
     const theme = useTheme();
-    const tasks = useMemo(() => solution.tasks?.edges?.map(e => e.node) || [], [solution.tasks]);
     const totalTasks = tasks.length;
+
 
     const metrics = useMemo(() => {
         if (totalTasks === 0) {

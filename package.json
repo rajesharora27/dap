@@ -6,13 +6,21 @@
     "node": ">=22"
   },
   "scripts": {
+    "lint": "npm run lint:backend && npm run lint:frontend",
+    "lint:backend": "cd backend && npm run lint",
+    "lint:frontend": "cd frontend && npm run lint",
+    "lint:fix": "npm run lint:fix:backend && npm run lint:fix:frontend",
+    "lint:fix:backend": "cd backend && npm run lint -- --fix",
+    "lint:fix:frontend": "cd frontend && npm run lint -- --fix",
+    "typecheck": "npm run typecheck:backend && npm run typecheck:frontend",
+    "typecheck:backend": "cd backend && npx tsc --noEmit",
+    "typecheck:frontend": "cd frontend && npx tsc --noEmit",
     "check:circular": "npm run check:circular:backend && npm run check:circular:frontend",
     "check:circular:backend": "cd backend && npx madge --circular --extensions ts src/",
     "check:circular:frontend": "cd frontend && npx madge --circular --extensions ts,tsx src/",
     "check:deps": "npm run check:circular",
-    "lint": "npm run lint:backend && npm run lint:frontend",
-    "lint:backend": "cd backend && npm run lint",
-    "lint:frontend": "cd frontend && npm run lint"
+    "check:quality": "npm run lint && npm run typecheck && npm run check:circular",
+    "quality": "npm run check:quality"
   },
   "devDependencies": {
     "madge": "^8.0.0",

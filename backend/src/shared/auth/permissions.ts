@@ -1,28 +1,112 @@
+/**
+ * Permission Management Module
+ * 
+ * Provides Role-Based Access Control (RBAC) functionality for the DAP application.
+ * Implements a hybrid permission model combining:
+ * - System roles (ADMIN, SME, CSS, USER, VIEWER)
+ * - Resource-level permissions (per Product/Solution/Customer)
+ * - Bidirectional permission inheritance (Products ↔ Solutions)
+ * 
+ * @module shared/auth/permissions
+ * 
+ * @example
+ * ```typescript
+ * import { checkUserPermission, requirePermission, getUserAccessibleResources } from '@shared/auth/permissions';
+ * 
+ * // Check if user can edit a product
+ * const canEdit = await checkUserPermission(
+ *   userId, 
+ *   ResourceType.PRODUCT, 
+ *   productId, 
+ *   PermissionLevel.WRITE, 
+ *   prisma
+ * );
+ * 
+ * // Require permission in resolver (throws if denied)
+ * await requirePermission(context, ResourceType.PRODUCT, productId, PermissionLevel.WRITE);
+ * ```
+ */
+
 import { PrismaClient, ResourceType, PermissionLevel } from '@prisma/client';
 
 /**
- * Permission hierarchy levels
- * READ < WRITE < ADMIN
+ * Permission hierarchy mapping.
+ * Higher numbers indicate more permissions.
+ * ADMIN (3) includes WRITE (2) which includes READ (1).
+ * 
+ * @internal
  */
-const PERMISSION_HIERARCHY: { [key in PermissionLevel]: number } = {
+const PERMISSION_HIERARCHY: Record<PermissionLevel, number> = {
   READ: 1,
   WRITE: 2,
   ADMIN: 3
 };
 
+/**
+ * User role with optional role relation.
+ * Used for type-safe role extraction.
+ * 
+ * @internal
+ */
 interface UserRoleWithRole {
   role?: { name: string } | null;
 }
 
 /**
- * Check if user has required permission level for a specific resource
+ * GraphQL context with user information.
  * 
- * @param userId - The user ID to check permissions for
- * @param resourceType - Type of resource (PRODUCT, SOLUTION, CUSTOMER)
- * @param resourceId - Specific resource ID (or null to check general access)
+ * @interface
+ */
+interface GraphQLContext {
+  /** Authenticated user information */
+  user?: {
+    /** User's unique identifier */
+    userId: string;
+    /** User's email address */
+    email?: string;
+  } | null;
+  /** Prisma client instance */
+  prisma: PrismaClient;
+}
+
+/**
+ * Check if a user has the required permission level for a specific resource.
+ * 
+ * This is the core permission checking function that implements the full
+ * RBAC logic including:
+ * 1. Admin bypass (admins have full access)
+ * 2. System role checks (SME, CSS, VIEWER)
+ * 3. Direct user permissions
+ * 4. Role-based permissions
+ * 5. Bidirectional Product ↔ Solution inheritance
+ * 
+ * @param userId - The unique identifier of the user to check
+ * @param resourceType - The type of resource (PRODUCT, SOLUTION, CUSTOMER, SYSTEM)
+ * @param resourceId - Specific resource ID, or null to check type-level access
  * @param requiredLevel - Minimum permission level required (READ, WRITE, ADMIN)
- * @param prisma - Prisma client instance
- * @returns Promise<boolean> - true if user has permission, false otherwise
+ * @param prisma - Prisma client instance for database queries
+ * @returns Promise resolving to true if user has sufficient permission
+ * 
+ * @example
+ * ```typescript
+ * // Check if user can view a product
+ * const canView = await checkUserPermission(
+ *   'user123',
+ *   ResourceType.PRODUCT,
+ *   'prod456',
+ *   PermissionLevel.READ,
+ *   prisma
+ * );
+ * 
+ * // Check if user can create any solution (type-level check)
+ * const canCreateSolutions = await checkUserPermission(
+ *   'user123',
+ *   ResourceType.SOLUTION,
+ *   null,  // null for type-level check
+ *   PermissionLevel.WRITE,
+ *   prisma
+ * );
+ * ```
  */
 export async function checkUserPermission(
   userId: string,
@@ -88,7 +172,7 @@ export async function checkUserPermission(
   // Track the highest permission level found from ANY source
   let highestPermissionLevel: PermissionLevel | null = null;
 
-  const updateHighestPermission = (level: PermissionLevel) => {
+  const updateHighestPermission = (level: PermissionLevel): void => {
     if (!highestPermissionLevel || PERMISSION_HIERARCHY[level] > PERMISSION_HIERARCHY[highestPermissionLevel]) {
       highestPermissionLevel = level;
     }
@@ -237,7 +321,6 @@ export async function checkUserPermission(
     }
 
     // Check role-based "all products" permission → grants "all solutions"
-    // We need to fetch ALL user roles (not just filtered by resourceType)
     const allUserRoles = await prisma.userRole.findMany({
       where: { userId },
       include: {
@@ -370,7 +453,13 @@ export async function checkUserPermission(
 }
 
 /**
- * Check if actual permission level meets or exceeds required level
+ * Check if an actual permission level meets or exceeds the required level.
+ * 
+ * @param actual - The permission level the user has
+ * @param required - The permission level required for the action
+ * @returns True if actual >= required in the permission hierarchy
+ * 
+ * @internal
  */
 function hasPermissionLevel(
   actual: PermissionLevel,
@@ -380,9 +469,42 @@ function hasPermissionLevel(
 }
 
 /**
- * Get all resources of a type that user has access to
- * Returns null if user has access to all resources of this type
- * Returns array of resource IDs if user has access to specific resources only
+ * Get all resource IDs that a user has access to for a given resource type.
+ * 
+ * This function is useful for filtering queries to only return resources
+ * the user can see, without checking each resource individually.
+ * 
+ * @param userId - The unique identifier of the user
+ * @param resourceType - The type of resource to check
+ * @param minPermissionLevel - Minimum permission level required
+ * @param prisma - Prisma client instance
+ * @returns Promise resolving to:
+ *   - `null` if user has access to ALL resources of this type
+ *   - `string[]` array of accessible resource IDs if limited access
+ *   - `[]` empty array if no access
+ * 
+ * @example
+ * ```typescript
+ * const accessibleProductIds = await getUserAccessibleResources(
+ *   userId,
+ *   ResourceType.PRODUCT,
+ *   PermissionLevel.READ,
+ *   prisma
+ * );
+ * 
+ * if (accessibleProductIds === null) {
+ *   // User can access all products
+ *   return prisma.product.findMany();
+ * } else if (accessibleProductIds.length === 0) {
+ *   // User has no access
+ *   return [];
+ * } else {
+ *   // User has limited access
+ *   return prisma.product.findMany({
+ *     where: { id: { in: accessibleProductIds } }
+ *   });
+ * }
+ * ```
  */
 export async function getUserAccessibleResources(
   userId: string,
@@ -501,7 +623,6 @@ export async function getUserAccessibleResources(
   // If checking for PRODUCTS
   if (resourceType === ResourceType.PRODUCT) {
     // Products are accessible via solution permissions
-    // Get solution permissions directly (without recursion)
     const solutionPermissions = await prisma.permission.findMany({
       where: {
         userId,
@@ -707,11 +828,35 @@ export async function getUserAccessibleResources(
 }
 
 /**
- * Middleware to require permission for a resolver
- * Throws error if user doesn't have required permission
+ * Require permission for a GraphQL resolver operation.
+ * 
+ * This is a convenience function that throws an error if the user
+ * doesn't have the required permission. Use this in resolvers to
+ * enforce access control.
+ * 
+ * @param context - GraphQL context containing user and prisma
+ * @param resourceType - The type of resource being accessed
+ * @param resourceId - Specific resource ID, or null for type-level check
+ * @param requiredLevel - Minimum permission level required
+ * @throws Error if user is not authenticated or doesn't have permission
+ * 
+ * @example
+ * ```typescript
+ * const resolvers = {
+ *   Mutation: {
+ *     updateProduct: async (_, { id, input }, context) => {
+ *       // This will throw if user can't edit this product
+ *       await requirePermission(context, ResourceType.PRODUCT, id, PermissionLevel.WRITE);
+ *       
+ *       // User has permission, proceed with update
+ *       return prisma.product.update({ where: { id }, data: input });
+ *     }
+ *   }
+ * };
+ * ```
  */
 export async function requirePermission(
-  context: any,
+  context: GraphQLContext,
   resourceType: ResourceType,
   resourceId: string | null,
   requiredLevel: PermissionLevel
@@ -734,7 +879,31 @@ export async function requirePermission(
 }
 
 /**
- * Filter a list of resources to only include those the user has access to
+ * Filter a list of resources to only include those the user can access.
+ * 
+ * This is a convenience function for filtering query results. It's more
+ * efficient than checking each resource individually when you have the
+ * full list already.
+ * 
+ * @typeParam T - Resource type with an `id` property
+ * @param userId - The unique identifier of the user
+ * @param resourceType - The type of resources being filtered
+ * @param resources - Array of resources to filter
+ * @param minPermissionLevel - Minimum permission level required
+ * @param prisma - Prisma client instance
+ * @returns Promise resolving to filtered array of accessible resources
+ * 
+ * @example
+ * ```typescript
+ * const allProducts = await prisma.product.findMany();
+ * const accessibleProducts = await filterAccessibleResources(
+ *   userId,
+ *   ResourceType.PRODUCT,
+ *   allProducts,
+ *   PermissionLevel.READ,
+ *   prisma
+ * );
+ * ```
  */
 export async function filterAccessibleResources<T extends { id: string }>(
   userId: string,
@@ -765,11 +934,33 @@ export async function filterAccessibleResources<T extends { id: string }>(
 }
 
 /**
- * Check if user can perform an action on a resource
- * Helper function that combines authentication and permission checking
+ * Check if a user can access a specific resource.
+ * 
+ * This is a convenience wrapper around checkUserPermission that extracts
+ * the userId from the GraphQL context.
+ * 
+ * @param context - GraphQL context containing user and prisma
+ * @param resourceType - The type of resource being accessed
+ * @param resourceId - The specific resource ID to check
+ * @param requiredLevel - Minimum permission level required
+ * @returns Promise resolving to true if user can access the resource
+ * 
+ * @example
+ * ```typescript
+ * const canEdit = await canUserAccessResource(
+ *   context,
+ *   ResourceType.PRODUCT,
+ *   productId,
+ *   PermissionLevel.WRITE
+ * );
+ * 
+ * if (canEdit) {
+ *   // Show edit button
+ * }
+ * ```
  */
 export async function canUserAccessResource(
-  context: any,
+  context: GraphQLContext,
   resourceType: ResourceType,
   resourceId: string,
   requiredLevel: PermissionLevel
@@ -788,11 +979,37 @@ export async function canUserAccessResource(
 }
 
 /**
- * Get user's permission level for a specific resource
- * Returns the highest permission level the user has
+ * Get the highest permission level a user has for a specific resource.
+ * 
+ * This is useful for UI purposes - e.g., showing different options
+ * based on what the user can do with a resource.
+ * 
+ * @param userId - The unique identifier of the user
+ * @param resourceType - The type of resource
+ * @param resourceId - Specific resource ID, or null for type-level check
+ * @param prisma - Prisma client instance
+ * @returns Promise resolving to the highest permission level, or null if no access
+ * 
+ * @example
+ * ```typescript
+ * const level = await getUserPermissionLevel(
+ *   userId,
+ *   ResourceType.PRODUCT,
+ *   productId,
+ *   prisma
+ * );
+ * 
+ * if (level === PermissionLevel.ADMIN) {
+ *   // Can delete
+ * } else if (level === PermissionLevel.WRITE) {
+ *   // Can edit but not delete
+ * } else if (level === PermissionLevel.READ) {
+ *   // Can only view
+ * } else {
+ *   // No access
+ * }
+ * ```
  */
-
-
 export async function getUserPermissionLevel(
   userId: string,
   resourceType: ResourceType,
@@ -891,4 +1108,3 @@ export async function getUserPermissionLevel(
 
   return highestLevel;
 }
-

@@ -5,6 +5,7 @@ import { Speed as SpeedIcon, CheckCircle as CheckCircleIcon, Assignment as TaskI
 
 interface ProductSummaryDashboardProps {
     product: Product;
+    tasks: any[];
     onOutcomeClick?: (outcomeName: string) => void;
 }
 
@@ -55,9 +56,8 @@ const CircularGauge: React.FC<{ value: number; color: string }> = ({ value, colo
     );
 };
 
-export const ProductSummaryDashboard: React.FC<ProductSummaryDashboardProps> = ({ product, onOutcomeClick }) => {
+export const ProductSummaryDashboard: React.FC<ProductSummaryDashboardProps> = ({ product, tasks, onOutcomeClick }) => {
     const theme = useTheme();
-    const tasks = useMemo(() => product.tasks?.edges?.map(e => e.node) || [], [product.tasks]);
     const totalTasks = tasks.length;
 
     const metrics = useMemo(() => {
@@ -84,7 +84,7 @@ export const ProductSummaryDashboard: React.FC<ProductSummaryDashboardProps> = (
             if (task.howToVideo && task.howToVideo.length > 0) videosCount++;
 
             if (task.outcomes && task.outcomes.length > 0) {
-                task.outcomes.forEach(o => {
+                task.outcomes.forEach((o: any) => {
                     outcomeCount[o.name] = (outcomeCount[o.name] || 0) + 1;
                 });
             } else {

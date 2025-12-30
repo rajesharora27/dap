@@ -4,8 +4,8 @@ import {
     IconButton, Tabs, Tab, CircularProgress, Tooltip
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { Add, Edit, Delete, FileUpload } from '@shared/components/FAIcon';
-import { useApolloClient } from '@apollo/client';
+import { Add, Edit, Delete, FileUpload, FileDownload } from '@shared/components/FAIcon';
+import { useApolloClient, useLazyQuery } from '@apollo/client';
 
 import { useSolutionContext } from '../context/SolutionContext';
 import { useSolutionDialogs } from '../hooks/useSolutionDialogs';
@@ -17,6 +17,7 @@ import { BulkImportDialog } from '@features/data-management/components/BulkImpor
 
 // Import mutations for sub-entity management if handling top-level save, 
 // BUT SolutionDialog mostly handles it. We just need to trigger refetch.
+import { EXPORT_SOLUTION } from '../graphql';
 
 export function SolutionsPageContent() {
     const theme = useTheme();
@@ -31,6 +32,7 @@ export function SolutionsPageContent() {
         loadingSelectedSolution,
         refetchSolutions,
         refetchSelectedSolution,
+        tasks,
         refetchTasks,
         selectedSubSection,
         setSelectedSubSection,
@@ -77,6 +79,35 @@ export function SolutionsPageContent() {
         }
     }
 
+    const [exportSolution] = useLazyQuery(EXPORT_SOLUTION);
+
+    const handleExportSolution = async () => {
+        if (!selectedSolutionId) return;
+        try {
+            const { data } = await exportSolution({ variables: { solutionId: selectedSolutionId } });
+            if (data?.exportSolution) {
+                const { filename, content, mimeType } = data.exportSolution;
+
+                // Create download link
+                const blob = new Blob([content], { type: mimeType });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+
+                // Cleanup
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }
+        } catch (error) {
+            console.error('Error exporting solution:', error);
+            alert('Failed to export solution');
+        }
+    };
+
+
     if (loadingSolutions) {
         return (
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
@@ -113,6 +144,14 @@ export function SolutionsPageContent() {
                         onClick={() => setImportDialogOpen(true)}
                     >
                         Import
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        startIcon={<FileDownload />}
+                        onClick={handleExportSolution}
+                        disabled={!selectedSolutionId}
+                    >
+                        Export
                     </Button>
                     <Button
                         variant="contained"
@@ -191,6 +230,7 @@ export function SolutionsPageContent() {
                             <Box sx={{ p: 2 }}>
                                 <SolutionSummaryDashboard
                                     solution={selectedSolution}
+                                    tasks={tasks}
                                     onOutcomeClick={(outcomeName: any) => {
                                         setSelectedSubSection('tasks');
                                         setShowFilters(true);

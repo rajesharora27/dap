@@ -6,7 +6,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import { Add, Delete, ImportExport } from '@shared/components/FAIcon'; // Fix import: ImportExport -> FileUpload/FileDownload or find correct icon
 import { Edit, Save, Description } from '@mui/icons-material'; // Fallback
-import { useApolloClient } from '@apollo/client';
+import { useApolloClient, useLazyQuery } from '@apollo/client';
 
 import { useProductContext } from '../context/ProductContext';
 import { useProductDialogs } from '../hooks/useProductDialogs';
@@ -17,7 +17,7 @@ import { ProductDialog } from '../components/ProductDialog'; // Verify path
 import { BulkImportDialog } from '@features/data-management/components/BulkImportDialog';
 
 // Import mutations for the complex save handler
-import { CREATE_PRODUCT, UPDATE_PRODUCT } from '../graphql';
+import { CREATE_PRODUCT, UPDATE_PRODUCT, EXPORT_PRODUCT } from '../graphql';
 import { DELETE_OUTCOME, CREATE_OUTCOME, UPDATE_OUTCOME, REORDER_OUTCOMES } from '@features/product-outcomes';
 import { DELETE_RELEASE, CREATE_RELEASE, UPDATE_RELEASE, REORDER_RELEASES } from '@features/product-releases';
 import { DELETE_LICENSE, CREATE_LICENSE, UPDATE_LICENSE, REORDER_LICENSES } from '@features/product-licenses';
@@ -40,6 +40,7 @@ export function ProductsPageContent() {
         loadingSelectedProduct,
         refetchProducts,
         refetchSelectedProduct,
+        tasks,
         selectedSubSection,
         setSelectedSubSection,
         deleteProduct,
@@ -246,6 +247,36 @@ export function ProductsPageContent() {
         }
     }
 
+    // -- Export Logic --
+    const [exportProduct] = useLazyQuery(EXPORT_PRODUCT);
+
+    const handleExportProduct = async () => {
+        if (!selectedProductId) return;
+        try {
+            const { data } = await exportProduct({ variables: { productId: selectedProductId } });
+            if (data?.exportProduct) {
+                const { filename, content, mimeType } = data.exportProduct;
+
+                // Create download link
+                const blob = new Blob([content], { type: mimeType });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+
+                // Cleanup
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+            }
+        } catch (error) {
+            console.error('Error exporting product:', error);
+            alert('Failed to export product');
+        }
+    };
+
+
 
     if (loadingProducts) {
         return (
@@ -283,6 +314,14 @@ export function ProductsPageContent() {
                         onClick={() => setImportDialogOpen(true)}
                     >
                         Import
+                    </Button>
+                    <Button
+                        variant="outlined"
+                        startIcon={<FileDownload />}
+                        onClick={handleExportProduct}
+                        disabled={!selectedProductId}
+                    >
+                        Export
                     </Button>
                     <Button
                         variant="contained"
@@ -361,6 +400,7 @@ export function ProductsPageContent() {
                             <Box sx={{ p: 2 }}>
                                 <ProductSummaryDashboard
                                     product={selectedProduct}
+                                    tasks={tasks}
                                     onOutcomeClick={(outcomeName) => {
                                         setSelectedSubSection('tasks');
                                         setShowFilters(true);
