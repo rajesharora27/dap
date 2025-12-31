@@ -790,6 +790,11 @@ export class AIAgentService {
 
       console.log(`[AI Agent] LLM generated query config:`, JSON.stringify(queryConfig));
 
+      // Validate generated config to prevent runtime errors
+      if (!queryConfig || !queryConfig.model) {
+        throw new Error('Failed to generate a valid query configuration. Please try rephrasing your question.');
+      }
+
       // 2. Apply RBAC filters
       const userContext: RBACUserContext = {
         userId: request.userId,
