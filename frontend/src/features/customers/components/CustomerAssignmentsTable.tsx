@@ -26,7 +26,7 @@ import {
     Sync,
     MoreVert,
     Add,
-    BoxIcon as ProductIcon,
+    BoxIconOutlined as ProductIcon,
     LightbulbOutlined as SolutionIcon,
     Edit,
     Delete,

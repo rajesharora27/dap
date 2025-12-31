@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Solution } from '../types';
 import { Box, Paper, Typography, LinearProgress, Chip, useTheme, alpha, Divider, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
-import { Speed as SpeedIcon, CheckCircle as CheckCircleIcon, Assignment as TaskIcon, Extension as ProductIcon, Description as DocIcon, OndemandVideo as VideoIcon } from '@shared/components/FAIcon';
+import { Speed as SpeedIcon, CheckCircle as CheckCircleIcon, Assignment as TaskIcon, BoxIconOutlined as ProductIcon, Description as DocIcon, OndemandVideo as VideoIcon } from '@shared/components/FAIcon';
 import { getProgressColor } from '../../../shared/utils/progressUtils';
 
 interface SolutionSummaryDashboardProps {

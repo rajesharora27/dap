@@ -9,7 +9,7 @@ import {
     useTheme,
     alpha
 } from '@mui/material';
-import { Assessment, BoxIcon as ProductIcon, LightbulbOutlined as SolutionIcon } from '@shared/components/FAIcon';
+import { Assessment, BoxIconOutlined as ProductIcon, LightbulbOutlined as SolutionIcon } from '@shared/components/FAIcon';
 import { getProgressColor } from '@shared/utils/progressUtils';
 
 interface OverviewMetrics {

@@ -43,18 +43,8 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   Menu as MenuIcon,
   Dashboard as MainIcon,
-  Inventory2 as ProductIcon,
-  Lightbulb as SolutionIcon,
-  People as CustomerIcon,
-  Book as JournalIcon,
-  AdminPanelSettings as AdminIcon,
   ExpandLess,
   ExpandMore,
-  People as UsersIcon,
-  VpnKey as RolesIcon,
-  Backup as BackupIcon,
-  Palette as ThemeIcon,
-  Info as AboutIcon,
   Storage as StorageIcon,
   Article as ArticleIcon,
   BugReport as BugReportIcon,
@@ -72,6 +62,20 @@ import {
   VerticalAlignBottom as VerticalAlignBottomIcon,
   Add
 } from '@mui/icons-material';
+
+// Custom FAIcon imports for outlined style navigation icons
+import {
+  BoxIconOutlined as ProductIcon,
+  LightbulbOutlined as SolutionIcon,
+  People as CustomerIcon,
+  Book as JournalIcon,
+  AdminPanelSettings as AdminIcon,
+  Group as UsersIcon,
+  Lock as RolesIcon,
+  Backup as BackupIcon,
+  Palette as ThemeIcon,
+  Help as AboutIcon,
+} from '@shared/components/FAIcon';
 
 import { useAuth, LoginPage } from '@features/auth';
 import { Breadcrumbs } from '../shared/components';
@@ -396,7 +400,11 @@ function AuthenticatedApp() {
                 selected={selectedSection === 'products'}
                 onClick={() => navigate('/products')}
               >
-                <ListItemIcon><ProductIcon /></ListItemIcon>
+                <ListItemIcon>
+                  <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', alignItems: 'center' }}>
+                    <ProductIcon sx={{ color: '#10B981', fontSize: '1.1rem' }} />
+                  </Box>
+                </ListItemIcon>
                 <ListItemText primary="Products" />
               </ListItemButton>
             </ListItem>
@@ -431,7 +439,11 @@ function AuthenticatedApp() {
                 selected={selectedSection === 'solutions'}
                 onClick={() => navigate('/solutions')}
               >
-                <ListItemIcon><SolutionIcon /></ListItemIcon>
+                <ListItemIcon>
+                  <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
+                    <SolutionIcon sx={{ color: '#3B82F6', fontSize: '1.1rem' }} />
+                  </Box>
+                </ListItemIcon>
                 <ListItemText primary="Solutions" />
               </ListItemButton>
             </ListItem>
@@ -466,7 +478,11 @@ function AuthenticatedApp() {
                 selected={selectedSection === 'customers'}
                 onClick={() => navigate('/customers')}
               >
-                <ListItemIcon><CustomerIcon /></ListItemIcon>
+                <ListItemIcon>
+                  <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
+                    <CustomerIcon sx={{ color: '#8B5CF6', fontSize: '1.1rem' }} />
+                  </Box>
+                </ListItemIcon>
                 <ListItemText primary="Customers" />
               </ListItemButton>
             </ListItem>
@@ -484,7 +500,11 @@ function AuthenticatedApp() {
                 '&.Mui-selected:hover': { backgroundColor: 'rgba(4, 159, 217, 0.12)' }
               }}
             >
-              <ListItemIcon><JournalIcon /></ListItemIcon>
+              <ListItemIcon>
+                <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(236, 72, 153, 0.08)', border: '1px solid rgba(236, 72, 153, 0.25)', display: 'flex', alignItems: 'center' }}>
+                  <JournalIcon sx={{ color: '#EC4899', fontSize: '1.1rem' }} />
+                </Box>
+              </ListItemIcon>
               <ListItemText primary="My Diary" />
             </ListItemButton>
 
@@ -512,7 +532,11 @@ function AuthenticatedApp() {
                     '&.Mui-selected:hover': { backgroundColor: 'rgba(4, 159, 217, 0.12)' }
                   }}
                 >
-                  <ListItemIcon><AdminIcon /></ListItemIcon>
+                  <ListItemIcon>
+                    <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(100, 116, 139, 0.08)', border: '1px solid rgba(100, 116, 139, 0.25)', display: 'flex', alignItems: 'center' }}>
+                      <AdminIcon sx={{ color: '#64748B', fontSize: '1.1rem' }} />
+                    </Box>
+                  </ListItemIcon>
                   <ListItemText primary="Admin" />
                   {adminExpanded ? <ExpandLess /> : <ExpandMore />}
                 </ListItemButton>
@@ -523,7 +547,11 @@ function AuthenticatedApp() {
                       selected={selectedSection === 'admin' && selectedAdminSubSection === 'users'}
                       onClick={() => navigate('/admin/users')}
                     >
-                      <ListItemIcon><UsersIcon /></ListItemIcon>
+                      <ListItemIcon>
+                        <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(20, 184, 166, 0.08)', border: '1px solid rgba(20, 184, 166, 0.25)', display: 'flex', alignItems: 'center' }}>
+                          <UsersIcon sx={{ color: '#14B8A6', fontSize: '0.95rem' }} />
+                        </Box>
+                      </ListItemIcon>
                       <ListItemText primary="Users" />
                     </ListItemButton>
                     <ListItemButton
@@ -531,7 +559,11 @@ function AuthenticatedApp() {
                       selected={selectedSection === 'admin' && selectedAdminSubSection === 'roles'}
                       onClick={() => navigate('/admin/roles')}
                     >
-                      <ListItemIcon><RolesIcon /></ListItemIcon>
+                      <ListItemIcon>
+                        <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', display: 'flex', alignItems: 'center' }}>
+                          <RolesIcon sx={{ color: '#F59E0B', fontSize: '0.95rem' }} />
+                        </Box>
+                      </ListItemIcon>
                       <ListItemText primary="Roles" />
                     </ListItemButton>
                     <ListItemButton
@@ -539,7 +571,11 @@ function AuthenticatedApp() {
                       selected={selectedSection === 'admin' && selectedAdminSubSection === 'backup'}
                       onClick={() => navigate('/admin/backup')}
                     >
-                      <ListItemIcon><BackupIcon /></ListItemIcon>
+                      <ListItemIcon>
+                        <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.25)', display: 'flex', alignItems: 'center' }}>
+                          <BackupIcon sx={{ color: '#22C55E', fontSize: '0.95rem' }} />
+                        </Box>
+                      </ListItemIcon>
                       <ListItemText primary="Backup & Restore" />
                     </ListItemButton>
                     <ListItemButton
@@ -547,7 +583,11 @@ function AuthenticatedApp() {
                       selected={selectedSection === 'admin' && selectedAdminSubSection === 'theme'}
                       onClick={() => navigate('/admin/theme')}
                     >
-                      <ListItemIcon><ThemeIcon /></ListItemIcon>
+                      <ListItemIcon>
+                        <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.25)', display: 'flex', alignItems: 'center' }}>
+                          <ThemeIcon sx={{ color: '#A855F7', fontSize: '0.95rem' }} />
+                        </Box>
+                      </ListItemIcon>
                       <ListItemText primary="Theme" />
                     </ListItemButton>
                     <ListItemButton
@@ -555,7 +595,11 @@ function AuthenticatedApp() {
                       selected={selectedSection === 'admin' && selectedAdminSubSection === 'about'}
                       onClick={() => navigate('/admin/about')}
                     >
-                      <ListItemIcon><AboutIcon /></ListItemIcon>
+                      <ListItemIcon>
+                        <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.25)', display: 'flex', alignItems: 'center' }}>
+                          <AboutIcon sx={{ color: '#06B6D4', fontSize: '0.95rem' }} />
+                        </Box>
+                      </ListItemIcon>
                       <ListItemText primary="About" />
                     </ListItemButton>
                   </List>

@@ -455,6 +455,7 @@ export const NewReleases = createIcon(faRocket, 'NewReleases');
 export const EmojiEvents = createIcon(faAward, 'EmojiEvents');
 export const WorkspacePremium = createIcon(faCertificate, 'WorkspacePremium');
 export const BoxIcon = createIcon(faBox, 'BoxIcon');
+export const BoxIconOutlined = createIcon(faBoxOpen, 'BoxIconOutlined'); // Outlined/open style for Products
 
 // ==========================================
 // Theme/Style Icons

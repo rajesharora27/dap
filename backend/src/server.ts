@@ -24,6 +24,7 @@ import { initSentry, captureException } from './shared/monitoring/sentry';
 import { ApolloServerPluginLandingPageLocalDefault, ApolloServerPluginLandingPageProductionDefault } from '@apollo/server/plugin/landingPage/default';
 import devToolsRouter, { addLogEntry } from './modules/dev-tools/dev-tools.router';
 import { queryComplexityPlugin, queryDepthPlugin } from './shared/graphql/queryComplexity';
+import { createHealthRouter } from './shared/health';
 // Force restart to load permission enforcement - 2025-11-11
 
 export async function createApp() {
@@ -125,16 +126,12 @@ export async function createApp() {
     methods: ['GET', 'POST', 'OPTIONS']
   }));
 
-  // Simple health / readiness endpoint
-  app.get('/health', (_req, res) => {
-    res.json({
-      status: 'ok',
-      uptime: process.uptime(),
-      fallbackAuth: envConfig.auth.bypassEnabled,
-      rateLimiting: shouldRateLimit,
-      timestamp: new Date().toISOString()
-    });
-  });
+  // Health check endpoints (Kubernetes-compatible)
+  // - /health - Detailed health status
+  // - /health/live - Liveness probe
+  // - /health/ready - Readiness probe
+  // - /health/metrics - Prometheus metrics
+  app.use('/health', createHealthRouter(prisma));
 
   // Serve telemetry export files
   const telemetryExportsDir = path.join(process.cwd(), 'temp', 'telemetry-exports');

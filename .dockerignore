@@ -1,0 +1,56 @@
+# Docker ignore file for DAP
+# Excludes files not needed in container builds
+
+# Git
+.git
+.gitignore
+
+# Dependencies (will be installed in container)
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+**/dist
+build
+**/build
+coverage
+**/coverage
+
+# Development files
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Logs
+*.log
+logs
+
+# Test artifacts
+__tests__
+**/__tests__
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Documentation (not needed in runtime)
+docs
+*.md
+!README.md
+
+# CI/CD
+.github
+
+# Local development
+.cursorrules
+.cursorignore
+temp
+**/temp
+

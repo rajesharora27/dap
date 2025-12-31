@@ -1,48 +1,117 @@
+# ====================================
+# DAP Full Stack Docker Compose
+# Production-ready configuration
+# ====================================
 version: '3.9'
+
 services:
+  # ---- PostgreSQL Database ----
   db:
-    # Fully qualify image to avoid Podman searching incorrect registries
     image: docker.io/library/postgres:16
+    container_name: dap-db
+    restart: unless-stopped
     environment:
-      POSTGRES_PASSWORD: DAP123!!!
-      POSTGRES_USER: dap
-      POSTGRES_DB: dap
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-DAP123!!!}
+      POSTGRES_USER: ${DB_USER:-dap}
+      POSTGRES_DB: ${DB_NAME:-dap}
     ports:
-      - '5432:5432'
+      - '${DB_PORT:-5432}:5432'
     volumes:
       - db-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "dap"]
-      interval: 5s
+      test: ["CMD", "pg_isready", "-U", "${DB_USER:-dap}"]
+      interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
+      start_period: 10s
+    networks:
+      - dap-network
+
+  # ---- Backend API ----
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: dap-backend
+    restart: unless-stopped
     environment:
-      DATABASE_URL: postgres://dap:DAP123!!!@db:5432/dap?schema=public
-      DB_PROVIDER: postgresql
-      NODE_ENV: development
-      SEED_DEFAULT_USERS: "false"
-      SEED_SAMPLE_DATA: "true"
-      DEFAULT_ADMIN_EMAIL: admin@example.com
-      DEFAULT_ADMIN_PASSWORD: admin
-      DEFAULT_USER_EMAIL: user@example.com
-      DEFAULT_USER_PASSWORD: user
-      SKIP_MIGRATE: "0"
-      SKIP_SEED: "0"
-      AUTH_FALLBACK: "0"
-      DISABLE_AUTH: "true"
-      NO_AUTH: "true"
+      DATABASE_URL: postgres://${DB_USER:-dap}:${DB_PASSWORD:-DAP123!!!}@db:5432/${DB_NAME:-dap}?schema=public
+      NODE_ENV: ${NODE_ENV:-production}
+      JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
+      PORT: 4000
+      # Auth settings
+      SEED_DEFAULT_USERS: ${SEED_DEFAULT_USERS:-false}
+      SEED_SAMPLE_DATA: ${SEED_SAMPLE_DATA:-false}
+      DEFAULT_ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      DEFAULT_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      # Feature flags
+      SKIP_MIGRATE: ${SKIP_MIGRATE:-0}
+      SKIP_SEED: ${SKIP_SEED:-0}
+      DISABLE_AUTH: ${DISABLE_AUTH:-false}
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - '4000:4000'
+      - '${BACKEND_PORT:-4000}:4000'
+    volumes:
+      - backend-temp:/app/temp
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - dap-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dap-api.rule=PathPrefix(`/graphql`) || PathPrefix(`/api`)"
+      - "traefik.http.services.dap-api.loadbalancer.server.port=4000"
+
+  # ---- Frontend UI ----
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: dap-frontend
+    restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     ports:
-      - '5173:5173'
+      - '${FRONTEND_PORT:-80}:80'
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - dap-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dap-frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.services.dap-frontend.loadbalancer.server.port=80"
+
+# ---- Development Services (optional) ----
+  # Uncomment for development
+  # adminer:
+  #   image: adminer
+  #   container_name: dap-adminer
+  #   restart: unless-stopped
+  #   ports:
+  #     - '${ADMINER_PORT:-8080}:8080'
+  #   networks:
+  #     - dap-network
+  #   depends_on:
+  #     - db
+
+networks:
+  dap-network:
+    driver: bridge
+
 volumes:
-  db-data: {}
+  db-data:
+    name: dap-db-data
+  backend-temp:
+    name: dap-backend-temp

@@ -1,0 +1,93 @@
+# ====================================
+# DAP Development Docker Compose
+# Hot-reload and debugging support
+# ====================================
+version: '3.9'
+
+services:
+  # ---- PostgreSQL Database ----
+  db:
+    image: docker.io/library/postgres:16
+    container_name: dap-db-dev
+    environment:
+      POSTGRES_PASSWORD: DAP123!!!
+      POSTGRES_USER: dap
+      POSTGRES_DB: dap
+    ports:
+      - '5432:5432'
+    volumes:
+      - db-data-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "dap"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - dap-network-dev
+
+  # ---- Backend API (Development) ----
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: dap-backend-dev
+    environment:
+      DATABASE_URL: postgres://dap:DAP123!!!@db:5432/dap?schema=public
+      NODE_ENV: development
+      JWT_SECRET: dev-secret-key
+      PORT: 4000
+      SEED_DEFAULT_USERS: "true"
+      SEED_SAMPLE_DATA: "true"
+      DEFAULT_ADMIN_EMAIL: admin@example.com
+      DEFAULT_ADMIN_PASSWORD: admin
+      VITE_ENABLE_DEV_TOOLS: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - '4000:4000'
+    volumes:
+      - ./backend/src:/app/src:ro
+      - ./backend/prisma:/app/prisma:ro
+    networks:
+      - dap-network-dev
+
+  # ---- Frontend UI (Development) ----
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: dap-frontend-dev
+    environment:
+      VITE_GRAPHQL_PROXY: http://backend:4000
+      VITE_API_PROXY: http://backend:4000
+      VITE_ENABLE_DEV_TOOLS: "true"
+    depends_on:
+      - backend
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+    networks:
+      - dap-network-dev
+
+  # ---- Adminer (Database UI) ----
+  adminer:
+    image: adminer
+    container_name: dap-adminer-dev
+    ports:
+      - '8080:8080'
+    networks:
+      - dap-network-dev
+    depends_on:
+      - db
+
+networks:
+  dap-network-dev:
+    driver: bridge
+
+volumes:
+  db-data-dev:
+    name: dap-db-data-dev
+

@@ -1,0 +1,33 @@
+# ====================================
+# DAP Backend Development Dockerfile
+# Hot-reload with ts-node-dev
+# ====================================
+
+FROM node:22-bullseye
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    openssl \
+    ca-certificates \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install all dependencies (including devDependencies)
+RUN npm ci --legacy-peer-deps
+
+# Copy source code
+COPY . .
+
+# Generate Prisma client
+RUN npx prisma generate
+
+# Expose port
+EXPOSE 4000
+
+# Start with hot-reload
+CMD ["npm", "run", "dev"]
+

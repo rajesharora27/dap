@@ -17,9 +17,9 @@ import { useQuery, gql } from '@apollo/client';
 import { useAuth } from '@features/auth';
 import {
     AdminPanelSettings as ShieldIcon,
-    Inventory2 as ProductIcon,
-    Lightbulb as SolutionIcon,
-    Business as CustomerIcon,
+    BoxIconOutlined as ProductIcon,
+    LightbulbOutlined as SolutionIcon,
+    People as CustomerIcon,
     ArrowForward as ArrowForwardIcon,
     CheckCircle as CheckCircleIcon,
     Warning as WarningIcon,

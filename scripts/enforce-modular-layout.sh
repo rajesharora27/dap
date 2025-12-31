@@ -13,7 +13,7 @@ set -euo pipefail
 root_dir="$(git rev-parse --show-toplevel)"
 cd "$root_dir"
 
-# Allow-list of non-modular infra paths (scripts, hooks, CI, docs, tests)
+# Allow-list of non-modular infra paths (scripts, hooks, CI, docs, tests, Docker)
 allowed_infra=(
   '^scripts/'
   '^docs/'
@@ -24,9 +24,12 @@ allowed_infra=(
   '^\.gitlab/.*'
   '^\.husky/.*'
   '^\.env\.example$'
+  '^\.dockerignore$'
   '^package\.json$'
   '^README\.md$'
   '^playwright\.config\.ts$'
+  '^docker-compose\.yml$'
+  '^docker-compose\..*\.yml$'
 )
 
 allowed_backend=(
@@ -41,6 +44,9 @@ allowed_backend=(
   '^backend/prisma/schema\.prisma$'
   '^backend/scripts/'
   '^backend/temp/'
+  '^backend/Dockerfile$'
+  '^backend/Dockerfile\..*$'
+  '^backend/entrypoint\.sh$'
 )
 
 allowed_frontend=(
@@ -62,6 +68,9 @@ allowed_frontend=(
   '^frontend/tsconfig\.json$'
   '^frontend/package\.json$'
   '^frontend/jest\.config\.js$'
+  '^frontend/Dockerfile$'
+  '^frontend/Dockerfile\..*$'
+  '^frontend/nginx\.conf$'
 )
 
 is_allowed() {
