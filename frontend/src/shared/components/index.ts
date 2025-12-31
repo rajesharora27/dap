@@ -21,3 +21,5 @@ export { SortableAttributeItem } from './custom-attributes/SortableAttributeItem
 // Dialogs
 export { CustomAttributeDialog } from './custom-attributes/CustomAttributeDialog';
 
+
+export * from './TimeAgo';

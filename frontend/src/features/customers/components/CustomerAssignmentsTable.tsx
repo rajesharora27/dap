@@ -32,7 +32,7 @@ import {
     Delete,
 } from '@shared/components/FAIcon';
 import { getProgressColor } from '@shared/utils/progressUtils';
-import { ColumnVisibilityToggle } from '@shared/components';
+import { ColumnVisibilityToggle, TimeAgo } from '@shared/components';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
 
@@ -109,17 +109,7 @@ export function CustomerAssignmentsTable({
         return [...filtered].sort((a, b) => a.progress - b.progress);
     }, [items, filterMode, searchQuery]);
 
-    const formatSyncedTime = (time?: string) => {
-        if (!time) return 'Never';
-        const diff = Date.now() - new Date(time).getTime();
-        const mins = Math.floor(diff / 60000);
-        const hrs = Math.floor(mins / 60);
-        const days = Math.floor(hrs / 24);
-        if (days > 0) return `${days}d ago`;
-        if (hrs > 0) return `${hrs}h ago`;
-        if (mins > 0) return `${mins}m ago`;
-        return 'Just now';
-    };
+
 
     return (
         <Box>
@@ -213,7 +203,7 @@ export function CustomerAssignmentsTable({
                                         <Typography variant="caption" fontWeight={600} sx={{ color: getProgressColor(item.progress) }}>{Math.round(item.progress)}%</Typography>
                                     </Box>
                                 </TableCell>
-                                <TableCell><Typography variant="caption" color="text.secondary">{formatSyncedTime(item.lastSyncedAt)}</Typography></TableCell>
+                                <TableCell><TimeAgo date={item.lastSyncedAt} variant="caption" color="text.secondary" /></TableCell>
                                 <TableCell sx={{ textAlign: 'center' }}>
                                     <Stack direction="row" spacing={1} justifyContent="center">
                                         <Tooltip title="Sync">
