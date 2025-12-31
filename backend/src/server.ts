@@ -81,10 +81,41 @@ export async function createApp() {
     app.set('trust proxy', 1);
   }
 
-  // Security headers
+  // Security headers - configured for both HTTP (dev) and HTTPS (prod)
   app.use(helmet({
-    contentSecurityPolicy: isProduction ? undefined : false,
-    crossOriginEmbedderPolicy: false
+    // Content Security Policy - disabled in dev for hot reload, enabled in prod
+    contentSecurityPolicy: isProduction ? {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],  // Required for React
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:", "https:", "blob:"],
+        connectSrc: ["'self'", "wss:", "https:"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
+        upgradeInsecureRequests: null,  // Don't force HTTPS upgrade
+      },
+    } : false,
+    
+    // HSTS - only in production with HTTPS
+    hsts: isProduction ? {
+      maxAge: 31536000,  // 1 year
+      includeSubDomains: true,
+      preload: true,
+    } : false,
+    
+    // Always enable these (work with HTTP)
+    xContentTypeOptions: true,      // X-Content-Type-Options: nosniff
+    xFrameOptions: { action: 'sameorigin' },  // Prevent clickjacking
+    xXssProtection: true,           // X-XSS-Protection: 1; mode=block
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    
+    // Disable these for compatibility
+    crossOriginEmbedderPolicy: false,
+    crossOriginOpenerPolicy: false,
+    crossOriginResourcePolicy: false,
   }));
 
   const shouldRateLimit = envConfig.rateLimiting.enabled;
