@@ -32,6 +32,7 @@ export function SolutionTasksTab() {
         loadingTasks,
         visibleColumns,
         handleToggleColumn,
+        isTasksLocked,
         // Filters
         taskTagFilter, setTaskTagFilter,
         taskOutcomeFilter, setTaskOutcomeFilter,
@@ -48,8 +49,6 @@ export function SolutionTasksTab() {
         openEditTask,
         closeTaskDialog
     } = useSolutionDialogs();
-
-    const [isTasksLocked, setIsTasksLocked] = useState(false);
 
     // Filter check
     const hasActiveFilters = taskTagFilter.length > 0 || taskOutcomeFilter.length > 0 || taskReleaseFilter.length > 0 || taskLicenseFilter.length > 0;
@@ -231,61 +230,6 @@ export function SolutionTasksTab() {
 
     return (
         <Box>
-            {/* Toolbar */}
-            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                {loadingTasks && <CircularProgress size={24} sx={{ mr: 2 }} />}
-
-                <Tooltip title={isTasksLocked ? "Unlock Tasks to Edit" : "Lock Tasks"}>
-                    <IconButton
-                        size="small"
-                        onClick={() => setIsTasksLocked(!isTasksLocked)}
-                        sx={{ mr: 1, color: isTasksLocked ? 'text.secondary' : 'primary.main', border: `1px solid ${isTasksLocked ? 'divider' : 'primary.main'}`, borderRadius: 1 }}
-                    >
-                        {isTasksLocked ? <Lock /> : <LockOpen />}
-                    </IconButton>
-                </Tooltip>
-
-                <Tooltip title={showFilters ? "Hide Filters" : hasActiveFilters ? "Filters Active" : "Show Filters"}>
-                    <IconButton
-                        onClick={() => setShowFilters(!showFilters)}
-                        color={hasActiveFilters || showFilters ? "primary" : "default"}
-                    >
-                        <Badge badgeContent={[taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length} color="secondary">
-                            <FilterList />
-                        </Badge>
-                    </IconButton>
-                </Tooltip>
-
-                {hasActiveFilters && (
-                    <Tooltip title="Clear Filters">
-                        <IconButton
-                            size="small"
-                            onClick={handleClearFilters}
-                            color="secondary"
-                        >
-                            <Clear fontSize="small" />
-                        </IconButton>
-                    </Tooltip>
-                )}
-
-                <ColumnVisibilityToggle
-                    visibleColumns={visibleColumns}
-                    onToggleColumn={handleToggleColumn}
-                />
-
-                <Tooltip title={isTasksLocked ? "Unlock Tasks to Add" : "Add Task"}>
-                    <span>
-                        <IconButton
-                            color="primary"
-                            disabled={isTasksLocked}
-                            onClick={openAddTask}
-                        >
-                            <Add />
-                        </IconButton>
-                    </span>
-                </Tooltip>
-            </Box>
-
             {/* Filters Collapse */}
             <Collapse in={showFilters}>
                 <Box sx={{ mb: 3, p: 2, bgcolor: alpha(theme.palette.primary.main, 0.04), borderRadius: 2, border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>

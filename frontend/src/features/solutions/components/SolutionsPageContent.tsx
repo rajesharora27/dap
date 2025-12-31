@@ -265,6 +265,25 @@ export function SolutionsPageContent() {
                             <Tab label="Custom Attributes" value="customAttributes" />
                         </Tabs>
 
+                        {/* Tasks Tab Toolbar - inline with tabs */}
+                        {selectedSubSection === 'tasks' && (
+                            <Box sx={{ ml: 2 }}>
+                                <TasksTabToolbar
+                                    loading={loadingTasks}
+                                    isLocked={isTasksLocked}
+                                    onToggleLock={() => setIsTasksLocked(!isTasksLocked)}
+                                    showFilters={showFilters}
+                                    onToggleFilters={() => setShowFilters(!showFilters)}
+                                    hasActiveFilters={hasActiveFilters}
+                                    activeFilterCount={activeFilterCount}
+                                    onClearFilters={handleClearFilters}
+                                    visibleColumns={visibleColumns}
+                                    onToggleColumn={handleToggleColumn}
+                                    onAddTask={openAddTask}
+                                />
+                            </Box>
+                        )}
+
                         {/* Quick Add Button logic */}
                         {selectedSubSection !== 'summary' && selectedSubSection !== 'tasks' && selectedSubSection !== 'products' && (
                             <Box sx={{ ml: 2 }}>

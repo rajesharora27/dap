@@ -136,6 +136,7 @@ The Documentation Index provides a comprehensive, categorized list of all docume
 - **[Deployment Guide](deploy/README.md)** - Production deployment
 - **[Security Policy](SECURITY.md)** - Security guidelines & vulnerability reporting
 - **[Contributing](docs/CONTRIBUTING.md)** - Contribution guidelines
+- **[Application Blueprint](docs/APPLICATION_BLUEPRINT.md)** - Template for new 100/100 apps 🆕
 
 ### 📖 Full Documentation
 
