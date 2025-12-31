@@ -158,7 +158,7 @@ export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onPro
                 color: '#FFFFFF',
               }}
             >
-              Dynamic Adoption Platform
+              Digital Adoption Platform
             </Typography>
             <Typography
               variant="caption"

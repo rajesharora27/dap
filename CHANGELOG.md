@@ -5,6 +5,23 @@ All notable changes to the DAP (Digital Adoption Platform) project will be docum
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0] - 2025-12-31
+
+### Changed
+- **UI**: Global Application Rename - "Dynamic Adoption Platform" updated to "Digital Adoption Platform".
+- **UI**: Login Page Redesign - Enterprise aesthetic with split layouts, geometric patterns, and "Mission Control" vibe.
+- **UI**: Icon Consistency - Standardized icons and colors across application:
+  - Products: Green Box (`#10B981`)
+  - Solutions: Blue Lightbulb (`#3B82F6`)
+  - Customers: Purple People (`#8B5CF6`)
+  - My Diary: Pink Book (`#EC4899`)
+- **UI**: Entity Headers - Moved Product/Solution/Customer names to header row aligned with breadcrumbs for better hierarchy.
+- **UI**: Admin Buttons - Simplified "Add User" and "Add Role" buttons to clean "+" icons (no fill).
+
+### Fixed
+- **UI**: Resolved icon inconsistency for "My Diary" between sidebar and page view.
+
+
 ## [3.0.0] - 2025-12-24
 
 ### Added

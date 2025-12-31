@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -53,16 +53,33 @@ interface Props {
   solutionProducts: SolutionProduct[];
   allProducts: Product[];
   onRefetch: () => void;
+  externalAddOpen?: boolean;
+  onExternalAddClose?: () => void;
 }
 
 export const SolutionProductList: React.FC<Props> = ({
   solutionId,
   solutionProducts,
   allProducts,
-  onRefetch
+  onRefetch,
+  externalAddOpen,
+  onExternalAddClose
 }) => {
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [selectedProductId, setSelectedProductId] = useState('');
+
+  // Sync external add trigger
+  useEffect(() => {
+    if (externalAddOpen) {
+      setAddDialogOpen(true);
+    }
+  }, [externalAddOpen]);
+
+  const handleCloseDialog = () => {
+    setAddDialogOpen(false);
+    setSelectedProductId('');
+    onExternalAddClose?.();
+  };
 
   const [addProduct] = useMutation(ADD_PRODUCT_TO_SOLUTION_ENHANCED, {
     onCompleted: onRefetch
@@ -152,23 +169,15 @@ export const SolutionProductList: React.FC<Props> = ({
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 2 }}>
-        <Tooltip title="Add Product">
-          <IconButton onClick={() => setAddDialogOpen(true)} color="primary">
-            <Add />
-          </IconButton>
-        </Tooltip>
-      </Box>
-
       <SortableProductTable
         products={sortedProducts}
         onDragEnd={handleDragEnd}
         onRemove={handleRemoveProduct}
-        emptyMessage='No products in this solution. Click "Add Product" to get started.'
+        emptyMessage='No products in this solution. Click the + icon to add a product.'
       />
 
       {/* Add Product Dialog */}
-      <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog open={addDialogOpen} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Add Product to Solution</DialogTitle>
         <DialogContent>
           <FormControl fullWidth sx={{ mt: 2 }}>
@@ -192,7 +201,7 @@ export const SolutionProductList: React.FC<Props> = ({
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setAddDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleCloseDialog}>Cancel</Button>
           <Button
             onClick={handleAddProduct}
             variant="contained"

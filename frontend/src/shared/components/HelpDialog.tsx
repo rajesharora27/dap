@@ -24,9 +24,8 @@ import {
     ExpandMore,
     Dashboard,
     People,
-    Lightbulb,
-    Business,
-    Assignment,
+    LightbulbOutlined,
+    BoxIconOutlined,
     CloudUpload,
     CloudDownload,
     Psychology,
@@ -36,6 +35,7 @@ import {
     AISparkle,
     LocalOffer,
     Lock,
+    Book,
 } from '@shared/components/FAIcon';
 
 interface HelpDialogProps {
@@ -51,9 +51,9 @@ interface TocItem {
 
 const tocItems: TocItem[] = [
     { id: 'overview', title: 'Executive Overview', icon: <Dashboard fontSize="small" /> },
-    { id: 'products', title: 'Products & Tasks', icon: <Assignment fontSize="small" /> },
-    { id: 'solutions', title: 'Solutions', icon: <Lightbulb fontSize="small" /> },
-    { id: 'customers', title: 'Customers', icon: <Business fontSize="small" /> },
+    { id: 'products', title: 'Products & Tasks', icon: <BoxIconOutlined sx={{ color: '#10B981' }} fontSize="small" /> },
+    { id: 'solutions', title: 'Solutions', icon: <LightbulbOutlined sx={{ color: '#3B82F6' }} fontSize="small" /> },
+    { id: 'customers', title: 'Customers', icon: <People sx={{ color: '#8B5CF6' }} fontSize="small" /> },
     { id: 'adoption', title: 'Adoption Plans', icon: <TrendingUp fontSize="small" /> },
     { id: 'telemetry', title: 'Telemetry & Tracking', icon: <TrendingUp fontSize="small" /> },
     { id: 'tags', title: 'Tags', icon: <LocalOffer fontSize="small" /> },
@@ -97,7 +97,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
             }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                     <Dashboard />
-                    <Typography variant="h6">Dynamic Adoption Platform - Help Guide</Typography>
+                    <Typography variant="h6">Digital Adoption Platform - Help Guide</Typography>
                 </Box>
                 <IconButton onClick={onClose} sx={{ color: 'white' }}>
                     <Close />
@@ -166,7 +166,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                         </Typography>
                         <Paper elevation={0} sx={{ p: 3, bgcolor: 'primary.50', borderRadius: 2, mb: 3, border: '1px solid', borderColor: 'primary.100' }}>
                             <Typography variant="body1" paragraph>
-                                <strong>Dynamic Adoption Platform (DAP)</strong> is a Customer Success Platform designed to help organizations
+                                <strong>Digital Adoption Platform (DAP)</strong> is a Customer Success Platform designed to help organizations
                                 track and accelerate customer adoption of products and solutions. It provides a structured approach
                                 to measuring adoption progress through tasks, telemetry data, and configurable success criteria.
                             </Typography>
@@ -178,7 +178,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                         <Paper elevation={0} sx={{ p: 2, bgcolor: 'success.50', borderRadius: 2, mb: 3, border: '1px solid', borderColor: 'success.100' }}>
                             <Typography variant="subtitle1" sx={{ fontWeight: 600, color: 'success.900', mb: 1 }}>
-                                <Lightbulb sx={{ fontSize: 18, mr: 1, verticalAlign: 'text-bottom' }} />
+                                <LightbulbOutlined sx={{ fontSize: 18, mr: 1, verticalAlign: 'text-bottom', color: '#3B82F6' }} />
                                 Getting Started
                             </Typography>
                             <Typography variant="body2" color="success.900">
@@ -191,9 +191,9 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                         <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>Get Started in 3 Steps</Typography>
                         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 2, mb: 3 }}>
                             {[
-                                { icon: <Assignment />, title: '1. Model Your Portfolio', desc: 'Define your Products, adoption Tasks, and business Outcomes to create a standardized success framework.' },
-                                { icon: <Lightbulb />, title: '2. Create Solutions', desc: 'Bundle multiple products into cohesive Solutions to track complex cross-product adoption journeys.' },
-                                { icon: <Business />, title: '3. Track Customers', desc: 'Assign plans to Customers, monitor their real-time health, and use AI to uncover deep adoption insights.' },
+                                { icon: <BoxIconOutlined sx={{ color: '#10B981' }} />, title: '1. Model Your Portfolio', desc: 'Define your Products, adoption Tasks, and business Outcomes to create a standardized success framework.' },
+                                { icon: <LightbulbOutlined sx={{ color: '#3B82F6' }} />, title: '2. Create Solutions', desc: 'Bundle multiple products into cohesive Solutions to track complex cross-product adoption journeys.' },
+                                { icon: <People sx={{ color: '#8B5CF6' }} />, title: '3. Track Customers', desc: 'Assign plans to Customers, monitor their real-time health, and use AI to uncover deep adoption insights.' },
                             ].map((item, i) => (
                                 <Paper key={i} elevation={0} sx={{ p: 2.5, border: '1px solid', borderColor: 'primary.100', bgcolor: 'primary.50', borderRadius: 2 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1, color: 'primary.main' }}>
@@ -210,8 +210,8 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                     {/* Products & Tasks */}
                     <Box id="help-section-products">
-                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
-                            <Assignment sx={{ mr: 1, verticalAlign: 'middle' }} />
+                        <Typography variant="h4" gutterBottom sx={{ color: '#10B981', fontWeight: 600 }}>
+                            <BoxIconOutlined sx={{ mr: 1, verticalAlign: 'middle', color: '#10B981' }} />
                             Products & Tasks
                         </Typography>
 
@@ -266,8 +266,8 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                     {/* Solutions */}
                     <Box id="help-section-solutions">
-                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
-                            <Lightbulb sx={{ mr: 1, verticalAlign: 'middle' }} />
+                        <Typography variant="h4" gutterBottom sx={{ color: '#3B82F6', fontWeight: 600 }}>
+                            <LightbulbOutlined sx={{ mr: 1, verticalAlign: 'middle', color: '#3B82F6' }} />
                             Solutions
                         </Typography>
                         <Typography paragraph>
@@ -310,8 +310,8 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                     {/* Customers */}
                     <Box id="help-section-customers">
-                        <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
-                            <Business sx={{ mr: 1, verticalAlign: 'middle' }} />
+                        <Typography variant="h4" gutterBottom sx={{ color: '#8B5CF6', fontWeight: 600 }}>
+                            <People sx={{ mr: 1, verticalAlign: 'middle', color: '#8B5CF6' }} />
                             Customers
                         </Typography>
                         <Typography paragraph>
@@ -645,7 +645,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                     {/* Footer */}
                     <Box sx={{ mt: 6, pt: 3, borderTop: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
                         <Typography variant="body2" color="text.secondary">
-                            Dynamic Adoption Platform v{import.meta.env.__APP_VERSION__ || '2.4.0'}
+                            Digital Adoption Platform v{import.meta.env.__APP_VERSION__ || '2.4.0'}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                             Need more help? Contact your system administrator.

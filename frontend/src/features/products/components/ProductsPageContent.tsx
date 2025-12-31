@@ -395,17 +395,25 @@ export function ProductsPageContent() {
                         </>
                     )}
                 </Box>
+
+                {/* Product Name - aligned with breadcrumb path */}
+                {selectedProduct && (
+                    <Typography
+                        sx={{
+                            fontSize: '0.875rem',
+                            fontWeight: 700,
+                            color: 'text.primary',
+                            ml: 'auto',
+                        }}
+                    >
+                        {selectedProduct.name}
+                    </Typography>
+                )}
             </Box>
 
             {/* Selected Product Content */}
             {selectedProduct && selectedProductId && (
                 <Paper sx={{ mb: 3, overflow: 'hidden' }}>
-                    <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Typography variant="h6">{selectedProduct.name}</Typography>
-                        </Box>
-                    </Box>
-
                     {/* Tabs */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 2 }}>
                         <Tabs

@@ -13,7 +13,7 @@ import {
 import {
     PlaylistAddCheck as TodoIcon,
     BookmarkBorder as BookmarkIcon,
-    NoteSticky as DiaryIcon,
+    Book as DiaryIcon,
     Add as AddIcon,
 } from '@shared/components/FAIcon';
 import { TodoTab, TodoTabRef } from './TodoTab';
@@ -73,13 +73,11 @@ export const DiaryPage: React.FC = () => {
                         width: 48,
                         height: 48,
                         borderRadius: 2,
-                        bgcolor: 'transparent',
-                        color: 'primary.main',
-                        border: '1px solid',
-                        borderColor: 'divider',
+                        bgcolor: 'rgba(236, 72, 153, 0.08)',
+                        border: '1px solid rgba(236, 72, 153, 0.25)',
                     }}
                 >
-                    <DiaryIcon sx={{ fontSize: 28 }} />
+                    <DiaryIcon sx={{ fontSize: 28, color: '#EC4899' }} />
                 </Box>
                 <Box>
                     <Typography variant="h4" fontWeight={700} color="text.primary">

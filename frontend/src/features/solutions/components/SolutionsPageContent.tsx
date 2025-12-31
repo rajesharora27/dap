@@ -77,6 +77,9 @@ export function SolutionsPageContent() {
         openAddTask
     } = useSolutionDialogs();
 
+    // Products tab add dialog state
+    const [productsAddOpen, setProductsAddOpen] = useState(false);
+
     // -- Handlers --
     const handleSaveSolution = async () => {
         // SolutionDialog handles everything internally (creating, updating, sub-entities).
@@ -234,17 +237,25 @@ export function SolutionsPageContent() {
                         </>
                     )}
                 </Box>
+
+                {/* Solution Name - aligned with breadcrumb path */}
+                {selectedSolution && (
+                    <Typography
+                        sx={{
+                            fontSize: '0.875rem',
+                            fontWeight: 700,
+                            color: 'text.primary',
+                            ml: 'auto',
+                        }}
+                    >
+                        {selectedSolution.name}
+                    </Typography>
+                )}
             </Box>
 
             {/* Selected Solution Content */}
             {selectedSolution && selectedSolutionId && (
                 <Paper sx={{ mb: 3, overflow: 'hidden' }}>
-                    <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                            <Typography variant="h6">{selectedSolution.name}</Typography>
-                        </Box>
-                    </Box>
-
                     {/* Tabs */}
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 2 }}>
                         <Tabs
@@ -281,6 +292,20 @@ export function SolutionsPageContent() {
                                     onToggleColumn={handleToggleColumn}
                                     onAddTask={openAddTask}
                                 />
+                            </Box>
+                        )}
+
+                        {/* Products Tab Add Button */}
+                        {selectedSubSection === 'products' && (
+                            <Box sx={{ ml: 2 }}>
+                                <Tooltip title="Add Product">
+                                    <IconButton
+                                        color="primary"
+                                        onClick={() => setProductsAddOpen(true)}
+                                    >
+                                        <Add />
+                                    </IconButton>
+                                </Tooltip>
                             </Box>
                         )}
 
@@ -332,6 +357,8 @@ export function SolutionsPageContent() {
                                         refetchSelectedSolution();
                                         refetchTasks();
                                     }}
+                                    externalAddOpen={productsAddOpen}
+                                    onExternalAddClose={() => setProductsAddOpen(false)}
                                 />
                             </Box>
                         )}

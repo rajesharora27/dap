@@ -902,13 +902,14 @@ export const RoleManagement: React.FC = () => {
         <Typography variant="h4" sx={{ fontWeight: 600 }}>
           Role Management
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleAddRole}
-        >
-          Add Role
-        </Button>
+        <Tooltip title="Add Role">
+          <IconButton
+            color="primary"
+            onClick={handleAddRole}
+          >
+            <AddIcon />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* Success/Error Messages */}

@@ -453,13 +453,14 @@ export const UserManagement: React.FC = () => {
         <Typography variant="h4" sx={{ fontWeight: 600 }}>
           User Management
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleAddUser}
-        >
-          Add User
-        </Button>
+        <Tooltip title="Add User">
+          <IconButton
+            color="primary"
+            onClick={handleAddUser}
+          >
+            <AddIcon />
+          </IconButton>
+        </Tooltip>
       </Box>
 
       {/* Success/Error Messages */}
