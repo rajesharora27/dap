@@ -27,6 +27,8 @@ allowed_infra=(
   '^\.dockerignore$'
   '^package\.json$'
   '^README\.md$'
+  '^SECURITY\.md$'
+  '^CHANGELOG\.md$'
   '^playwright\.config\.ts$'
   '^docker-compose\.yml$'
   '^docker-compose\..*\.yml$'

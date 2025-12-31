@@ -50,8 +50,14 @@ export function useCustomerMutations() {
 
     const [createSolutionAdoptionPlan, { loading: creatingSolutionPlan }] = useMutation(CREATE_SOLUTION_ADOPTION_PLAN);
 
-    const [syncAdoptionPlan, { loading: syncingPlan }] = useMutation(SYNC_ADOPTION_PLAN);
-    const [syncSolutionAdoptionPlan, { loading: syncingSolutionPlan }] = useMutation(SYNC_SOLUTION_ADOPTION_PLAN);
+    const [syncAdoptionPlan, { loading: syncingPlan }] = useMutation(SYNC_ADOPTION_PLAN, {
+        refetchQueries: [{ query: CUSTOMERS }],
+        awaitRefetchQueries: true
+    });
+    const [syncSolutionAdoptionPlan, { loading: syncingSolutionPlan }] = useMutation(SYNC_SOLUTION_ADOPTION_PLAN, {
+        refetchQueries: [{ query: CUSTOMERS }],
+        awaitRefetchQueries: true
+    });
 
     const [updateTaskStatus] = useMutation(UPDATE_TASK_STATUS);
     const [exportTelemetryTemplate] = useMutation(EXPORT_TELEMETRY_TEMPLATE);

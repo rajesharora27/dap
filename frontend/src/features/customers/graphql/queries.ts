@@ -30,6 +30,7 @@ export const CUSTOMERS = gql`
           progressPercentage
           totalTasks
           completedTasks
+          lastSyncedAt
         }
       }
       solutions {

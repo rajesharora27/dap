@@ -72,6 +72,9 @@ export const SYNC_ADOPTION_PLAN = gql`
       completedTasks
       needsSync
       lastSyncedAt
+      customerProduct {
+        id
+      }
       licenseLevel
       selectedOutcomes {
         id
@@ -246,6 +249,7 @@ export const SYNC_SOLUTION_ADOPTION_PLAN = gql`
         id
         productAdoptionPlan {
           id
+          lastSyncedAt
           customerProduct {
             tags {
               id

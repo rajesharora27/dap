@@ -128,9 +128,12 @@ The Documentation Index provides a comprehensive, categorized list of all docume
 
 - **[Quick Start](QUICK_START.md)** - Get started in minutes
 - **[Context Document](CONTEXT.md)** - Comprehensive app overview (AI assistants & developers)
+- **[API Reference](docs/API_REFERENCE.md)** - GraphQL API documentation
 - **[Features](docs/FEATURES.md)** - Complete feature list
 - **[Architecture](docs/ARCHITECTURE.md)** - System design
 - **[Deployment Guide](deploy/README.md)** - Production deployment
+- **[Security Policy](SECURITY.md)** - Security guidelines & vulnerability reporting
+- **[Contributing](docs/CONTRIBUTING.md)** - Contribution guidelines
 
 ### 📖 Full Documentation
 
