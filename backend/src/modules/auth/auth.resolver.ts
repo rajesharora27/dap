@@ -421,6 +421,20 @@ export const AuthMutationResolvers = {
       }
 
       const permissions = await authService.getUserPermissions(user.id);
+
+      // Get user roles
+      const userRoles = await context.prisma.userRole.findMany({
+        where: { userId: user.id },
+        include: {
+          role: {
+            select: { name: true }
+          }
+        }
+      });
+      const roles = userRoles
+        .filter((ur: any) => ur.role)
+        .map((ur: any) => ur.role.name);
+
       const userData = {
         id: user.id,
         username: user.username,
@@ -432,7 +446,7 @@ export const AuthMutationResolvers = {
       };
 
       return {
-        token: authService.generateToken(userData, permissions, session.id),
+        token: authService.generateToken(userData, permissions, session.id, roles),
         refreshToken: authService.generateRefreshToken(user.id, session.id)
       };
     } catch (error) {

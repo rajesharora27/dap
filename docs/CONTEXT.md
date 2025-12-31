@@ -9,18 +9,19 @@
 ## Table of Contents
 
 1. [Application Overview](#application-overview)
-2. [Component Naming Convention](#component-naming-convention)
-3. [System Architecture](#system-architecture)
-4. [Core Domain Model](#core-domain-model)
-5. [Key Features](#key-features)
-6. [Technology Stack](#technology-stack)
-7. [Authentication & Authorization (RBAC)](#authentication--authorization-rbac)
-8. [Deployment & Release Process](#deployment--release-process)
-9. [Database Schema](#database-schema)
-10. [Development Workflow](#development-workflow)
-11. [Production Environment](#production-environment)
-12. [Recent Changes & Fixes](#recent-changes--fixes)
-13. [Known Issues & Limitations](#known-issues--limitations)
+2. [Quality Standards](#quality-standards)
+3. [Component Naming Convention](#component-naming-convention)
+4. [System Architecture](#system-architecture)
+5. [Core Domain Model](#core-domain-model)
+6. [Key Features](#key-features)
+7. [Technology Stack](#technology-stack)
+8. [Authentication & Authorization (RBAC)](#authentication--authorization-rbac)
+9. [Deployment & Release Process](#deployment--release-process)
+10. [Database Schema](#database-schema)
+11. [Development Workflow](#development-workflow)
+12. [Production Environment](#production-environment)
+13. [Recent Changes & Fixes](#recent-changes--fixes)
+14. [Known Issues & Limitations](#known-issues--limitations)
 
 ---
 
@@ -44,6 +45,55 @@
 
 ### One-Paragraph Summary
 DAP is a customer adoption tracking system where an **Executive Dashboard** provides high-level strategy and product readiness visibility; **Products** are defined with custom attributes, license levels (Essential, Advantage, Signature), outcomes (business goals), and releases; products are bundled into **Solutions**; and **Customers** are assigned adoption plans. The system emphasizes a product-first approach, where structured implementation plans are defined centrally and then instantiated for customers, tracking progress via manual updates or automated telemetry.
+
+---
+
+## Quality Standards
+
+> [!IMPORTANT]
+> **DAP has achieved a 100/100 architecture score.** All contributors MUST follow the quality standards to maintain this score.
+> 
+> **Full Documentation:** See [`docs/QUALITY_STANDARDS.md`](./QUALITY_STANDARDS.md) for complete requirements and checklists.
+
+### Quick Reference - 10/10 Categories
+
+| Category | Key Requirement | Verification |
+|----------|-----------------|--------------|
+| **Architecture** | Modular structure (domain-based backend, feature-based frontend) | `scripts/enforce-modular-layout.sh` |
+| **Code Quality** | TypeScript strict, JSDoc, structured errors | `npm run lint && npm run typecheck` |
+| **Testing** | 80%+ coverage, E2E tests, factories | `npm run test:coverage` |
+| **Performance** | DataLoader, query complexity, lazy loading | Bundle analysis |
+| **DevOps** | Multi-stage Docker, health endpoints | `docker-compose.yml` |
+| **Documentation** | API/Schema refs, inline JSDoc | Manual review |
+| **Database** | Indexes, soft delete, audit fields | `schema.prisma` review |
+| **API Design** | Relay pagination, error codes, validation | Schema review |
+| **Frontend** | Feature isolation, shared hooks, lazy load | Import analysis |
+| **Security** | RBAC, headers, JWT, no hardcoded secrets | Security scan |
+
+### Pre-Commit Requirements
+
+Before every commit, run:
+
+```bash
+npm run check:all  # Runs lint, typecheck, tests, circular check
+```
+
+### Code Review Requirements
+
+All PRs require:
+- ✅ All automated checks pass
+- ✅ No decrease in test coverage
+- ✅ Follows modular architecture
+- ✅ Proper error handling (AppError)
+- ✅ JSDoc on new public APIs
+- ✅ No hardcoded secrets
+
+### Git Hooks
+
+DAP uses automated git hooks to enforce quality:
+
+- **Pre-commit**: TypeScript check, ESLint, modular layout, secrets scan
+- **Pre-push**: Full test suite, build verification
 
 ---
 

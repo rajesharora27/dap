@@ -77,7 +77,7 @@ import {
   Help as AboutIcon,
 } from '@shared/components/FAIcon';
 
-import { useAuth, LoginPage } from '@features/auth';
+import { useAuth, LoginPage, UserProfileDialog } from '@features/auth';
 import { Breadcrumbs } from '../shared/components';
 import { AuthBar } from '@features/auth/components/AuthBar';
 import { AppRoutes } from '../routes/AppRoutes';
@@ -176,6 +176,9 @@ function AuthenticatedApp() {
 
   // Admin menu state
   const [adminExpanded, setAdminExpanded] = useState(true);
+
+  // Profile dialog state
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
 
   // Dev Menu Order State
   const [devMenuItems, setDevMenuItems] = useState(() => {
@@ -321,8 +324,14 @@ function AuthenticatedApp() {
       <AuthBar
         onMenuClick={() => setDrawerOpen(!drawerOpen)}
         drawerOpen={drawerOpen}
-        onProfileClick={() => navigate('/admin/users')} // Or wherever profile is
+        onProfileClick={() => setProfileDialogOpen(true)}
         onNavigate={handleNavigate}
+      />
+
+      {/* User Profile Dialog */}
+      <UserProfileDialog
+        open={profileDialogOpen}
+        onClose={() => setProfileDialogOpen(false)}
       />
 
       <Drawer
@@ -370,122 +379,131 @@ function AuthenticatedApp() {
               <ListItemText primary="Getting Started" />
             </ListItemButton>
 
-            <ListItem
-              disablePadding
-              secondaryAction={
-                <Tooltip title="Add Product">
-                  <IconButton
-                    edge="end"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate('/products?add=true');
-                    }}
-                    sx={{ color: '#10B981', mr: 1 }}
-                  >
-                    <Add fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              }
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                  '& .MuiListItemIcon-root': { color: '#049FD9' },
-                  '& .MuiListItemText-primary': { color: '#049FD9', fontWeight: 600 }
-                },
-                '&.Mui-selected:hover': { backgroundColor: 'rgba(4, 159, 217, 0.12)' }
-              }}
-            >
-              <ListItemButton
-                selected={selectedSection === 'products'}
-                onClick={() => navigate('/products')}
+            {/* Products - Visible to Admin, SME, or users with product permissions */}
+            {(isAdmin || user?.roles?.includes('SME') || (user?.permissions?.products?.length > 0)) && (
+              <ListItem
+                disablePadding
+                secondaryAction={
+                  <Tooltip title="Add Product">
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/products?add=true');
+                      }}
+                      sx={{ color: '#10B981', mr: 1 }}
+                    >
+                      <Add fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                }
+                sx={{
+                  '&.Mui-selected': {
+                    backgroundColor: 'rgba(4, 159, 217, 0.08)',
+                    '& .MuiListItemIcon-root': { color: '#049FD9' },
+                    '& .MuiListItemText-primary': { color: '#049FD9', fontWeight: 600 }
+                  },
+                  '&.Mui-selected:hover': { backgroundColor: 'rgba(4, 159, 217, 0.12)' }
+                }}
               >
-                <ListItemIcon>
-                  <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', alignItems: 'center' }}>
-                    <ProductIcon sx={{ color: '#10B981', fontSize: '1.1rem' }} />
-                  </Box>
-                </ListItemIcon>
-                <ListItemText primary="Products" />
-              </ListItemButton>
-            </ListItem>
+                <ListItemButton
+                  selected={selectedSection === 'products'}
+                  onClick={() => navigate('/products')}
+                >
+                  <ListItemIcon>
+                    <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', alignItems: 'center' }}>
+                      <ProductIcon sx={{ color: '#10B981', fontSize: '1.1rem' }} />
+                    </Box>
+                  </ListItemIcon>
+                  <ListItemText primary="Products" />
+                </ListItemButton>
+              </ListItem>
+            )}
 
-            <ListItem
-              disablePadding
-              secondaryAction={
-                <Tooltip title="Add Solution">
-                  <IconButton
-                    edge="end"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate('/solutions?add=true');
-                    }}
-                    sx={{ color: '#3B82F6', mr: 1 }}
-                  >
-                    <Add fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              }
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'rgba(237, 108, 2, 0.08)',
-                  '& .MuiListItemIcon-root': { color: '#ed6c02' },
-                  '& .MuiListItemText-primary': { color: '#ed6c02', fontWeight: 600 }
-                },
-                '&.Mui-selected:hover': { backgroundColor: 'rgba(237, 108, 2, 0.12)' }
-              }}
-            >
-              <ListItemButton
-                selected={selectedSection === 'solutions'}
-                onClick={() => navigate('/solutions')}
+            {/* Solutions - Visible to Admin, SME, or users with solution permissions */}
+            {(isAdmin || user?.roles?.includes('SME') || (user?.permissions?.solutions?.length > 0)) && (
+              <ListItem
+                disablePadding
+                secondaryAction={
+                  <Tooltip title="Add Solution">
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/solutions?add=true');
+                      }}
+                      sx={{ color: '#3B82F6', mr: 1 }}
+                    >
+                      <Add fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                }
+                sx={{
+                  '&.Mui-selected': {
+                    backgroundColor: 'rgba(237, 108, 2, 0.08)',
+                    '& .MuiListItemIcon-root': { color: '#ed6c02' },
+                    '& .MuiListItemText-primary': { color: '#ed6c02', fontWeight: 600 }
+                  },
+                  '&.Mui-selected:hover': { backgroundColor: 'rgba(237, 108, 2, 0.12)' }
+                }}
               >
-                <ListItemIcon>
-                  <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
-                    <SolutionIcon sx={{ color: '#3B82F6', fontSize: '1.1rem' }} />
-                  </Box>
-                </ListItemIcon>
-                <ListItemText primary="Solutions" />
-              </ListItemButton>
-            </ListItem>
+                <ListItemButton
+                  selected={selectedSection === 'solutions'}
+                  onClick={() => navigate('/solutions')}
+                >
+                  <ListItemIcon>
+                    <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
+                      <SolutionIcon sx={{ color: '#3B82F6', fontSize: '1.1rem' }} />
+                    </Box>
+                  </ListItemIcon>
+                  <ListItemText primary="Solutions" />
+                </ListItemButton>
+              </ListItem>
+            )}
 
-            <ListItem
-              disablePadding
-              secondaryAction={
-                <Tooltip title="Add Customer">
-                  <IconButton
-                    edge="end"
-                    size="small"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate('/customers?add=true');
-                    }}
-                    sx={{ color: '#2e7d32', mr: 1 }}
-                  >
-                    <Add fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              }
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'rgba(46, 125, 50, 0.08)',
-                  '& .MuiListItemIcon-root': { color: '#2e7d32' },
-                  '& .MuiListItemText-primary': { color: '#2e7d32', fontWeight: 600 }
-                },
-                '&.Mui-selected:hover': { backgroundColor: 'rgba(46, 125, 50, 0.12)' }
-              }}
-            >
-              <ListItemButton
-                selected={selectedSection === 'customers'}
-                onClick={() => navigate('/customers')}
+            {/* Customers - Visible to Admin, CS, or users with customer permissions */}
+            {(isAdmin || user?.roles?.includes('CS') || user?.roles?.includes('CSS') || (user?.permissions?.customers?.length > 0)) && (
+              <ListItem
+                disablePadding
+                secondaryAction={
+                  <Tooltip title="Add Customer">
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/customers?add=true');
+                      }}
+                      sx={{ color: '#2e7d32', mr: 1 }}
+                    >
+                      <Add fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                }
+                sx={{
+                  '&.Mui-selected': {
+                    backgroundColor: 'rgba(46, 125, 50, 0.08)',
+                    '& .MuiListItemIcon-root': { color: '#2e7d32' },
+                    '& .MuiListItemText-primary': { color: '#2e7d32', fontWeight: 600 }
+                  },
+                  '&.Mui-selected:hover': { backgroundColor: 'rgba(46, 125, 50, 0.12)' }
+                }}
               >
-                <ListItemIcon>
-                  <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
-                    <CustomerIcon sx={{ color: '#8B5CF6', fontSize: '1.1rem' }} />
-                  </Box>
-                </ListItemIcon>
-                <ListItemText primary="Customers" />
-              </ListItemButton>
-            </ListItem>
+                <ListItemButton
+                  selected={selectedSection === 'customers'}
+                  onClick={() => navigate('/customers')}
+                >
+                  <ListItemIcon>
+                    <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
+                      <CustomerIcon sx={{ color: '#8B5CF6', fontSize: '1.1rem' }} />
+                    </Box>
+                  </ListItemIcon>
+                  <ListItemText primary="Customers" />
+                </ListItemButton>
+              </ListItem>
+            )}
 
             {/* My Diary */}
             <ListItemButton

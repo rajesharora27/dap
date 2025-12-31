@@ -44,7 +44,7 @@ export class AuthService {
 
   // Generate JWT token
   // Generate JWT token
-  generateToken(user: User, permissions: Permission[], sessionId: string): string {
+  generateToken(user: User, permissions: Permission[], sessionId: string, roles: string[] = []): string {
     const payload = {
       userId: user.id,
       sessionId,
@@ -54,6 +54,7 @@ export class AuthService {
       isAdmin: user.isAdmin,
       mustChangePassword: user.mustChangePassword,
       permissions: this.formatPermissionsForToken(permissions),
+      roles, // Include roles in JWT for frontend menu visibility
     };
 
     return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
@@ -144,6 +145,19 @@ export class AuthService {
     // Get permissions
     const permissions = await this.getUserPermissions(user.id);
 
+    // Get user roles
+    const userRoles = await this.prisma.userRole.findMany({
+      where: { userId: user.id },
+      include: {
+        role: {
+          select: { name: true }
+        }
+      }
+    });
+    const roles = userRoles
+      .filter((ur: any) => ur.role)
+      .map((ur: any) => ur.role.name);
+
     // Generate tokens
     // Generate tokens
     const userData: User = {
@@ -164,7 +178,7 @@ export class AuthService {
       }
     });
 
-    const token = this.generateToken(userData, permissions, session.id);
+    const token = this.generateToken(userData, permissions, session.id, roles);
     const refreshToken = this.generateRefreshToken(user.id, session.id);
 
     // Log successful login
@@ -244,7 +258,7 @@ export class AuthService {
       mustChangePassword: false
     };
 
-    return this.generateToken(userData, permissions, session.id);
+    return this.generateToken(userData, permissions, session.id, []); // New users start with no roles
   }
 
   // Change password

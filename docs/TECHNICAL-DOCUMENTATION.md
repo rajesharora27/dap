@@ -700,4 +700,130 @@ npx prisma studio
 
 ---
 
+---
+
+## 🎯 **Quality Compliance Requirements**
+
+> **DAP maintains a 100/100 architecture score across all categories.**
+> All contributors MUST follow these standards. See [`QUALITY_STANDARDS.md`](./QUALITY_STANDARDS.md) for complete details.
+
+### Mandatory Patterns
+
+#### 1. Error Handling Pattern
+```typescript
+// ALWAYS use structured errors
+import { AppError, ErrorCodes } from '@shared/errors';
+
+// ✅ Correct
+if (!user) {
+  throw new AppError('User not found', ErrorCodes.NOT_FOUND, 404);
+}
+
+// ❌ Wrong
+if (!user) {
+  throw new Error('User not found');
+}
+```
+
+#### 2. DataLoader Pattern (Backend)
+```typescript
+// ALWAYS use DataLoader in resolvers to prevent N+1 queries
+
+// ✅ Correct - Uses batched loading
+const Product = {
+  tasks: (parent, _, ctx) => ctx.loaders.tasksByProduct.load(parent.id),
+};
+
+// ❌ Wrong - N+1 query
+const Product = {
+  tasks: (parent) => prisma.task.findMany({ where: { productId: parent.id } }),
+};
+```
+
+#### 3. Async Handler Pattern
+```typescript
+// ALWAYS wrap async operations
+import { asyncHandler } from '@shared/errors';
+
+// ✅ Correct
+const createProduct = asyncHandler(async (input: CreateProductInput) => {
+  // implementation
+});
+
+// ❌ Wrong - No error handling
+const createProduct = async (input: CreateProductInput) => {
+  // implementation
+};
+```
+
+#### 4. Type Safety Pattern
+```typescript
+// NEVER use 'any' - always define proper types
+
+// ✅ Correct
+interface ProductInput {
+  name: string;
+  description?: string;
+  customAttrs?: Record<string, unknown>;
+}
+
+function createProduct(input: ProductInput): Promise<Product> { ... }
+
+// ❌ Wrong
+function createProduct(input: any): any { ... }
+```
+
+#### 5. Lazy Loading Pattern (Frontend)
+```typescript
+// ALL page components must be lazy loaded
+
+// ✅ Correct
+const ProductsPage = React.lazy(() => import('@features/products/pages/ProductsPage'));
+
+<LazyLoad skeleton={<PageSkeleton />}>
+  <ProductsPage />
+</LazyLoad>
+
+// ❌ Wrong - Direct import
+import { ProductsPage } from '@features/products/pages/ProductsPage';
+```
+
+### Pre-Commit Requirements
+
+```bash
+# Run before EVERY commit
+npm run check:all
+
+# Individual checks
+npm run lint          # ESLint
+npm run typecheck     # TypeScript strict mode
+npm run test          # Unit tests
+npm run check:circular # Circular dependency check
+```
+
+### Code Review Checklist
+
+Before approving any PR, verify:
+
+- [ ] **Architecture**: Code in correct module/feature directory
+- [ ] **Types**: No `any` types, proper interfaces defined
+- [ ] **Errors**: Uses `AppError` class, not raw throws
+- [ ] **Tests**: New code has corresponding tests
+- [ ] **Docs**: JSDoc on new public APIs
+- [ ] **Security**: No hardcoded secrets, RBAC checks on resolvers
+- [ ] **Performance**: Uses DataLoader, no N+1 patterns
+
+### Common Violations to Avoid
+
+| Violation | Impact | Fix |
+|-----------|--------|-----|
+| Code outside modules | Architecture score drops | Move to `modules/` or `features/` |
+| Missing DataLoader | Performance score drops | Use `ctx.loaders.*` |
+| Raw `throw new Error()` | Code quality drops | Use `AppError` |
+| Missing tests | Testing score drops | Add unit/integration tests |
+| Hardcoded secrets | Security score drops | Use environment variables |
+| Missing JSDoc | Documentation score drops | Add function documentation |
+
+---
+
 **This documentation provides a comprehensive understanding of the DAP system architecture, enabling anyone to understand, maintain, and extend the codebase effectively.**

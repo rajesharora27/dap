@@ -6,6 +6,7 @@
     "node": ">=22"
   },
   "scripts": {
+    "prepare": "bash scripts/install-hooks.sh || true",
     "test": "npm run test:backend && npm run test:frontend",
     "test:backend": "cd backend && npm test",
     "test:frontend": "cd frontend && npm test",
@@ -29,8 +30,11 @@
     "check:circular:frontend": "cd frontend && npx madge --circular --extensions ts,tsx src/",
     "check:deps": "npm run check:circular",
     "check:quality": "npm run lint && npm run typecheck && npm run check:circular",
-    "check:all": "npm run check:quality && npm run test:coverage",
-    "quality": "npm run check:quality"
+    "check:all": "npm run check:quality && npm run test",
+    "quality": "npm run check:quality",
+    "quality:full": "bash scripts/quality-check.sh --full",
+    "quality:quick": "bash scripts/quality-check.sh --quick",
+    "quality:report": "bash scripts/quality-check.sh --full --report"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

@@ -133,4 +133,79 @@ Schema conventions:
 
 ---
 
+## 8. Quality Standards & Compliance
+
+> **DAP maintains a 100/100 architecture score.** All code changes MUST comply with these standards.
+> 
+> See [`docs/QUALITY_STANDARDS.md`](./QUALITY_STANDARDS.md) for complete requirements.
+
+### Architecture Principles (MUST Follow)
+
+| Principle | Requirement | Enforcement |
+|-----------|-------------|-------------|
+| **Modularity** | Backend: `src/modules/[domain]/`, Frontend: `src/features/[feature]/` | Pre-commit hook |
+| **No Circular Dependencies** | Modules cannot have circular imports | `npm run check:circular` |
+| **Barrel Exports** | Every module exports via `index.ts` | Code review |
+| **Import Boundaries** | Features only import from `@shared/*` or own module | ESLint |
+| **Single Responsibility** | Each module handles one domain | Code review |
+
+### Code Quality Standards (MUST Follow)
+
+```typescript
+// ✅ CORRECT: Structured error handling
+import { AppError, ErrorCodes } from '@shared/errors';
+throw new AppError('Resource not found', ErrorCodes.NOT_FOUND, 404);
+
+// ❌ WRONG: Raw error
+throw new Error('Resource not found');
+```
+
+```typescript
+// ✅ CORRECT: Use DataLoader to prevent N+1
+const tasks = await ctx.loaders.tasksByProduct.load(productId);
+
+// ❌ WRONG: Direct query in resolver loop
+const tasks = await prisma.task.findMany({ where: { productId } });
+```
+
+```typescript
+// ✅ CORRECT: Typed with JSDoc
+/**
+ * Creates a new product with the given input.
+ * @param input - Product creation parameters
+ * @returns The created product
+ * @throws {AppError} If validation fails
+ */
+async function createProduct(input: CreateProductInput): Promise<Product> { ... }
+
+// ❌ WRONG: Untyped, undocumented
+async function createProduct(input: any) { ... }
+```
+
+### Pre-Commit Checklist
+
+```bash
+# Run before every commit
+npm run check:all
+
+# This executes:
+# 1. npm run lint          - ESLint
+# 2. npm run typecheck     - TypeScript strict
+# 3. npm run test          - Unit tests
+# 4. npm run check:circular - Circular dependency check
+```
+
+### Automated Enforcement
+
+| Check | Tool | When |
+|-------|------|------|
+| Modular layout | `enforce-modular-layout.sh` | Pre-commit |
+| TypeScript strict | `tsc --noEmit` | Pre-commit |
+| ESLint rules | `eslint` | Pre-commit |
+| Circular deps | `madge` | Pre-commit |
+| Test coverage | `jest --coverage` | Pre-push |
+| Security scan | `npm audit` | CI/CD |
+
+---
+
 The architecture favors explicit modules with clear seams so future teams can extend Excel automation, telemetry analytics, or deployment targets without untangling legacy scripts.

@@ -71,13 +71,14 @@ export const LoginPage: React.FC = () => {
         try {
           const payload = JSON.parse(atob(res.data.login.split('.')[1]));
           setUser({
-            id: payload.uid,
+            id: payload.userId || payload.uid, // Support both old and new JWT field names
             username: payload.username || username,
             email: payload.email,
             fullName: payload.fullName,
             isAdmin: payload.isAdmin || payload.role === 'ADMIN',
             role: payload.role,
-            roles: payload.roles || []
+            roles: payload.roles || [],
+            permissions: payload.permissions || { products: [], solutions: [], customers: [], system: false }
           });
         } catch (err) {
           setUser({ username });

@@ -1,0 +1,229 @@
+#!/bin/bash
+
+# =============================================================================
+# DAP Pre-Commit Hook
+# =============================================================================
+# Purpose: Ensure all commits maintain the 100/100 architecture score
+# 
+# Checks performed:
+#   1. Modular layout enforcement
+#   2. TypeScript compilation
+#   3. ESLint (staged files only)
+#   4. Secrets detection
+#   5. Circular dependency check
+#
+# To bypass (emergency only): git commit --no-verify
+# =============================================================================
+
+set -e
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Header
+echo ""
+echo -e "${BLUE}╔══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}║          DAP Quality Gate - Pre-Commit Checks                ║${NC}"
+echo -e "${BLUE}║          Maintaining 100/100 Architecture Score              ║${NC}"
+echo -e "${BLUE}╚══════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+# Track failures
+FAILED=0
+
+# Get the root directory
+ROOT_DIR=$(git rev-parse --show-toplevel)
+cd "$ROOT_DIR"
+
+# =============================================================================
+# Check 1: Modular Layout Enforcement
+# =============================================================================
+echo -e "${YELLOW}[1/5]${NC} Checking modular layout..."
+
+if [ -f "scripts/enforce-modular-layout.sh" ]; then
+    if bash scripts/enforce-modular-layout.sh; then
+        echo -e "  ${GREEN}✓${NC} Modular layout: PASSED"
+    else
+        echo -e "  ${RED}✗${NC} Modular layout: FAILED"
+        echo -e "  ${RED}  Files must be in proper module/feature directories${NC}"
+        FAILED=1
+    fi
+else
+    echo -e "  ${YELLOW}⚠${NC} Modular layout script not found, skipping"
+fi
+
+# =============================================================================
+# Check 2: TypeScript Compilation
+# =============================================================================
+echo -e "${YELLOW}[2/5]${NC} Checking TypeScript compilation..."
+
+# Backend
+if [ -f "backend/tsconfig.json" ]; then
+    echo -e "  Checking backend..."
+    if cd backend && npx tsc --noEmit 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} Backend TypeScript: PASSED"
+    else
+        echo -e "  ${RED}✗${NC} Backend TypeScript: FAILED"
+        echo -e "  ${RED}  Run 'cd backend && npx tsc --noEmit' for details${NC}"
+        FAILED=1
+    fi
+    cd "$ROOT_DIR"
+fi
+
+# Frontend
+if [ -f "frontend/tsconfig.json" ]; then
+    echo -e "  Checking frontend..."
+    if cd frontend && npx tsc --noEmit 2>/dev/null; then
+        echo -e "  ${GREEN}✓${NC} Frontend TypeScript: PASSED"
+    else
+        echo -e "  ${RED}✗${NC} Frontend TypeScript: FAILED"
+        echo -e "  ${RED}  Run 'cd frontend && npx tsc --noEmit' for details${NC}"
+        FAILED=1
+    fi
+    cd "$ROOT_DIR"
+fi
+
+# =============================================================================
+# Check 3: ESLint (staged files only for speed)
+# =============================================================================
+echo -e "${YELLOW}[3/5]${NC} Checking ESLint on staged files..."
+
+# Get staged .ts and .tsx files
+STAGED_TS_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ts|tsx)$' || true)
+
+if [ -n "$STAGED_TS_FILES" ]; then
+    # Backend files
+    BACKEND_FILES=$(echo "$STAGED_TS_FILES" | grep "^backend/" || true)
+    if [ -n "$BACKEND_FILES" ]; then
+        echo -e "  Linting backend files..."
+        cd backend
+        if echo "$BACKEND_FILES" | sed 's|^backend/||' | xargs npx eslint --max-warnings=0 2>/dev/null; then
+            echo -e "  ${GREEN}✓${NC} Backend ESLint: PASSED"
+        else
+            echo -e "  ${RED}✗${NC} Backend ESLint: FAILED"
+            FAILED=1
+        fi
+        cd "$ROOT_DIR"
+    fi
+    
+    # Frontend files
+    FRONTEND_FILES=$(echo "$STAGED_TS_FILES" | grep "^frontend/" || true)
+    if [ -n "$FRONTEND_FILES" ]; then
+        echo -e "  Linting frontend files..."
+        cd frontend
+        if echo "$FRONTEND_FILES" | sed 's|^frontend/||' | xargs npx eslint --max-warnings=0 2>/dev/null; then
+            echo -e "  ${GREEN}✓${NC} Frontend ESLint: PASSED"
+        else
+            echo -e "  ${RED}✗${NC} Frontend ESLint: FAILED"
+            FAILED=1
+        fi
+        cd "$ROOT_DIR"
+    fi
+else
+    echo -e "  ${GREEN}✓${NC} No TypeScript files staged"
+fi
+
+# =============================================================================
+# Check 4: Secrets Detection
+# =============================================================================
+echo -e "${YELLOW}[4/5]${NC} Checking for hardcoded secrets..."
+
+# Patterns that indicate potential secrets
+SECRET_PATTERNS=(
+    'password\s*=\s*["\x27][^"\x27]{8,}["\x27]'
+    'api[_-]?key\s*=\s*["\x27][^"\x27]{16,}["\x27]'
+    'secret\s*=\s*["\x27][^"\x27]{16,}["\x27]'
+    'AKIA[0-9A-Z]{16}'  # AWS Access Key
+    'sk_live_[0-9a-zA-Z]{24}'  # Stripe Live Key
+    'ghp_[0-9a-zA-Z]{36}'  # GitHub Personal Access Token
+    'eyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]*'  # JWT (basic pattern)
+)
+
+SECRETS_FOUND=0
+for pattern in "${SECRET_PATTERNS[@]}"; do
+    # Check only staged files, excluding common false positive locations
+    MATCHES=$(git diff --cached --name-only --diff-filter=ACM | \
+        grep -E '\.(ts|tsx|js|jsx|json|env|yml|yaml)$' | \
+        grep -v 'package-lock.json' | \
+        grep -v '.env.example' | \
+        grep -v '__tests__' | \
+        grep -v 'test' | \
+        xargs grep -l -E "$pattern" 2>/dev/null || true)
+    
+    if [ -n "$MATCHES" ]; then
+        echo -e "  ${RED}✗${NC} Potential secret found matching pattern: $pattern"
+        echo -e "  ${RED}  Files: $MATCHES${NC}"
+        SECRETS_FOUND=1
+    fi
+done
+
+if [ $SECRETS_FOUND -eq 0 ]; then
+    echo -e "  ${GREEN}✓${NC} No hardcoded secrets detected"
+else
+    echo -e "  ${RED}✗${NC} Secrets detection: FAILED"
+    echo -e "  ${RED}  Move secrets to environment variables${NC}"
+    FAILED=1
+fi
+
+# =============================================================================
+# Check 5: Circular Dependencies (if madge is available)
+# =============================================================================
+echo -e "${YELLOW}[5/5]${NC} Checking for circular dependencies..."
+
+if command -v npx &> /dev/null; then
+    # Backend circular check
+    if [ -d "backend/src" ]; then
+        cd backend
+        CIRCULAR=$(npx madge --circular src/ 2>/dev/null | grep -v "No circular" || true)
+        if [ -z "$CIRCULAR" ]; then
+            echo -e "  ${GREEN}✓${NC} Backend: No circular dependencies"
+        else
+            echo -e "  ${RED}✗${NC} Backend has circular dependencies:"
+            echo -e "  ${RED}$CIRCULAR${NC}"
+            FAILED=1
+        fi
+        cd "$ROOT_DIR"
+    fi
+    
+    # Frontend circular check
+    if [ -d "frontend/src" ]; then
+        cd frontend
+        CIRCULAR=$(npx madge --circular src/ 2>/dev/null | grep -v "No circular" || true)
+        if [ -z "$CIRCULAR" ]; then
+            echo -e "  ${GREEN}✓${NC} Frontend: No circular dependencies"
+        else
+            echo -e "  ${RED}✗${NC} Frontend has circular dependencies:"
+            echo -e "  ${RED}$CIRCULAR${NC}"
+            FAILED=1
+        fi
+        cd "$ROOT_DIR"
+    fi
+else
+    echo -e "  ${YELLOW}⚠${NC} npx not available, skipping circular dependency check"
+fi
+
+# =============================================================================
+# Final Result
+# =============================================================================
+echo ""
+echo -e "${BLUE}══════════════════════════════════════════════════════════════${NC}"
+
+if [ $FAILED -eq 0 ]; then
+    echo -e "${GREEN}✓ All pre-commit checks PASSED${NC}"
+    echo -e "${GREEN}  Commit proceeding...${NC}"
+    echo ""
+    exit 0
+else
+    echo -e "${RED}✗ Pre-commit checks FAILED${NC}"
+    echo -e "${RED}  Please fix the issues above before committing.${NC}"
+    echo ""
+    echo -e "${YELLOW}To bypass (emergency only): git commit --no-verify${NC}"
+    echo -e "${YELLOW}See docs/QUALITY_STANDARDS.md for guidance${NC}"
+    echo ""
+    exit 1
+fi
+
