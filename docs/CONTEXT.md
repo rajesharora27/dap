@@ -1,6 +1,6 @@
 # DAP Application - Complete Context Document
 
-**Version:** 3.4.0
+**Version:** 3.4.1
 **Last Updated:** December 29, 2025 (Solution Sync Improvements)
 **Purpose:** Comprehensive context for AI assistants and developers
 
@@ -1042,6 +1042,18 @@ All DAP data is stored on `/data` partition (not root):
 ---
 
 ## Recent Changes & Fixes
+
+### Version 3.4.1 (December 30, 2025)
+
+#### Customer Overview Enhancements
+- **Live Time Updates**: Implemented a `TimeAgo` component for the "Last Synced" column that updates in real-time (every 5s). Shows seconds precision ("15s ago") for the first minute and provides a tooltip with the exact timestamp.
+- **Granular Progress Bars**: Updated progress bar color logic to use a 10% increment scale (Red <10%, through Orange/Yellow/Green spectrum, to Emerald >80% for Excellent).
+- **Adoption Risk Logic**: Refined "Overall Adoption" metric thresholds:
+  - **< 30%**: At Risk (Red)
+  - **30% - 70%**: Good (Orange/Yellow/Lime)
+  - **> 70%**: Excellent (Green)
+- **UI Refinements**: Replaced the chart icon with a checklist icon (`PlaylistAddCheck`) for the "Tasks Progress" metric card to better represent the data.
+
 
 ### Version 3.3.0 (December 29, 2025)
 
