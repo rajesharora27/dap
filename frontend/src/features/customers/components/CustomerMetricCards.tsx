@@ -9,7 +9,7 @@ import {
     useTheme,
     alpha
 } from '@mui/material';
-import { Assessment, BoxIconOutlined as ProductIcon, LightbulbOutlined as SolutionIcon } from '@shared/components/FAIcon';
+import { PlaylistAddCheck, BoxIconOutlined as ProductIcon, LightbulbOutlined as SolutionIcon } from '@shared/components/FAIcon';
 import { getProgressColor } from '@shared/utils/progressUtils';
 
 interface OverviewMetrics {
@@ -73,14 +73,14 @@ export function CustomerMetricCards({ overviewMetrics }: CustomerMetricCardsProp
                 <Box>
                     <Typography variant="body2" color="text.secondary">Overall Adoption</Typography>
                     <Typography variant="h6" fontWeight={600} color="text.primary">
-                        {overviewMetrics.adoption >= 66 ? 'Healthy' : overviewMetrics.adoption >= 33 ? 'At Risk' : 'Critical'}
+                        {overviewMetrics.adoption >= 70 ? 'Excellent' : overviewMetrics.adoption >= 30 ? 'Good' : 'At Risk'}
                     </Typography>
                 </Box>
             </Paper>
 
             {/* Tasks Summary Progress Bar */}
             <Paper elevation={0} sx={{ flex: 1.2, border: '1px solid', borderColor: 'divider', p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                <Assessment sx={{ fontSize: 32, color: getProgressColor(overviewMetrics.totalTasks > 0 ? (overviewMetrics.completedTasks / overviewMetrics.totalTasks) * 100 : 0) }} />
+                <PlaylistAddCheck sx={{ fontSize: 32, color: getProgressColor(overviewMetrics.totalTasks > 0 ? (overviewMetrics.completedTasks / overviewMetrics.totalTasks) * 100 : 0) }} />
                 <Box sx={{ flex: 1 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', mb: 1 }}>
                         <Typography variant="body2" color="text.secondary" fontWeight={500}>Tasks Progress</Typography>

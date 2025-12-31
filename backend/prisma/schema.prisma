@@ -1,3 +1,11 @@
+// =============================================================================
+// DAP DATABASE SCHEMA
+// =============================================================================
+// Database: PostgreSQL 16
+// ORM: Prisma 5.x
+// Documentation: docs/SCHEMA_REFERENCE.md
+// =============================================================================
+
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["debian-openssl-1.1.x", "debian-openssl-3.0.x", "linux-musl", "linux-musl-openssl-3.0.x", "native", "darwin-arm64"]
@@ -8,8 +16,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// =============================================================================
+// USER & AUTHENTICATION
+// =============================================================================
+// Core user management with role-based access control (RBAC).
+// Sessions track active user sessions with entity locking support.
+// =============================================================================
 
-
+/// User account with authentication and authorization
 model User {
   id                 String       @id @default(cuid())
   email              String       @unique
@@ -33,6 +47,7 @@ model User {
   diaryBookmarks     DiaryBookmark[]
 }
 
+/// Active user session with expiration tracking
 model Session {
   id             String         @id @default(cuid())
   userId         String
@@ -41,8 +56,11 @@ model Session {
   expiresAt      DateTime
   lockedEntities LockedEntity[]
   user           User           @relation(fields: [userId], references: [id])
+  
+  @@index([expiresAt])  // Fast expired session cleanup
 }
 
+/// Entity lock for concurrent editing prevention
 model LockedEntity {
   id         String   @id @default(cuid())
   entityType String
@@ -55,6 +73,14 @@ model LockedEntity {
   @@index([entityType, entityId])
 }
 
+// =============================================================================
+// PRODUCT DOMAIN
+// =============================================================================
+// Products are the core entities containing tasks, licenses, outcomes, and
+// releases. Products can be bundled into solutions and assigned to customers.
+// =============================================================================
+
+/// Product definition with tasks and configurations
 model Product {
   id               String            @id @default(cuid())
   name             String            @unique
@@ -73,8 +99,18 @@ model Product {
   outcomes         Outcome[]
   releases         Release[]
   customAttributes CustomAttribute[] // New structured custom attributes
+  
+  @@index([deletedAt])  // Fast soft-delete filtering
 }
 
+// =============================================================================
+// SOLUTION DOMAIN
+// =============================================================================
+// Solutions bundle multiple products into cohesive offerings.
+// They can have their own tasks, licenses, outcomes, and releases.
+// =============================================================================
+
+/// Solution bundling multiple products
 model Solution {
   id          String              @id @default(cuid())
   name        String
@@ -105,6 +141,14 @@ model SolutionProduct {
   @@unique([productId, solutionId])
 }
 
+// =============================================================================
+// CUSTOMER DOMAIN
+// =============================================================================
+// Customers can be assigned products and solutions. Each assignment creates
+// an adoption plan with tasks that track implementation progress.
+// =============================================================================
+
+/// Customer organization
 model Customer {
   id          String             @id @default(cuid())
   name        String
@@ -351,6 +395,14 @@ model CustomerTaskRelease {
   @@index([releaseId])
 }
 
+// =============================================================================
+// TASK MODEL
+// =============================================================================
+// Tasks are the core unit of work. They belong to either a Product or Solution
+// and can be linked to outcomes, releases, and telemetry attributes.
+// =============================================================================
+
+/// Task definition with weight, sequence, and telemetry
 model Task {
   id                  String           @id @default(cuid())
   productId           String?
@@ -458,6 +510,15 @@ model CustomerTaskTag {
   @@index([tagId])
 }
 
+// =============================================================================
+// TELEMETRY SYSTEM
+// =============================================================================
+// Telemetry tracks real-world usage data for tasks. Attributes define what
+// to measure, values store historical data, and success criteria determine
+// when a task is considered complete based on telemetry.
+// =============================================================================
+
+/// Legacy telemetry data storage (deprecated, use TelemetryAttribute)
 model Telemetry {
   id        String   @id @default(cuid())
   taskId    String
@@ -503,6 +564,14 @@ model TelemetryValue {
   @@index([createdAt])
 }
 
+// =============================================================================
+// AUDIT & HISTORY
+// =============================================================================
+// AuditLog tracks user actions for compliance and debugging.
+// ChangeSet/ChangeItem provide detailed before/after snapshots for changes.
+// =============================================================================
+
+/// Audit log entry for user actions
 model AuditLog {
   id           String   @id @default(cuid())
   userId       String?
@@ -540,6 +609,13 @@ model ChangeItem {
   changeSet   ChangeSet @relation(fields: [changeSetId], references: [id])
 }
 
+// =============================================================================
+// ENUMS
+// =============================================================================
+// Business domain enumerations for type-safe status and level tracking.
+// =============================================================================
+
+/// User system roles for RBAC
 enum SystemRole {
   ADMIN
   USER

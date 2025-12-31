@@ -47,6 +47,7 @@ export const CUSTOMERS = gql`
           totalTasks
           completedTasks
           needsSync
+          lastSyncedAt
         }
       }
     }
