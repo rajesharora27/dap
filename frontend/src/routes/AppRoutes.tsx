@@ -12,10 +12,10 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box, Typography, Button } from '@mui/material';
 
 // Lazy load skeletons for suspense fallbacks
-import { 
-    PageSkeleton, 
-    DashboardSkeleton, 
-    LoadingSpinner 
+import {
+    PageSkeleton,
+    DashboardSkeleton,
+    LoadingSpinner
 } from '../shared/components/LazyLoad';
 
 // Lazy-loaded Pages - Main Routes
@@ -51,8 +51,8 @@ import { useAuth } from '../features/auth';
 /**
  * Suspense wrapper component for consistent lazy loading
  */
-const SuspenseRoute: React.FC<{ 
-    children: React.ReactNode; 
+const SuspenseRoute: React.FC<{
+    children: React.ReactNode;
     fallback?: React.ReactNode;
 }> = ({ children, fallback = <PageSkeleton /> }) => (
     <Suspense fallback={fallback}>{children}</Suspense>
@@ -76,52 +76,52 @@ export const AppRoutes: React.FC = () => {
 
     return (
         <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            
+            <Route path="/" element={<Navigate to="dashboard" replace />} />
+
             {/* Main Routes - Lazy Loaded with Suspense */}
-            <Route 
-                path="/dashboard" 
+            <Route
+                path="/dashboard"
                 element={
                     <SuspenseRoute fallback={<DashboardSkeleton />}>
                         <DashboardPage />
                     </SuspenseRoute>
-                } 
+                }
             />
-            
-            <Route 
-                path="/diary" 
+
+            <Route
+                path="/diary"
                 element={
                     <SuspenseRoute>
                         <DiaryPage />
                     </SuspenseRoute>
-                } 
+                }
             />
 
-            <Route 
-                path="/products" 
+            <Route
+                path="/products"
                 element={
                     <SuspenseRoute>
                         <ProductsPage />
                     </SuspenseRoute>
-                } 
+                }
             />
 
-            <Route 
-                path="/solutions" 
+            <Route
+                path="/solutions"
                 element={
                     <SuspenseRoute>
                         <SolutionsPage />
                     </SuspenseRoute>
-                } 
+                }
             />
 
-            <Route 
-                path="/customers" 
+            <Route
+                path="/customers"
                 element={
                     <SuspenseRoute>
                         <CustomersPage />
                     </SuspenseRoute>
-                } 
+                }
             />
 
             {/* Admin Routes - Lazy Loaded */}
