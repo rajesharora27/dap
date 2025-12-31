@@ -35,6 +35,13 @@ export const SOLUTIONS = gql`
               node {
                 id
                 name
+                tasks(first: 100) {
+                  edges {
+                    node {
+                      id
+                    }
+                  }
+                }
               }
             }
           }
@@ -82,6 +89,13 @@ export const SOLUTIONS_WITH_DETAILS = gql`
               node {
                 id
                 name
+                tasks(first: 100) {
+                  edges {
+                    node {
+                      id
+                    }
+                  }
+                }
                 outcomes {
                   id
                   name
@@ -134,6 +148,13 @@ export const SOLUTION = gql`
           node {
             id
             name
+            tasks(first: 100) {
+              edges {
+                node {
+                  id
+                }
+              }
+            }
           }
         }
       }

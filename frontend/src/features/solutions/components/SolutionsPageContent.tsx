@@ -19,6 +19,9 @@ import { BulkImportDialog } from '@features/data-management/components/BulkImpor
 // Import mutations for sub-entity management if handling top-level save, 
 // BUT SolutionDialog mostly handles it. We just need to trigger refetch.
 import { EXPORT_SOLUTION } from '../graphql';
+import { PRODUCTS } from '@features/products';
+import { useQuery } from '@apollo/client';
+import { SolutionProductList } from './SolutionProductList';
 
 export function SolutionsPageContent() {
     const theme = useTheme();
@@ -122,6 +125,12 @@ export function SolutionsPageContent() {
             navigate({ search: newParams.toString() }, { replace: true });
         }
     }, [location.search, openAddSolution, navigate]);
+
+    // Fetch all products for the picker
+    const { data: productsData } = useQuery(PRODUCTS, {
+        fetchPolicy: 'cache-and-network'
+    });
+    const allProducts = (productsData?.products as any)?.edges?.map((e: any) => e.node) || [];
 
     if (loadingSolutions) {
         return (
@@ -230,6 +239,7 @@ export function SolutionsPageContent() {
                         >
                             <Tab label="Summary" value="summary" />
                             <Tab label="Resources" value="resources" />
+                            <Tab label="Products" value="products" />
                             <Tab label="Tasks" value="tasks" />
                             <Tab label="Tags" value="tags" />
                             <Tab label="Outcomes" value="outcomes" />
@@ -239,7 +249,7 @@ export function SolutionsPageContent() {
                         </Tabs>
 
                         {/* Quick Add Button logic */}
-                        {selectedSubSection !== 'summary' && selectedSubSection !== 'tasks' && (
+                        {selectedSubSection !== 'summary' && selectedSubSection !== 'tasks' && selectedSubSection !== 'products' && (
                             <Box sx={{ ml: 2 }}>
                                 <Tooltip title="Add Item">
                                     <IconButton
@@ -275,6 +285,21 @@ export function SolutionsPageContent() {
                             </Box>
                         )}
 
+                        {selectedSubSection === 'products' && (
+                            <Box sx={{ p: 2 }}>
+                                <SolutionProductList
+                                    solutionId={selectedSolution.id}
+                                    solutionProducts={(selectedSolution.products as any)?.edges || []}
+                                    allProducts={allProducts}
+                                    onRefetch={() => {
+                                        refetchSolutions();
+                                        refetchSelectedSolution();
+                                        refetchTasks();
+                                    }}
+                                />
+                            </Box>
+                        )}
+
                         {selectedSubSection === 'tasks' && (
                             <Box sx={{ p: 2 }}>
                                 <SolutionTasksTab />
@@ -282,7 +307,7 @@ export function SolutionsPageContent() {
                         )}
 
                         {/* Metadata Section handles all other tabs */}
-                        {selectedSubSection !== 'summary' && selectedSubSection !== 'tasks' && (
+                        {selectedSubSection !== 'summary' && selectedSubSection !== 'tasks' && selectedSubSection !== 'products' && (
                             <Box sx={{ p: 2 }}>
                                 <SolutionMetadataSection />
                             </Box>

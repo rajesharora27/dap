@@ -31,6 +31,13 @@ export const PRODUCTS = gql`
             name
             description
           }
+          tasks(first: 100) {
+            edges {
+              node {
+                id
+              }
+            }
+          }
         }
       }
     }
@@ -65,6 +72,13 @@ export const PRODUCT = gql`
         id
         name
         description
+      }
+      tasks(first: 100) {
+        edges {
+          node {
+            id
+          }
+        }
       }
       tags {
         id

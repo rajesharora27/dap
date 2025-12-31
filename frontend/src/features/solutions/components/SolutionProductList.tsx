@@ -1,15 +1,8 @@
-import * as React from 'react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   Typography,
   Button,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  Paper,
-  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -18,11 +11,25 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Divider
+  TableContainer,
+  Table,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody,
+  Paper,
+  IconButton,
+  Tooltip
 } from '@mui/material';
-import { Add, Delete, DragIndicator, ArrowUpward, ArrowDownward } from '@shared/components/FAIcon';
-import { SortableHandle } from '@shared/components/SortableHandle';
+import { Add } from '@shared/components/FAIcon';
 import { useMutation } from '@apollo/client';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { useResizableColumns } from '@shared/hooks/useResizableColumns';
+import { ResizableTableCell } from '@shared/components/ResizableTableCell';
+import { SortableProductRow } from './SortableProductRow';
+import { SortableProductTable } from './SortableProductTable';
+
 import {
   ADD_PRODUCT_TO_SOLUTION_ENHANCED,
   REMOVE_PRODUCT_FROM_SOLUTION_ENHANCED,
@@ -67,6 +74,23 @@ export const SolutionProductList: React.FC<Props> = ({
     onCompleted: onRefetch
   });
 
+  // DnD Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // Resizable Columns
+  const { columnWidths, getResizeHandleProps, isResizing } = useResizableColumns({
+    tableId: 'solutions-products-table',
+    columns: [
+      { key: 'order', minWidth: 60, defaultWidth: 80 },
+      { key: 'name', minWidth: 200, defaultWidth: 350 },
+      { key: 'totalTasks', minWidth: 120, defaultWidth: 150 },
+      { key: 'actions', minWidth: 80, defaultWidth: 100 },
+    ],
+  });
+
   const getAvailableProducts = () => {
     const solutionProductIds = solutionProducts.map((sp: SolutionProduct) => sp.node.id);
     return allProducts.filter((p: Product) => !solutionProductIds.includes(p.id));
@@ -95,150 +119,53 @@ export const SolutionProductList: React.FC<Props> = ({
     }
   };
 
-  const handleMoveUp = async (index: number) => {
-    if (index === 0) return;
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id && over) {
+      // Find indices based on product ID
+      const oldIndex = solutionProducts.findIndex((sp) => sp.node.id === active.id);
+      const newIndex = solutionProducts.findIndex((sp) => sp.node.id === over.id);
 
-    const products = [...solutionProducts].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-    const temp = products[index];
-    products[index] = products[index - 1];
-    products[index - 1] = temp;
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(solutionProducts, oldIndex, newIndex);
 
-    const productOrders = products.map((sp: any, idx: number) => ({
-      productId: sp.node.id,
-      order: idx + 1
-    }));
+        const productOrders = newOrder.map((sp, idx) => ({
+          productId: sp.node.id,
+          order: idx + 1
+        }));
 
-    await reorderProducts({
-      variables: { solutionId, productOrders }
-    });
+        try {
+          await reorderProducts({
+            variables: { solutionId, productOrders }
+          });
+        } catch (e) {
+          console.error("Reorder failed", e);
+        }
+      }
+    }
   };
 
-  const handleMoveDown = async (index: number) => {
-    const products = [...solutionProducts].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
-    if (index === products.length - 1) return;
-
-    const temp = products[index];
-    products[index] = products[index + 1];
-    products[index + 1] = temp;
-
-    const productOrders = products.map((sp: any, idx: number) => ({
-      productId: sp.node.id,
-      order: idx + 1
-    }));
-
-    await reorderProducts({
-      variables: { solutionId, productOrders }
-    });
-  };
-
-  const getProductStats = (product: Product) => {
-    const tasks = product.tasks?.edges || [];
-    const completed = tasks.filter((t: any) => t.node.completedAt).length;
-    return { total: tasks.length, completed };
-  };
-
-  const sortedProducts = [...solutionProducts].sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+  // Sort by order locally for rendering
+  const sortedProducts = [...solutionProducts]
+    .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+    .map(sp => sp.node);
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h6">Products in Solution</Typography>
-        <Button
-          variant="outlined"
-          startIcon={<Add />}
-          onClick={() => setAddDialogOpen(true)}
-          size="small"
-        >
-          Add Product
-        </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 2 }}>
+        <Tooltip title="Add Product">
+          <IconButton onClick={() => setAddDialogOpen(true)} color="primary">
+            <Add />
+          </IconButton>
+        </Tooltip>
       </Box>
 
-      <Paper variant="outlined">
-        <List>
-          {sortedProducts.map((sp: any, index: number) => {
-            const product = sp.node;
-            const stats = getProductStats(product);
-            const isFirst = index === 0;
-            const isLast = index === sortedProducts.length - 1;
-
-            return (
-              <React.Fragment key={product.id}>
-                {index > 0 && <Divider />}
-                <ListItem
-                  sx={{
-                    '&:hover .order-buttons': { opacity: 1 },
-                    display: 'flex',
-                    gap: 1
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 40 }}>
-                    <SortableHandle
-                      index={index}
-                      disableDrag={true} // Not draggable yet in this component
-                    />
-                  </Box>
-
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography variant="body1" fontWeight="medium">
-                          {product.name}
-                        </Typography>
-                        <Chip
-                          label={`${stats.completed}/${stats.total} tasks`}
-                          size="small"
-                          color={stats.completed === stats.total && stats.total > 0 ? 'success' : 'default'}
-                        />
-                      </Box>
-                    }
-                    secondary={product.resources && product.resources.length > 0 ? `${product.resources.length} resources` : 'No resources'}
-                  />
-
-                  <Box
-                    className="order-buttons"
-                    sx={{
-                      display: 'flex',
-                      gap: 0.5,
-                      opacity: 0,
-                      transition: 'opacity 0.2s'
-                    }}
-                  >
-                    <IconButton
-                      size="small"
-                      onClick={() => handleMoveUp(index)}
-                      disabled={isFirst}
-                    >
-                      <ArrowUpward fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleMoveDown(index)}
-                      disabled={isLast}
-                    >
-                      <ArrowDownward fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => handleRemoveProduct(product.id)}
-                    >
-                      <Delete fontSize="small" />
-                    </IconButton>
-                  </Box>
-                </ListItem>
-              </React.Fragment>
-            );
-          })}
-
-          {sortedProducts.length === 0 && (
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body2" color="text.secondary">
-                No products in this solution. Click "Add Product" to get started.
-              </Typography>
-            </Box>
-          )}
-        </List>
-      </Paper>
+      <SortableProductTable
+        products={sortedProducts}
+        onDragEnd={handleDragEnd}
+        onRemove={handleRemoveProduct}
+        emptyMessage='No products in this solution. Click "Add Product" to get started.'
+      />
 
       {/* Add Product Dialog */}
       <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>

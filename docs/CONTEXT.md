@@ -1,7 +1,7 @@
 # DAP Application - Complete Context Document
 
-**Version:** 3.4.1
-**Last Updated:** December 29, 2025 (Solution Sync Improvements)
+**Version:** 3.4.2
+**Last Updated:** December 30, 2025 (Solutions UI Refinement & Fixes)
 **Purpose:** Comprehensive context for AI assistants and developers
 
 ---
@@ -1042,6 +1042,19 @@ All DAP data is stored on `/data` partition (not root):
 ---
 
 ## Recent Changes & Fixes
+
+### Version 3.4.2 (December 30, 2025)
+- **Solutions Page Refinement**:
+  - Restored "Products" tab functionality and aligned tab order with Solution Dialog.
+  - Refactored Products list to use `SortableProductTable` (shared component) supporting drag-and-drop and resizing.
+  - Aligned "Add Product" button style with "Tasks" tab for UI consistency.
+- **Data Integrity Fixes**:
+  - Fixed "Total Count: 0" bug for product tasks in Solutions views by collecting standard Relay-style connection fields.
+  - Added pagination (`first: 100`) to task queries to prevent truncation of task counts.
+- **UI Improvements**:
+  - Split "Releases" and "Licenses" into distinct horizontal panels in Summary tabs.
+  - Optimized column widths for "Tasks by Outcome" panels.
+  - Standardized sequence number column width (40px) across all tables.
 
 ### Version 3.4.1 (December 30, 2025)
 

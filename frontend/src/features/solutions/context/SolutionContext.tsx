@@ -39,7 +39,7 @@ interface SolutionContextType {
     // UI State
     visibleColumns: string[];
     handleToggleColumn: (columnKey: string) => void;
-    selectedSubSection: 'summary' | 'resources' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags';
+    selectedSubSection: 'summary' | 'resources' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags' | 'products';
     setSelectedSubSection: (section: any) => void;
 
     // External Add Mode (for tables)
@@ -83,7 +83,7 @@ export const SolutionProvider: React.FC<SolutionProviderProps> = ({ children, in
         return saved ? JSON.parse(saved) : DEFAULT_VISIBLE_COLUMNS;
     });
 
-    const [selectedSubSection, setSelectedSubSection] = useState<'summary' | 'resources' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags'>('summary');
+    const [selectedSubSection, setSelectedSubSection] = useState<'summary' | 'resources' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags' | 'products'>('summary');
     const [externalAddMode, setExternalAddMode] = useState<string | null>(null);
 
     const [taskTagFilter, setTaskTagFilter] = useState<string[]>([]);

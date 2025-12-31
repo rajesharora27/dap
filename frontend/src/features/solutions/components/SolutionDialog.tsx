@@ -55,6 +55,7 @@ import { SOLUTION } from '../graphql/solutions.queries';
 import { useSolutionEditing } from '../hooks/useSolutionEditing';
 import { CREATE_SOLUTION_TAG, UPDATE_SOLUTION_TAG, DELETE_SOLUTION_TAG } from '@features/tags';
 import { PRODUCTS } from '@features/products';
+import { SortableProductTable } from './SortableProductTable';
 
 const CREATE_SOLUTION = gql`
   mutation CreateSolutionDialog($input: SolutionInput!) {
@@ -1119,13 +1120,8 @@ export const SolutionDialog: React.FC<Props> = ({
 
         {/* Products Tab - Drag & Drop */}
         <TabPanel value={tabValue} index={2}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Add products to bundle into this solution. Drag to reorder.
-          </Typography>
-
-          {/* Add Product Dropdown */}
-          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-            <FormControl fullWidth size="small">
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mb: 2 }}>
+            <FormControl size="small" sx={{ minWidth: 200, mr: 2 }}>
               <InputLabel>Add Product</InputLabel>
               <Select
                 value={productToAdd}
@@ -1139,36 +1135,25 @@ export const SolutionDialog: React.FC<Props> = ({
                 ))}
               </Select>
             </FormControl>
-            <Button
-              variant="contained"
-              onClick={handleAddProduct}
-              disabled={!productToAdd}
-              sx={{ minWidth: 100 }}
-            >
-              Add
-            </Button>
+            <Tooltip title="Add Product">
+              <span>
+                <IconButton
+                  onClick={handleAddProduct}
+                  disabled={!productToAdd}
+                  color="primary"
+                >
+                  <AddIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
           </Box>
 
-          {selectedProducts.length > 0 ? (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleProductDragEnd}>
-              <SortableContext items={selectedProductIds} strategy={verticalListSortingStrategy}>
-                <List>
-                  {selectedProducts.map((product, index) => (
-                    <SortableProductItem
-                      key={product.id}
-                      product={product}
-                      index={index}
-                      onRemove={() => handleRemoveProduct(product.id)}
-                    />
-                  ))}
-                </List>
-              </SortableContext>
-            </DndContext>
-          ) : (
-            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 3 }}>
-              No products added yet. Use the dropdown above to add products.
-            </Typography>
-          )}
+          <SortableProductTable
+            products={selectedProducts}
+            onDragEnd={handleProductDragEnd}
+            onRemove={handleRemoveProduct}
+            emptyMessage="No products added yet. Use the dropdown above to add products."
+          />
         </TabPanel>
 
         {/* Outcomes Tab */}

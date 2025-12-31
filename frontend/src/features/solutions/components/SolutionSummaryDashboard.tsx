@@ -240,14 +240,14 @@ export const SolutionSummaryDashboard: React.FC<SolutionSummaryDashboardProps> =
                 </Box>
             </Paper>
 
-            {/* === 2. Main Data Grid (70% / 30%) with Equal Height & Tight Gap === */}
+            {/* === 2. Main Data Grid (60% / 20% / 20%) with Equal Height & Tight Gap === */}
             <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'stretch' }}>
 
                 {/* === LEFT PANEL: Tasks by Outcome (Data Table) === */}
                 <Paper
                     elevation={0}
                     sx={{
-                        flex: '0 0 70%',
+                        flex: '0 0 55%',
                         border: `1px solid ${colors.divider}`,
                         borderRadius: 1,
                         overflow: 'hidden',
@@ -340,11 +340,11 @@ export const SolutionSummaryDashboard: React.FC<SolutionSummaryDashboardProps> =
                     </TableContainer>
                 </Paper>
 
-                {/* === RIGHT PANEL: Scope & Licenses (Data Table Style) === */}
+                {/* === MIDDLE PANEL: Releases === */}
                 <Paper
                     elevation={0}
                     sx={{
-                        flex: '0 0 30%',
+                        flex: 1,
                         border: `1px solid ${colors.divider}`,
                         borderRadius: 1,
                         display: 'flex',
@@ -352,9 +352,9 @@ export const SolutionSummaryDashboard: React.FC<SolutionSummaryDashboardProps> =
                         overflow: 'hidden'
                     }}
                 >
-                    <Box sx={{ px: 3, py: 2, borderBottom: `1px solid ${colors.divider}`, bgcolor: colors.headerBg }}>
+                    <Box sx={{ px: 2, py: 2, borderBottom: `1px solid ${colors.divider}`, bgcolor: colors.headerBg }}>
                         <Typography variant="h6" fontWeight={700} color={colors.primary} sx={{ fontSize: '0.9rem', letterSpacing: '-0.01em' }}>
-                            Scope & Licenses
+                            Releases
                         </Typography>
                     </Box>
 
@@ -362,24 +362,18 @@ export const SolutionSummaryDashboard: React.FC<SolutionSummaryDashboardProps> =
                         <Table size="small">
                             <TableHead sx={{ bgcolor: colors.headerBg }}>
                                 <TableRow sx={{ height: 32 }}>
-                                    <TableCell sx={{ color: colors.secondary, fontWeight: 600, fontSize: '0.75rem', borderBottom: `1px solid ${colors.divider}`, py: 0.5, pl: 3 }}>ITEM</TableCell>
-                                    <TableCell align="right" sx={{ color: colors.secondary, fontWeight: 600, fontSize: '0.75rem', borderBottom: `1px solid ${colors.divider}`, py: 0.5, pr: 3 }}>STATUS</TableCell>
+                                    <TableCell sx={{ color: colors.secondary, fontWeight: 600, fontSize: '0.75rem', borderBottom: `1px solid ${colors.divider}`, py: 0.5, pl: 2 }}>NAME</TableCell>
+                                    <TableCell align="right" sx={{ color: colors.secondary, fontWeight: 600, fontSize: '0.75rem', borderBottom: `1px solid ${colors.divider}`, py: 0.5, pr: 2 }}>VERSION</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {/* Releases Section Header Row */}
-                                <TableRow sx={{ bgcolor: alpha(colors.bg, 0.5) }}>
-                                    <TableCell colSpan={2} sx={{ py: 1, fontWeight: 700, fontSize: '0.75rem', color: colors.secondary, borderBottom: `1px solid ${colors.divider}`, pl: 3 }}>
-                                        ACTIVE RELEASES ({solution.releases?.length || 0})
-                                    </TableCell>
-                                </TableRow>
                                 {solution.releases && solution.releases.length > 0 ? (
                                     solution.releases.map((release: any) => (
                                         <TableRow key={release.id} sx={{ height: 44 }}>
-                                            <TableCell sx={{ py: 0, borderBottom: `1px solid ${colors.divider}`, fontSize: '0.8125rem', color: colors.primary, pl: 3 }}>
+                                            <TableCell sx={{ py: 0, borderBottom: `1px solid ${colors.divider}`, fontSize: '0.8125rem', color: colors.primary, pl: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 100 }}>
                                                 {release.name}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ py: 0, borderBottom: `1px solid ${colors.divider}`, pr: 3 }}>
+                                            <TableCell align="right" sx={{ py: 0, borderBottom: `1px solid ${colors.divider}`, pr: 2 }}>
                                                 <Chip
                                                     label={`v${release.level}`}
                                                     size="small"
@@ -397,20 +391,45 @@ export const SolutionSummaryDashboard: React.FC<SolutionSummaryDashboardProps> =
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={2} sx={{ py: 1.5, color: colors.secondary, fontSize: '0.75rem', fontStyle: 'italic', borderBottom: `1px solid ${colors.divider}`, pl: 3 }}>No releases</TableCell>
+                                        <TableCell colSpan={2} sx={{ py: 1.5, color: colors.secondary, fontSize: '0.75rem', fontStyle: 'italic', borderBottom: `1px solid ${colors.divider}`, pl: 2 }}>No releases</TableCell>
                                     </TableRow>
                                 )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                </Paper>
 
-                                {/* Licenses Section Header Row */}
-                                <TableRow sx={{ bgcolor: alpha(colors.bg, 0.5) }}>
-                                    <TableCell colSpan={2} sx={{ py: 1, fontWeight: 700, fontSize: '0.75rem', color: colors.secondary, borderBottom: `1px solid ${colors.divider}`, pl: 3 }}>
-                                        LICENSE TIERS ({activeLicenses.length})
-                                    </TableCell>
+                {/* === RIGHT PANEL: Licenses === */}
+                <Paper
+                    elevation={0}
+                    sx={{
+                        flex: 1,
+                        border: `1px solid ${colors.divider}`,
+                        borderRadius: 1,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        overflow: 'hidden'
+                    }}
+                >
+                    <Box sx={{ px: 2, py: 2, borderBottom: `1px solid ${colors.divider}`, bgcolor: colors.headerBg }}>
+                        <Typography variant="h6" fontWeight={700} color={colors.primary} sx={{ fontSize: '0.9rem', letterSpacing: '-0.01em' }}>
+                            License
+                        </Typography>
+                    </Box>
+
+                    <TableContainer sx={{ flex: 1 }}>
+                        <Table size="small">
+                            <TableHead sx={{ bgcolor: colors.headerBg }}>
+                                <TableRow sx={{ height: 32 }}>
+                                    <TableCell sx={{ color: colors.secondary, fontWeight: 600, fontSize: '0.75rem', borderBottom: `1px solid ${colors.divider}`, py: 0.5, pl: 2 }}>TIER</TableCell>
+                                    <TableCell align="right" sx={{ color: colors.secondary, fontWeight: 600, fontSize: '0.75rem', borderBottom: `1px solid ${colors.divider}`, py: 0.5, pr: 2 }}></TableCell>
                                 </TableRow>
+                            </TableHead>
+                            <TableBody>
                                 {activeLicenses.length > 0 ? (
                                     activeLicenses.map((license: any) => (
                                         <TableRow key={license.id} sx={{ height: 44 }}>
-                                            <TableCell colSpan={2} sx={{ py: 0, borderBottom: `1px solid ${colors.divider}`, pl: 3, pr: 3 }}>
+                                            <TableCell colSpan={2} sx={{ py: 0, borderBottom: `1px solid ${colors.divider}`, pl: 2, pr: 2 }}>
                                                 <Chip
                                                     label={license.name}
                                                     size="small"
@@ -431,7 +450,7 @@ export const SolutionSummaryDashboard: React.FC<SolutionSummaryDashboardProps> =
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={2} sx={{ py: 1.5, color: colors.secondary, fontSize: '0.75rem', fontStyle: 'italic', borderBottom: `1px solid ${colors.divider}`, pl: 3 }}>No active licenses</TableCell>
+                                        <TableCell colSpan={2} sx={{ py: 1.5, color: colors.secondary, fontSize: '0.75rem', fontStyle: 'italic', borderBottom: `1px solid ${colors.divider}`, pl: 2 }}>No active licenses</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
