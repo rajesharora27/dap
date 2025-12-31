@@ -14,6 +14,7 @@ export { ResizableTableCell } from './ResizableTableCell';
 export { SortableHandle } from './SortableHandle';
 export { Breadcrumbs } from './Breadcrumbs';
 export { ConfirmDialog } from './ConfirmDialog';
+export { TasksTabToolbar } from './TasksTabToolbar';
 
 // Sortable/DnD
 export { SortableAttributeItem } from './custom-attributes/SortableAttributeItem';

@@ -16,6 +16,7 @@ import { ProductMetadataSection } from './ProductMetadataSection';
 import { ProductTasksTab } from './ProductTasksTab';
 import { ProductDialog } from '../components/ProductDialog'; // Verify path
 import { BulkImportDialog } from '@features/data-management/components/BulkImportDialog';
+import { TasksTabToolbar } from '@shared/components';
 
 // Import mutations for the complex save handler
 import { CREATE_PRODUCT, UPDATE_PRODUCT, EXPORT_PRODUCT } from '../graphql';
@@ -42,17 +43,32 @@ export function ProductsPageContent() {
         refetchProducts,
         refetchSelectedProduct,
         tasks,
+        loadingTasks,
         selectedSubSection,
         setSelectedSubSection,
         deleteProduct,
 
         // Context actions for summary dashboard
+        showFilters,
         setShowFilters,
         setTaskOutcomeFilter,
+        taskTagFilter,
+        taskOutcomeFilter,
+        taskReleaseFilter,
+        taskLicenseFilter,
+        handleClearFilters,
+        visibleColumns,
+        handleToggleColumn,
+        isTasksLocked,
+        setIsTasksLocked,
 
         // Add Button Mode
         setExternalAddMode
     } = useProductContext();
+
+    // Derived state for filters
+    const hasActiveFilters = taskTagFilter.length > 0 || taskOutcomeFilter.length > 0 || taskReleaseFilter.length > 0 || taskLicenseFilter.length > 0;
+    const activeFilterCount = [taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length;
 
     const {
         isImportDialogOpen,
@@ -61,7 +77,8 @@ export function ProductsPageContent() {
         editingProduct,
         openAddProduct,
         openEditProduct,
-        closeProductDialog
+        closeProductDialog,
+        openAddTask
     } = useProductDialogs();
 
     // -- Complex Save Handler (Migrated from ProductsPage.tsx) --
@@ -407,6 +424,25 @@ export function ProductsPageContent() {
                             <Tab label="Licenses" value="licenses" />
                             <Tab label="Custom Attributes" value="customAttributes" />
                         </Tabs>
+
+                        {/* Tasks Tab Toolbar - inline with tabs */}
+                        {selectedSubSection === 'tasks' && (
+                            <Box sx={{ ml: 2 }}>
+                                <TasksTabToolbar
+                                    loading={loadingTasks}
+                                    isLocked={isTasksLocked}
+                                    onToggleLock={() => setIsTasksLocked(!isTasksLocked)}
+                                    showFilters={showFilters}
+                                    onToggleFilters={() => setShowFilters(!showFilters)}
+                                    hasActiveFilters={hasActiveFilters}
+                                    activeFilterCount={activeFilterCount}
+                                    onClearFilters={handleClearFilters}
+                                    visibleColumns={visibleColumns}
+                                    onToggleColumn={handleToggleColumn}
+                                    onAddTask={openAddTask}
+                                />
+                            </Box>
+                        )}
 
                         {/* Quick Add Button logic */}
                         {selectedSubSection !== 'summary' && selectedSubSection !== 'tasks' && (

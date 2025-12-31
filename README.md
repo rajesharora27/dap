@@ -127,7 +127,9 @@ The Documentation Index provides a comprehensive, categorized list of all docume
 ### 🎯 Quick Links
 
 - **[Quick Start](QUICK_START.md)** - Get started in minutes
+- **[Developer Manual](docs/DEVELOPER.md)** - Complete guide for developers ⭐
 - **[Context Document](CONTEXT.md)** - Comprehensive app overview (AI assistants & developers)
+- **[Quality Standards](docs/QUALITY_STANDARDS.md)** - Maintain 100/100 architecture score
 - **[API Reference](docs/API_REFERENCE.md)** - GraphQL API documentation
 - **[Features](docs/FEATURES.md)** - Complete feature list
 - **[Architecture](docs/ARCHITECTURE.md)** - System design

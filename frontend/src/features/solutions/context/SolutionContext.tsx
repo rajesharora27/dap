@@ -41,6 +41,8 @@ interface SolutionContextType {
     handleToggleColumn: (columnKey: string) => void;
     selectedSubSection: 'summary' | 'resources' | 'tasks' | 'outcomes' | 'releases' | 'licenses' | 'customAttributes' | 'tags' | 'products';
     setSelectedSubSection: (section: any) => void;
+    isTasksLocked: boolean;
+    setIsTasksLocked: (locked: boolean) => void;
 
     // External Add Mode (for tables)
     externalAddMode: string | null;
@@ -91,6 +93,7 @@ export const SolutionProvider: React.FC<SolutionProviderProps> = ({ children, in
     const [taskReleaseFilter, setTaskReleaseFilter] = useState<string[]>([]);
     const [taskLicenseFilter, setTaskLicenseFilter] = useState<string[]>([]);
     const [showFilters, setShowFilters] = useState(false);
+    const [isTasksLocked, setIsTasksLocked] = useState(false);
 
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -310,6 +313,8 @@ export const SolutionProvider: React.FC<SolutionProviderProps> = ({ children, in
         handleToggleColumn,
         selectedSubSection,
         setSelectedSubSection,
+        isTasksLocked,
+        setIsTasksLocked,
         externalAddMode,
         setExternalAddMode,
 

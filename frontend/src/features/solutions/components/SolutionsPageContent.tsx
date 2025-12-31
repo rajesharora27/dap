@@ -15,6 +15,7 @@ import { SolutionMetadataSection } from './SolutionMetadataSection';
 import { SolutionTasksTab } from './SolutionTasksTab';
 import { SolutionDialog } from './SolutionDialog';
 import { BulkImportDialog } from '@features/data-management/components/BulkImportDialog';
+import { TasksTabToolbar } from '@shared/components';
 
 // Import mutations for sub-entity management if handling top-level save, 
 // BUT SolutionDialog mostly handles it. We just need to trigger refetch.
@@ -37,18 +38,33 @@ export function SolutionsPageContent() {
         refetchSolutions,
         refetchSelectedSolution,
         tasks,
+        loadingTasks,
         refetchTasks,
         selectedSubSection,
         setSelectedSubSection,
         deleteSolution,
 
         // Context actions for summary dashboard
+        showFilters,
         setShowFilters,
         setTaskOutcomeFilter,
+        taskTagFilter,
+        taskOutcomeFilter,
+        taskReleaseFilter,
+        taskLicenseFilter,
+        handleClearFilters,
+        visibleColumns,
+        handleToggleColumn,
+        isTasksLocked,
+        setIsTasksLocked,
 
         // Add Button Mode
         setExternalAddMode
     } = useSolutionContext();
+
+    // Derived state for filters
+    const hasActiveFilters = taskTagFilter.length > 0 || taskOutcomeFilter.length > 0 || taskReleaseFilter.length > 0 || taskLicenseFilter.length > 0;
+    const activeFilterCount = [taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter].filter(f => f.length > 0).length;
 
     const {
         isImportDialogOpen,
@@ -57,7 +73,8 @@ export function SolutionsPageContent() {
         editingSolution,
         openAddSolution,
         openEditSolution,
-        closeSolutionDialog
+        closeSolutionDialog,
+        openAddTask
     } = useSolutionDialogs();
 
     // -- Handlers --
