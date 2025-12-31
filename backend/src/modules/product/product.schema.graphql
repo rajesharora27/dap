@@ -1,5 +1,14 @@
+# =============================================================================
 # Product Module GraphQL Schema
+# =============================================================================
+# Defines the Product entity and related operations.
+# Products are the core building blocks containing tasks, licenses, and outcomes.
+# =============================================================================
 
+"""
+Product entity representing a software product with tasks and configurations.
+Implements Node interface for Relay specification compliance.
+"""
 type Product implements Node {
   id: ID!
   name: String!
