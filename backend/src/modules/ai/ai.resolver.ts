@@ -132,7 +132,7 @@ export const AIMutationResolvers = {
    */
   refreshAIDataContext: async (_: any, __: any, ctx: Context) => {
     // Only admins can refresh the data context
-    if (ctx.user?.role !== 'ADMIN') {
+    if (!ctx.user?.isAdmin) {
       return {
         success: false,
         lastRefreshed: null,
