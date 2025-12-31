@@ -60,6 +60,7 @@ const tocItems: TocItem[] = [
     { id: 'locking', title: 'Task Locking', icon: <Lock fontSize="small" /> },
     { id: 'import-export', title: 'Import & Export', icon: <CloudUpload fontSize="small" /> },
     { id: 'ai-assistant', title: 'AI Assistant', icon: <AISparkle fontSize="small" /> },
+    { id: 'diary', title: 'My Diary', icon: <Book fontSize="small" sx={{ color: '#EC4899' }} /> },
     { id: 'roles', title: 'User Roles', icon: <People fontSize="small" /> },
 ];
 
@@ -596,6 +597,31 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
 
                     <Divider sx={{ my: 4 }} />
 
+                    <Box id="help-section-diary">
+                        <Typography variant="h4" gutterBottom sx={{ color: '#EC4899', fontWeight: 600 }}>
+                            <Book sx={{ mr: 1, verticalAlign: 'middle', color: '#EC4899' }} />
+                            My Diary
+                        </Typography>
+                        <Typography paragraph>
+                            My Diary is your personal workspace for taking notes, tracking daily to-dos, and managing quick bookmarks.
+                        </Typography>
+                        <Paper elevation={0} sx={{ p: 2.5, bgcolor: 'primary.50', borderRadius: 2, mb: 3, border: '1px solid', borderColor: 'primary.100' }}>
+                            <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, color: 'primary.900' }}>
+                                Features:
+                            </Typography>
+                            <ul>
+                                <li><strong>To-Do List</strong>: Create and manage personal tasks with drag-and-drop reordering.</li>
+                                <li><strong>Bookmarks</strong>: Save quick links to important Products, Solutions, or external URLs.</li>
+                                <li><strong>Notes</strong>: A rich-text editor for drafting thoughts, meeting notes, or adoption strategies.</li>
+                            </ul>
+                            <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+                                <i>Note: Diary entries are private to your user account.</i>
+                            </Typography>
+                        </Paper>
+                    </Box>
+
+                    <Divider sx={{ my: 4 }} />
+
                     {/* User Roles */}
                     <Box id="help-section-roles">
                         <Typography variant="h4" gutterBottom sx={{ color: 'primary.dark', fontWeight: 600 }}>
@@ -645,7 +671,7 @@ export const HelpDialog: React.FC<HelpDialogProps> = ({ open, onClose }) => {
                     {/* Footer */}
                     <Box sx={{ mt: 6, pt: 3, borderTop: '1px solid', borderColor: 'divider', textAlign: 'center' }}>
                         <Typography variant="body2" color="text.secondary">
-                            Digital Adoption Platform v{import.meta.env.__APP_VERSION__ || '2.4.0'}
+                            Digital Adoption Platform v{import.meta.env.__APP_VERSION__ || '3.5.0'}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
                             Need more help? Contact your system administrator.
