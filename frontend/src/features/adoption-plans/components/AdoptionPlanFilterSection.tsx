@@ -82,16 +82,9 @@ export const AdoptionPlanFilterSection: React.FC<AdoptionPlanFilterSectionProps>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                 <FilterList fontSize="small" sx={{ color: 'text.secondary' }} />
                 <Typography variant="subtitle2" fontWeight="600" color="text.secondary">
-                    {title}
+                    {title} ({totalFilteredTasks})
                 </Typography>
-                {hasActiveFilters && (
-                    <Chip
-                        label={`Showing ${totalFilteredTasks} of ${totalTasks} tasks`}
-                        size="small"
-                        color="primary"
-                        sx={{ ml: 1, fontWeight: 600 }}
-                    />
-                )}
+
             </Box>
 
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>

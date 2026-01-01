@@ -87,13 +87,18 @@ export const TaskFieldResolvers = {
         };
         const requiredLevel = levelMap[parent.licenseLevel];
 
-        if (!requiredLevel || !parent.productId) {
+        // Need either productId or solutionId to look up the license
+        if (!requiredLevel || (!parent.productId && !parent.solutionId)) {
             return null;
         }
 
+        // Look up license by productId or solutionId
         return await prisma.license.findFirst({
             where: {
-                productId: parent.productId,
+                OR: [
+                    { productId: parent.productId || undefined },
+                    { solutionId: parent.solutionId || undefined }
+                ],
                 level: requiredLevel,
                 isActive: true,
                 deletedAt: null

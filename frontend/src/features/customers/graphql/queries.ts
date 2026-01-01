@@ -259,6 +259,15 @@ export const SOLUTION_ADOPTION_PLAN = gql`
           progressPercentage
           totalTasks
           completedTasks
+          selectedOutcomes {
+            id
+            name
+          }
+          selectedReleases {
+            id
+            name
+            level
+          }
           tasks {
             id
             name

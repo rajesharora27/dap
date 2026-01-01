@@ -89,6 +89,9 @@ interface ProductAdoptionGroupProps {
   onImportTelemetry?: (adoptionPlanId: string, file: File) => void;
   filterInfo?: string;
   visibleColumns?: string[];
+  planOutcomes?: Array<{ id: string; name: string }>;
+  planReleases?: Array<{ id: string; name: string; level?: string }>;
+  isPartOfSolution?: boolean;
 }
 
 export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
@@ -99,6 +102,9 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
   onImportTelemetry,
   filterInfo,
   visibleColumns,
+  planOutcomes,
+  planReleases,
+  isPartOfSolution = false,
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -106,10 +112,14 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
   const [filterOutcomes, setFilterOutcomes] = useState<string[]>([]);
   const [filterTags, setFilterTags] = useState<string[]>([]);
 
-  const colors = adoptionPlanColors.product;
+  // Use solution colors (blue) if part of solution, otherwise product colors (green)
+  const colors = isPartOfSolution ? adoptionPlanColors.solution : adoptionPlanColors.product;
 
-  // Extract available filter options from tasks
+  // Use planReleases if provided, otherwise derive from tasks
   const availableReleases = useMemo(() => {
+    if (planReleases && planReleases.length > 0) {
+      return [...planReleases].sort((a, b) => (Number(a.level) || 0) - (Number(b.level) || 0) || a.name.localeCompare(b.name));
+    }
     const releaseMap = new Map<string, { id: string; name: string }>();
     tasks.forEach(task => {
       task.releases?.forEach(release => {
@@ -119,9 +129,13 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
       });
     });
     return Array.from(releaseMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [tasks]);
+  }, [tasks, planReleases]);
 
+  // Use planOutcomes if provided, otherwise derive from tasks
   const availableOutcomes = useMemo(() => {
+    if (planOutcomes && planOutcomes.length > 0) {
+      return [...planOutcomes].sort((a, b) => a.name.localeCompare(b.name));
+    }
     const outcomeMap = new Map<string, { id: string; name: string }>();
     tasks.forEach(task => {
       task.outcomes?.forEach(outcome => {
@@ -131,7 +145,7 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
       });
     });
     return Array.from(outcomeMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-  }, [tasks]);
+  }, [tasks, planOutcomes]);
 
   const availableTags = useMemo(() => {
     const tagMap = new Map<string, { id: string; name: string; color?: string }>();
@@ -149,18 +163,23 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
 
-    // Filter by releases
+    // Filter by releases - include tasks with NO releases (applies to all)
     if (filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) {
-      result = result.filter(task =>
-        task.releases?.some(release => filterReleases.includes(release.id))
-      );
+      result = result.filter(task => {
+        // Tasks with no releases apply to ALL releases
+        if (!task.releases || task.releases.length === 0) return true;
+        return task.releases.some(release => filterReleases.includes(release.id));
+      });
     }
 
-    // Filter by outcomes
+    // Filter by outcomes - include tasks with NO outcomes (applies to all)
     if (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID)) {
-      result = result.filter(task =>
-        task.outcomes?.some(outcome => filterOutcomes.includes(outcome.id))
-      );
+      result = result.filter(task => {
+        // Include tasks with NO outcomes (generic tasks that apply to all)
+        if (!task.outcomes || task.outcomes.length === 0) return true;
+
+        return task.outcomes?.some(outcome => filterOutcomes.includes(outcome.id));
+      });
     }
 
     // Filter by tags

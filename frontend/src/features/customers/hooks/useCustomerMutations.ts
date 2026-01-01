@@ -59,7 +59,10 @@ export function useCustomerMutations() {
         awaitRefetchQueries: true
     });
 
-    const [updateTaskStatus] = useMutation(UPDATE_TASK_STATUS);
+    const [updateTaskStatus] = useMutation(UPDATE_TASK_STATUS, {
+        refetchQueries: [{ query: CUSTOMERS }],
+        awaitRefetchQueries: true
+    });
     const [exportTelemetryTemplate] = useMutation(EXPORT_TELEMETRY_TEMPLATE);
     const [importTelemetry] = useMutation(IMPORT_TELEMETRY);
     const [updateFilterPreference] = useMutation(UPDATE_FILTER_PREFERENCE);

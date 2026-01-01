@@ -15,7 +15,8 @@ export function ProductMetadataSection() {
         selectedProduct,
         selectedSubSection,
         externalAddMode,
-        setExternalAddMode
+        setExternalAddMode,
+        tasks
     } = useProductContext();
 
     const productEditing = useProductEditing(selectedProduct?.id || null);
@@ -34,6 +35,7 @@ export function ProductMetadataSection() {
                         onReorder={productEditing.handleOutcomeReorder}
                         externalAddMode={externalAddMode === 'outcomes'}
                         onExternalAddComplete={() => setExternalAddMode(null)}
+                        tasks={tasks}
                     />
                 );
             case 'releases':
@@ -46,6 +48,7 @@ export function ProductMetadataSection() {
                         onReorder={productEditing.handleReleaseReorder}
                         externalAddMode={externalAddMode === 'releases'}
                         onExternalAddComplete={() => setExternalAddMode(null)}
+                        tasks={tasks}
                     />
                 );
             case 'licenses':
@@ -58,6 +61,7 @@ export function ProductMetadataSection() {
                         onReorder={productEditing.handleLicenseReorder}
                         externalAddMode={externalAddMode === 'licenses'}
                         onExternalAddComplete={() => setExternalAddMode(null)}
+                        tasks={tasks}
                     />
                 );
             case 'resources':
@@ -82,6 +86,7 @@ export function ProductMetadataSection() {
                         onReorder={productEditing.handleTagReorder}
                         externalAddMode={externalAddMode === 'tags'}
                         onExternalAddComplete={() => setExternalAddMode(null)}
+                        tasks={tasks}
                     />
                 );
             case 'customAttributes':

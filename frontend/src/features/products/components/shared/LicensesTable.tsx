@@ -10,6 +10,7 @@ import {
 import { License } from '@features/product-licenses';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
+import { Chip } from '@mui/material';
 
 interface LicensesTableProps {
     items: any[];
@@ -20,7 +21,9 @@ interface LicensesTableProps {
     readOnly?: boolean;
     // External add control - when provided, hides internal add button
     externalAddMode?: boolean;
+
     onExternalAddComplete?: () => void;
+    tasks?: any[];
 }
 
 const LicenseRow = ({
@@ -29,7 +32,8 @@ const LicenseRow = ({
     onEditStart,
     onEditCancel,
     onEditSave,
-    onDelete
+    onDelete,
+    taskCount
 }: {
     license: any;
     isEditing: boolean;
@@ -37,6 +41,7 @@ const LicenseRow = ({
     onEditCancel: () => void;
     onEditSave: (name: string, description: string, level: number, isActive: boolean) => void;
     onDelete: () => void;
+    taskCount?: number;
 }) => {
     const [name, setName] = useState(license.name);
     const [description, setDescription] = useState(license.description || '');
@@ -139,6 +144,16 @@ const LicenseRow = ({
                             }}
                         />
                     </TableCell>
+                    <TableCell>
+                        {typeof taskCount === 'number' && (
+                            <Chip
+                                label={taskCount}
+                                size="small"
+                                variant="outlined"
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                        )}
+                    </TableCell>
                     <TableCell align="right" width="120px">
                         <IconButton size="small" onClick={onEditStart}>
                             <EditIcon fontSize="small" />
@@ -161,7 +176,8 @@ export const LicensesTable: React.FC<LicensesTableProps> = ({
     onCreate,
     readOnly = false,
     externalAddMode,
-    onExternalAddComplete
+    onExternalAddComplete,
+    tasks
 }) => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [internalAdding, setInternalAdding] = useState(false);
@@ -187,6 +203,7 @@ export const LicensesTable: React.FC<LicensesTableProps> = ({
             { key: 'nameLevel', minWidth: 150, defaultWidth: 300 },
             { key: 'description', minWidth: 200, defaultWidth: 400 },
             { key: 'active', minWidth: 80, defaultWidth: 100 },
+            { key: 'tasks', minWidth: 80, defaultWidth: 100 },
             { key: 'actions', minWidth: 100, defaultWidth: 120 },
         ],
     });
@@ -265,6 +282,14 @@ export const LicensesTable: React.FC<LicensesTableProps> = ({
                             Active
                         </ResizableTableCell>
                         <ResizableTableCell
+                            width={columnWidths['tasks']}
+                            resizable
+                            resizeHandleProps={getResizeHandleProps('tasks')}
+                            isResizing={isResizing}
+                        >
+                            Tasks
+                        </ResizableTableCell>
+                        <ResizableTableCell
                             width={columnWidths['actions']}
                             align="right"
                             resizable
@@ -321,6 +346,7 @@ export const LicensesTable: React.FC<LicensesTableProps> = ({
                                     size="small"
                                 />
                             </TableCell>
+                            <TableCell />
                             <TableCell align="right">
                                 <IconButton size="small" color="success" onClick={handleCreate}>
                                     <CheckCircle fontSize="small" />
@@ -334,6 +360,9 @@ export const LicensesTable: React.FC<LicensesTableProps> = ({
 
                     {sortedItems.map((license) => {
                         const id = license.id || license._tempId;
+                        // Cumulative: count tasks from same or lower license levels
+                        const currentLevel = license.level || 0;
+                        const taskCount = tasks ? tasks.filter(t => t.license && (t.license.level || 0) <= currentLevel).length : undefined;
                         return (
                             <LicenseRow
                                 key={id}
@@ -346,13 +375,14 @@ export const LicensesTable: React.FC<LicensesTableProps> = ({
                                     setEditingId(null);
                                 }}
                                 onDelete={() => onDelete(id)}
+                                taskCount={taskCount}
                             />
                         );
                     })}
 
                     {items.length === 0 && !isAdding && (
                         <TableRow>
-                            <TableCell colSpan={4} align="center">
+                            <TableCell colSpan={5} align="center">
                                 <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
                                     No licenses defined.
                                 </Typography>

@@ -166,7 +166,16 @@ export function CustomerAssignmentsTable({
                     </TableHead>
                     <TableBody>
                         {filteredItems.map((item) => (
-                            <TableRow key={item.id} hover>
+                            <TableRow
+                                key={item.id}
+                                hover
+                                onDoubleClick={(e) => {
+                                    e.stopPropagation();
+                                    if (item.type === 'product') onEditProduct(item.id);
+                                    else onEditSolution(item.id);
+                                }}
+                                sx={{ cursor: 'pointer' }}
+                            >
                                 <TableCell sx={{ fontWeight: 500 }}>{item.assignmentName}</TableCell>
                                 <TableCell>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -183,7 +192,20 @@ export function CustomerAssignmentsTable({
                                         <Chip label={item.licenseLevel} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.625rem' }} />
                                     </Box>
                                 </TableCell>
-                                <TableCell><Chip label={item.source} size="small" variant="filled" color={item.source === 'solution' ? 'info' : 'default'} sx={{ height: 20, fontSize: '0.625rem' }} /></TableCell>
+                                <TableCell>
+                                    <Chip
+                                        label={item.source === 'solution' ? 'Solution' : 'Direct'}
+                                        size="small"
+                                        variant="outlined"
+                                        sx={{
+                                            height: 20,
+                                            fontSize: '0.625rem',
+                                            color: item.source === 'solution' ? '#3B82F6' : '#10B981',
+                                            borderColor: item.source === 'solution' ? 'rgba(59, 130, 246, 0.5)' : 'rgba(16, 185, 129, 0.5)',
+                                            bgcolor: item.source === 'solution' ? 'rgba(59, 130, 246, 0.08)' : 'rgba(16, 185, 129, 0.08)'
+                                        }}
+                                    />
+                                </TableCell>
                                 <TableCell>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                         <LinearProgress
@@ -209,13 +231,13 @@ export function CustomerAssignmentsTable({
                                         <Tooltip title="Sync">
                                             <IconButton
                                                 size="small"
-                                                color="primary"
                                                 disabled={item.type === 'product' ? syncingProductId === item.id : syncingSolutionId === item.id}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     if (item.type === 'product') onSyncProduct(item.id);
                                                     else if (item.adoptionPlanId) onSyncSolution(item.id, item.adoptionPlanId);
                                                 }}
+                                                sx={{ color: item.type === 'solution' ? '#3B82F6' : '#10B981' }}
                                             >
                                                 <Sync fontSize="small" />
                                             </IconButton>
@@ -228,6 +250,7 @@ export function CustomerAssignmentsTable({
                                                     if (item.type === 'product') onEditProduct(item.id);
                                                     else onEditSolution(item.id);
                                                 }}
+                                                sx={{ color: item.type === 'solution' ? '#3B82F6' : '#10B981' }}
                                             >
                                                 <Edit fontSize="small" />
                                             </IconButton>

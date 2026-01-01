@@ -22,6 +22,7 @@ import { Outcome } from '@features/product-outcomes';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
 import { SortableHandle } from '@shared/components/SortableHandle';
+import { Chip } from '@mui/material';
 
 interface OutcomesTableProps {
     items: any[];
@@ -32,7 +33,9 @@ interface OutcomesTableProps {
     readOnly?: boolean;
     // External add control - when provided, hides internal add button
     externalAddMode?: boolean;
+
     onExternalAddComplete?: () => void;
+    tasks?: any[];
 }
 
 const SortableOutcomeRow = ({
@@ -42,7 +45,8 @@ const SortableOutcomeRow = ({
     onEditStart,
     onEditCancel,
     onEditSave,
-    onDelete
+    onDelete,
+    taskCount
 }: {
     outcome: any;
     index: number;
@@ -50,7 +54,9 @@ const SortableOutcomeRow = ({
     onEditStart: () => void;
     onEditCancel: () => void;
     onEditSave: (name: string, description: string) => void;
+
     onDelete: () => void;
+    taskCount?: number;
 }) => {
     const id = outcome.id || outcome._tempId;
     const {
@@ -128,6 +134,7 @@ const SortableOutcomeRow = ({
                             placeholder="Description"
                         />
                     </TableCell>
+                    <TableCell />
                     <TableCell align="right" width="120px">
                         <IconButton size="small" color="success" onClick={handleSave}>
                             <CheckCircle fontSize="small" />
@@ -149,6 +156,16 @@ const SortableOutcomeRow = ({
                         <Typography variant="body2" color="text.secondary" noWrap>
                             {outcome.description}
                         </Typography>
+                    </TableCell>
+                    <TableCell>
+                        {typeof taskCount === 'number' && (
+                            <Chip
+                                label={taskCount}
+                                size="small"
+                                variant="outlined"
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                        )}
                     </TableCell>
                     <TableCell align="right" width="120px">
                         <IconButton size="small" onClick={onEditStart}>
@@ -172,7 +189,9 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
     onCreate,
     readOnly = false,
     externalAddMode,
-    onExternalAddComplete
+
+    onExternalAddComplete,
+    tasks
 }) => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [internalAdding, setInternalAdding] = useState(false);
@@ -204,6 +223,7 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
             { key: 'drag', minWidth: 40, defaultWidth: 40 },
             { key: 'name', minWidth: 150, defaultWidth: 300 },
             { key: 'description', minWidth: 200, defaultWidth: 400 },
+            { key: 'tasks', minWidth: 80, defaultWidth: 100 },
             { key: 'actions', minWidth: 100, defaultWidth: 120 },
         ],
     });
@@ -297,6 +317,14 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
                                 Description
                             </ResizableTableCell>
                             <ResizableTableCell
+                                width={columnWidths['tasks']}
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('tasks')}
+                                isResizing={isResizing}
+                            >
+                                Tasks
+                            </ResizableTableCell>
+                            <ResizableTableCell
                                 width={columnWidths['actions']}
                                 align="right"
                                 resizable
@@ -338,6 +366,7 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
                                         }}
                                     />
                                 </TableCell>
+                                <TableCell />
                                 <TableCell align="right">
                                     <IconButton size="small" color="success" onClick={handleCreate}>
                                         <CheckCircle fontSize="small" />
@@ -355,6 +384,8 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
                         >
                             {localItems.map((outcome, index) => {
                                 const id = outcome.id || outcome._tempId;
+                                // Include tasks with empty outcomes (applies to all) OR explicitly linked
+                                const taskCount = tasks ? tasks.filter(t => !t.outcomes?.length || t.outcomes.some((o: any) => o.id === id)).length : undefined;
                                 return (
                                     <SortableOutcomeRow
                                         key={id}
@@ -368,6 +399,7 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
                                             setEditingId(null);
                                         }}
                                         onDelete={() => onDelete(id)}
+                                        taskCount={taskCount}
                                     />
                                 );
                             })}
@@ -375,7 +407,7 @@ export const OutcomesTable: React.FC<OutcomesTableProps> = ({
 
                         {localItems.length === 0 && !isAdding && (
                             <TableRow>
-                                <TableCell colSpan={4} align="center">
+                                <TableCell colSpan={5} align="center">
                                     <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
                                         No outcomes defined.
                                     </Typography>

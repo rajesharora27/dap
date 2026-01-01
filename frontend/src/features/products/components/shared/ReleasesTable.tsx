@@ -10,6 +10,7 @@ import {
 import { Release } from '@features/product-releases';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
+import { Chip } from '@mui/material';
 
 interface ReleasesTableProps {
     items: any[];
@@ -21,6 +22,7 @@ interface ReleasesTableProps {
     // External add control - when provided, hides internal add button
     externalAddMode?: boolean;
     onExternalAddComplete?: () => void;
+    tasks?: any[];
 }
 
 const ReleaseRow = ({
@@ -29,7 +31,8 @@ const ReleaseRow = ({
     onEditStart,
     onEditCancel,
     onEditSave,
-    onDelete
+    onDelete,
+    taskCount
 }: {
     release: any;
     isEditing: boolean;
@@ -37,6 +40,7 @@ const ReleaseRow = ({
     onEditCancel: () => void;
     onEditSave: (name: string, description: string, level: number) => void;
     onDelete: () => void;
+    taskCount?: number;
 }) => {
     const [name, setName] = useState(release.name);
     const [description, setDescription] = useState(release.description || '');
@@ -122,6 +126,16 @@ const ReleaseRow = ({
                             {release.description}
                         </Typography>
                     </TableCell>
+                    <TableCell>
+                        {typeof taskCount === 'number' && (
+                            <Chip
+                                label={taskCount}
+                                size="small"
+                                variant="outlined"
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                        )}
+                    </TableCell>
                     <TableCell align="right" width="120px">
                         <IconButton size="small" onClick={onEditStart}>
                             <EditIcon fontSize="small" />
@@ -144,7 +158,8 @@ export const ReleasesTable: React.FC<ReleasesTableProps> = ({
     onCreate,
     readOnly = false,
     externalAddMode,
-    onExternalAddComplete
+    onExternalAddComplete,
+    tasks
 }) => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [internalAdding, setInternalAdding] = useState(false);
@@ -168,6 +183,7 @@ export const ReleasesTable: React.FC<ReleasesTableProps> = ({
         columns: [
             { key: 'nameLevel', minWidth: 150, defaultWidth: 300 },
             { key: 'description', minWidth: 200, defaultWidth: 400 },
+            { key: 'tasks', minWidth: 80, defaultWidth: 100 },
             { key: 'actions', minWidth: 100, defaultWidth: 120 },
         ],
     });
@@ -236,6 +252,14 @@ export const ReleasesTable: React.FC<ReleasesTableProps> = ({
                             Description
                         </ResizableTableCell>
                         <ResizableTableCell
+                            width={columnWidths['tasks']}
+                            resizable
+                            resizeHandleProps={getResizeHandleProps('tasks')}
+                            isResizing={isResizing}
+                        >
+                            Tasks
+                        </ResizableTableCell>
+                        <ResizableTableCell
                             width={columnWidths['actions']}
                             align="right"
                             resizable
@@ -285,6 +309,7 @@ export const ReleasesTable: React.FC<ReleasesTableProps> = ({
                                     }}
                                 />
                             </TableCell>
+                            <TableCell />
                             <TableCell align="right">
                                 <IconButton size="small" color="success" onClick={handleCreate}>
                                     <CheckCircle fontSize="small" />
@@ -298,6 +323,8 @@ export const ReleasesTable: React.FC<ReleasesTableProps> = ({
 
                     {sortedItems.map((release) => {
                         const id = release.id || release._tempId;
+                        // Include tasks with empty releases (applies to all) OR explicitly linked
+                        const taskCount = tasks ? tasks.filter(t => !t.releases?.length || t.releases.some((r: any) => r.id === id)).length : undefined;
                         return (
                             <ReleaseRow
                                 key={id}
@@ -310,13 +337,14 @@ export const ReleasesTable: React.FC<ReleasesTableProps> = ({
                                     setEditingId(null);
                                 }}
                                 onDelete={() => onDelete(id)}
+                                taskCount={taskCount}
                             />
                         );
                     })}
 
                     {items.length === 0 && !isAdding && (
                         <TableRow>
-                            <TableCell colSpan={3} align="center">
+                            <TableCell colSpan={4} align="center">
                                 <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
                                     No releases defined.
                                 </Typography>

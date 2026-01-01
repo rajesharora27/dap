@@ -74,8 +74,10 @@ export const ProductSummaryDashboard: React.FC<ProductSummaryDashboardProps> = (
         let tasksWithTelemetry = 0;
         let docsCount = 0;
         let videosCount = 0;
+        let allOutcomesCount = 0; // Count of tasks with empty outcomes
         const outcomeCount: Record<string, number> = {};
 
+        // First pass: count specific outcomes and "All Outcomes" tasks
         tasks.forEach(task => {
             if (task.telemetryAttributes && task.telemetryAttributes.length > 0) {
                 tasksWithTelemetry++;
@@ -89,9 +91,19 @@ export const ProductSummaryDashboard: React.FC<ProductSummaryDashboardProps> = (
                     outcomeCount[o.name] = (outcomeCount[o.name] || 0) + 1;
                 });
             } else {
-                outcomeCount['All Outcomes'] = (outcomeCount['All Outcomes'] || 0) + 1;
+                allOutcomesCount++;
             }
         });
+
+        // Add "All Outcomes" tasks to each specific outcome count
+        Object.keys(outcomeCount).forEach(key => {
+            outcomeCount[key] += allOutcomesCount;
+        });
+
+        // Add the "All Outcomes" row (shows tasks that apply to all)
+        if (allOutcomesCount > 0) {
+            outcomeCount['All Outcomes'] = allOutcomesCount;
+        }
 
         return {
             telemetryCoverage: Math.round((tasksWithTelemetry / totalTasks) * 100),
@@ -349,27 +361,45 @@ export const ProductSummaryDashboard: React.FC<ProductSummaryDashboardProps> = (
                             </TableHead>
                             <TableBody>
                                 {product.releases && product.releases.length > 0 ? (
-                                    product.releases.map(release => (
-                                        <TableRow key={release.id} sx={{ height: 44 }}>
-                                            <TableCell sx={{ py: 0, borderBottom: `1px solid ${colors.divider}`, fontSize: '0.8125rem', color: colors.primary, pl: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 100 }}>
-                                                {release.name}
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ py: 0, borderBottom: `1px solid ${colors.divider}`, pr: 2 }}>
-                                                <Chip
-                                                    label={`v${release.level}`}
-                                                    size="small"
-                                                    sx={{
-                                                        bgcolor: '#0EA5E9', // Solid Sky Blue
-                                                        color: 'white',
-                                                        fontWeight: 600,
-                                                        borderRadius: '4px',
-                                                        height: 22,
-                                                        fontSize: '0.7rem'
-                                                    }}
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
+                                    product.releases.map(release => {
+                                        // Include tasks with empty releases (applies to all) OR explicitly linked
+                                        const taskCount = tasks.filter(t => !t.releases?.length || t.releases.some((r: any) => r.id === release.id)).length;
+                                        return (
+                                            <TableRow key={release.id} sx={{ height: 44 }}>
+                                                <TableCell sx={{ py: 0, borderBottom: `1px solid ${colors.divider}`, fontSize: '0.8125rem', color: colors.primary, pl: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 100 }}>
+                                                    {release.name}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ py: 0, borderBottom: `1px solid ${colors.divider}`, pr: 2 }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 1 }}>
+                                                        <Chip
+                                                            label={taskCount}
+                                                            size="small"
+                                                            variant="outlined"
+                                                            sx={{
+                                                                height: 22,
+                                                                fontSize: '0.7rem',
+                                                                color: colors.secondary,
+                                                                borderColor: colors.divider,
+                                                                minWidth: 24
+                                                            }}
+                                                        />
+                                                        <Chip
+                                                            label={`v${release.level}`}
+                                                            size="small"
+                                                            sx={{
+                                                                bgcolor: '#0EA5E9', // Solid Sky Blue
+                                                                color: 'white',
+                                                                fontWeight: 600,
+                                                                borderRadius: '4px',
+                                                                height: 22,
+                                                                fontSize: '0.7rem'
+                                                            }}
+                                                        />
+                                                    </Box>
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })
                                 ) : (
                                     <TableRow>
                                         <TableCell colSpan={2} sx={{ py: 1.5, color: colors.secondary, fontSize: '0.75rem', fontStyle: 'italic', borderBottom: `1px solid ${colors.divider}`, pl: 2 }}>No releases</TableCell>
@@ -408,27 +438,46 @@ export const ProductSummaryDashboard: React.FC<ProductSummaryDashboardProps> = (
                             </TableHead>
                             <TableBody>
                                 {activeLicenses.length > 0 ? (
-                                    activeLicenses.map(license => (
-                                        <TableRow key={license.id} sx={{ height: 44 }}>
-                                            <TableCell colSpan={2} sx={{ py: 0, borderBottom: `1px solid ${colors.divider}`, pl: 2, pr: 2 }}>
-                                                <Chip
-                                                    label={license.name}
-                                                    size="small"
-                                                    sx={{
-                                                        bgcolor: '#F1F5F9', // Light Gray Pill (Subtle)
-                                                        color: '#0F172A', // Dark Text
-                                                        fontWeight: 500,
-                                                        borderRadius: '12px', // Fully rounded pill
-                                                        height: 24,
-                                                        fontSize: '0.75rem',
-                                                        width: '100%',
-                                                        justifyContent: 'flex-start',
-                                                        '& .MuiChip-label': { paddingLeft: 1.5 }
-                                                    }}
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
+                                    activeLicenses.map(license => {
+                                        // Cumulative: count tasks from same or lower license levels
+                                        const currentLevel = license.level || 0;
+                                        const taskCount = tasks.filter(t => t.license && (t.license.level || 0) <= currentLevel).length;
+                                        return (
+                                            <TableRow key={license.id} sx={{ height: 44 }}>
+                                                <TableCell colSpan={2} sx={{ py: 0, borderBottom: `1px solid ${colors.divider}`, pl: 2, pr: 2 }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                                                        <Chip
+                                                            label={license.name}
+                                                            size="small"
+                                                            sx={{
+                                                                bgcolor: '#F1F5F9', // Light Gray Pill (Subtle)
+                                                                color: '#0F172A', // Dark Text
+                                                                fontWeight: 500,
+                                                                borderRadius: '12px', // Fully rounded pill
+                                                                height: 24,
+                                                                fontSize: '0.75rem',
+                                                                justifyContent: 'flex-start',
+                                                                '& .MuiChip-label': { paddingLeft: 1.5 },
+                                                                mr: 'auto'
+                                                            }}
+                                                        />
+                                                        <Chip
+                                                            label={taskCount}
+                                                            size="small"
+                                                            variant="outlined"
+                                                            sx={{
+                                                                height: 22,
+                                                                fontSize: '0.7rem',
+                                                                color: colors.secondary,
+                                                                borderColor: colors.divider,
+                                                                minWidth: 24
+                                                            }}
+                                                        />
+                                                    </Box>
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    })
                                 ) : (
                                     <TableRow>
                                         <TableCell colSpan={2} sx={{ py: 1.5, color: colors.secondary, fontSize: '0.75rem', fontStyle: 'italic', borderBottom: `1px solid ${colors.divider}`, pl: 2 }}>No active licenses</TableCell>

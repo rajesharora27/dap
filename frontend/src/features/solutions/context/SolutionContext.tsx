@@ -191,7 +191,8 @@ export const SolutionProvider: React.FC<SolutionProviderProps> = ({ children, in
     const filteredTasks = tasks.filter((task: any) => {
         // Tag filter (OR within tags)
         if (taskTagFilter.length > 0) {
-            if (!task.tags?.some((t: any) => taskTagFilter.includes(t.id))) {
+            const allTaskTags = [...(task.tags || []), ...(task.solutionTags || [])];
+            if (!allTaskTags.some((t: any) => taskTagFilter.includes(t.id))) {
                 return false;
             }
         }
@@ -223,16 +224,19 @@ export const SolutionProvider: React.FC<SolutionProviderProps> = ({ children, in
         }
         // License filter (hierarchical - higher level includes lower levels)
         if (taskLicenseFilter.length > 0) {
-            if (!task.license) {
-                return false;
-            }
-            // Get the maximum level from selected licenses (higher level = includes more)
-            // Note: Use selectedSolution licenses if available
-            const selectedLicenses = selectedSolution?.licenses?.filter((l: any) => taskLicenseFilter.includes(l.id)) || [];
-            const maxSelectedLevel = Math.max(...selectedLicenses.map((l: any) => l.level || 0));
-            // Task's license level must be <= max selected level
-            if ((task.license.level || 0) > maxSelectedLevel) {
-                return false;
+            // Tasks with no specific license are available to "All" (so keep them)
+            if (task.license) {
+                // Get the maximum level from selected licenses (higher level = includes more)
+                // Note: Use selectedSolution licenses if available
+                const selectedLicenses = selectedSolution?.licenses?.filter((l: any) => taskLicenseFilter.includes(l.id)) || [];
+                // If we selected licenses but none matched (shouldn't happen if filters valid), treat as strict
+                if (selectedLicenses.length > 0) {
+                    const maxSelectedLevel = Math.max(...selectedLicenses.map((l: any) => l.level || 0));
+                    // Task's license level must be <= max selected level
+                    if ((task.license.level || 0) > maxSelectedLevel) {
+                        return false;
+                    }
+                }
             }
         }
         return true;

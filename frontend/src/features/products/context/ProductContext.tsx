@@ -228,15 +228,18 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children, init
         }
         // License filter (hierarchical - higher level includes lower levels)
         if (taskLicenseFilter.length > 0) {
-            if (!task.license) {
-                return false;
-            }
-            // Get the maximum level from selected licenses (higher level = includes more)
-            const selectedLicenses = selectedProduct?.licenses?.filter((l: any) => taskLicenseFilter.includes(l.id)) || [];
-            const maxSelectedLevel = Math.max(...selectedLicenses.map((l: any) => l.level || 0));
-            // Task's license level must be <= max selected level
-            if ((task.license.level || 0) > maxSelectedLevel) {
-                return false;
+            // Tasks with no specific license are available to "All" (so keep them)
+            if (task.license) {
+                // Get the maximum level from selected licenses (higher level = includes more)
+                const selectedLicenses = selectedProduct?.licenses?.filter((l: any) => taskLicenseFilter.includes(l.id)) || [];
+                // If we selected licenses but none matched (shouldn't happen if filters valid), treat as strict
+                if (selectedLicenses.length > 0) {
+                    const maxSelectedLevel = Math.max(...selectedLicenses.map((l: any) => l.level || 0));
+                    // Task's license level must be <= max selected level
+                    if ((task.license.level || 0) > maxSelectedLevel) {
+                        return false;
+                    }
+                }
             }
         }
         return true;

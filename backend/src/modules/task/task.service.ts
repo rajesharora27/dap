@@ -284,16 +284,19 @@ export class TaskService {
         // Handle licenseId by converting it to licenseLevel
         let effectiveLicenseLevel = inputData.licenseLevel;
         if (licenseId && !effectiveLicenseLevel) {
-            // Validate that the license belongs to the task's product
-            if (!before.productId) {
-                throw new Error('Cannot assign license to task without a product');
+            // Validate that the license belongs to the task's product or one of its solutions
+            if (!before.productId && !before.solutionId) {
+                throw new Error('Cannot assign license to task without a product or solution');
             }
 
-            // Look up the license and ensure it belongs to the task's product
+            // Look up the license and ensure it belongs to the task's product or solution
             const license = await prisma.license.findFirst({
                 where: {
                     id: licenseId,
-                    productId: before.productId,  // Ensure license belongs to the task's product
+                    OR: [
+                        { productId: before.productId || undefined },
+                        { solutionId: before.solutionId || undefined }
+                    ],
                     isActive: true,
                     deletedAt: null
                 }
@@ -325,8 +328,8 @@ export class TaskService {
         if (effectiveLicenseLevel) {
             updateData.licenseLevel = licenseLevelMap[effectiveLicenseLevel] || 'ESSENTIAL';
 
-            // Validate that the license level corresponds to an actual license for the product
-            if (before.productId) {
+            // Validate that the license level corresponds to an actual license for the product or solution
+            if (before.productId || before.solutionId) {
                 const levelMap: { [key: string]: number } = {
                     'Essential': 1,
                     'Advantage': 2,
@@ -334,16 +337,19 @@ export class TaskService {
                 };
                 const requiredLevel = levelMap[effectiveLicenseLevel];
                 if (requiredLevel) {
-                    const productLicense = await prisma.license.findFirst({
+                    const license = await prisma.license.findFirst({
                         where: {
-                            productId: before.productId,
+                            OR: [
+                                { productId: before.productId || undefined },
+                                { solutionId: before.solutionId || undefined }
+                            ],
                             level: requiredLevel,
                             isActive: true,
                             deletedAt: null
                         }
                     });
-                    if (!productLicense) {
-                        throw new Error(`License level "${effectiveLicenseLevel}" (level ${requiredLevel}) does not exist for this product. Please create the required license first.`);
+                    if (!license) {
+                        throw new Error(`License level "${effectiveLicenseLevel}" (level ${requiredLevel}) does not exist for this ${before.productId ? 'product' : 'solution'}. Please create the required license first.`);
                     }
                 }
             }
@@ -421,17 +427,31 @@ export class TaskService {
 
         // Handle tags if provided
         if (tagIds !== undefined) {
-            // Remove existing tags
-            await prisma.taskTag.deleteMany({ where: { taskId: id } });
+            if (before.solutionId) {
+                // Solution Task Tags
+                await prisma.solutionTaskTag.deleteMany({ where: { taskId: id } });
 
-            // Add new tags
-            if (tagIds.length > 0) {
-                await prisma.taskTag.createMany({
-                    data: tagIds.map((tagId: string) => ({
-                        taskId: id,
-                        tagId: tagId
-                    }))
-                });
+                if (tagIds.length > 0) {
+                    await prisma.solutionTaskTag.createMany({
+                        data: tagIds.map((tagId: string) => ({
+                            taskId: id,
+                            tagId: tagId
+                        }))
+                    });
+                }
+            } else {
+                // Product Task Tags (Default)
+                await prisma.taskTag.deleteMany({ where: { taskId: id } });
+
+                // Add new tags
+                if (tagIds.length > 0) {
+                    await prisma.taskTag.createMany({
+                        data: tagIds.map((tagId: string) => ({
+                            taskId: id,
+                            tagId: tagId
+                        }))
+                    });
+                }
             }
         }
 

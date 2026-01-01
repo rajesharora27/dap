@@ -14,7 +14,8 @@ export function SolutionMetadataSection() {
         selectedSolution,
         selectedSubSection,
         externalAddMode,
-        setExternalAddMode
+        setExternalAddMode,
+        tasks
     } = useSolutionContext();
 
     const solutionEditing = useSolutionEditing(selectedSolution?.id || null);
@@ -33,6 +34,7 @@ export function SolutionMetadataSection() {
                         onReorder={solutionEditing.handleOutcomeReorder}
                         externalAddMode={externalAddMode === 'outcomes'}
                         onExternalAddComplete={() => setExternalAddMode(null)}
+                        tasks={tasks}
                     />
                 );
             case 'releases':
@@ -48,6 +50,7 @@ export function SolutionMetadataSection() {
                         onReorder={() => { }}
                         externalAddMode={externalAddMode === 'releases'}
                         onExternalAddComplete={() => setExternalAddMode(null)}
+                        tasks={tasks}
                     />
                 );
             case 'licenses':
@@ -61,6 +64,7 @@ export function SolutionMetadataSection() {
                         onReorder={() => { }}
                         externalAddMode={externalAddMode === 'licenses'}
                         onExternalAddComplete={() => setExternalAddMode(null)}
+                        tasks={tasks}
                     />
                 );
             case 'resources':
@@ -85,6 +89,7 @@ export function SolutionMetadataSection() {
                         onReorder={solutionEditing.handleTagReorder}
                         externalAddMode={externalAddMode === 'tags'}
                         onExternalAddComplete={() => setExternalAddMode(null)}
+                        tasks={tasks}
                     />
                 );
             case 'customAttributes':

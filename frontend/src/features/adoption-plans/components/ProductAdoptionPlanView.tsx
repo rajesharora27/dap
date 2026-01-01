@@ -83,18 +83,22 @@ export const ProductAdoptionPlanView: React.FC<ProductAdoptionPlanViewProps> = (
         if (!plan?.tasks) return [];
         let tasks = [...plan.tasks];
 
-        // Filter by releases
+        // Filter by releases - include tasks with NO releases (applies to all)
         if (filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) {
             tasks = tasks.filter((task: any) => {
                 const taskReleaseIds = task.releases?.map((r: any) => r.id) || [];
+                // Tasks with no releases apply to ALL releases
+                if (taskReleaseIds.length === 0) return true;
                 return taskReleaseIds.some((id: string) => filterReleases.includes(id));
             });
         }
 
-        // Filter by outcomes
+        // Filter by outcomes - include tasks with NO outcomes (applies to all)
         if (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID)) {
             tasks = tasks.filter((task: any) => {
                 const taskOutcomeIds = task.outcomes?.map((o: any) => o.id) || [];
+                // Tasks with no outcomes apply to ALL outcomes
+                if (taskOutcomeIds.length === 0) return true;
                 return taskOutcomeIds.some((id: string) => filterOutcomes.includes(id));
             });
         }
@@ -182,6 +186,7 @@ export const ProductAdoptionPlanView: React.FC<ProductAdoptionPlanViewProps> = (
                 columns={ADOPTION_TASK_COLUMNS}
                 totalFilteredTasks={filteredTasks.length}
                 totalTasks={plan.tasks.length}
+                title="Tasks"
             />
 
             {/* Task Table */}

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Table, TableBody, TableCell, TableHead, TableRow, IconButton,
-    TextField, Tooltip, Box, Typography, Button
+    TextField, Tooltip, Box, Typography, Button, Chip
 } from '@mui/material';
 import {
     DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor,
@@ -32,7 +32,9 @@ interface TagsTableProps {
     readOnly?: boolean;
     // External add control - when provided, hides internal add button
     externalAddMode?: boolean;
+
     onExternalAddComplete?: () => void;
+    tasks?: any[];
 }
 
 const SortableTagRow = ({
@@ -42,7 +44,8 @@ const SortableTagRow = ({
     onEditStart,
     onEditCancel,
     onEditSave,
-    onDelete
+    onDelete,
+    taskCount
 }: {
     tag: any;
     index: number;
@@ -50,7 +53,9 @@ const SortableTagRow = ({
     onEditStart: () => void;
     onEditCancel: () => void;
     onEditSave: (name: string, color: string, description: string) => void;
+
     onDelete: () => void;
+    taskCount?: number;
 }) => {
     const id = tag.id || tag._tempId;
     const {
@@ -144,6 +149,7 @@ const SortableTagRow = ({
                             placeholder="Description"
                         />
                     </TableCell>
+                    <TableCell />
                     <TableCell align="right" width="120px">
                         <IconButton size="small" color="success" onClick={handleSave}>
                             <CheckCircle fontSize="small" />
@@ -174,6 +180,16 @@ const SortableTagRow = ({
                             {tag.description}
                         </Typography>
                     </TableCell>
+                    <TableCell>
+                        {typeof taskCount === 'number' && (
+                            <Chip
+                                label={taskCount}
+                                size="small"
+                                variant="outlined"
+                                sx={{ height: 20, fontSize: '0.7rem' }}
+                            />
+                        )}
+                    </TableCell>
                     <TableCell align="right" width="120px">
                         <IconButton size="small" onClick={onEditStart}>
                             <EditIcon fontSize="small" />
@@ -196,7 +212,9 @@ export const TagsTable: React.FC<TagsTableProps> = ({
     onCreate,
     readOnly = false,
     externalAddMode,
-    onExternalAddComplete
+
+    onExternalAddComplete,
+    tasks
 }) => {
     const [editingId, setEditingId] = useState<string | null>(null);
     const [internalAdding, setInternalAdding] = useState(false);
@@ -232,6 +250,7 @@ export const TagsTable: React.FC<TagsTableProps> = ({
             { key: 'drag', minWidth: 40, defaultWidth: 40 },
             { key: 'name', minWidth: 150, defaultWidth: 300 },
             { key: 'description', minWidth: 200, defaultWidth: 400 },
+            { key: 'tasks', minWidth: 80, defaultWidth: 100 },
             { key: 'actions', minWidth: 100, defaultWidth: 120 },
         ],
     });
@@ -327,6 +346,14 @@ export const TagsTable: React.FC<TagsTableProps> = ({
                                 Description
                             </ResizableTableCell>
                             <ResizableTableCell
+                                width={columnWidths['tasks']}
+                                resizable
+                                resizeHandleProps={getResizeHandleProps('tasks')}
+                                isResizing={isResizing}
+                            >
+                                Tasks
+                            </ResizableTableCell>
+                            <ResizableTableCell
                                 width={columnWidths['actions']}
                                 align="right"
                                 resizable
@@ -382,6 +409,7 @@ export const TagsTable: React.FC<TagsTableProps> = ({
                                         }}
                                     />
                                 </TableCell>
+                                <TableCell />
                                 <TableCell align="right">
                                     <IconButton size="small" color="success" onClick={handleCreate}>
                                         <CheckCircle fontSize="small" />
@@ -399,6 +427,7 @@ export const TagsTable: React.FC<TagsTableProps> = ({
                         >
                             {localItems.map((tag, index) => {
                                 const id = tag.id || tag._tempId;
+                                const taskCount = tasks ? tasks.filter(t => (t.tags || []).some((tg: any) => tg.id === id) || (t.solutionTags || []).some((stg: any) => stg.id === id)).length : undefined;
                                 return (
                                     <SortableTagRow
                                         key={id}
@@ -412,6 +441,7 @@ export const TagsTable: React.FC<TagsTableProps> = ({
                                             setEditingId(null);
                                         }}
                                         onDelete={() => onDelete(id)}
+                                        taskCount={taskCount}
                                     />
                                 );
                             })}
@@ -419,7 +449,7 @@ export const TagsTable: React.FC<TagsTableProps> = ({
 
                         {localItems.length === 0 && !isAdding && (
                             <TableRow>
-                                <TableCell colSpan={4} align="center">
+                                <TableCell colSpan={5} align="center">
                                     <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
                                         No tags defined.
                                     </Typography>

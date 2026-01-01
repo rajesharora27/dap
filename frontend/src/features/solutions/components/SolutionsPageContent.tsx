@@ -38,6 +38,7 @@ export function SolutionsPageContent() {
         refetchSolutions,
         refetchSelectedSolution,
         tasks,
+        filteredTasks,
         loadingTasks,
         refetchTasks,
         selectedSubSection,
@@ -268,7 +269,7 @@ export function SolutionsPageContent() {
                             <Tab label="Summary" value="summary" />
                             <Tab label="Resources" value="resources" />
                             <Tab label="Products" value="products" />
-                            <Tab label="Tasks" value="tasks" />
+                            <Tab label={filteredTasks ? `Tasks (${filteredTasks.length})` : 'Tasks'} value="tasks" />
                             <Tab label="Tags" value="tags" />
                             <Tab label="Outcomes" value="outcomes" />
                             <Tab label="Releases" value="releases" />

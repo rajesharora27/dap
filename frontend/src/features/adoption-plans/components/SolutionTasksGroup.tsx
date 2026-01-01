@@ -147,7 +147,7 @@ export const SolutionTasksGroup: React.FC<SolutionTasksGroupProps> = ({
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
               <Typography variant="h6" sx={{ color: colors.titleColor, fontWeight: 600 }}>
-                Solution Tasks
+                Solution Tasks ({tasks.length})
               </Typography>
 
               {/* Progress bar with stats */}

@@ -271,6 +271,15 @@ export const SolutionAdoptionMutationResolvers = {
         }
       });
 
+      if (existingProductAssignment && !existingProductAssignment.customerSolutionId) {
+        // If product exists but is not linked, link it to this solution
+        await prisma.customerProduct.update({
+          where: { id: existingProductAssignment.id },
+          data: { customerSolutionId: customerSolution.id }
+        });
+        existingProductAssignment.customerSolutionId = customerSolution.id;
+      }
+
       if (!existingProductAssignment) {
         // Get all outcome and release IDs for this product
         const allProductOutcomeIds = product.outcomes.map((o: any) => o.id);
@@ -1461,8 +1470,29 @@ export const SolutionAdoptionMutationResolvers = {
     const syncResults: { productId: string; productName: string; synced: boolean; error?: string }[] = [];
 
     // Ensure all products from the solution definition exist for this customer solution
+    // AND ensure SolutionAdoptionProduct records exist
     for (const solutionProduct of customerSolution.solution.products) {
       const product = solutionProduct.product;
+
+      // 0. Ensure SolutionAdoptionProduct exists
+      const existingSap = plan.products.find((p: any) => p.productId === product.id);
+      if (!existingSap) {
+        console.log(`syncSolutionAdoptionPlan: Creating missing SolutionAdoptionProduct for ${product.name}`);
+        await prisma.solutionAdoptionProduct.create({
+          data: {
+            solutionAdoptionPlanId: plan.id,
+            productId: product.id,
+            productName: product.name,
+            sequenceNumber: solutionProduct.order,
+            status: 'NOT_STARTED',
+            totalTasks: 0,
+            completedTasks: 0,
+            totalWeight: 0,
+            completedWeight: 0,
+            progressPercentage: 0
+          }
+        });
+      }
 
       // Look for existing customer product assignment for this solution
       let cp = await prisma.customerProduct.findFirst({

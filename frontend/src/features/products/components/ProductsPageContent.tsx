@@ -43,6 +43,7 @@ export function ProductsPageContent() {
         refetchProducts,
         refetchSelectedProduct,
         tasks,
+        filteredTasks,
         loadingTasks,
         selectedSubSection,
         setSelectedSubSection,
@@ -425,7 +426,7 @@ export function ProductsPageContent() {
                         >
                             <Tab label="Summary" value="summary" />
                             <Tab label="Resources" value="resources" />
-                            <Tab label="Tasks" value="tasks" />
+                            <Tab label={filteredTasks ? `Tasks (${filteredTasks.length})` : 'Tasks'} value="tasks" />
                             <Tab label="Tags" value="tags" />
                             <Tab label="Outcomes" value="outcomes" />
                             <Tab label="Releases" value="releases" />

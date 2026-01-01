@@ -126,7 +126,7 @@ export function CustomerMetricCards({ overviewMetrics }: CustomerMetricCardsProp
                         <Divider orientation="vertical" flexItem sx={{ height: 20, my: 'auto' }} />
                         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                             <Typography variant="h6" fontWeight={700} sx={{ color: colors.product, lineHeight: 1 }}>
-                                {overviewMetrics.directProductsCount}<Typography component="span" variant="h6" fontWeight={400} sx={{ color: 'text.secondary', mx: 0.2 }}>+</Typography>{overviewMetrics.solutionProductsCount}
+                                {overviewMetrics.directProductsCount}<Typography component="span" variant="h6" fontWeight={700} sx={{ color: colors.solution, mx: 0.2 }}>+</Typography><Typography component="span" variant="h6" fontWeight={700} sx={{ color: colors.solution }}>{overviewMetrics.solutionProductsCount}</Typography>
                             </Typography>
                             <Typography variant="caption" color="text.secondary" fontWeight={600}>PRODUCTS</Typography>
                         </Box>

@@ -209,9 +209,11 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
   const solutionTasks = useMemo(() => {
     let tasks = [...allSolutionTasks];
 
-    // Filter by releases (multiple selection - task must have at least one selected release)
+    // Filter by releases (include tasks with NO releases - applies to all)
     if (filterReleases.length > 0 && !filterReleases.includes(ALL_RELEASES_ID)) {
       tasks = tasks.filter((task: any) => {
+        // Tasks with no releases apply to ALL releases
+        if (!task.releases || task.releases.length === 0) return true;
         const hasSelectedRelease = task.releases?.some((release: any) =>
           filterReleases.includes(release.id)
         );
@@ -222,6 +224,9 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     // Filter by outcomes (multiple selection - task must have at least one selected outcome)
     if (filterOutcomes.length > 0 && !filterOutcomes.includes(ALL_OUTCOMES_ID)) {
       tasks = tasks.filter((task: any) => {
+        // Include tasks with NO outcomes (generic tasks)
+        if (!task.outcomes || task.outcomes.length === 0) return true;
+
         const hasSelectedOutcome = task.outcomes?.some((outcome: any) =>
           filterOutcomes.includes(outcome.id)
         );
@@ -455,6 +460,9 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
           onExportTelemetry={handleExportProductTelemetry}
           onImportTelemetry={handleImportProductTelemetry}
           visibleColumns={visibleColumns}
+          planOutcomes={product.productAdoptionPlan?.selectedOutcomes || []}
+          planReleases={product.productAdoptionPlan?.selectedReleases || []}
+          isPartOfSolution={true}
         />
       ))}
 
