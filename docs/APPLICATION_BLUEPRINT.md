@@ -1,6 +1,7 @@
 # Application Blueprint Template
 
-**Version:** 1.0.0  
+**Version:** 1.1.0  
+**Last Updated:** January 3, 2026  
 **Purpose:** Generate new applications with 100/100 architecture score from day one  
 **Based On:** DAP (Digital Adoption Platform) - Production-proven architecture
 
@@ -650,6 +651,111 @@ export const ProductCard: React.FC<ProductCardProps> = memo(({
 ProductCard.displayName = 'ProductCard';
 ```
 
+### 3.7 Server-Side Sorting Pattern (MANDATORY for Paginated Lists)
+
+> ⚠️ **CRITICAL:** Never sort paginated data client-side. This only sorts the visible page, not the entire dataset.
+
+```typescript
+// ❌ WRONG - Client-side sorting (only sorts visible 25 items!)
+const sortedProducts = React.useMemo(() => {
+  return [...products].sort((a, b) => a.name.localeCompare(b.name));
+}, [products]);
+
+// ✅ CORRECT - Server-side sorting via GraphQL
+```
+
+**Step 1: Add sorting types to GraphQL schema**
+```graphql
+enum ProductSortField {
+  NAME
+  CREATED_AT
+  UPDATED_AT
+}
+
+enum SortDirection {
+  ASC
+  DESC
+}
+
+input ProductOrderByInput {
+  field: ProductSortField!
+  direction: SortDirection!
+}
+
+type Query {
+  products(
+    first: Int
+    after: String
+    orderBy: ProductOrderByInput
+  ): ProductConnection!
+}
+```
+
+**Step 2: Update pagination utility**
+```typescript
+// backend/src/shared/utils/pagination.ts
+export async function fetchProductsPaginated(args: {
+  first?: number;
+  after?: string;
+  orderBy?: { field: string; direction: 'ASC' | 'DESC' };
+}) {
+  const sortField = args.orderBy?.field === 'NAME' ? 'name' : 'updatedAt';
+  const sortDir = args.orderBy?.direction?.toLowerCase() || 'desc';
+
+  const rows = await prisma.product.findMany({
+    where: { deletedAt: null },
+    orderBy: [{ [sortField]: sortDir }, { id: 'asc' }],
+    take: args.first || 25,
+  });
+  // ... build connection
+}
+```
+
+**Step 3: Frontend triggers network request on sort change**
+```tsx
+// frontend/src/features/products/components/ProductsPanel.tsx
+const handleSortChange = (field: string, direction: 'ASC' | 'DESC') => {
+  setArgs({
+    first: 25,
+    orderBy: { field, direction }
+  }); // Triggers network request!
+};
+```
+
+### 3.8 Route Guard Pattern (MANDATORY for Protected Routes)
+
+> ⚠️ **CRITICAL:** Never use conditional rendering inside `<Routes>`. Use wrapper components.
+
+```tsx
+// ❌ WRONG - Conditional rendering inside Routes
+<Routes>
+  {user?.isAdmin && (
+    <Route path="/admin/*" element={<AdminRoutes />} />
+  )}
+</Routes>
+
+// ✅ CORRECT - Route guard wrapper component
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuth();
+  if (!user?.isAdmin) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+};
+
+// Usage with flat route structure
+<Routes>
+  <Route path="/admin/users" element={
+    <AdminRoute>
+      <UserManagement />
+    </AdminRoute>
+  } />
+  <Route path="/admin/roles" element={
+    <AdminRoute>
+      <RoleManagement />
+    </AdminRoute>
+  } />
+</Routes>
+```
+
 ---
 
 ## 4. Database Schema Design
@@ -905,6 +1011,60 @@ app.use(helmet({
     includeSubDomains: true,
   } : false,
 }));
+```
+
+### 5.4 Production Security Validation (MANDATORY)
+
+> ⚠️ **CRITICAL:** The application MUST crash at startup if critical secrets are missing in production. Never use hardcoded fallbacks for security-sensitive values.
+
+```typescript
+// backend/src/config/env.ts
+const CRITICAL_SECRETS = ['JWT_SECRET', 'DATABASE_URL'] as const;
+
+function validateCriticalSecrets(): void {
+  if (process.env.NODE_ENV !== 'production') return;
+  
+  const missing: string[] = [];
+  for (const secret of CRITICAL_SECRETS) {
+    if (!process.env[secret]?.trim()) {
+      missing.push(secret);
+    }
+  }
+  
+  // Check for insecure patterns
+  const jwtSecret = process.env.JWT_SECRET || '';
+  const dangerousPatterns = ['dev-secret', 'changeme', 'test', 'password'];
+  for (const pattern of dangerousPatterns) {
+    if (jwtSecret.toLowerCase().includes(pattern)) {
+      console.error('⛔ SECURITY VIOLATION: JWT_SECRET contains insecure pattern');
+      process.exit(1);
+    }
+  }
+  
+  if (missing.length > 0) {
+    console.error(`⛔ FATAL: Missing secrets: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+  
+  if (jwtSecret.length < 32) {
+    console.error('⛔ SECURITY VIOLATION: JWT_SECRET must be at least 32 characters');
+    process.exit(1);
+  }
+}
+
+// Run at module load (before server starts)
+validateCriticalSecrets();
+```
+
+**Anti-Pattern - NEVER do this:**
+```typescript
+// ❌ WRONG - Hardcoded fallback secrets
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-me';
+const DEFAULT_PASSWORD = 'password123';
+
+// ✅ CORRECT - Import from validated config
+import { envConfig } from '../../config/env';
+const JWT_SECRET = envConfig.auth.jwtSecret; // Validated at startup
 ```
 
 ---
