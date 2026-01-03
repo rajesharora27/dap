@@ -38,56 +38,70 @@ import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
 import { ConfirmDialog } from '@shared/components';
 
-const PRODUCTS = gql`query ProductsPanelFetch($first:Int,$after:String,$last:Int,$before:String){ 
-  products(first:$first,after:$after,last:$last,before:$before){ 
-    edges { 
-      cursor 
-      node { 
-        id 
-        name 
-        statusPercent 
-        resources { label url }
-        customAttrs
-        licenses {
-          id
-          name
-          description
-          level
-          isActive
-        }
-        releases {
-          id
-          name
-          level
-          description
-        }
-        outcomes {
-          id
-          name
-          description
-        }
-        tasks(first: 50) {
-          edges {
-            node {
-              id
-              name
-              howToDoc
-              howToVideo
-              telemetryAttributes {
-                id
-              }
-              outcomes {
+const PRODUCTS = gql`
+  query ProductsPanelFetch(
+    $first: Int
+    $after: String
+    $last: Int
+    $before: String
+    $orderBy: ProductOrderByInput
+  ) { 
+    products(
+      first: $first
+      after: $after
+      last: $last
+      before: $before
+      orderBy: $orderBy
+    ) { 
+      edges { 
+        cursor 
+        node { 
+          id 
+          name 
+          statusPercent 
+          resources { label url }
+          customAttrs
+          licenses {
+            id
+            name
+            description
+            level
+            isActive
+          }
+          releases {
+            id
+            name
+            level
+            description
+          }
+          outcomes {
+            id
+            name
+            description
+          }
+          tasks(first: 50) {
+            edges {
+              node {
                 id
                 name
+                howToDoc
+                howToVideo
+                telemetryAttributes {
+                  id
+                }
+                outcomes {
+                  id
+                  name
+                }
               }
             }
           }
-        }
+        } 
       } 
+      pageInfo { hasNextPage hasPreviousPage startCursor endCursor } 
     } 
-    pageInfo { hasNextPage hasPreviousPage startCursor endCursor } 
-  } 
-}`;
+  }
+`;
 const PRODUCT_UPDATED = gql`subscription { productUpdated { id name statusPercent } }`;
 const CREATE_PRODUCT = gql`
   mutation CreateProductPanel($input: ProductInput!) {
@@ -112,19 +126,39 @@ const UPDATE_PRODUCT = gql`
 `;
 const DELETE_PRODUCT = gql`mutation DeleteProduct($id:ID!){ deleteProduct(id:$id) }`;
 
+// Sort field types matching GraphQL schema
+type ProductSortField = 'NAME' | 'UPDATED_AT';
+
+interface ProductOrderByInput {
+  field: ProductSortField;
+  direction: 'ASC' | 'DESC';
+}
+
+interface ProductQueryArgs {
+  first?: number;
+  after?: string | null;
+  last?: number;
+  before?: string | null;
+  orderBy?: ProductOrderByInput;
+}
+
 interface Props { onSelect: (id: string) => void }
 export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
   const [sortBy, setSortBy] = useState<'lastModified' | 'name'>('lastModified');
   const [sortDirection, setSortDirection] = useState<'ASC' | 'DESC'>('DESC');
-  const [args, setArgs] = useState<{
-    first?: number;
-    after?: string | null;
-    last?: number;
-    before?: string | null;
-  }>({
-    first: 25
+  
+  // Build orderBy from UI state - server-side sorting
+  const getOrderBy = (field: 'lastModified' | 'name', direction: 'ASC' | 'DESC'): ProductOrderByInput => ({
+    field: field === 'name' ? 'NAME' : 'UPDATED_AT',
+    direction
   });
-  const { data, refetch } = useQuery(PRODUCTS, { variables: args });
+
+  const [args, setArgs] = useState<ProductQueryArgs>({
+    first: 25,
+    orderBy: getOrderBy('lastModified', 'DESC')
+  });
+  
+  const { data, refetch, loading } = useQuery(PRODUCTS, { variables: args });
   const [createProduct] = useMutation(CREATE_PRODUCT);
   const [updateProduct] = useMutation(UPDATE_PRODUCT);
   const [deleteProduct] = useMutation(DELETE_PRODUCT, { onCompleted: () => refetch() });
@@ -152,8 +186,11 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
   });
 
   const conn = data?.products;
+  
+  // Products are now sorted server-side - use edges directly
+  const products = conn?.edges || [];
 
-  // Extract timestamp from base64-encoded cursor
+  // Extract timestamp from base64-encoded cursor for display purposes
   const getCursorTimestamp = (cursor: string) => {
     try {
       const decoded = JSON.parse(atob(cursor));
@@ -163,26 +200,19 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
     }
   };
 
-  // Client-side sorting of products
-  const sortedProducts = React.useMemo(() => {
-    if (!conn?.edges) return [];
-
-    const products = [...conn.edges];
-
-    return products.sort((a, b) => {
-      if (sortBy === 'name') {
-        const aName = a.node.name.toLowerCase();
-        const bName = b.node.name.toLowerCase();
-        const comparison = aName.localeCompare(bName);
-        return sortDirection === 'ASC' ? comparison : -comparison;
-      } else if (sortBy === 'lastModified') {
-        const aTime = getCursorTimestamp(a.cursor);
-        const bTime = getCursorTimestamp(b.cursor);
-        return sortDirection === 'DESC' ? bTime - aTime : aTime - bTime;
-      }
-      return 0;
+  // Handle sort change - triggers a new network request with server-side sorting
+  const handleSortChange = (newSortBy: 'lastModified' | 'name', newDirection: 'ASC' | 'DESC') => {
+    setSortBy(newSortBy);
+    setSortDirection(newDirection);
+    // Reset pagination and update orderBy - this triggers a network request
+    setArgs({
+      first: 25,
+      after: null,
+      last: undefined,
+      before: null,
+      orderBy: getOrderBy(newSortBy, newDirection)
     });
-  }, [conn?.edges, sortBy, sortDirection]);
+  };
 
   const loadNext = () => {
     if (conn?.pageInfo.endCursor) setArgs(prev => ({
@@ -190,7 +220,8 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
       first: 25,
       after: conn.pageInfo.endCursor,
       last: undefined,
-      before: null
+      before: null,
+      orderBy: prev.orderBy // Preserve sort order during pagination
     }));
   };
   const loadPrev = () => {
@@ -199,7 +230,8 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
       last: 25,
       before: conn.pageInfo.startCursor,
       first: undefined,
-      after: null
+      after: null,
+      orderBy: prev.orderBy // Preserve sort order during pagination
     }));
   };
 
@@ -584,7 +616,8 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
           <Select
             value={sortBy}
             label="Sort by"
-            onChange={(e) => setSortBy(e.target.value as 'lastModified' | 'name')}
+            onChange={(e) => handleSortChange(e.target.value as 'lastModified' | 'name', sortDirection)}
+            disabled={loading}
           >
             <MenuItem value="lastModified">
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -601,7 +634,8 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
           <Select
             value={sortDirection}
             label="Order"
-            onChange={(e) => setSortDirection(e.target.value as 'ASC' | 'DESC')}
+            onChange={(e) => handleSortChange(sortBy, e.target.value as 'ASC' | 'DESC')}
+            disabled={loading}
           >
             <MenuItem value="DESC">
               {sortBy === 'lastModified' ? 'Newest First' : 'Z to A'}
@@ -662,14 +696,20 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {sortedProducts.length === 0 ? (
+          {loading ? (
+            <TableRow>
+              <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
+                <Typography variant="body2" color="text.secondary">Loading...</Typography>
+              </TableCell>
+            </TableRow>
+          ) : products.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
                 <Typography variant="body2" color="text.secondary">No products found</Typography>
               </TableCell>
             </TableRow>
           ) : (
-            sortedProducts.map((e: any) => (
+            products.map((e: any) => (
               <TableRow
                 key={e.node.id}
                 hover

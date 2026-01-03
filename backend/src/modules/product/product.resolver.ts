@@ -123,9 +123,18 @@ export const ProductQueryResolvers = {
         });
     },
 
+    /**
+     * Fetches products with pagination and server-side sorting.
+     * 
+     * @param args.first - Number of products to fetch (max 100)
+     * @param args.after - Cursor for forward pagination
+     * @param args.last - Number of products to fetch backwards
+     * @param args.before - Cursor for backward pagination
+     * @param args.orderBy - Sort configuration { field: 'NAME' | 'CREATED_AT' | 'UPDATED_AT', direction: 'ASC' | 'DESC' }
+     * @returns Relay-style ProductConnection with sorted products
+     */
     products: async (_: any, args: any, ctx: any) => {
         requireUser(ctx);
-
 
         // Get accessible product IDs for this user
         const accessibleIds = await getUserAccessibleResources(
@@ -152,10 +161,13 @@ export const ProductQueryResolvers = {
             };
         }
 
-        // Add accessible IDs filter to args if not admin (null means admin/all access)
-        const filteredArgs = accessibleIds !== null
-            ? { ...args, accessibleIds }
-            : args;
+        // Build args with accessible IDs and orderBy
+        const filteredArgs = {
+            ...args,
+            ...(accessibleIds !== null && { accessibleIds }),
+            // Pass orderBy to pagination function for server-side sorting
+            orderBy: args.orderBy
+        };
 
         return fetchProductsPaginated(filteredArgs);
     }
