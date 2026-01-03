@@ -4,22 +4,129 @@ import { z } from 'zod';
 // Load environment variables from .env file
 dotenv.config();
 
+// =============================================================================
+// SECURITY: Critical secrets validation
+// =============================================================================
+// In production, the application MUST crash if critical secrets are missing.
+// This prevents running with insecure defaults that could compromise the system.
+// =============================================================================
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+/**
+ * Critical secrets that MUST be present in production.
+ * Missing any of these will cause immediate application termination.
+ */
+const CRITICAL_SECRETS = ['JWT_SECRET', 'DATABASE_URL'] as const;
+
+/**
+ * Validates that all critical secrets are present in production.
+ * @throws {Error} Crashes the application if secrets are missing in production
+ */
+function validateCriticalSecrets(): void {
+  if (!isProduction) return; // Only enforce in production
+  
+  const missing: string[] = [];
+  
+  for (const secret of CRITICAL_SECRETS) {
+    if (!process.env[secret] || process.env[secret]?.trim() === '') {
+      missing.push(secret);
+    }
+  }
+  
+  // Check for development fallback values that should never be in production
+  const jwtSecret = process.env.JWT_SECRET || '';
+  const dangerousPatterns = [
+    'dev-secret',
+    'change-in-production',
+    'fallback',
+    'your-secret',
+    'secret-key',
+    'changeme',
+    'password',
+    'test'
+  ];
+  
+  const lowerSecret = jwtSecret.toLowerCase();
+  for (const pattern of dangerousPatterns) {
+    if (lowerSecret.includes(pattern)) {
+      console.error(`
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  ⛔ SECURITY VIOLATION: INSECURE JWT_SECRET DETECTED                         ║
+║                                                                              ║
+║  The JWT_SECRET contains a development/test pattern: "${pattern}"            ║
+║  This is a critical security vulnerability in production!                   ║
+║                                                                              ║
+║  Generate a secure secret with: openssl rand -base64 64                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+`);
+      process.exit(1);
+    }
+  }
+  
+  if (missing.length > 0) {
+    console.error(`
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  ⛔ FATAL: MISSING CRITICAL ENVIRONMENT VARIABLES IN PRODUCTION              ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  The following required secrets are missing:                                 ║
+${missing.map(s => `║    • ${s.padEnd(68)}║`).join('\n')}
+║                                                                              ║
+║  These variables MUST be set in production for security.                     ║
+║  The application cannot start without them.                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+`);
+    process.exit(1);
+  }
+  
+  // Additional JWT_SECRET length check for production
+  if (jwtSecret.length < 32) {
+    console.error(`
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  ⛔ SECURITY VIOLATION: JWT_SECRET TOO SHORT                                 ║
+║                                                                              ║
+║  JWT_SECRET must be at least 32 characters in production.                    ║
+║  Current length: ${String(jwtSecret.length).padEnd(52)}║
+║                                                                              ║
+║  Generate a secure secret with: openssl rand -base64 64                      ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+`);
+    process.exit(1);
+  }
+}
+
+// Run validation immediately on module load
+validateCriticalSecrets();
+
 // Define schema for strict validation
+// NOTE: In production, defaults are NOT used for critical secrets (validated above)
 const envSchema = z.object({
   // Core
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(4000),
   BACKEND_PORT: z.coerce.number().default(4000),
 
-  // Database
+  // Database - REQUIRED, no fallback
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   DB_PROVIDER: z.string().default('postgresql'),
 
-  // Authentication
-  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters').default('dev-secret-at-least-32-chars-long-for-safety'),
-  JWT_EXPIRES_IN: z.string().default('24h'),
+  // Authentication - Development fallback ONLY for non-production
+  // In production, validateCriticalSecrets() ensures these are set
+  JWT_SECRET: isProduction
+    ? z.string().min(32, 'JWT_SECRET must be at least 32 characters')
+    : z.string().min(32).default('dev-secret-at-least-32-chars-long-for-safety'),
+  JWT_REFRESH_SECRET: isProduction
+    ? z.string().min(32, 'JWT_REFRESH_SECRET must be at least 32 characters').optional()
+    : z.string().min(32).default('dev-refresh-secret-32-chars-long-min').optional(),
+  JWT_EXPIRES_IN: z.string().default('8h'),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
   AUTH_BYPASS: z.string().optional().transform(v => v === '1' || v === 'true'),
   AUTH_FALLBACK: z.string().optional().transform(v => v === '1' || v === 'true'),
+  
+  // Default password for new users (admin-created accounts)
+  DEFAULT_USER_PASSWORD: isProduction
+    ? z.string().min(8, 'DEFAULT_USER_PASSWORD must be at least 8 characters').optional()
+    : z.string().min(6).default('DAP123').optional(),
 
   // RBAC
   RBAC_STRICT: z.string().optional().transform(v => v === '1' || v === 'true'),
@@ -99,8 +206,23 @@ export const envConfig = {
   auth: {
     required: isProd,
     bypassEnabled: env.AUTH_BYPASS || (isDev || isTest),
+    /**
+     * JWT signing secret. In production, this MUST be a secure random string.
+     * The application will crash at startup if this is missing or insecure in production.
+     */
     jwtSecret: env.JWT_SECRET,
+    /**
+     * Optional separate secret for refresh tokens. Falls back to jwtSecret if not set.
+     */
+    jwtRefreshSecret: env.JWT_REFRESH_SECRET || env.JWT_SECRET,
     jwtExpiresIn: env.JWT_EXPIRES_IN,
+    jwtRefreshExpiresIn: env.JWT_REFRESH_EXPIRES_IN,
+    /**
+     * Default password for admin-created user accounts.
+     * Users will be prompted to change this on first login.
+     * In production, consider using a more secure default or requiring admin to set.
+     */
+    defaultUserPassword: env.DEFAULT_USER_PASSWORD || 'ChangeMe123!',
     defaultDevUser: {
       id: 'dev-admin',
       userId: 'dev-admin',

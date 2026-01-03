@@ -1,11 +1,41 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { PrismaClient, ResourceType, PermissionLevel } from '@prisma/client';
+import { envConfig } from '../../config/env';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRES_IN = '8h';
-const REFRESH_TOKEN_EXPIRES_IN = '7d';
-const DEFAULT_PASSWORD = 'DAP123';
+// =============================================================================
+// SECURITY: All secrets are loaded from centralized config (env.ts)
+// The config validates critical secrets at startup and crashes if missing in production.
+// NO HARDCODED FALLBACK SECRETS should exist in this file.
+// =============================================================================
+
+/**
+ * JWT signing secret from centralized config.
+ * Validated at startup - will crash if missing/insecure in production.
+ * Cast to string since we validate it exists at startup.
+ */
+const JWT_SECRET: string = envConfig.auth.jwtSecret;
+
+/**
+ * JWT refresh token secret. Uses separate secret if configured, otherwise main secret.
+ */
+const JWT_REFRESH_SECRET: string = envConfig.auth.jwtRefreshSecret;
+
+/**
+ * Access token expiration time.
+ */
+const JWT_EXPIRES_IN: string = envConfig.auth.jwtExpiresIn;
+
+/**
+ * Refresh token expiration time.
+ */
+const REFRESH_TOKEN_EXPIRES_IN: string = envConfig.auth.jwtRefreshExpiresIn;
+
+/**
+ * Default password for admin-created accounts.
+ * From centralized config - users should change on first login.
+ */
+const DEFAULT_PASSWORD: string = envConfig.auth.defaultUserPassword;
 
 export interface User {
   id: string;
@@ -57,21 +87,47 @@ export class AuthService {
       roles, // Include roles in JWT for frontend menu visibility
     };
 
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+    const options: SignOptions = { expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] };
+    return jwt.sign(payload, JWT_SECRET, options);
   }
 
-  // Generate refresh token
-  // Generate refresh token
+  /**
+   * Generate refresh token with separate secret for additional security.
+   */
   generateRefreshToken(userId: string, sessionId: string): string {
-    return jwt.sign({ userId, sessionId }, JWT_SECRET, { expiresIn: REFRESH_TOKEN_EXPIRES_IN });
+    const options: SignOptions = { expiresIn: REFRESH_TOKEN_EXPIRES_IN as jwt.SignOptions['expiresIn'] };
+    return jwt.sign(
+      { userId, sessionId, type: 'refresh' },
+      JWT_REFRESH_SECRET,
+      options
+    );
   }
 
-  // Verify token
+  /**
+   * Verify an access token.
+   * @throws {Error} If token is invalid or expired
+   */
   verifyToken(token: string): any {
     try {
       return jwt.verify(token, JWT_SECRET);
     } catch (error) {
       throw new Error('Invalid or expired token');
+    }
+  }
+
+  /**
+   * Verify a refresh token using the refresh secret.
+   * @throws {Error} If token is invalid or expired
+   */
+  verifyRefreshToken(token: string): any {
+    try {
+      const payload = jwt.verify(token, JWT_REFRESH_SECRET);
+      if (typeof payload === 'object' && payload.type !== 'refresh') {
+        throw new Error('Invalid token type');
+      }
+      return payload;
+    } catch (error) {
+      throw new Error('Invalid or expired refresh token');
     }
   }
 
