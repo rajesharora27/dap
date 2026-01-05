@@ -84,7 +84,8 @@ const REFRESH_AI_DATA_CONTEXT = gql`
 interface AIChatProps {
   open: boolean;
   onClose: () => void;
-  onNavigate?: (type: string, id: string) => void;
+  /** Navigation handler that accepts entity type + ID for AI result navigation */
+  onNavigate?: (type: string, id?: string) => void;
 }
 
 export const AIChat: React.FC<AIChatProps> = ({ open, onClose, onNavigate }) => {
@@ -257,10 +258,29 @@ export const AIChat: React.FC<AIChatProps> = ({ open, onClose, onNavigate }) => 
     clearHistory,
   } = useAIAssistant();
 
-  // Scroll to bottom when messages change
+  // Smart scroll: only auto-scroll if user is near the bottom already
+  // This prevents jarring jumps when large results are displayed
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  
+  // Track scroll position to determine if we should auto-scroll
+  const handleScroll = () => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = container;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+    setShouldAutoScroll(isNearBottom);
+  };
+  
+  // Only scroll to bottom if user is already near the bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (shouldAutoScroll && messages.length > 0) {
+      // Small delay to let content render before scrolling
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
+    }
+  }, [messages, shouldAutoScroll]);
 
   // Focus input when dialog opens
   useEffect(() => {
@@ -486,6 +506,7 @@ What would you like to know?`,
       >
         <Box
           ref={messagesContainerRef}
+          onScroll={handleScroll}
           sx={{
             flex: 1,
             overflowY: 'auto',

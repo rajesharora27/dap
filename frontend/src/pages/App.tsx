@@ -314,8 +314,37 @@ function AuthenticatedApp() {
   const isAdmin = user?.isAdmin;
 
   // Handlers for Navigation from AuthBar (if it passes onNavigate)
-  const handleNavigate = (path: string) => {
-    navigate(path);
+  // Supports both direct paths ("/products") and type+id navigation from AI Assistant
+  const handleNavigate = (typeOrPath: string, id?: string) => {
+    if (id) {
+      // AI Assistant navigation: (type, id) format
+      // Construct path based on entity type
+      switch (typeOrPath) {
+        case 'products':
+          navigate(`/products?highlight=${id}`);
+          break;
+        case 'solutions':
+          navigate(`/solutions?highlight=${id}`);
+          break;
+        case 'customers':
+          navigate(`/customers?highlight=${id}`);
+          break;
+        case 'tasks':
+          // Tasks are opened in a dialog, not a page navigation
+          // The AIChat handles this case by not closing
+          navigate(`/products?task=${id}`);
+          break;
+        case 'adoptionPlans':
+          navigate(`/customers?adoptionPlan=${id}`);
+          break;
+        default:
+          // Unknown type - try to navigate as a path
+          navigate(`/${typeOrPath}`);
+      }
+    } else {
+      // Direct path navigation
+      navigate(typeOrPath);
+    }
   };
 
   return (

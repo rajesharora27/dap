@@ -35,7 +35,8 @@ interface AuthBarProps {
   onMenuClick?: () => void;
   drawerOpen?: boolean;
   onProfileClick?: () => void;
-  onNavigate?: (type: string, id: string) => void;
+  /** Navigation handler that accepts entity type + ID (from AI) or direct path */
+  onNavigate?: (typeOrPath: string, id?: string) => void;
 }
 
 export const AuthBar: React.FC<AuthBarProps> = ({ onMenuClick, drawerOpen, onProfileClick, onNavigate }) => {
