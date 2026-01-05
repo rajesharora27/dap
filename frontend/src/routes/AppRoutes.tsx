@@ -118,22 +118,68 @@ const DevRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 /**
  * 404 Not Found page component
  * Uses React Router navigation to respect basename
+ * Provides helpful navigation options and displays the invalid path
  */
 const NotFoundPage: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     
     return (
-        <Box sx={{ p: 4, textAlign: 'center' }}>
-            <Typography variant="h4" gutterBottom>404 - Page Not Found</Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-                The page you're looking for doesn't exist or you don't have access to it.
-            </Typography>
-            <Button 
-                variant="contained" 
-                onClick={() => navigate('/dashboard')}
+        <Box 
+            sx={{ 
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '60vh',
+                p: 4, 
+                textAlign: 'center' 
+            }}
+        >
+            <Typography 
+                variant="h1" 
+                sx={{ 
+                    fontSize: { xs: '4rem', md: '6rem' },
+                    fontWeight: 700,
+                    color: 'primary.main',
+                    mb: 2
+                }}
             >
-                Go to Dashboard
-            </Button>
+                404
+            </Typography>
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 500 }}>
+                Page Not Found
+            </Typography>
+            <Typography 
+                variant="body1" 
+                color="text.secondary" 
+                sx={{ mb: 1, maxWidth: 500 }}
+            >
+                The page you're looking for doesn't exist or you don't have permission to access it.
+            </Typography>
+            <Typography 
+                variant="body2" 
+                color="text.disabled" 
+                sx={{ mb: 4, fontFamily: 'monospace' }}
+            >
+                Requested: {location.pathname}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <Button 
+                    variant="contained" 
+                    onClick={() => navigate('/dashboard')}
+                    size="large"
+                >
+                    Go to Dashboard
+                </Button>
+                <Button 
+                    variant="outlined" 
+                    onClick={() => navigate(-1)}
+                    size="large"
+                >
+                    Go Back
+                </Button>
+            </Box>
         </Box>
     );
 };
