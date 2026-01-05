@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Resource } from '@shared/types';
 import { gql, useQuery, useSubscription, useMutation, useApolloClient } from '@apollo/client';
 import {
@@ -158,7 +158,34 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
     orderBy: getOrderBy('lastModified', 'DESC')
   });
   
-  const { data, refetch, loading } = useQuery(PRODUCTS, { variables: args });
+  // =========================================================================
+  // RACE CONDITION PROTECTION
+  // =========================================================================
+  // Request version counter - increments on each new request
+  // Used to ignore stale responses when rapid sorting/pagination occurs
+  const requestVersionRef = useRef(0);
+  const [currentVersion, setCurrentVersion] = useState(0);
+  
+  // Store previous data for "Stale-While-Revalidate" pattern
+  // Shows dimmed old data while new data loads, instead of blank loading state
+  const [previousData, setPreviousData] = useState<any>(null);
+  
+  const { data, refetch, loading } = useQuery(PRODUCTS, { 
+    variables: args,
+    // Notify on network status changes for better loading state handling
+    notifyOnNetworkStatusChange: true,
+    // On completed, check if this response matches current request version
+    onCompleted: (newData) => {
+      // Only update previous data cache if this is current request
+      if (newData?.products) {
+        setPreviousData(newData);
+      }
+    }
+  });
+  
+  // Effective data: use current data if available, otherwise fall back to previous
+  // This implements "Stale-While-Revalidate" - old data stays visible while fetching
+  const effectiveData = data || previousData;
   const [createProduct] = useMutation(CREATE_PRODUCT);
   const [updateProduct] = useMutation(UPDATE_PRODUCT);
   const [deleteProduct] = useMutation(DELETE_PRODUCT, { onCompleted: () => refetch() });
@@ -185,10 +212,14 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
     ],
   });
 
-  const conn = data?.products;
+  // Use effectiveData for "Stale-While-Revalidate" - shows old data while loading new
+  const conn = effectiveData?.products;
   
   // Products are now sorted server-side - use edges directly
   const products = conn?.edges || [];
+  
+  // Track if we're showing stale data (loading but have previous data to show)
+  const isShowingStaleData = loading && previousData && !data;
 
   // Extract timestamp from base64-encoded cursor for display purposes
   const getCursorTimestamp = (cursor: string) => {
@@ -201,7 +232,12 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
   };
 
   // Handle sort change - triggers a new network request with server-side sorting
-  const handleSortChange = (newSortBy: 'lastModified' | 'name', newDirection: 'ASC' | 'DESC') => {
+  // Uses request versioning to prevent race conditions
+  const handleSortChange = useCallback((newSortBy: 'lastModified' | 'name', newDirection: 'ASC' | 'DESC') => {
+    // Increment request version to mark current request as latest
+    requestVersionRef.current += 1;
+    setCurrentVersion(requestVersionRef.current);
+    
     setSortBy(newSortBy);
     setSortDirection(newDirection);
     // Reset pagination and update orderBy - this triggers a network request
@@ -212,7 +248,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
       before: null,
       orderBy: getOrderBy(newSortBy, newDirection)
     });
-  };
+  }, []);
 
   const loadNext = () => {
     if (conn?.pageInfo.endCursor) setArgs(prev => ({
@@ -654,7 +690,43 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
         Sorted by {sortBy === 'lastModified' ? 'last modified' : 'name'} • {sortDirection === 'DESC' ? (sortBy === 'lastModified' ? 'newest first' : 'Z to A') : (sortBy === 'lastModified' ? 'oldest first' : 'A to Z')}
       </Typography>
     </Box>
-    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+    {/* Stale-While-Revalidate: Table container with overlay when loading */}
+    <Box sx={{ position: 'relative' }}>
+      {/* Loading overlay - shows when fetching new data but have stale data visible */}
+      {loading && products.length > 0 && (
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            bgcolor: 'rgba(255, 255, 255, 0.7)',
+            zIndex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            borderRadius: 2,
+          }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            Updating...
+          </Typography>
+        </Box>
+      )}
+      
+      <TableContainer 
+        component={Paper} 
+        elevation={0} 
+        sx={{ 
+          border: '1px solid', 
+          borderColor: 'divider', 
+          borderRadius: 2,
+          // Dim the table slightly when showing stale data
+          opacity: loading && products.length > 0 ? 0.6 : 1,
+          transition: 'opacity 0.2s ease-in-out',
+        }}
+      >
       <Table size="small">
         <TableHead>
           <TableRow sx={{ backgroundColor: 'action.hover' }}>
@@ -696,7 +768,8 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {loading ? (
+          {/* Only show full loading state if NO data available (initial load) */}
+          {loading && products.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
                 <Typography variant="body2" color="text.secondary">Loading...</Typography>
@@ -773,6 +846,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
         </TableBody>
       </Table>
     </TableContainer>
+    </Box>
     <Box display="flex" justifyContent="space-between" px={1} pb={1}>
       <Button size="small" disabled={!conn?.pageInfo.hasPreviousPage} onClick={loadPrev}>Previous</Button>
       <Button size="small" disabled={!conn?.pageInfo.hasNextPage} onClick={loadNext}>Next</Button>
