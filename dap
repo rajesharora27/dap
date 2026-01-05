@@ -1742,22 +1742,30 @@ main() {
             
             log_info "🔄 PRISMA: Ensuring schema is in sync..."
             
-            # Step A: Clear Prisma cache and regenerate client
-            log_info "   [A] Clearing Prisma cache..."
-            rm -rf node_modules/.prisma 2>/dev/null || true
-            rm -rf node_modules/@prisma/client 2>/dev/null || true
+            # Step A: Ensure @prisma/client is installed (before clearing cache)
+            log_info "   [A] Ensuring @prisma/client is installed..."
+            npm install @prisma/client --legacy-peer-deps 2>&1 || true
             
-            # Step B: Generate fresh Prisma client
-            log_info "   [B] Generating fresh Prisma Client..."
-            if ! npx prisma generate --schema=prisma/schema.prisma 2>&1; then
-                log_error "Prisma generate failed"
-                exit 1
+            # Step B: Clear Prisma cache
+            log_info "   [B] Clearing Prisma cache..."
+            rm -rf node_modules/.prisma 2>/dev/null || true
+            
+            # Step C: Generate fresh Prisma client
+            log_info "   [C] Generating fresh Prisma Client..."
+            if ! npx prisma generate 2>&1; then
+                log_warning "First prisma generate failed, retrying..."
+                # Reinstall prisma and client
+                npm install prisma @prisma/client --legacy-peer-deps 2>&1 || true
+                if ! npx prisma generate 2>&1; then
+                    log_error "Prisma generate failed after retry"
+                    exit 1
+                fi
             fi
             log_success "   Prisma Client generated"
             
-            # Step C: Sync database schema using db push (most reliable for dev)
+            # Step D: Sync database schema using db push (most reliable for dev)
             # db push is better for dev because it handles schema drift gracefully
-            log_info "   [C] Syncing database schema (db push)..."
+            log_info "   [D] Syncing database schema (db push)..."
             if npx prisma db push --accept-data-loss 2>&1; then
                 log_success "   Database schema synced"
             else
@@ -1788,8 +1796,8 @@ main() {
                 fi
             fi
             
-            # Step D: Regenerate client after schema sync (belt and suspenders)
-            log_info "   [D] Final Prisma Client regeneration..."
+            # Step E: Regenerate client after schema sync (belt and suspenders)
+            log_info "   [E] Final Prisma Client regeneration..."
             npx prisma generate --schema=prisma/schema.prisma 2>&1 || true
             log_success "PRISMA: Schema and client fully synced"
             
