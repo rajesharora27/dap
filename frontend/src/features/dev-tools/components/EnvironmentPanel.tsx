@@ -24,17 +24,12 @@ import {
     Lock as LockIcon,
     Info as InfoIcon
 } from '@shared/components/FAIcon';
-
-interface EnvVar {
-    key: string;
-    value: string;
-    isSecret: boolean;
-}
+import type { EnvVariable, SystemInfo } from '../types';
 
 export const EnvironmentPanel: React.FC = () => {
-    const [variables, setVariables] = useState<EnvVar[]>([]);
+    const [variables, setVariables] = useState<EnvVariable[]>([]);
     const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
-    const [systemInfo, setSystemInfo] = useState<any>(null);
+    const [systemInfo, setSystemInfo] = useState<SystemInfo | null>(null);
 
     const loadEnv = async () => {
         try {
