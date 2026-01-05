@@ -1735,6 +1735,15 @@ main() {
                 exit 1
             fi
             
+            # CRITICAL: Generate Prisma Client BEFORE build
+            # This ensures TypeScript has the correct types for the schema
+            log_info "🔄 Generating Prisma Client (before build)..."
+            if ! npx prisma generate; then
+                log_error "Prisma generate failed"
+                exit 1
+            fi
+            log_success "Prisma Client generated"
+            
             # Build backend
             if ! npm run build; then
                 log_error "Backend build failed"
@@ -1745,12 +1754,8 @@ main() {
             # Step 5: Database schema sync (THE CRITICAL PART)
             log_info "🔄 Step 5/6: Syncing database schema..."
             
-            # Generate Prisma Client first
-            if ! npx prisma generate; then
-                log_error "Prisma generate failed"
-                exit 1
-            fi
-            log_success "Prisma Client generated"
+            # Prisma Client already generated in Step 4
+            # Now apply migrations or push schema
             
             # Try migrate deploy first (for production-like migrations)
             log_info "Attempting prisma migrate deploy..."
