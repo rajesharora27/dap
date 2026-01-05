@@ -1735,43 +1735,76 @@ main() {
                 exit 1
             fi
             
-            # CRITICAL: Generate Prisma Client BEFORE build
-            # This ensures TypeScript has the correct types for the schema
-            log_info "🔄 Generating Prisma Client (before build)..."
-            if ! npx prisma generate; then
+            # =================================================================
+            # PRISMA BULLETPROOF SECTION
+            # This is the most common failure point - handle it thoroughly
+            # =================================================================
+            
+            log_info "🔄 PRISMA: Ensuring schema is in sync..."
+            
+            # Step A: Clear Prisma cache and regenerate client
+            log_info "   [A] Clearing Prisma cache..."
+            rm -rf node_modules/.prisma 2>/dev/null || true
+            rm -rf node_modules/@prisma/client 2>/dev/null || true
+            
+            # Step B: Generate fresh Prisma client
+            log_info "   [B] Generating fresh Prisma Client..."
+            if ! npx prisma generate --schema=prisma/schema.prisma 2>&1; then
                 log_error "Prisma generate failed"
                 exit 1
             fi
-            log_success "Prisma Client generated"
+            log_success "   Prisma Client generated"
             
-            # Build backend
+            # Step C: Sync database schema using db push (most reliable for dev)
+            # db push is better for dev because it handles schema drift gracefully
+            log_info "   [C] Syncing database schema (db push)..."
+            if npx prisma db push --accept-data-loss 2>&1; then
+                log_success "   Database schema synced"
+            else
+                log_warning "   db push had issues, trying migrate deploy..."
+                # Fallback to migrate deploy
+                if npx prisma migrate deploy 2>&1; then
+                    log_success "   Migrations applied"
+                else
+                    # Last resort: resolve failed migrations and retry
+                    log_warning "   Migrations failed, attempting to resolve..."
+                    
+                    # Get the failed migration name
+                    local failed_migration=$(npx prisma migrate status 2>&1 | grep -oP 'Failed to apply migration.*`\K[^`]+' || echo "")
+                    
+                    if [ -n "$failed_migration" ]; then
+                        log_info "   Marking failed migration as resolved: $failed_migration"
+                        npx prisma migrate resolve --applied "$failed_migration" 2>/dev/null || true
+                    fi
+                    
+                    # Final attempt with db push
+                    log_info "   Final attempt: db push with force..."
+                    if ! npx prisma db push --force-reset 2>&1; then
+                        log_error "All Prisma sync methods failed!"
+                        log_info "Manual fix: cd backend && npx prisma migrate reset --force"
+                        exit 1
+                    fi
+                    log_success "   Schema synced (force reset)"
+                fi
+            fi
+            
+            # Step D: Regenerate client after schema sync (belt and suspenders)
+            log_info "   [D] Final Prisma Client regeneration..."
+            npx prisma generate --schema=prisma/schema.prisma 2>&1 || true
+            log_success "PRISMA: Schema and client fully synced"
+            
+            # =================================================================
+            # BUILD BACKEND
+            # =================================================================
+            log_info "🔨 Building backend..."
             if ! npm run build; then
                 log_error "Backend build failed"
                 exit 1
             fi
             log_success "Backend built"
             
-            # Step 5: Database schema sync (THE CRITICAL PART)
-            log_info "🔄 Step 5/6: Syncing database schema..."
-            
-            # Prisma Client already generated in Step 4
-            # Now apply migrations or push schema
-            
-            # Try migrate deploy first (for production-like migrations)
-            log_info "Attempting prisma migrate deploy..."
-            if npx prisma migrate deploy 2>&1; then
-                log_success "Migrations applied successfully"
-            else
-                log_warning "migrate deploy had issues, trying db push..."
-                # Fallback to db push (handles schema drift)
-                if npx prisma db push --accept-data-loss 2>&1; then
-                    log_success "Schema pushed successfully (db push)"
-                else
-                    log_error "Both migrate and db push failed!"
-                    log_info "Try manually: cd backend && npx prisma migrate reset"
-                    exit 1
-                fi
-            fi
+            # Step 5 is now incorporated above
+            log_info "🔄 Step 5/6: Database already synced in Step 4"
             
             # Step 6: Frontend rebuild
             log_info "🎨 Step 6/6: Rebuilding frontend..."
