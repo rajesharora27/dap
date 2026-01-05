@@ -113,14 +113,14 @@ export function CustomerOverviewTab({
         try {
             if (type === 'product') {
                 await mutations.removeProductFromCustomer({
-                    variables: { customerProductId: id }
+                    variables: { id }
                 });
-                setSuccessMessage('Product removed from customer successfully');
+                setSuccessMessage('Product removed successfully');
             } else if (type === 'solution') {
                 await mutations.removeSolutionFromCustomer({
-                    variables: { customerSolutionId: id }
+                    variables: { id }
                 });
-                setSuccessMessage('Solution removed from customer successfully');
+                setSuccessMessage('Solution removed successfully');
             }
             refetch();
         } catch (err: any) {
@@ -149,8 +149,11 @@ export function CustomerOverviewTab({
 
             <ConfirmDialog
                 open={deleteConfirm.open}
-                title={`Remove ${deleteConfirm.type === 'product' ? 'Product' : 'Solution'}`}
-                message={`Are you sure you want to remove "${deleteConfirm.name}" from this customer? This will remove the adoption plan and all associated data.`}
+                title={`Remove ${deleteConfirm.type === 'product' ? 'Product' : 'Solution'} Assignment`}
+                message={deleteConfirm.type === 'product' 
+                    ? `Are you sure you want to remove "${deleteConfirm.name}" from this customer? This will also remove the associated adoption plan and all recorded progress. This action cannot be undone.`
+                    : `Are you sure you want to remove "${deleteConfirm.name}" from this customer? This will also remove the adoption plan and underlying product assignments. This action cannot be undone.`
+                }
                 confirmLabel="Remove"
                 onConfirm={handleConfirmDelete}
                 onCancel={() => setDeleteConfirm({ open: false, type: null, id: null, name: '' })}
