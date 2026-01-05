@@ -1548,6 +1548,7 @@ show_help() {
     echo -e "  ${GREEN}start${NC}          - Start all application services"
     echo -e "  ${RED}stop${NC}           - Stop all application services" 
     echo -e "  ${YELLOW}restart${NC}        - Restart services (optional: frontend|backend) [preserves data]"
+    echo -e "  ${GREEN}sync${NC}           - 🚀 RECOMMENDED: Pull + rebuild + migrate + restart (bulletproof)"
     echo -e "  ${CYAN}rebuild${NC}        - ✅ Rebuild components (optional: frontend|backend) [preserves data]"
     echo -e "  ${BLUE}migrate${NC}        - Run database migrations (explicit only)"
     echo -e "  ${PURPLE}full-rebuild${NC}   - ⚠️  Rebuild all + clean restart (wipes database)"
@@ -1572,6 +1573,7 @@ show_help() {
     echo "  • Override with DAP_MODE=mac-demo|linux-dev ./dap <command>"
     echo ""
     echo "Examples:"
+    echo "  $0 sync                 # 🚀 BEST: Pull latest, rebuild, migrate, restart"
     echo "  $0 start                # Start for daily development"
     echo "  $0 restart frontend     # Restart only frontend"
     echo "  $0 rebuild backend      # Rebuild and restart backend only"
@@ -1597,6 +1599,7 @@ show_help() {
     echo "  • Customer solution assignments and adoption tracking"
     echo ""
     echo "Rebuild options:"
+    echo "  • sync: 🚀 BULLETPROOF - Git pull + rebuild + migrate + restart (use after being away)"
     echo "  • rebuild: ✅ RECOMMENDED - Rebuilds frontend & backend, preserves database"
     echo "  • full-rebuild: ⚠️  Rebuilds everything + wipes database"
     echo ""
@@ -1653,11 +1656,164 @@ main() {
             log_header "RUNNING DATABASE MIGRATIONS"
             (cd "$BACKEND_DIR" && npx prisma migrate deploy) || log_error "Migration failed"
             ;;
+        sync)
+            # BULLETPROOF SYNC: Pull, rebuild, migrate, restart
+            log_header "SYNC: PULL + REBUILD + MIGRATE + RESTART"
+            log_info "This command pulls latest code, rebuilds everything, and restarts services"
+            echo ""
+            
+            # Step 1: Stop all services first (prevent file locks)
+            log_info "📛 Step 1/6: Stopping all services..."
+            force_kill_all 2>/dev/null || true
+            sleep 2
+            
+            # Step 2: Git pull with error handling
+            log_info "📥 Step 2/6: Pulling latest code..."
+            cd "$PROJECT_DIR"
+            
+            # Stash any local changes
+            if ! git diff --quiet 2>/dev/null; then
+                log_warning "Local changes detected, stashing..."
+                git stash push -m "dap-sync-$(date +%Y%m%d-%H%M%S)" || true
+            fi
+            
+            # Pull with retry
+            local pull_attempts=3
+            local pull_success=false
+            for attempt in $(seq 1 $pull_attempts); do
+                if git pull --rebase origin main 2>&1; then
+                    log_success "Git pull successful"
+                    pull_success=true
+                    break
+                else
+                    log_warning "Pull attempt $attempt failed, retrying..."
+                    sleep 2
+                fi
+            done
+            
+            if [ "$pull_success" = false ]; then
+                log_error "Git pull failed after $pull_attempts attempts"
+                log_info "Try: git fetch origin && git reset --hard origin/main"
+                exit 1
+            fi
+            
+            # Step 3: Ensure database is running
+            log_info "🗄️  Step 3/6: Ensuring database is running..."
+            if ! manage_docker start; then
+                log_error "Failed to start database"
+                exit 1
+            fi
+            sleep 3
+            
+            # Step 4: Backend rebuild with dependency cleanup
+            log_info "🔨 Step 4/6: Rebuilding backend..."
+            cd "$BACKEND_DIR"
+            
+            # Clean node_modules if package-lock changed
+            if git diff HEAD~1 --name-only 2>/dev/null | grep -q "package-lock.json"; then
+                log_info "package-lock.json changed, cleaning node_modules..."
+                rm -rf node_modules 2>/dev/null || true
+            fi
+            
+            # Install dependencies with retry
+            local npm_attempts=3
+            local npm_success=false
+            for attempt in $(seq 1 $npm_attempts); do
+                if npm install --legacy-peer-deps 2>&1; then
+                    npm_success=true
+                    break
+                else
+                    log_warning "npm install attempt $attempt failed, cleaning cache..."
+                    npm cache clean --force 2>/dev/null || true
+                    rm -rf node_modules 2>/dev/null || true
+                    sleep 2
+                fi
+            done
+            
+            if [ "$npm_success" = false ]; then
+                log_error "Backend npm install failed"
+                exit 1
+            fi
+            
+            # Build backend
+            if ! npm run build; then
+                log_error "Backend build failed"
+                exit 1
+            fi
+            log_success "Backend built"
+            
+            # Step 5: Database schema sync (THE CRITICAL PART)
+            log_info "🔄 Step 5/6: Syncing database schema..."
+            
+            # Generate Prisma Client first
+            if ! npx prisma generate; then
+                log_error "Prisma generate failed"
+                exit 1
+            fi
+            log_success "Prisma Client generated"
+            
+            # Try migrate deploy first (for production-like migrations)
+            log_info "Attempting prisma migrate deploy..."
+            if npx prisma migrate deploy 2>&1; then
+                log_success "Migrations applied successfully"
+            else
+                log_warning "migrate deploy had issues, trying db push..."
+                # Fallback to db push (handles schema drift)
+                if npx prisma db push --accept-data-loss 2>&1; then
+                    log_success "Schema pushed successfully (db push)"
+                else
+                    log_error "Both migrate and db push failed!"
+                    log_info "Try manually: cd backend && npx prisma migrate reset"
+                    exit 1
+                fi
+            fi
+            
+            # Step 6: Frontend rebuild
+            log_info "🎨 Step 6/6: Rebuilding frontend..."
+            cd "$FRONTEND_DIR"
+            
+            # Clean node_modules if package-lock changed
+            if git diff HEAD~1 --name-only 2>/dev/null | grep -q "frontend/package-lock.json"; then
+                log_info "Frontend package-lock.json changed, cleaning node_modules..."
+                rm -rf node_modules 2>/dev/null || true
+            fi
+            
+            if ! npm install 2>&1; then
+                log_warning "Frontend npm install failed, cleaning and retrying..."
+                rm -rf node_modules 2>/dev/null || true
+                npm cache clean --force 2>/dev/null || true
+                if ! npm install 2>&1; then
+                    log_error "Frontend npm install failed"
+                    exit 1
+                fi
+            fi
+            
+            # Build frontend (dev mode for dev server)
+            if ! npm run build -- --mode development 2>&1; then
+                log_warning "Frontend build failed, but continuing (dev server will handle it)"
+            fi
+            log_success "Frontend ready"
+            
+            # Start all services
+            cd "$PROJECT_DIR"
+            echo ""
+            log_header "STARTING SERVICES"
+            start_services
+            
+            echo ""
+            log_success "═══════════════════════════════════════════════════════"
+            log_success "✅ SYNC COMPLETE!"
+            log_success "═══════════════════════════════════════════════════════"
+            log_info "Backend API: http://localhost:$BACKEND_PORT/graphql"
+            log_info "Frontend App: http://localhost:$FRONTEND_PORT"
+            echo ""
+            ;;
         rebuild)
             shift
             target=${1:-all}
             log_header "REBUILDING $(echo "$target" | tr '[:lower:]' '[:upper:]')"
             log_info "This will rebuild components without affecting database data"
+            log_info "💡 TIP: Use './dap sync' for pull + rebuild + migrate"
             echo ""
             
             # Rebuild Backend
