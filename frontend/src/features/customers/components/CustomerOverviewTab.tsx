@@ -1,8 +1,10 @@
 import * as React from 'react';
+import { useState } from 'react';
 import { Box } from '@mui/material';
 import { CustomerMetricCards } from './CustomerMetricCards';
 import { CustomerAssignmentsTable, TableItem } from './CustomerAssignmentsTable';
 import { useCustomerContext } from '../context/CustomerContext';
+import { ConfirmDialog } from '../../../shared/components/ConfirmDialog';
 
 interface CustomerOverviewTabProps {
     onProductClick: () => void;
@@ -20,8 +22,18 @@ export function CustomerOverviewTab({
     const {
         selectedCustomer,
         overviewMetrics,
-        mutations
+        mutations,
+        refetch,
+        setSuccessMessage,
+        setErrorMessage
     } = useCustomerContext();
+
+    const [deleteConfirm, setDeleteConfirm] = useState<{
+        open: boolean;
+        type: 'product' | 'solution' | null;
+        id: string | null;
+        name: string;
+    }>({ open: false, type: null, id: null, name: '' });
 
     const products = selectedCustomer?.products || [];
     const solutions = selectedCustomer?.solutions || [];
@@ -82,6 +94,42 @@ export function CustomerOverviewTab({
         });
     };
 
+    const handleDeleteProduct = (id: string) => {
+        const product = products.find((p: any) => p.id === id);
+        const name = product?.product?.name || product?.name || 'this product';
+        setDeleteConfirm({ open: true, type: 'product', id, name });
+    };
+
+    const handleDeleteSolution = (id: string) => {
+        const solution = solutions.find((s: any) => s.id === id);
+        const name = solution?.solution?.name || solution?.name || 'this solution';
+        setDeleteConfirm({ open: true, type: 'solution', id, name });
+    };
+
+    const handleConfirmDelete = async () => {
+        const { type, id } = deleteConfirm;
+        if (!id) return;
+
+        try {
+            if (type === 'product') {
+                await mutations.removeProductFromCustomer({
+                    variables: { customerProductId: id }
+                });
+                setSuccessMessage('Product removed from customer successfully');
+            } else if (type === 'solution') {
+                await mutations.removeSolutionFromCustomer({
+                    variables: { customerSolutionId: id }
+                });
+                setSuccessMessage('Solution removed from customer successfully');
+            }
+            refetch();
+        } catch (err: any) {
+            setErrorMessage(err.message || 'Failed to remove assignment');
+        } finally {
+            setDeleteConfirm({ open: false, type: null, id: null, name: '' });
+        }
+    };
+
     return (
         <Box sx={{ p: 2.5 }}>
             <CustomerMetricCards overviewMetrics={overviewMetrics} />
@@ -91,12 +139,22 @@ export function CustomerOverviewTab({
                 onSyncSolution={handleSyncSolution}
                 onAssignProduct={onAssignProduct}
                 onAssignSolution={onAssignSolution}
-                onEditProduct={() => onProductClick()} // Navigate to products tab
-                onEditSolution={() => onSolutionClick()} // Navigate to solutions tab
-                onDeleteProduct={() => { }} // Handle deletion if needed, but Overview usually just links
-                onDeleteSolution={() => { }}
+                onEditProduct={() => onProductClick()}
+                onEditSolution={() => onSolutionClick()}
+                onDeleteProduct={handleDeleteProduct}
+                onDeleteSolution={handleDeleteSolution}
                 syncingProductId={mutations.syncingPlan ? 'syncing' : null}
                 syncingSolutionId={mutations.syncingSolutionPlan ? 'syncing' : null}
+            />
+
+            <ConfirmDialog
+                open={deleteConfirm.open}
+                title={`Remove ${deleteConfirm.type === 'product' ? 'Product' : 'Solution'}`}
+                message={`Are you sure you want to remove "${deleteConfirm.name}" from this customer? This will remove the adoption plan and all associated data.`}
+                confirmLabel="Remove"
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setDeleteConfirm({ open: false, type: null, id: null, name: '' })}
+                severity="error"
             />
         </Box>
     );
