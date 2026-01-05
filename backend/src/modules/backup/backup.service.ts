@@ -518,7 +518,14 @@ export class BackupRestoreService {
         // We have dbConfig.
 
         // Flush any pending Prisma writes before dumping
-        await prisma.$executeRawUnsafe('CHECKPOINT;');
+        // Note: CHECKPOINT requires superuser privileges which may not be available in production
+        try {
+          await prisma.$executeRawUnsafe('CHECKPOINT;');
+        } catch (checkpointErr: any) {
+          // CHECKPOINT is optional - pg_dump will still produce consistent results
+          // Error code 42501 = insufficient_privilege (not superuser)
+          console.warn('CHECKPOINT skipped (requires superuser):', checkpointErr.message?.includes('42501') ? 'insufficient privileges' : checkpointErr.message);
+        }
 
         let preserveCmd: string;
         // The most robust way to quote for pg_dump across shells: -t '"TableName"'
