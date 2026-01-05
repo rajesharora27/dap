@@ -126,6 +126,86 @@ export const LoadingSpinner: React.FC<{ message?: string }> = ({ message }) => (
 );
 
 /**
+ * Full-screen loading splash for route transitions.
+ * Centered spinner with optional branding and message.
+ * Used as the main Suspense fallback for route-based code splitting.
+ */
+export const LoadingSplash: React.FC<{ message?: string }> = ({ message = 'Loading...' }) => (
+  <Box
+    sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '60vh',
+      width: '100%',
+      gap: 3,
+    }}
+  >
+    <CircularProgress 
+      size={48} 
+      thickness={3}
+      sx={{
+        color: 'primary.main',
+      }}
+    />
+    <Typography 
+      variant="body1" 
+      color="text.secondary"
+      sx={{ fontWeight: 500 }}
+    >
+      {message}
+    </Typography>
+  </Box>
+);
+
+/**
+ * Table row skeleton for data loading states.
+ * Preserves table header while showing skeleton rows.
+ * 
+ * @param columns - Number of columns in the table
+ * @param rows - Number of skeleton rows to display
+ */
+export const TableRowSkeleton: React.FC<{ 
+  columns?: number; 
+  rows?: number;
+  columnWidths?: (string | number)[];
+}> = ({ columns = 5, rows = 5, columnWidths }) => (
+  <>
+    {Array.from({ length: rows }).map((_, rowIndex) => (
+      <Box
+        key={rowIndex}
+        sx={{
+          display: 'table-row',
+          '& > *': {
+            display: 'table-cell',
+            padding: '12px 16px',
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+          },
+        }}
+      >
+        {Array.from({ length: columns }).map((_, colIndex) => (
+          <Box
+            key={colIndex}
+            sx={{
+              width: columnWidths?.[colIndex] || 'auto',
+            }}
+          >
+            <Skeleton 
+              variant="text" 
+              width={colIndex === 0 ? '80%' : '60%'} 
+              height={24}
+              animation="wave"
+            />
+          </Box>
+        ))}
+      </Box>
+    ))}
+  </>
+);
+
+/**
  * HOC to wrap a lazy-loaded component with Suspense and a fallback.
  * 
  * @example

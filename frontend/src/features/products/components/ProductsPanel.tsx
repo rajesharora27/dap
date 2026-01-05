@@ -20,7 +20,8 @@ import {
   Select,
   MenuItem,
   Typography,
-  Tooltip
+  Tooltip,
+  Skeleton
 } from '@mui/material';
 import {
   Add,
@@ -768,13 +769,34 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {/* Only show full loading state if NO data available (initial load) */}
+          {/* SKELETON LOADING: Show skeleton rows during initial load (no data yet) */}
           {loading && products.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
-                <Typography variant="body2" color="text.secondary">Loading...</Typography>
-              </TableCell>
-            </TableRow>
+            // Skeleton rows - preserves table structure, prevents layout shift
+            Array.from({ length: 8 }).map((_, index) => (
+              <TableRow key={`skeleton-${index}`}>
+                <TableCell>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Skeleton variant="text" width="70%" height={24} animation="wave" />
+                    <Skeleton variant="rounded" width={40} height={18} animation="wave" />
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Skeleton variant="text" width="80%" height={20} animation="wave" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton variant="rounded" width={32} height={20} animation="wave" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton variant="rounded" width={32} height={20} animation="wave" />
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <Skeleton variant="circular" width={28} height={28} animation="wave" />
+                    <Skeleton variant="circular" width={28} height={28} animation="wave" />
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))
           ) : products.length === 0 ? (
             <TableRow>
               <TableCell colSpan={5} align="center" sx={{ py: 3 }}>
@@ -782,6 +804,7 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
               </TableCell>
             </TableRow>
           ) : (
+            // STALE-WHILE-REVALIDATE: Show actual data (possibly stale with dimmed opacity)
             products.map((e: any) => (
               <TableRow
                 key={e.node.id}
