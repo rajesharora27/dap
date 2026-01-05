@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Resource } from '@shared/types';
 import { gql, useQuery, useSubscription, useMutation, useApolloClient } from '@apollo/client';
 import {
@@ -21,7 +21,9 @@ import {
   MenuItem,
   Typography,
   Tooltip,
-  Skeleton
+  Skeleton,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   Add,
@@ -171,6 +173,35 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
   // Shows dimmed old data while new data loads, instead of blank loading state
   const [previousData, setPreviousData] = useState<any>(null);
   
+  // =========================================================================
+  // TOAST NOTIFICATIONS for optimistic UI feedback
+  // =========================================================================
+  const [toast, setToast] = useState<{ 
+    open: boolean; 
+    message: string; 
+    severity: 'success' | 'error' | 'info' 
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
+
+  const showToast = useCallback((message: string, severity: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ open: true, message, severity });
+  }, []);
+
+  const hideToast = useCallback(() => {
+    setToast(prev => ({ ...prev, open: false }));
+  }, []);
+
+  // =========================================================================
+  // FOCUS MANAGEMENT for accessibility (a11y)
+  // =========================================================================
+  // Refs for focus management during pagination
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const prevButtonRef = useRef<HTMLButtonElement>(null);
+  const [pendingFocus, setPendingFocus] = useState<'table' | 'prev' | null>(null);
+  
   const { data, refetch, loading } = useQuery(PRODUCTS, { 
     variables: args,
     // Notify on network status changes for better loading state handling
@@ -189,9 +220,78 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
   const effectiveData = data || previousData;
   const [createProduct] = useMutation(CREATE_PRODUCT);
   const [updateProduct] = useMutation(UPDATE_PRODUCT);
-  const [deleteProduct] = useMutation(DELETE_PRODUCT, { onCompleted: () => refetch() });
+  
+  // =========================================================================
+  // OPTIMISTIC DELETE MUTATION
+  // =========================================================================
+  // Uses Apollo's optimistic response to instantly remove item from UI,
+  // with automatic rollback if the server request fails.
+  const [deleteProduct] = useMutation(DELETE_PRODUCT, {
+    // Update cache optimistically BEFORE server responds
+    update(cache, { data: deleteData }, { variables }) {
+      if (!variables?.id) return;
+      
+      // Read current products from cache
+      const existingData = cache.readQuery<any>({ 
+        query: PRODUCTS, 
+        variables: args 
+      });
+      
+      if (existingData?.products?.edges) {
+        // Filter out the deleted product
+        const newEdges = existingData.products.edges.filter(
+          (edge: any) => edge.node.id !== variables.id
+        );
+        
+        // Write updated data back to cache
+        cache.writeQuery({
+          query: PRODUCTS,
+          variables: args,
+          data: {
+            products: {
+              ...existingData.products,
+              edges: newEdges,
+            }
+          }
+        });
+      }
+    },
+    // Optimistic response for instant UI feedback
+    optimisticResponse: ({ id }) => ({
+      deleteProduct: true,
+    }),
+    // Handle errors - rollback happens automatically, we just show toast
+    onError: (error) => {
+      console.error('❌ Delete failed, cache rollback triggered:', error);
+      showToast(`Delete failed: ${error.message}. The item has been restored.`, 'error');
+    },
+    onCompleted: () => {
+      showToast('Product deleted successfully', 'success');
+    }
+  });
+  
   useSubscription(PRODUCT_UPDATED, { onData: () => refetch() });
   const client = useApolloClient();
+
+  // Focus management effect - moves focus after pagination completes
+  // Must be after useQuery so `loading` is defined
+  useEffect(() => {
+    if (!loading && pendingFocus) {
+      // Small delay to ensure DOM is updated
+      const timeoutId = setTimeout(() => {
+        if (pendingFocus === 'table' && tableContainerRef.current) {
+          // Focus the table container (must be focusable)
+          tableContainerRef.current.focus();
+          // Scroll to top of table
+          tableContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else if (pendingFocus === 'prev' && prevButtonRef.current) {
+          prevButtonRef.current.focus();
+        }
+        setPendingFocus(null);
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [loading, pendingFocus]);
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
@@ -251,25 +351,44 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
     });
   }, []);
 
+  /**
+   * PAGINATION with Focus Management (a11y)
+   * 
+   * After data loads:
+   * - Next: Focus moves to Previous button (so user can go back)
+   * - Previous: Focus moves to top of table
+   * 
+   * This prevents keyboard users from being lost in the page
+   * after the table re-renders.
+   */
   const loadNext = () => {
-    if (conn?.pageInfo.endCursor) setArgs(prev => ({
-      ...prev,
-      first: 25,
-      after: conn.pageInfo.endCursor,
-      last: undefined,
-      before: null,
-      orderBy: prev.orderBy // Preserve sort order during pagination
-    }));
+    if (conn?.pageInfo.endCursor) {
+      setArgs(prev => ({
+        ...prev,
+        first: 25,
+        after: conn.pageInfo.endCursor,
+        last: undefined,
+        before: null,
+        orderBy: prev.orderBy // Preserve sort order during pagination
+      }));
+      // After loading, focus the Previous button
+      setPendingFocus('prev');
+    }
   };
+  
   const loadPrev = () => {
-    if (conn?.pageInfo.startCursor) setArgs(prev => ({
-      ...prev,
-      last: 25,
-      before: conn.pageInfo.startCursor,
-      first: undefined,
-      after: null,
-      orderBy: prev.orderBy // Preserve sort order during pagination
-    }));
+    if (conn?.pageInfo.startCursor) {
+      setArgs(prev => ({
+        ...prev,
+        last: 25,
+        before: conn.pageInfo.startCursor,
+        first: undefined,
+        after: null,
+        orderBy: prev.orderBy // Preserve sort order during pagination
+      }));
+      // After loading, focus the table container
+      setPendingFocus('table');
+    }
   };
 
   const formatDate = (timestamp: number) => {
@@ -608,30 +727,32 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
     setDeleteConfirm({ open: true, id, name });
   };
 
+  /**
+   * OPTIMISTIC DELETE - Item is instantly removed from UI
+   * 
+   * Flow:
+   * 1. Close dialog immediately (responsive feel)
+   * 2. Remove from cache instantly (optimistic update)
+   * 3. Send mutation to server
+   * 4. On success: toast confirmation
+   * 5. On error: automatic rollback + error toast
+   */
   const handleConfirmDelete = async () => {
     const { id, name } = deleteConfirm;
+    
+    // Close dialog immediately for responsive feel
+    setDeleteConfirm({ open: false, id: '', name: '' });
+    
+    console.log(`🗑️ Optimistically deleting product: ${name} (${id})`);
+    
     try {
-      console.log(`🗑️ Deleting product: ${name} (${id})`);
-
-      // Execute the deletion
+      // Execute deletion - optimistic update happens via mutation config
       await deleteProduct({ variables: { id } });
-      console.log('✅ Product deletion mutation completed');
-
-      // Wait for backend consistency
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      // Clear Apollo cache to force fresh data
-      console.log('🧹 Clearing Apollo cache...');
-      await client.clearStore();
-
-      // Force a refetch to ensure UI updates
-      console.log('🔄 Refetching products...');
-      await refetch();
-
-      console.log('🎉 Product deletion completed successfully');
+      // Success toast is shown via onCompleted in mutation config
     } catch (error: any) {
-      console.error('❌ Product deletion failed:', error);
-      alert(`Failed to delete product: ${error.message}`);
+      // Error handling and rollback happens via onError in mutation config
+      // No need for additional error handling here
+      console.error('Delete mutation threw:', error);
     }
   };
   return <Box>
@@ -717,8 +838,10 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
       )}
       
       <TableContainer 
+        ref={tableContainerRef}
         component={Paper} 
         elevation={0} 
+        tabIndex={-1} // Make focusable for keyboard navigation
         sx={{ 
           border: '1px solid', 
           borderColor: 'divider', 
@@ -726,6 +849,15 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
           // Dim the table slightly when showing stale data
           opacity: loading && products.length > 0 ? 0.6 : 1,
           transition: 'opacity 0.2s ease-in-out',
+          // Remove outline when programmatically focused
+          '&:focus': {
+            outline: 'none',
+          },
+          '&:focus-visible': {
+            outline: '2px solid',
+            outlineColor: 'primary.main',
+            outlineOffset: 2,
+          },
         }}
       >
       <Table size="small">
@@ -871,8 +1003,23 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
     </TableContainer>
     </Box>
     <Box display="flex" justifyContent="space-between" px={1} pb={1}>
-      <Button size="small" disabled={!conn?.pageInfo.hasPreviousPage} onClick={loadPrev}>Previous</Button>
-      <Button size="small" disabled={!conn?.pageInfo.hasNextPage} onClick={loadNext}>Next</Button>
+      <Button 
+        ref={prevButtonRef}
+        size="small" 
+        disabled={!conn?.pageInfo.hasPreviousPage} 
+        onClick={loadPrev}
+        aria-label="Go to previous page"
+      >
+        Previous
+      </Button>
+      <Button 
+        size="small" 
+        disabled={!conn?.pageInfo.hasNextPage} 
+        onClick={loadNext}
+        aria-label="Go to next page"
+      >
+        Next
+      </Button>
     </Box>
 
     <ProductDialog
@@ -892,5 +1039,22 @@ export const ProductsPanel: React.FC<Props> = ({ onSelect }) => {
       onCancel={() => setDeleteConfirm({ ...deleteConfirm, open: false })}
       severity="error"
     />
+
+    {/* Toast notifications for optimistic UI feedback */}
+    <Snackbar
+      open={toast.open}
+      autoHideDuration={4000}
+      onClose={hideToast}
+      anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+    >
+      <Alert 
+        onClose={hideToast} 
+        severity={toast.severity}
+        variant="filled"
+        sx={{ width: '100%' }}
+      >
+        {toast.message}
+      </Alert>
+    </Snackbar>
   </Box>;
 };

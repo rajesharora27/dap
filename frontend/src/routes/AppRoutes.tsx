@@ -28,6 +28,9 @@ import {
     LoadingSplash
 } from '../shared/components/LazyLoad';
 
+// Route-level error boundary for granular fault tolerance
+import { RouteErrorBoundary } from '../shared/components/RouteErrorBoundary';
+
 import { useAuth } from '../features/auth';
 
 // =============================================================================
@@ -79,6 +82,22 @@ const SuspenseRoute: React.FC<{
     fallback?: React.ReactNode;
 }> = ({ children, fallback = <PageSkeleton /> }) => (
     <Suspense fallback={fallback}>{children}</Suspense>
+);
+
+/**
+ * Combined Suspense + Error Boundary wrapper for routes.
+ * Provides both lazy loading and granular error isolation.
+ * 
+ * If a route crashes, users can still navigate away using the sidebar.
+ */
+const ProtectedRoute: React.FC<{
+    children: React.ReactNode;
+    routeName: string;
+    fallback?: React.ReactNode;
+}> = ({ children, routeName, fallback = <PageSkeleton /> }) => (
+    <RouteErrorBoundary routeName={routeName}>
+        <Suspense fallback={fallback}>{children}</Suspense>
+    </RouteErrorBoundary>
 );
 
 /**
@@ -197,50 +216,52 @@ export const AppRoutes: React.FC = () => {
 
             {/* =================================================================
                 MAIN ROUTES - Available to all authenticated users
+                Each route is wrapped in RouteErrorBoundary for granular fault tolerance.
+                If one page crashes, users can still navigate to other pages.
             ================================================================= */}
             
             <Route
                 path="/dashboard"
                 element={
-                    <SuspenseRoute fallback={<DashboardSkeleton />}>
+                    <ProtectedRoute routeName="Dashboard" fallback={<DashboardSkeleton />}>
                         <DashboardPage />
-                    </SuspenseRoute>
+                    </ProtectedRoute>
                 }
             />
 
             <Route
                 path="/products"
                 element={
-                    <SuspenseRoute>
+                    <ProtectedRoute routeName="Products">
                         <ProductsPage />
-                    </SuspenseRoute>
+                    </ProtectedRoute>
                 }
             />
 
             <Route
                 path="/solutions"
                 element={
-                    <SuspenseRoute>
+                    <ProtectedRoute routeName="Solutions">
                         <SolutionsPage />
-                    </SuspenseRoute>
+                    </ProtectedRoute>
                 }
             />
 
             <Route
                 path="/customers"
                 element={
-                    <SuspenseRoute>
+                    <ProtectedRoute routeName="Customers">
                         <CustomersPage />
-                    </SuspenseRoute>
+                    </ProtectedRoute>
                 }
             />
 
             <Route
                 path="/diary"
                 element={
-                    <SuspenseRoute>
+                    <ProtectedRoute routeName="Diary">
                         <DiaryPage />
-                    </SuspenseRoute>
+                    </ProtectedRoute>
                 }
             />
 

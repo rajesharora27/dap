@@ -8,6 +8,7 @@
 export { default as FAIcon } from './FAIcon';
 export { InlineEditableText } from './InlineEditableText';
 export { default as ErrorBoundary } from './ErrorBoundary';
+export { RouteErrorBoundary, withRouteErrorBoundary } from './RouteErrorBoundary';
 export { ThemeSelector } from './ThemeSelector';
 export { ColumnVisibilityToggle, TASK_COLUMNS, DEFAULT_VISIBLE_COLUMNS } from './ColumnVisibilityToggle';
 export { ResizableTableCell } from './ResizableTableCell';
