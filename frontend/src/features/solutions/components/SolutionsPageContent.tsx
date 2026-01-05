@@ -60,7 +60,10 @@ export function SolutionsPageContent() {
         setIsTasksLocked,
 
         // Add Button Mode
-        setExternalAddMode
+        setExternalAddMode,
+
+        // Task Dialog (from context - shared state)
+        openAddTask
     } = useSolutionContext();
 
     // Derived state for filters
@@ -74,8 +77,7 @@ export function SolutionsPageContent() {
         editingSolution,
         openAddSolution,
         openEditSolution,
-        closeSolutionDialog,
-        openAddTask
+        closeSolutionDialog
     } = useSolutionDialogs();
 
     // Products tab add dialog state

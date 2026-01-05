@@ -2,7 +2,6 @@ import React from 'react';
 import { useTheme } from '@mui/material/styles';
 import { useApolloClient } from '@apollo/client';
 import { useSolutionContext } from '../context/SolutionContext';
-import { useSolutionDialogs } from '../hooks/useSolutionDialogs';
 import { arrayMove } from '@dnd-kit/sortable';
 import { REORDER_TASKS, UPDATE_TASK, CREATE_TASK, DELETE_TASK } from '@features/tasks';
 import { TasksTabContent } from '@features/tasks/components/TasksTabContent';
@@ -26,16 +25,14 @@ export function SolutionTasksTab() {
         taskReleaseFilter, setTaskReleaseFilter,
         taskLicenseFilter, setTaskLicenseFilter,
         showFilters, setShowFilters,
-        handleClearFilters
-    } = useSolutionContext();
-
-    const {
+        handleClearFilters,
+        // Task Dialog (from context - shared state)
         isTaskDialogOpen,
         editingTask,
         openAddTask,
         openEditTask,
         closeTaskDialog
-    } = useSolutionDialogs();
+    } = useSolutionContext();
 
     // --- Handlers ---
     const handleSaveTask = async (taskData: any) => {

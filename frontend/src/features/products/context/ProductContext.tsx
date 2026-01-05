@@ -48,6 +48,13 @@ interface ProductContextType {
     externalAddMode: string | null;
     setExternalAddMode: (mode: string | null) => void;
 
+    // Task Dialog State (shared across components)
+    isTaskDialogOpen: boolean;
+    editingTask: any;
+    openAddTask: () => void;
+    openEditTask: (task: any) => void;
+    closeTaskDialog: () => void;
+
     // Global Messages
     successMessage: string | null;
     errorMessage: string | null;
@@ -97,6 +104,25 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children, init
 
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+    // Task Dialog State (shared)
+    const [isTaskDialogOpen, setTaskDialogOpen] = useState(false);
+    const [editingTask, setEditingTask] = useState<any>(null);
+
+    const openAddTask = useCallback(() => {
+        setEditingTask(null);
+        setTaskDialogOpen(true);
+    }, []);
+
+    const openEditTask = useCallback((task: any) => {
+        setEditingTask(task);
+        setTaskDialogOpen(true);
+    }, []);
+
+    const closeTaskDialog = useCallback(() => {
+        setTaskDialogOpen(false);
+        setEditingTask(null);
+    }, []);
 
     const client = useApolloClient();
 
@@ -324,6 +350,13 @@ export const ProductProvider: React.FC<ProductProviderProps> = ({ children, init
         setIsTasksLocked,
         externalAddMode,
         setExternalAddMode,
+
+        // Task Dialog (shared)
+        isTaskDialogOpen,
+        editingTask,
+        openAddTask,
+        openEditTask,
+        closeTaskDialog,
 
         successMessage,
         errorMessage,

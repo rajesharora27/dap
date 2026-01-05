@@ -64,7 +64,10 @@ export function ProductsPageContent() {
         setIsTasksLocked,
 
         // Add Button Mode
-        setExternalAddMode
+        setExternalAddMode,
+
+        // Task Dialog (from context - shared state)
+        openAddTask
     } = useProductContext();
 
     // Derived state for filters
@@ -78,8 +81,7 @@ export function ProductsPageContent() {
         editingProduct,
         openAddProduct,
         openEditProduct,
-        closeProductDialog,
-        openAddTask
+        closeProductDialog
     } = useProductDialogs();
 
     // -- Complex Save Handler (Migrated from ProductsPage.tsx) --
