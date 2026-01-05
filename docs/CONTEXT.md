@@ -2,7 +2,100 @@
 
 ## Recent Changes (January 5, 2026)
 
-### Session Summary
+### Session Summary - Part 2: UX & Resilience
+This session focused on implementing advanced UX patterns for application resilience.
+
+### Key Changes
+
+#### 1. Optimistic Delete Mutations
+**Problem:** Delete operations waited for server response before updating UI, creating sluggish "click → wait → update" experience.
+
+**Solution:**
+- Implemented Apollo Client optimistic response pattern
+- Item instantly removed from cache/table upon click
+- Automatic rollback if server request fails
+- Toast notifications for success/error feedback
+
+**Files Modified:**
+- `frontend/src/features/products/components/ProductsPanel.tsx`
+
+**Code Pattern:**
+```typescript
+const [deleteProduct] = useMutation(DELETE_PRODUCT, {
+  update(cache, _, { variables }) {
+    // Instantly remove from cache
+    const existingData = cache.readQuery({ query: PRODUCTS, variables: args });
+    const newEdges = existingData.products.edges.filter(e => e.node.id !== variables.id);
+    cache.writeQuery({ query: PRODUCTS, variables: args, data: { products: { ...existingData.products, edges: newEdges }}});
+  },
+  optimisticResponse: ({ id }) => ({ deleteProduct: true }),
+  onError: (error) => showToast(`Delete failed: ${error.message}. Item restored.`, 'error'),
+  onCompleted: () => showToast('Product deleted successfully', 'success')
+});
+```
+
+#### 2. Granular Route Error Boundaries
+**Problem:** A crash in one page (e.g., Products) would crash the entire app, including navigation.
+
+**Solution:**
+- Created `RouteErrorBoundary` component for per-route fault isolation
+- Each main route wrapped in combined Suspense + ErrorBoundary
+- Users can still navigate via sidebar when a route crashes
+- Includes retry functionality and expandable technical details
+
+**Files Created:**
+- `frontend/src/shared/components/RouteErrorBoundary.tsx`
+
+**Files Modified:**
+- `frontend/src/routes/AppRoutes.tsx`
+- `frontend/src/shared/components/index.ts`
+
+**Code Pattern:**
+```tsx
+const ProtectedRoute: React.FC<{ children: React.ReactNode; routeName: string; fallback?: React.ReactNode }> = 
+  ({ children, routeName, fallback }) => (
+    <RouteErrorBoundary routeName={routeName}>
+      <Suspense fallback={fallback}>{children}</Suspense>
+    </RouteErrorBoundary>
+  );
+
+// Usage
+<Route path="/products" element={<ProtectedRoute routeName="Products"><ProductsPage /></ProtectedRoute>} />
+```
+
+#### 3. Focus Management on Pagination (a11y)
+**Problem:** Keyboard users lost focus after pagination, forcing them to tab through entire navigation again.
+
+**Solution:**
+- Table container is now focusable (`tabIndex={-1}`)
+- After "Next Page": focus moves to "Previous" button
+- After "Previous Page": focus moves to top of table
+- Added aria-labels to pagination buttons
+
+**Files Modified:**
+- `frontend/src/features/products/components/ProductsPanel.tsx`
+
+**Code Pattern:**
+```typescript
+const [pendingFocus, setPendingFocus] = useState<'table' | 'prev' | null>(null);
+
+useEffect(() => {
+  if (!loading && pendingFocus) {
+    setTimeout(() => {
+      if (pendingFocus === 'table') tableContainerRef.current?.focus();
+      else if (pendingFocus === 'prev') prevButtonRef.current?.focus();
+      setPendingFocus(null);
+    }, 100);
+  }
+}, [loading, pendingFocus]);
+
+const loadNext = () => { setArgs(...); setPendingFocus('prev'); };
+const loadPrev = () => { setArgs(...); setPendingFocus('table'); };
+```
+
+---
+
+### Previous Session Summary - Part 1: Security Review
 This session focused on Red Team security review of the authentication and logging modules.
 
 ### Key Changes

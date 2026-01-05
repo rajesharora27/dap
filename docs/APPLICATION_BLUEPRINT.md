@@ -1,9 +1,11 @@
 # Application Blueprint Template
 
-**Version:** 1.2.0  
+**Version:** 1.3.0  
 **Last Updated:** January 5, 2026  
 **Purpose:** Generate new applications with 100/100 architecture score from day one  
 **Based On:** DAP (Digital Adoption Platform) - Production-proven architecture
+
+> **v1.3.0 Additions:** Optimistic UI patterns, Route Error Boundaries, Focus Management (a11y)
 
 ---
 
@@ -755,6 +757,133 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   } />
 </Routes>
 ```
+
+### 3.9 Optimistic Mutation Pattern (MANDATORY for Delete/Update)
+
+> ⚠️ **CRITICAL:** Never wait for server response before updating UI for common actions like delete.
+
+```typescript
+// ❌ WRONG - Wait for server before UI update (sluggish)
+const handleDelete = async (id: string) => {
+  await deleteProduct({ variables: { id } }); // User waits...
+  await refetch(); // User waits more...
+};
+
+// ✅ CORRECT - Optimistic update with automatic rollback
+const [deleteProduct] = useMutation(DELETE_PRODUCT, {
+  // Update cache BEFORE server responds
+  update(cache, _, { variables }) {
+    const existingData = cache.readQuery({ query: PRODUCTS, variables: args });
+    if (existingData?.products?.edges) {
+      const newEdges = existingData.products.edges.filter(
+        (edge: any) => edge.node.id !== variables.id
+      );
+      cache.writeQuery({
+        query: PRODUCTS,
+        variables: args,
+        data: { products: { ...existingData.products, edges: newEdges }}
+      });
+    }
+  },
+  // Optimistic response for instant UI
+  optimisticResponse: ({ id }) => ({ deleteProduct: true }),
+  // Error = automatic rollback + toast
+  onError: (error) => showToast(`Delete failed: ${error.message}. Item restored.`, 'error'),
+  onCompleted: () => showToast('Deleted successfully', 'success')
+});
+```
+
+**User Experience Flow:**
+1. ⚡ Click delete → Dialog closes **instantly**
+2. ⚡ Item removed from table **instantly**
+3. 📡 Server request fires in background
+4. ✅ Success → Green toast notification
+5. ❌ Failure → Red toast + **automatic rollback** (item reappears)
+
+### 3.10 Route Error Boundary Pattern (MANDATORY for Resilience)
+
+> ⚠️ **CRITICAL:** A crash in one page should not crash the entire app.
+
+```tsx
+// frontend/src/shared/components/RouteErrorBoundary.tsx
+export class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, State> {
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <ErrorIcon sx={{ fontSize: 64, color: 'error.main' }} />
+          <Typography variant="h5">{this.props.routeName} failed to load</Typography>
+          <Typography>The rest of the app is still working—navigate using the sidebar.</Typography>
+          <Stack direction="row" spacing={2} justifyContent="center">
+            <Button onClick={this.handleRetry}>Try Again</Button>
+            <Button onClick={() => navigate('/dashboard')}>Go to Dashboard</Button>
+          </Stack>
+        </Box>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Combined Suspense + Error Boundary wrapper
+const ProtectedRoute: React.FC<{ children: React.ReactNode; routeName: string }> = 
+  ({ children, routeName, fallback = <PageSkeleton /> }) => (
+    <RouteErrorBoundary routeName={routeName}>
+      <Suspense fallback={fallback}>{children}</Suspense>
+    </RouteErrorBoundary>
+  );
+
+// Usage in routes
+<Route path="/products" element={<ProtectedRoute routeName="Products"><ProductsPage /></ProtectedRoute>} />
+<Route path="/solutions" element={<ProtectedRoute routeName="Solutions"><SolutionsPage /></ProtectedRoute>} />
+```
+
+**Result:** If `/products` throws an error, user sees "Products failed to load" but can still click "Dashboard" in sidebar.
+
+### 3.11 Focus Management Pattern (MANDATORY for a11y)
+
+> ⚠️ **CRITICAL:** Keyboard users must not lose focus after pagination or data refresh.
+
+```tsx
+// Refs for focus targets
+const tableContainerRef = useRef<HTMLDivElement>(null);
+const prevButtonRef = useRef<HTMLButtonElement>(null);
+const [pendingFocus, setPendingFocus] = useState<'table' | 'prev' | null>(null);
+
+// Focus management after data loads
+useEffect(() => {
+  if (!loading && pendingFocus) {
+    setTimeout(() => {
+      if (pendingFocus === 'table') {
+        tableContainerRef.current?.focus();
+        tableContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (pendingFocus === 'prev') {
+        prevButtonRef.current?.focus();
+      }
+      setPendingFocus(null);
+    }, 100);
+  }
+}, [loading, pendingFocus]);
+
+// Pagination handlers set pending focus
+const loadNext = () => { setArgs({...}); setPendingFocus('prev'); };
+const loadPrev = () => { setArgs({...}); setPendingFocus('table'); };
+
+// Table container must be focusable
+<TableContainer ref={tableContainerRef} tabIndex={-1} sx={{
+  '&:focus': { outline: 'none' },
+  '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main' },
+}}>
+```
+
+**Accessibility Rules:**
+- After **Next Page**: Focus moves to "Previous" button (user can go back)
+- After **Previous Page**: Focus moves to top of table
+- All interactive elements have `aria-label` attributes
 
 ---
 
@@ -1587,6 +1716,9 @@ npm install
 - [ ] Type-safe components
 - [ ] Custom hooks abstraction
 - [ ] Theme configuration
+- [ ] Optimistic mutations (instant UI feedback)
+- [ ] Route error boundaries (granular fault tolerance)
+- [ ] Focus management (a11y for keyboard users)
 
 ### DevOps (10/10)
 - [ ] Multi-stage Dockerfiles
