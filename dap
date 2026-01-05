@@ -1777,20 +1777,30 @@ main() {
             log_info "🎨 Step 6/6: Rebuilding frontend..."
             cd "$FRONTEND_DIR"
             
-            # Clean node_modules if package-lock changed
-            if git diff HEAD~1 --name-only 2>/dev/null | grep -q "frontend/package-lock.json"; then
-                log_info "Frontend package-lock.json changed, cleaning node_modules..."
-                rm -rf node_modules 2>/dev/null || true
-            fi
+            # Always clean node_modules on sync for reliability
+            # This ensures all dependencies are fresh and in sync
+            log_info "Cleaning frontend node_modules for fresh install..."
+            rm -rf node_modules 2>/dev/null || true
+            rm -rf .vite 2>/dev/null || true
             
-            if ! npm install 2>&1; then
-                log_warning "Frontend npm install failed, cleaning and retrying..."
-                rm -rf node_modules 2>/dev/null || true
-                npm cache clean --force 2>/dev/null || true
-                if ! npm install 2>&1; then
-                    log_error "Frontend npm install failed"
-                    exit 1
+            # Install with retry
+            local fe_npm_attempts=3
+            local fe_npm_success=false
+            for attempt in $(seq 1 $fe_npm_attempts); do
+                if npm install 2>&1; then
+                    fe_npm_success=true
+                    break
+                else
+                    log_warning "Frontend npm install attempt $attempt failed, cleaning cache..."
+                    npm cache clean --force 2>/dev/null || true
+                    rm -rf node_modules 2>/dev/null || true
+                    sleep 2
                 fi
+            done
+            
+            if [ "$fe_npm_success" = false ]; then
+                log_error "Frontend npm install failed after $fe_npm_attempts attempts"
+                exit 1
             fi
             
             # Build frontend (dev mode for dev server)
