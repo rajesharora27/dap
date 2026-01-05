@@ -9,3 +9,4 @@ export * from './lock';
 export * from './changes';
 export * from './pagination';
 export * from './csv';
+export * from './logSanitizer';

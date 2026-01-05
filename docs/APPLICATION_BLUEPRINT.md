@@ -1,7 +1,7 @@
 # Application Blueprint Template
 
-**Version:** 1.1.0  
-**Last Updated:** January 3, 2026  
+**Version:** 1.2.0  
+**Last Updated:** January 5, 2026  
 **Purpose:** Generate new applications with 100/100 architecture score from day one  
 **Based On:** DAP (Digital Adoption Platform) - Production-proven architecture
 
@@ -1067,6 +1067,81 @@ import { envConfig } from '../../config/env';
 const JWT_SECRET = envConfig.auth.jwtSecret; // Validated at startup
 ```
 
+### 5.5 Log Sanitization (MANDATORY)
+
+> ⚠️ **CRITICAL:** Never log passwords, tokens, or connection strings. Even in error messages.
+
+```typescript
+// backend/src/shared/utils/logSanitizer.ts
+const REDACTION_PATTERNS = [
+  // JWT tokens
+  { pattern: /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, replacement: '[JWT_REDACTED]' },
+  // Database connection strings
+  { pattern: /(postgres|mysql|mongodb):\/\/[^:]+:([^@]+)@/gi, replacement: '$1://user:[REDACTED]@' },
+  // Bearer tokens
+  { pattern: /(Bearer\s+)[A-Za-z0-9_\-\.]{20,}/gi, replacement: '$1[TOKEN_REDACTED]' },
+  // Passwords in JSON
+  { pattern: /("?password"?\s*[:=]\s*"?)([^"'\s]{6,})("?)/gi, replacement: '$1[REDACTED]$3' },
+];
+
+export function sanitizeLog(message: string): string {
+  let text = message;
+  for (const { pattern, replacement } of REDACTION_PATTERNS) {
+    text = text.replace(pattern, replacement);
+  }
+  return text;
+}
+```
+
+**Anti-Patterns - NEVER do this:**
+```typescript
+// ❌ WRONG - Logging passwords
+await this.logAudit(userId, 'create_user', null, null, 
+  `Created user with password ${DEFAULT_PASSWORD}`);
+
+// ❌ WRONG - Logging connection strings in errors
+console.error(`Database error: ${process.env.DATABASE_URL}`);
+
+// ❌ WRONG - Logging tokens
+console.log(`User authenticated with token: ${token}`);
+
+// ✅ CORRECT - Sanitized logging
+await this.logAudit(userId, 'create_user', null, null, 
+  'Created user with default password');
+
+// ✅ CORRECT - Generic error messages
+console.error('Database connection failed');
+
+// ✅ CORRECT - No token in logs
+console.log('User authenticated successfully');
+```
+
+### 5.6 User Enumeration Prevention (MANDATORY)
+
+> ⚠️ **CRITICAL:** Auth errors must never reveal whether a username/email exists.
+
+```typescript
+// ❌ WRONG - Different messages reveal user existence
+if (!user) throw new Error('User not found');
+if (!user.isActive) throw new Error('Account is disabled');
+if (!validPassword) throw new Error('Invalid password');
+
+// ✅ CORRECT - Unified message for all auth failures
+if (!user || !user.isActive) {
+  console.warn('[Auth] Login attempt failed'); // Don't log username!
+  throw new Error('Invalid credentials');
+}
+if (!validPassword) {
+  console.warn('[Auth] Login attempt failed');
+  throw new Error('Invalid credentials');
+}
+```
+
+**Why this matters:**
+- "User not found" → Attacker knows this email is NOT registered
+- "Account disabled" → Attacker knows this email IS registered
+- "Invalid credentials" → Attacker learns nothing
+
 ---
 
 ## 6. Testing Requirements
@@ -1495,6 +1570,9 @@ npm install
 - [ ] Security headers (Helmet)
 - [ ] Input validation (Zod)
 - [ ] Password hashing (bcrypt)
+- [ ] Log sanitization (no secrets in logs)
+- [ ] User enumeration prevention (unified auth errors)
+- [ ] Production secret validation (crash on missing)
 
 ### API Design (10/10)
 - [ ] Relay pagination

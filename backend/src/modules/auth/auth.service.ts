@@ -180,22 +180,24 @@ export class AuthService {
         }
       });
 
+      // SECURITY: Return identical error message regardless of whether user exists but is inactive
+      // or doesn't exist at all. This prevents user enumeration attacks.
       if (inactiveUser) {
-        console.warn(`[Auth] Login failed for user '${username}': Account is inactive`);
-        throw new Error('Account is disabled');
+        console.warn(`[Auth] Login attempt for inactive account`); // Don't log username
+      } else {
+        console.warn(`[Auth] Login attempt for non-existent account`); // Don't log username
       }
-
-      console.warn(`[Auth] Login failed: User '${username}' not found`);
-      throw new Error('Invalid username or password');
+      throw new Error('Invalid credentials');
     }
 
     // Verify password
     const isValid = await this.verifyPassword(password, user.password);
     if (!isValid) {
-      console.warn(`[Auth] Login failed for user '${username}': Invalid password`);
-      // Log failed attempt
-      await this.logAudit(user.id, 'login_failed', null, null, 'Invalid password attempt');
-      throw new Error('Invalid username or password');
+      // SECURITY: Don't log username to prevent correlation attacks via logs
+      console.warn(`[Auth] Login failed: Invalid password attempt`);
+      // Log failed attempt (user ID is okay since it's internal)
+      await this.logAudit(user.id, 'login_failed', null, null, 'Login attempt with invalid credentials');
+      throw new Error('Invalid credentials');
     }
 
     // Get permissions
@@ -402,13 +404,13 @@ export class AuthService {
       }
     });
 
-    // Log password reset
+    // Log password reset - SECURITY: Never log the actual password
     await this.logAudit(
       adminId,
       'reset_password',
       'user',
       userId,
-      `Admin reset password to default (${DEFAULT_PASSWORD})`
+      'Admin reset password to default value'
     );
   }
 
@@ -713,13 +715,13 @@ export class AuthService {
       }
     });
 
-    // Log audit
+    // Log audit - SECURITY: Never log passwords, even defaults
     await this.logAudit(
       createdBy,
       'create_user',
       'user',
       user.id,
-      `Created user ${userData.username} with default password (${DEFAULT_PASSWORD})`
+      `Created user ${userData.username} with default password`
     );
 
     return {

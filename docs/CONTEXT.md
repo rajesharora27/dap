@@ -1,6 +1,61 @@
 # DAP Application Context
 
-## Recent Changes (January 3, 2026)
+## Recent Changes (January 5, 2026)
+
+### Session Summary
+This session focused on Red Team security review of the authentication and logging modules.
+
+### Key Changes
+
+#### 1. Log Sanitization (Security)
+**Problem:** Passwords and secrets could leak into audit logs and console output.
+
+**Findings:**
+- Default password was logged in plaintext during user creation and password reset
+- Error messages could contain connection strings or tokens
+- No defense-in-depth for accidental secret exposure
+
+**Solution:**
+- Removed password values from all audit log entries
+- Created `logSanitizer.ts` utility with automatic secret redaction
+- Integrated sanitizer into `AuditLogger` for defense-in-depth
+- Added 12 security tests for secret pattern detection
+
+**Files Modified:**
+- `backend/src/modules/auth/auth.service.ts` - Removed password logging
+- `backend/src/modules/ai/AuditLogger.ts` - Added log sanitization
+- `backend/src/shared/utils/logSanitizer.ts` - New utility
+- `backend/src/__tests__/security/log-sanitization.test.ts` - New tests
+
+#### 2. User Enumeration Prevention (Security)
+**Problem:** Different error messages revealed whether a username existed:
+- "Account is disabled" → User exists but inactive
+- "Invalid username or password" → User doesn't exist
+
+**Solution:**
+- All auth errors now return unified `"Invalid credentials"` message
+- Console warnings no longer log usernames
+- Prevents attackers from enumerating valid accounts
+
+**Files Modified:**
+- `backend/src/modules/auth/auth.service.ts`
+
+#### 3. Type Safety Verification (Security)
+**Status:** ✅ Verified Secure
+
+The `env.ts` correctly validates JWT_SECRET at runtime:
+- Minimum 32 characters enforced in production
+- Dangerous patterns detected (dev-secret, changeme, test, etc.)
+- App crashes immediately if validation fails
+
+### Security Test Results
+- 12 log sanitization tests passed
+- 33 auth tests passed
+- TypeScript compilation successful
+
+---
+
+## Previous Changes (January 3, 2026)
 
 ### Session Summary
 This session focused on three major improvements: server-side sorting, security hardening, and routing architecture refactoring.

@@ -4,13 +4,17 @@
  * Logs all AI queries for compliance, debugging, and analytics.
  * Supports multiple output destinations and structured logging.
  * 
+ * SECURITY: All log output is sanitized to prevent accidental secret leakage.
+ * 
  * @module services/ai/AuditLogger
- * @version 1.0.0
+ * @version 1.1.0
  * @created 2025-12-08
+ * @updated 2025-01-05 - Added log sanitization for defense-in-depth
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { sanitizeLog, sanitizeObject } from '../../shared/utils/logSanitizer';
 
 /**
  * Audit log entry structure
@@ -170,6 +174,7 @@ export class AuditLogger {
 
   /**
    * Log an error
+   * SECURITY: Error messages are sanitized to prevent secret leakage
    */
   logError(
     requestId: string,
@@ -182,6 +187,10 @@ export class AuditLogger {
     if (!this.config.enabled) {
       return;
     }
+
+    // SECURITY: Sanitize error message to prevent accidental secret leakage
+    const rawErrorMessage = error instanceof Error ? error.message : String(error);
+    const sanitizedErrorMessage = sanitizeLog(rawErrorMessage);
 
     const entry: AuditLogEntry = {
       requestId,
@@ -196,7 +205,7 @@ export class AuditLogger {
       executionTimeMs: context?.executionTimeMs ?? 0,
       rowCount: 0,
       hasError: true,
-      errorMessage: error instanceof Error ? error.message : String(error),
+      errorMessage: sanitizedErrorMessage,
       accessDenied: false,
       ipAddress: context?.ipAddress ?? null,
       userAgent: context?.userAgent ?? null,
@@ -323,17 +332,19 @@ export class AuditLogger {
 
   /**
    * Log an error message
+   * SECURITY: Error content is sanitized to prevent secret leakage
    */
   error(message: string, error?: Error | Record<string, any>): void {
     if (!this.shouldLog('error')) {
       return;
     }
 
+    // SECURITY: Sanitize error data to prevent accidental secret leakage
     const data = error instanceof Error
-      ? { error: error.message, stack: error.stack }
-      : error;
+      ? { error: sanitizeLog(error.message), stack: sanitizeLog(error.stack || '') }
+      : error ? sanitizeObject(error) : undefined;
 
-    const logLine = this.formatLogLine('error', message, data);
+    const logLine = this.formatLogLine('error', sanitizeLog(message), data);
 
     if (this.config.logToConsole) {
       console.error(logLine);
