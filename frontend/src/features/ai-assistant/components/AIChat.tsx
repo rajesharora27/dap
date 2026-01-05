@@ -276,17 +276,28 @@ export const AIChat: React.FC<AIChatProps> = ({ open, onClose, onNavigate }) => 
         role: 'assistant',
         content: `👋 Hello${user?.fullName ? `, ${user.fullName.split(' ')[0]}` : ''}! I'm the DAP AI Assistant.
 
-I can help you explore your data with natural language questions. Try asking things like:
-• "Show me all products"
-• "Find customers with low adoption"
-• "List tasks without telemetry"
+I can help you explore your data using natural language. Here's how to write effective prompts:
+
+**📊 Use "What" to query data:**
+• "What products have adoption rate below 50%?"
+• "What customers are using Webex?"
+
+**🔍 Use "How many" for counts:**
+• "How many tasks have telemetry configured?"
+• "How many customers have active licenses?"
+
+**📋 Use "Show/List" for tables:**
+• "Show me all products with their task counts"
+• "List customers with low adoption scores"
+
+**💡 Tip:** Be specific! Include filters like product names, customer names, or status values to get more relevant results.
 
 What would you like to know?`,
         metadata: {
           suggestions: [
-            'Show me all products',
-            'List customers with low adoption',
-            'Find tasks without descriptions',
+            'What products have adoption below 50%?',
+            'How many tasks have telemetry?',
+            'Show me all customers with Webex',
           ],
         }
       });
