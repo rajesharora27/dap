@@ -17,8 +17,8 @@
  * @module routes/AppRoutes
  */
 
-import React, { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import React, { lazy, Suspense, useEffect } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Box, Typography, Button } from '@mui/material';
 
 // Lazy load skeletons for suspense fallbacks
@@ -139,6 +139,60 @@ const NotFoundPage: React.FC = () => {
 };
 
 // =============================================================================
+// SCROLL RESTORATION
+// =============================================================================
+
+/**
+ * Scroll position storage keyed by pathname
+ * Preserves scroll position when navigating back to a page
+ */
+const scrollPositions = new Map<string, number>();
+
+/**
+ * ScrollRestoration Component
+ * 
+ * Handles scroll behavior on route changes:
+ * - Saves scroll position before leaving a page
+ * - Restores scroll position when returning to a page (via back button)
+ * - Scrolls to top for new forward navigations
+ * 
+ * Uses sessionStorage-like in-memory storage for scroll positions
+ */
+const ScrollRestoration: React.FC = () => {
+    const location = useLocation();
+    const prevPathRef = React.useRef<string>(location.pathname);
+    
+    useEffect(() => {
+        // Save scroll position of previous page before route change
+        const prevPath = prevPathRef.current;
+        if (prevPath !== location.pathname) {
+            scrollPositions.set(prevPath, window.scrollY);
+        }
+        
+        // Check if we have a saved position for this route (back navigation)
+        const savedPosition = scrollPositions.get(location.pathname);
+        
+        // Small delay to let DOM render before scrolling
+        const timeoutId = setTimeout(() => {
+            if (savedPosition !== undefined && window.history.state?.idx !== undefined) {
+                // Returning to a previously visited page - restore scroll
+                window.scrollTo(0, savedPosition);
+            } else {
+                // New navigation - scroll to top
+                window.scrollTo(0, 0);
+            }
+        }, 0);
+        
+        // Update ref for next navigation
+        prevPathRef.current = location.pathname;
+        
+        return () => clearTimeout(timeoutId);
+    }, [location.pathname]);
+    
+    return null;
+};
+
+// =============================================================================
 // MAIN ROUTES COMPONENT
 // =============================================================================
 
@@ -150,7 +204,11 @@ const NotFoundPage: React.FC = () => {
  */
 export const AppRoutes: React.FC = () => {
     return (
-        <Routes>
+        <>
+            {/* Scroll Restoration - preserves scroll position on back navigation */}
+            <ScrollRestoration />
+            
+            <Routes>
             {/* Default redirect: / -> /dashboard */}
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
@@ -416,5 +474,6 @@ export const AppRoutes: React.FC = () => {
             
             <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        </>
     );
 };
