@@ -18,7 +18,7 @@
  */
 
 import React, { lazy, Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { Box, Typography, Button } from '@mui/material';
 
 // Lazy load skeletons for suspense fallbacks
@@ -117,21 +117,26 @@ const DevRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 /**
  * 404 Not Found page component
+ * Uses React Router navigation to respect basename
  */
-const NotFoundPage: React.FC = () => (
-    <Box sx={{ p: 4, textAlign: 'center' }}>
-        <Typography variant="h4" gutterBottom>404 - Page Not Found</Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            The page you're looking for doesn't exist or you don't have access to it.
-        </Typography>
-        <Button 
-            variant="contained" 
-            onClick={() => window.location.href = '/dashboard'}
-        >
-            Go to Dashboard
-        </Button>
-    </Box>
-);
+const NotFoundPage: React.FC = () => {
+    const navigate = useNavigate();
+    
+    return (
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+            <Typography variant="h4" gutterBottom>404 - Page Not Found</Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                The page you're looking for doesn't exist or you don't have access to it.
+            </Typography>
+            <Button 
+                variant="contained" 
+                onClick={() => navigate('/dashboard')}
+            >
+                Go to Dashboard
+            </Button>
+        </Box>
+    );
+};
 
 // =============================================================================
 // MAIN ROUTES COMPONENT
