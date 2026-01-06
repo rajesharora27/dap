@@ -15,6 +15,33 @@ export class TaskService {
 
         let effectiveLicenseLevel = licenseLevel;
 
+        // If a licenseId is provided (UI selects a specific license), translate it to the task's licenseLevel.
+        // Tasks do NOT store a direct license relation in Prisma; license is derived from (productId/solutionId + licenseLevel).
+        if (licenseId && !effectiveLicenseLevel) {
+            const license = await prisma.license.findFirst({
+                where: {
+                    id: licenseId,
+                    OR: [
+                        { productId: productId || undefined },
+                        { solutionId: solutionId || undefined }
+                    ],
+                    isActive: true,
+                    deletedAt: null
+                }
+            });
+
+            if (!license) {
+                throw new Error(`License with ID "${licenseId}" not found, is inactive, or does not belong to this ${productId ? 'product' : 'solution'}`);
+            }
+
+            const levelMap: { [key: number]: string } = {
+                1: 'Essential',
+                2: 'Advantage',
+                3: 'Signature'
+            };
+            effectiveLicenseLevel = levelMap[license.level] || 'Essential';
+        }
+
         // Convert GraphQL LicenseLevel enum to Prisma enum format
         const licenseLevelMap: { [key: string]: string } = {
             'Essential': 'ESSENTIAL',
@@ -23,8 +50,8 @@ export class TaskService {
         };
         const prismaLicenseLevel = effectiveLicenseLevel ? licenseLevelMap[effectiveLicenseLevel] || 'ESSENTIAL' : 'ESSENTIAL';
 
-        // Validate that the license level corresponds to an actual license for the product
-        if (productId && effectiveLicenseLevel) {
+        // Validate that the license level corresponds to an actual license for the product/solution
+        if ((productId || solutionId) && effectiveLicenseLevel) {
             const levelMap: { [key: string]: number } = {
                 'Essential': 1,
                 'Advantage': 2,
@@ -34,14 +61,14 @@ export class TaskService {
             if (requiredLevel) {
                 const productLicense = await prisma.license.findFirst({
                     where: {
-                        productId: productId,
+                        ...(productId ? { productId } : { solutionId }),
                         level: requiredLevel,
                         isActive: true,
                         deletedAt: null
                     }
                 });
                 if (!productLicense) {
-                    throw new Error(`License level "${effectiveLicenseLevel}" (level ${requiredLevel}) does not exist for this product. Please create the required license first.`);
+                    throw new Error(`License level "${effectiveLicenseLevel}" (level ${requiredLevel}) does not exist for this ${productId ? 'product' : 'solution'}. Please create the required license first.`);
                 }
             }
         }
@@ -50,6 +77,19 @@ export class TaskService {
         let task: any;
         let attempts = 0;
         const maxAttempts = 3;
+
+        // If sequenceNumber is not provided, assign the next available sequence number.
+        // This avoids noisy Prisma errors and ensures tasks can be created with minimal input.
+        if (taskData.sequenceNumber === undefined || taskData.sequenceNumber === null) {
+            const lastTask = await prisma.task.findFirst({
+                where: {
+                    deletedAt: null,
+                    ...(productId ? { productId } : { solutionId })
+                },
+                orderBy: { sequenceNumber: 'desc' }
+            });
+            taskData.sequenceNumber = (lastTask?.sequenceNumber || 0) + 1;
+        }
 
         while (attempts < maxAttempts) {
             try {
@@ -83,10 +123,11 @@ export class TaskService {
                 attempts++;
 
                 // Check if it's a sequence number conflict (Prisma unique constraint error)
-                const isSequenceConflict = (error.code === 'P2002' &&
-                    error.meta?.target?.includes('sequenceNumber')) ||
-                    error.message?.includes('Unique constraint failed') ||
-                    error.message?.includes('sequenceNumber');
+                const isSequenceConflict =
+                    (error?.code === 'P2002' && String(error?.meta?.target || '').includes('sequenceNumber')) ||
+                    (typeof error?.message === 'string' &&
+                        error.message.includes('Unique constraint failed') &&
+                        error.message.includes('sequenceNumber'));
 
                 if (isSequenceConflict && attempts < maxAttempts) {
                     // Small delay to prevent tight retry loop with jitter

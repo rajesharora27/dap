@@ -179,16 +179,36 @@ export function CustomerAssignmentsTable({
                                 <TableCell sx={{ fontWeight: 500 }}>{item.assignmentName}</TableCell>
                                 <TableCell>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        {item.type === 'solution' ? (
-                                            <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
-                                                <SolutionIcon fontSize="small" sx={{ color: '#3B82F6' }} />
-                                            </Box>
-                                        ) : (
-                                            <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', alignItems: 'center' }}>
-                                                <ProductIcon fontSize="small" sx={{ color: '#10B981' }} />
-                                            </Box>
-                                        )}
-                                        <Typography variant="body2">{item.itemName}</Typography>
+                                        {/*
+                                          Products assigned via a solution should be visually distinct in Customers → Overview.
+                                          Use the same blue theme as solutions for those product rows.
+                                        */}
+                                        {(() => {
+                                            const isProductFromSolution = item.type === 'product' && item.source === 'solution';
+                                            const useBlueTheme = item.type === 'solution' || isProductFromSolution;
+                                            const iconBg = useBlueTheme ? 'rgba(59, 130, 246, 0.08)' : 'rgba(16, 185, 129, 0.08)';
+                                            const iconBorder = useBlueTheme ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid rgba(16, 185, 129, 0.25)';
+                                            const iconColor = useBlueTheme ? '#3B82F6' : '#10B981';
+
+                                            return item.type === 'solution' ? (
+                                                <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: iconBg, border: iconBorder, display: 'flex', alignItems: 'center' }}>
+                                                    <SolutionIcon fontSize="small" sx={{ color: iconColor }} />
+                                                </Box>
+                                            ) : (
+                                                <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: iconBg, border: iconBorder, display: 'flex', alignItems: 'center' }}>
+                                                    <ProductIcon fontSize="small" sx={{ color: iconColor }} />
+                                                </Box>
+                                            );
+                                        })()}
+                                        <Typography
+                                            variant="body2"
+                                            sx={{
+                                                color: item.type === 'product' && item.source === 'solution' ? '#3B82F6' : 'text.primary',
+                                                fontWeight: item.type === 'product' && item.source === 'solution' ? 600 : 400,
+                                            }}
+                                        >
+                                            {item.itemName}
+                                        </Typography>
                                         <Chip label={item.licenseLevel} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.625rem' }} />
                                     </Box>
                                 </TableCell>

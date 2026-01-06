@@ -1,11 +1,18 @@
 // Test setup file - runs before all tests
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 // Force tests to use the isolated test database by default
 const DEFAULT_TEST_DB = 'postgresql://rajarora@localhost:5432/dap_test?schema=public';
 if (!process.env.DATABASE_URL) {
     process.env.DATABASE_URL = DEFAULT_TEST_DB;
+}
+
+// Ensure JWT_SECRET is always valid in tests without hardcoding a credential.
+// Some modules validate JWT_SECRET length (>= 32 chars) at import time.
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+    process.env.JWT_SECRET = crypto.randomBytes(32).toString('hex'); // 64 chars
 }
 
 // Safety guard: never allow tests to run against a non-test database

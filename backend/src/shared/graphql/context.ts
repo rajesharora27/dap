@@ -62,6 +62,8 @@ let isShuttingDown = false;
 let connectionCount = 0;
 
 const getPrismaClient = (): PrismaClient => {
+  const isTest = process.env.NODE_ENV === 'test' || !!process.env.JEST_WORKER_ID;
+
   if (!prismaInstance && !isShuttingDown) {
     connectionCount++;
     const dbUrl = getDatabaseUrl();
@@ -69,8 +71,11 @@ const getPrismaClient = (): PrismaClient => {
     const connLimit = isProduction ? 15 : 3;
     const poolTimeout = isProduction ? 10 : 5;
 
-    console.log(`[Prisma] Creating client #${connectionCount} (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} mode)`);
-    console.log(`[Prisma] Settings: connection_limit=${connLimit}, pool_timeout=${poolTimeout}, connect_timeout=5`);
+    // Avoid noisy logs and dangling async work in Jest (it can log after tests complete).
+    if (!isTest) {
+      console.log(`[Prisma] Creating client #${connectionCount} (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} mode)`);
+      console.log(`[Prisma] Settings: connection_limit=${connLimit}, pool_timeout=${poolTimeout}, connect_timeout=5`);
+    }
 
     prismaInstance = new PrismaClient({
       datasources: {
@@ -82,10 +87,12 @@ const getPrismaClient = (): PrismaClient => {
       log: isProduction ? ['error'] : ['error', 'warn']
     });
 
-    // Immediately connect to verify the connection works
-    prismaInstance.$connect()
-      .then(() => console.log('[Prisma] Successfully connected to database'))
-      .catch((err) => console.error('[Prisma] Failed to connect:', err.message));
+    // Prisma will lazy-connect on first query; in Jest we avoid firing background promises/logging.
+    if (!isTest) {
+      prismaInstance.$connect()
+        .then(() => console.log('[Prisma] Successfully connected to database'))
+        .catch((err) => console.error('[Prisma] Failed to connect:', err.message));
+    }
   }
   return prismaInstance!;
 };

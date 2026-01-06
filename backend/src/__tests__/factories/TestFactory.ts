@@ -172,7 +172,7 @@ export class TestFactory {
 
     return prisma.task.create({
       data: {
-        productId,
+        product: { connect: { id: productId } },
         name: overrides.name || faker.lorem.words(3),
         description: overrides.description || faker.lorem.sentence(),
         estMinutes: overrides.estMinutes || faker.number.int({ min: 15, max: 480 }),
