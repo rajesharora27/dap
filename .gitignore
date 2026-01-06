@@ -24,4 +24,5 @@ backend/.env
 # Backup files
 backend/temp/backups/
 **/temp/backups/
+backend/temp/*.json
 releases/

@@ -50,7 +50,10 @@ async function ensureAdminUser() {
         });
 
         if (!existing) {
-            const passwordHash = await bcrypt.hash('DAP123!!!', 10);
+            // Never hardcode credentials in source: generate a one-time password for tests.
+            // (Integration tests typically auth via signed JWTs, but we still need a valid hash.)
+            const randomPassword = `test-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+            const passwordHash = await bcrypt.hash(randomPassword, 10);
             await prisma.user.create({
                 data: {
                     email: adminEmail,

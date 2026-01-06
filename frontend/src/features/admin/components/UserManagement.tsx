@@ -170,6 +170,10 @@ interface UserFormData {
 }
 
 export const UserManagement: React.FC = () => {
+  // Default password is environment-configured (never hardcode credentials in source).
+  // Set `VITE_DEFAULT_USER_PASSWORD` in your local `.env` (not committed).
+  const defaultUserPassword = (import.meta as any)?.env?.VITE_DEFAULT_USER_PASSWORD as string | undefined;
+
   const [userDialog, setUserDialog] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [resetPasswordDialog, setResetPasswordDialog] = useState(false);
@@ -212,7 +216,7 @@ export const UserManagement: React.FC = () => {
   // Mutations
   const [createUser, { loading: creating }] = useMutation(CREATE_USER, {
     onCompleted: () => {
-      setSuccessMsg('User created successfully! Default password: DAP123');
+      setSuccessMsg('User created successfully!');
       setUserDialog(false);
       refetch();
       setTimeout(() => setSuccessMsg(''), 5000);
@@ -247,7 +251,7 @@ export const UserManagement: React.FC = () => {
 
   const [resetPassword, { loading: resetting }] = useMutation(RESET_PASSWORD, {
     onCompleted: () => {
-      setSuccessMsg('Password reset to DAP123 successfully.');
+      setSuccessMsg('Password reset to default successfully.');
       setResetPasswordDialog(false);
       setResettingUser(null);
       refetch();
@@ -312,7 +316,7 @@ export const UserManagement: React.FC = () => {
       username: '',
       email: '',
       fullName: '',
-      password: 'DAP123',
+      password: defaultUserPassword || '',
       role: 'USER'
     });
     setSelectedRoles([]);
@@ -599,7 +603,7 @@ export const UserManagement: React.FC = () => {
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="Reset Password to DAP123">
+                  <Tooltip title="Reset Password to Default">
                     <IconButton size="small" onClick={() => handleResetPassword(user)}>
                       <ResetPasswordIcon fontSize="small" />
                     </IconButton>
@@ -775,10 +779,10 @@ export const UserManagement: React.FC = () => {
         <DialogTitle>Reset Password</DialogTitle>
         <DialogContent>
           <Typography>
-            Reset password for user <strong>{resettingUser?.username}</strong> to the default password <strong>DAP123</strong>?
+            Reset password for user <strong>{resettingUser?.username}</strong> to the default password?
           </Typography>
           <Alert severity="info" sx={{ mt: 2 }}>
-            The password will be reset to DAP123.
+            The password will be reset to the system default.
           </Alert>
         </DialogContent>
         <DialogActions>

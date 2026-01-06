@@ -152,6 +152,8 @@ describe('GraphQL API - Admin Users (contract + safety)', () => {
   });
 
   it('createUser succeeds with role VIEWER and returns role + mustChangePassword', async () => {
+    // Never hardcode credentials in source: use a per-test generated password.
+    const testPassword = `test-${Math.random().toString(36).slice(2)}-${Date.now()}`;
     const response = await request(app)
       .post('/graphql')
       .set('Authorization', `Bearer ${authToken}`)
@@ -173,7 +175,7 @@ describe('GraphQL API - Admin Users (contract + safety)', () => {
             username: 'new-viewer',
             email: 'new-viewer@example.com',
             fullName: 'New Viewer',
-            password: 'DAP123',
+            password: testPassword,
             role: 'VIEWER',
           },
         },

@@ -123,10 +123,9 @@ const envSchema = z.object({
   AUTH_BYPASS: z.string().optional().transform(v => v === '1' || v === 'true'),
   AUTH_FALLBACK: z.string().optional().transform(v => v === '1' || v === 'true'),
   
-  // Default password for new users (admin-created accounts)
-  DEFAULT_USER_PASSWORD: isProduction
-    ? z.string().min(8, 'DEFAULT_USER_PASSWORD must be at least 8 characters').optional()
-    : z.string().min(6).default('DAP123').optional(),
+  // Default password for admin-created accounts and password resets.
+  // Never hardcode credentials in source; configure via environment instead.
+  DEFAULT_USER_PASSWORD: z.string().optional(),
 
   // RBAC
   RBAC_STRICT: z.string().optional().transform(v => v === '1' || v === 'true'),

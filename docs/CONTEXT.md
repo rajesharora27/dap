@@ -66,6 +66,49 @@ This session focused on eliminating a task creation failure affecting both Produ
 #### 5. Production Deployment Note (dapoc)
 Latest patches were deployed to production (`dapoc`) using `./deploy-to-production.sh` and verified via post-deploy smoke checks (GraphQL + frontend bundle served).
 
+#### 6. Admin User Management: Fix CreateUser Contract Drift + VIEWER Visibility
+**Problem:** The “Add User” dialog and frontend mutation payload drifted from the backend GraphQL schema, causing a 400 error:
+- `Field "password" of required type "String!" was not provided`
+- `Field "isAdmin" is not defined by type "CreateUserInput"`
+
+**Solution:**
+- Frontend “Add User” now sends `password` and `role` (instead of `isAdmin`) to match `CreateUserInput`.
+- Backend `createUser` derives `isAdmin` from `role`, removes password length restrictions, and defaults `mustChangePassword=false` for admin-created accounts.
+- VIEWER role navigation visibility was fixed so `VIEWER` users can see Products/Solutions/Customers (read-only).
+
+**Important Security Note (No Hardcoded Credentials):**
+- The default password shown/used by the UI is now **environment-configured** (e.g. `VITE_DEFAULT_USER_PASSWORD` for frontend, `DEFAULT_USER_PASSWORD` for backend resets) and **must not be committed** to source.
+
+**Files Modified:**
+- `frontend/src/features/admin/components/UserManagement.tsx`
+- `backend/src/modules/auth/auth.service.ts`
+- `backend/src/modules/auth/auth.resolver.ts`
+- `frontend/src/pages/App.tsx`
+- `backend/src/config/env.ts`
+
+#### 7. Users Page Crash: Non-Nullable Role Guard
+**Problem:** Legacy DB rows had `user.role = null`, but GraphQL defined `UserExtended.role` as non-nullable, causing:
+- `Cannot return null for non-nullable field UserExtended.role`
+
+**Solution:**
+- Backend coalesces missing roles to `ADMIN` (if `isAdmin`) or `USER` to satisfy GraphQL constraints and keep the Users page stable.
+
+**Files Modified:**
+- `backend/src/modules/auth/auth.service.ts`
+- `backend/src/modules/auth/auth.resolver.ts`
+
+#### 8. GraphQL Contract Gate (Prevent Frontend Codegen Drift)
+**Problem:** Frontend queries/mutations can drift from backend schema without a hard gate, leading to runtime 400s.
+
+**Solution:**
+- Added a GraphQL contract script that runs frontend codegen and fails if `frontend/src/generated/graphql.ts` changes.
+- This prevents schema drift from merging unnoticed.
+
+**Files Added/Modified:**
+- `scripts/check-graphql-contract.sh`
+- `package.json` (root) `check:graphql` / `check:all` integration
+- `frontend/codegen.yml`
+
 ---
 
 ## Previous Changes (January 5, 2026)

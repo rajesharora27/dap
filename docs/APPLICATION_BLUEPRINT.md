@@ -1419,7 +1419,26 @@ module.exports = {
 - **Dedicated Test DB**: Default `DATABASE_URL` to an isolated database (e.g., `dap_test`).
 - **Refuse Non-Test DBs**: If `DATABASE_URL` does not look like a test DB, abort tests unless explicitly overridden.
 - **Deterministic Secrets**: If your runtime validates secrets at import time (e.g. `JWT_SECRET` min length), tests must set a safe in-process value to prevent env drift.
-- **No Hardcoded Credentials**: Never commit real passwords/tokens. Prefer generated secrets in tests.
+- **No Hardcoded Credentials**: Never commit passwords/tokens/keys in source (including “default/demo” passwords). Prefer generated secrets in tests and env-provided values for dev tooling/UI.
+
+### 6.6 GraphQL Contract Gate (MANDATORY)
+
+> ⚠️ **CRITICAL:** Prevent frontend GraphQL operations from drifting away from the backend schema.
+
+**Rule:**
+- CI MUST run a contract gate that fails if frontend codegen output changes after regenerating against the current backend schema.
+
+**Implementation Pattern:**
+- Add a script that:
+  - Runs frontend codegen
+  - Fails if `frontend/src/generated/graphql.ts` has uncommitted diffs
+
+```bash
+bash scripts/check-graphql-contract.sh
+```
+
+**Why this matters:**
+- Catches contract drift before runtime (prevents 400s like “missing required field” / “unknown field”).
 
 ### 6.5 Integration Test Rule: Exercise the Real GraphQL Resolver Path
 
@@ -1679,6 +1698,19 @@ npm install
 
 [License]
 ```
+
+### 9.3 Documentation Security Rule: Never Publish Credentials
+
+> ⚠️ **CRITICAL:** Documentation is part of your repository. Do not include passwords, tokens, private keys, certificates, or “default/demo” credentials in docs.
+
+**Rules:**
+- Use placeholders like `<DEFAULT_PASSWORD>` / `<ADMIN_PASSWORD>` / `<TOKEN>`.
+- If the UI requires a “default password” for admin-created accounts, it must be **environment-configured**:
+  - Backend: `DEFAULT_USER_PASSWORD`
+  - Frontend: `VITE_DEFAULT_USER_PASSWORD`
+
+**Rationale:**
+- Repos are routinely copied, shared, and indexed; any credential in docs should be treated as compromised.
 
 ---
 
