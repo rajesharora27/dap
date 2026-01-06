@@ -6,19 +6,11 @@ schema:
           - name: graphql-tag
             identifier: gql
 
-documents:
-  - src/**/*.{ts,tsx}
-
 generates:
   src/generated/graphql.ts:
     plugins:
       - typescript
-      - typescript-operations
-      - typescript-react-apollo
     config:
-      withHooks: true
-      withHOC: false
-      withComponent: false
       scalars:
         DateTime: string
         JSON: Record<string, any>
