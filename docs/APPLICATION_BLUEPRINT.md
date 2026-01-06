@@ -1411,6 +1411,25 @@ module.exports = {
 };
 ```
 
+### 6.4 Test Environment Safety Guards (MANDATORY)
+
+> ⚠️ **CRITICAL:** Tests must be deterministic and must never run against a real/dev database by accident.
+
+**Required Guards:**
+- **Dedicated Test DB**: Default `DATABASE_URL` to an isolated database (e.g., `dap_test`).
+- **Refuse Non-Test DBs**: If `DATABASE_URL` does not look like a test DB, abort tests unless explicitly overridden.
+- **Deterministic Secrets**: If your runtime validates secrets at import time (e.g. `JWT_SECRET` min length), tests must set a safe in-process value to prevent env drift.
+- **No Hardcoded Credentials**: Never commit real passwords/tokens. Prefer generated secrets in tests.
+
+### 6.5 Integration Test Rule: Exercise the Real GraphQL Resolver Path
+
+> ✅ Integration tests should look like “create task” tests: they call `/graphql` with the real schema + resolvers and validate responses.
+
+**Rules:**
+- Prefer calling GraphQL mutations/queries over invoking services directly when validating end-to-end behavior.
+- Use a real `Authorization: Bearer <jwt>` and a `context.user` shape that matches production (`userId`, `role`, `isAdmin`).
+- Avoid “magic” tokens unless your auth stack explicitly supports them.
+
 ---
 
 ## 7. Git Hooks & Quality Gates
@@ -1740,6 +1759,15 @@ npm install
 - [ ] DataLoader batching
 - [ ] Query complexity limits
 - [ ] Caching strategy
+
+### Frontend Hosting Consistency (MANDATORY)
+
+> ⚠️ **CRITICAL:** The bundler `base` path must match how the SPA is served, or you will get a blank screen with `index-*.js` / `vendor-*.js` 404s.
+
+**Rules:**
+- If the app is served at **root** (e.g. `http://localhost:5173/`), base should be `/`.
+- If the app is served under a subpath (e.g. `https://host/dap/`), base must be `/dap/` so assets load from `/dap/assets/...`.
+- Validate by checking DevTools → Network: the referenced `/assets/*.js` requests must return **200**.
 
 ---
 

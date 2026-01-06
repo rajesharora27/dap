@@ -362,10 +362,19 @@ build_frontend() {
 
   # Read Vite settings from .env (allows per-environment configuration)
   local base_path=$(get_env_val "VITE_BASE_PATH")
-  [ -z "$base_path" ] && base_path="/"
   
   local gql_endpoint=$(get_env_val "VITE_GRAPHQL_ENDPOINT")
   [ -z "$gql_endpoint" ] && gql_endpoint="/graphql"
+  
+  # If GraphQL endpoint is under /dap/*, the app must be served under /dap/ too,
+  # otherwise Vite will emit absolute /assets/* URLs that 404 when loaded from /dap/.
+  if [ -z "$base_path" ]; then
+    if [[ "$gql_endpoint" == /dap/* ]]; then
+      base_path="/dap/"
+    else
+      base_path="/"
+    fi
+  fi
 
   echo "[INFO] Config: VITE_BASE_PATH=${base_path}, SHOW_DEV_MENU=${show_dev}, FRONTEND_URL=${fe_url}"
 
@@ -443,10 +452,17 @@ start_frontend() {
 
   # Read Vite settings from .env
   local base_path=$(get_env_val "VITE_BASE_PATH")
-  [ -z "$base_path" ] && base_path="/"
   
   local gql_endpoint=$(get_env_val "VITE_GRAPHQL_ENDPOINT")
   [ -z "$gql_endpoint" ] && gql_endpoint="/graphql"
+  
+  if [ -z "$base_path" ]; then
+    if [[ "$gql_endpoint" == /dap/* ]]; then
+      base_path="/dap/"
+    else
+      base_path="/"
+    fi
+  fi
 
   (cd "${FRONTEND_DIR}" && VITE_BASE_PATH="$base_path" VITE_GRAPHQL_ENDPOINT="$gql_endpoint" VITE_FRONTEND_URL="${fe_url}" VITE_SHOW_DEV_MENU="${show_dev}" nohup npm run preview -- --host --port "${FRONTEND_PORT}" > "${LOG_DIR}/mac-frontend.log" 2>&1 & echo $! > "${FRONTEND_PID_FILE}")
   

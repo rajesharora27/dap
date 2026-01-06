@@ -21,6 +21,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **UI**: Resolved icon inconsistency for "My Diary" between sidebar and page view.
 
+## [3.7.0] - 2026-01-06
+
+### Added
+- **Testing**: New GraphQL integration test coverage for creating tasks with a selected `licenseId` (both Product and Solution tasks).
+
+### Changed
+- **Backend**: Task creation now accepts `licenseId` by mapping it to `licenseLevel` (Tasks do not store a license FK; license is derived).
+- **Backend**: Task creation assigns a default `sequenceNumber` when missing to support partial “create task” inputs from UI.
+- **Testing**: Test environment setup is now deterministic (safe test DB default + generated valid `JWT_SECRET` when missing).
+- **UX**: Customers → Overview visually distinguishes solution-derived product assignments with blue styling.
+
+### Fixed
+- **Backend**: Eliminated Prisma background connect logging that could trigger Jest “Cannot log after tests are done” warnings.
+- **Dev UX**: Documented and guarded against MacBook blank-screen scenarios caused by stale hashed-asset caching or base-path mismatch.
+
 
 ## [3.0.0] - 2025-12-24
 

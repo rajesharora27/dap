@@ -6,6 +6,14 @@ import path from 'path';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, path.resolve(process.cwd(), '..'), '');
   const isDev = mode === 'development';
+  const configuredBase = process.env.VITE_BASE_PATH || env.VITE_BASE_PATH;
+  const configuredGraphQLEndpoint = process.env.VITE_GRAPHQL_ENDPOINT || env.VITE_GRAPHQL_ENDPOINT;
+  // If the app is configured to call GraphQL under /dap/*, it must also be built/served under /dap/
+  // otherwise the generated asset URLs (e.g. /assets/*.js) will 404 when loaded from /dap/.
+  const inferredBase =
+    !configuredBase && configuredGraphQLEndpoint?.startsWith('/dap/')
+      ? '/dap/'
+      : '/';
 
   const allowedHosts = [
     'dap-8321890.ztna.sse.cisco.io',
@@ -21,7 +29,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     envDir: '..',
-    base: process.env.VITE_BASE_PATH || env.VITE_BASE_PATH || '/',
+    base: configuredBase || inferredBase,
     resolve: {
       alias: {
         '@features': path.resolve(__dirname, './src/features'),

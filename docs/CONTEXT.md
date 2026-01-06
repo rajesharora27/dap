@@ -1,6 +1,74 @@
 # DAP Application Context
 
-## Recent Changes (January 5, 2026)
+## Recent Changes (January 6, 2026)
+
+### Session Summary - Part 3: Task Creation Reliability, Test Determinism, and Customer Overview UX
+This session focused on eliminating a task creation failure affecting both Products and Solutions, making the backend test environment deterministic, improving the Customers → Overview UI to visually distinguish solution-derived product assignments, and documenting a common MacBook “blank screen” root cause.
+
+### Key Changes
+
+#### 1. Task Creation: Support `licenseId` + Partial Inputs (Products & Solutions)
+**Problem:** Creating a task from the UI could fail with Prisma errors such as:
+- `Unknown argument productId. Did you mean product?`
+- `Unknown argument licenseId`
+
+**Root Cause:**
+- In Prisma, `Task` does **not** store a `licenseId` foreign key. The `license` field is derived from `(productId | solutionId) + licenseLevel`.
+- Some code paths were still using scalar FK-style writes instead of relation `connect`.
+- Task creation also required `sequenceNumber`, but the UI does not always send it (backend should default it).
+
+**Solution:**
+- Backend now maps `licenseId → licenseLevel` at task creation time and validates the license belongs to the task’s product/solution.
+- If `sequenceNumber` is not provided, backend assigns the next available sequence number automatically.
+- Test factory task creation uses Prisma relation connect for product binding to match current schema.
+
+**Files Modified:**
+- `backend/src/modules/task/task.service.ts`
+- `backend/src/__tests__/factories/TestFactory.ts`
+
+**New Tests:**
+- `backend/src/__tests__/integration/graphql-tasks-create.test.ts` (creates Product + Solution tasks with `licenseId`)
+
+#### 2. Jest Test Determinism (No More Env Drift)
+**Problem:** Some test runs depended on the caller’s shell env (e.g., missing/short `JWT_SECRET`) and Prisma could log *after* Jest finished due to background `$connect()` promises.
+
+**Solution:**
+- `backend/src/__tests__/setup.ts` now ensures:
+  - Tests default to the isolated `dap_test` DB (and refuse non-test DBs).
+  - `JWT_SECRET` is always present and valid length (generated in-process, no hardcoded credentials).
+- Prisma “auto connect + console log” is disabled during Jest runs to avoid “Cannot log after tests are done” warnings.
+
+**Files Modified:**
+- `backend/src/__tests__/setup.ts`
+- `backend/src/shared/graphql/context.ts`
+
+#### 3. Customers → Overview: Make Solution-Derived Products Blue
+**Problem:** In Customers → Overview, product assignments that originate from a solution were not visually distinct from direct product assignments.
+
+**Solution:**
+- In `CustomerAssignmentsTable`, product rows with `source === 'solution'` now render with the blue theme (matching solutions) so users can instantly tell “assigned via solution” vs “direct”.
+
+**Files Modified:**
+- `frontend/src/features/customers/components/CustomerAssignmentsTable.tsx`
+
+#### 4. MacBook “Blank Screen” After Rebuild: Asset 404 Root Cause
+**Symptom:** Browser console shows 404s for hashed bundles like:
+- `index-<hash>.js`, `vendor-<hash>.js`
+
+**Common Root Causes:**
+- **Stale cached `index.html`** pointing to older hashed bundles that no longer exist.
+- **Base-path mismatch**: serving the SPA under `/dap/` while the HTML references `/assets/...` at the origin root.
+
+**Recommended Fixes:**
+- Hard refresh with cache disabled in DevTools.
+- Ensure `VITE_BASE_PATH` is correct for the way the app is served (root vs `/dap/`).
+
+#### 5. Production Deployment Note (dapoc)
+Latest patches were deployed to production (`dapoc`) using `./deploy-to-production.sh` and verified via post-deploy smoke checks (GraphQL + frontend bundle served).
+
+---
+
+## Previous Changes (January 5, 2026)
 
 ### Session Summary - Part 2: UX & Resilience
 This session focused on implementing advanced UX patterns for application resilience.
