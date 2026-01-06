@@ -312,7 +312,7 @@ export const UserManagement: React.FC = () => {
       username: '',
       email: '',
       fullName: '',
-      password: '',
+      password: 'DAP123',
       role: 'USER'
     });
     setSelectedRoles([]);
@@ -731,11 +731,7 @@ export const UserManagement: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   fullWidth
                   required
-                  helperText="Min 8 characters. User will be asked to change password on first login."
                 />
-                <Alert severity="info">
-                  Admin sets the initial password. The user will be required to change it on first login.
-                </Alert>
               </>
             )}
           </Box>

@@ -729,11 +729,6 @@ export class AuthService {
       throw new Error('Password is required');
     }
 
-    // Basic safety: reject very short passwords (frontend should enforce too)
-    if (userData.password.trim().length < 8) {
-      throw new Error('Password must be at least 8 characters');
-    }
-
     // Hash provided password (never log it)
     const passwordHash = await this.hashPassword(userData.password);
 
@@ -750,7 +745,7 @@ export class AuthService {
         fullName: userData.fullName || null,
         role: normalizedRole as any,
         isAdmin,
-        mustChangePassword: true // Force change on first login for admin-created accounts
+        mustChangePassword: false
       }
     });
 

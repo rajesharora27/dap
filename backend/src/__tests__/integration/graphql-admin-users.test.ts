@@ -173,7 +173,7 @@ describe('GraphQL API - Admin Users (contract + safety)', () => {
             username: 'new-viewer',
             email: 'new-viewer@example.com',
             fullName: 'New Viewer',
-            password: 'TempPass123!',
+            password: 'DAP123',
             role: 'VIEWER',
           },
         },
@@ -184,7 +184,7 @@ describe('GraphQL API - Admin Users (contract + safety)', () => {
     expect(response.body.data.createUser.username).toBe('new-viewer');
     expect(response.body.data.createUser.role).toBe('VIEWER');
     expect(response.body.data.createUser.isAdmin).toBe(false);
-    expect(response.body.data.createUser.mustChangePassword).toBe(true);
+    expect(response.body.data.createUser.mustChangePassword).toBe(false);
   });
 });
 
