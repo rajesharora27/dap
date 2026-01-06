@@ -75,6 +75,9 @@ export class AuthService {
   // Generate JWT token
   // Generate JWT token
   generateToken(user: User, permissions: Permission[], sessionId: string, roles: string[] = []): string {
+    const normalizedRoles = Array.from(new Set([...(roles || [])].filter(Boolean)));
+    const primaryRole = user.isAdmin ? 'ADMIN' : (normalizedRoles[0] || 'USER');
+
     const payload = {
       userId: user.id,
       sessionId,
@@ -84,7 +87,8 @@ export class AuthService {
       isAdmin: user.isAdmin,
       mustChangePassword: user.mustChangePassword,
       permissions: this.formatPermissionsForToken(permissions),
-      roles, // Include roles in JWT for frontend menu visibility
+      role: primaryRole, // Back-compat: many frontend codepaths expect a single role
+      roles: normalizedRoles, // Include roles in JWT for frontend menu visibility
     };
 
     const options: SignOptions = { expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] };
@@ -215,6 +219,15 @@ export class AuthService {
     const roles = userRoles
       .filter((ur: any) => ur.role)
       .map((ur: any) => ur.role.name);
+
+    // Ensure the user's base role (from User.role) is always present for system-role behavior
+    // and menu visibility, even if there are no Role table assignments.
+    if (user.role && !roles.includes(user.role)) {
+      roles.unshift(user.role);
+    }
+    if (user.isAdmin && !roles.includes('ADMIN')) {
+      roles.unshift('ADMIN');
+    }
 
     // Generate tokens
     // Generate tokens

@@ -10,6 +10,7 @@ interface JWTPayload {
   fullName?: string;
   isAdmin?: boolean;
   role?: string;
+  roles?: string[];
   exp?: number;
   iat?: number;
 }
@@ -79,13 +80,17 @@ export function getUserFromToken(token: string): any | null {
     return null;
   }
 
+  const roles = Array.isArray(payload.roles) ? payload.roles : [];
+  const primaryRole = payload.role || roles[0];
+
   return {
     id: payload.userId || payload.uid,
     username: payload.username,
     email: payload.email,
     fullName: payload.fullName,
-    role: payload.role, // Ensure role is passed through
-    isAdmin: payload.isAdmin || payload.role === 'ADMIN'
+    role: primaryRole, // Back-compat: older tokens may only include role, newer include roles[]
+    roles,
+    isAdmin: payload.isAdmin || primaryRole === 'ADMIN'
   };
 }
 

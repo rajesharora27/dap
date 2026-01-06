@@ -400,23 +400,29 @@ function AuthenticatedApp() {
               <ListItemText primary="Getting Started" />
             </ListItemButton>
 
-            {/* Products - Visible to Admin, SME, or users with product permissions */}
-            {(isAdmin || user?.roles?.includes('SME') || (user?.permissions?.products?.length > 0)) && (
+            {/* Products - Visible to Admin, SME, CSS, VIEWER, or users with product permissions */}
+            {(isAdmin ||
+              user?.roles?.includes('SME') ||
+              user?.roles?.includes('CSS') ||
+              user?.roles?.includes('VIEWER') ||
+              (user?.permissions?.products?.length > 0)) && (
               <ListItem
                 disablePadding
                 secondaryAction={
                   <Tooltip title="Add Product">
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate('/products?add=true');
-                      }}
-                      sx={{ color: '#10B981', mr: 1 }}
-                    >
-                      <Add fontSize="small" />
-                    </IconButton>
+                    {(isAdmin || user?.roles?.includes('SME')) ? (
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/products?add=true');
+                        }}
+                        sx={{ color: '#10B981', mr: 1 }}
+                      >
+                        <Add fontSize="small" />
+                      </IconButton>
+                    ) : null}
                   </Tooltip>
                 }
                 sx={{
@@ -442,23 +448,29 @@ function AuthenticatedApp() {
               </ListItem>
             )}
 
-            {/* Solutions - Visible to Admin, SME, or users with solution permissions */}
-            {(isAdmin || user?.roles?.includes('SME') || (user?.permissions?.solutions?.length > 0)) && (
+            {/* Solutions - Visible to Admin, SME, CSS, VIEWER, or users with solution permissions */}
+            {(isAdmin ||
+              user?.roles?.includes('SME') ||
+              user?.roles?.includes('CSS') ||
+              user?.roles?.includes('VIEWER') ||
+              (user?.permissions?.solutions?.length > 0)) && (
               <ListItem
                 disablePadding
                 secondaryAction={
                   <Tooltip title="Add Solution">
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate('/solutions?add=true');
-                      }}
-                      sx={{ color: '#3B82F6', mr: 1 }}
-                    >
-                      <Add fontSize="small" />
-                    </IconButton>
+                    {(isAdmin || user?.roles?.includes('SME')) ? (
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/solutions?add=true');
+                        }}
+                        sx={{ color: '#3B82F6', mr: 1 }}
+                      >
+                        <Add fontSize="small" />
+                      </IconButton>
+                    ) : null}
                   </Tooltip>
                 }
                 sx={{
@@ -484,23 +496,29 @@ function AuthenticatedApp() {
               </ListItem>
             )}
 
-            {/* Customers - Visible to Admin, CS, or users with customer permissions */}
-            {(isAdmin || user?.roles?.includes('CS') || user?.roles?.includes('CSS') || (user?.permissions?.customers?.length > 0)) && (
+            {/* Customers - Visible to Admin, CS/CSS, VIEWER, or users with customer permissions */}
+            {(isAdmin ||
+              user?.roles?.includes('CS') ||
+              user?.roles?.includes('CSS') ||
+              user?.roles?.includes('VIEWER') ||
+              (user?.permissions?.customers?.length > 0)) && (
               <ListItem
                 disablePadding
                 secondaryAction={
                   <Tooltip title="Add Customer">
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate('/customers?add=true');
-                      }}
-                      sx={{ color: '#2e7d32', mr: 1 }}
-                    >
-                      <Add fontSize="small" />
-                    </IconButton>
+                    {(isAdmin || user?.roles?.includes('CS') || user?.roles?.includes('CSS')) ? (
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/customers?add=true');
+                        }}
+                        sx={{ color: '#2e7d32', mr: 1 }}
+                      >
+                        <Add fontSize="small" />
+                      </IconButton>
+                    ) : null}
                   </Tooltip>
                 }
                 sx={{
