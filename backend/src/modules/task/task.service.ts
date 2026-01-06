@@ -11,7 +11,7 @@ export class TaskService {
      * Create a new task with retry logic for sequence number conflicts
      */
     static async createTask(userId: string, input: any) {
-        const { outcomeIds, releaseIds, tagIds, telemetryAttributes, licenseLevel, ...taskData } = input;
+        const { outcomeIds, releaseIds, tagIds, telemetryAttributes, licenseLevel, productId, solutionId, licenseId, ...taskData } = input;
 
         let effectiveLicenseLevel = licenseLevel;
 
@@ -24,7 +24,7 @@ export class TaskService {
         const prismaLicenseLevel = effectiveLicenseLevel ? licenseLevelMap[effectiveLicenseLevel] || 'ESSENTIAL' : 'ESSENTIAL';
 
         // Validate that the license level corresponds to an actual license for the product
-        if (input.productId && effectiveLicenseLevel) {
+        if (productId && effectiveLicenseLevel) {
             const levelMap: { [key: string]: number } = {
                 'Essential': 1,
                 'Advantage': 2,
@@ -34,7 +34,7 @@ export class TaskService {
             if (requiredLevel) {
                 const productLicense = await prisma.license.findFirst({
                     where: {
-                        productId: input.productId,
+                        productId: productId,
                         level: requiredLevel,
                         isActive: true,
                         deletedAt: null
@@ -59,7 +59,7 @@ export class TaskService {
                     const lastTask = await prisma.task.findFirst({
                         where: {
                             deletedAt: null,
-                            ...(input.productId ? { productId: input.productId } : { solutionId: input.solutionId })
+                            ...(productId ? { productId } : { solutionId })
                         },
                         orderBy: { sequenceNumber: 'desc' }
                     });
@@ -69,7 +69,10 @@ export class TaskService {
                 task = await prisma.task.create({
                     data: {
                         ...taskData,
-                        licenseLevel: prismaLicenseLevel
+                        licenseLevel: prismaLicenseLevel,
+                        // Use Prisma relation syntax instead of direct foreign keys
+                        ...(productId && { product: { connect: { id: productId } } }),
+                        ...(solutionId && { solution: { connect: { id: solutionId } } })
                     }
                 });
 

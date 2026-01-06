@@ -85,18 +85,14 @@ import { AppRoutes } from '../routes/AppRoutes';
 const drawerWidth = 240;
 
 const DEFAULT_DEV_MENU_ITEMS = [
-  { id: 'database', label: 'Database', tooltip: 'Manage database migrations, seed data, and schema' },
-  { id: 'logs', label: 'Logs', tooltip: 'View real-time application logs and debugging output' },
   { id: 'tests', label: 'Tests', tooltip: 'Run unit, integration, and E2E tests' },
-  { id: 'build', label: 'Build', tooltip: 'Monitor build status, deployments, and artifacts' },
-  { id: 'cicd', label: 'CI/CD', tooltip: 'Manage continuous integration and deployment pipelines' },
-  { id: 'env', label: 'Environment', tooltip: 'Manage environment variables and configuration' },
-  { id: 'api', label: 'API', tooltip: 'Test and debug API endpoints' },
-  { id: 'docs', label: 'Docs', tooltip: 'View project documentation and guides' },
-  { id: 'quality', label: 'Code Quality', tooltip: 'View code quality metrics and linting results' },
-  { id: 'performance', label: 'Performance', tooltip: 'Monitor application performance and resource usage' },
+  { id: 'database', label: 'Database', tooltip: 'Manage database migrations, seed data, and schema' },
   { id: 'git', label: 'Git', tooltip: 'View Git repository status, branches, and commit history' },
-  { id: 'tasks', label: 'Tasks', tooltip: 'Execute npm scripts and custom development tasks' }
+  { id: 'build', label: 'Build', tooltip: 'Monitor build status and deployments' },
+  { id: 'logs', label: 'Logs', tooltip: 'View real-time application logs and debugging output' },
+  { id: 'env', label: 'Environment', tooltip: 'Manage environment variables and system info' },
+  { id: 'quality', label: 'Quality', tooltip: 'View code quality metrics and coverage' },
+  { id: 'docs', label: 'Docs', tooltip: 'View project documentation' }
 ];
 
 // Sortable Dev Menu Item Component
@@ -254,18 +250,14 @@ function AuthenticatedApp() {
 
   const getDevIcon = (id: string) => {
     switch (id) {
-      case 'database': return <StorageIcon />;
-      case 'logs': return <ArticleIcon />;
       case 'tests': return <BugReportIcon />;
-      case 'build': return <BuildIcon />;
-      case 'cicd': return <GitHubIcon />;
-      case 'env': return <SettingsIcon />;
-      case 'api': return <ApiIcon />;
-      case 'docs': return <ArticleIcon />;
-      case 'quality': return <AssessmentIcon />;
-      case 'performance': return <SpeedIcon />;
+      case 'database': return <StorageIcon />;
       case 'git': return <GitHubIcon />;
-      case 'tasks': return <PlaylistPlayIcon />;
+      case 'build': return <BuildIcon />;
+      case 'logs': return <ArticleIcon />;
+      case 'env': return <SettingsIcon />;
+      case 'quality': return <AssessmentIcon />;
+      case 'docs': return <ArticleIcon />;
       default: return <SettingsIcon />;
     }
   };

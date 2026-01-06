@@ -8,5 +8,4 @@ export * from './components/GitPanel';
 export * from './components/DevelopmentCICDPanel';
 export * from './components/BuildDeployPanel';
 export * from './components/APITestingPanel';
-export * from './components/AdvancedPanels';
 export * from './types';

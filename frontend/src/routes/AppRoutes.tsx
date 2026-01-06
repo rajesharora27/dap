@@ -56,19 +56,15 @@ const RoleManagement = lazy(() => import('../features/admin/components/RoleManag
 const BackupManagementPanel = lazy(() => import('../features/backups/components/BackupManagementPanel').then(m => ({ default: m.BackupManagementPanel })));
 const ThemeSelector = lazy(() => import('../shared/components/ThemeSelector').then(m => ({ default: m.ThemeSelector })));
 
-// Development Features
+// Development Features (simplified - removed CI/CD, API, Performance, Tasks panels)
 const TestPanelNew = lazy(() => import('../features/dev-tools').then(m => ({ default: m.TestPanelNew })));
-const DevelopmentCICDPanel = lazy(() => import('../features/dev-tools').then(m => ({ default: m.DevelopmentCICDPanel })));
 const DevelopmentDocsPanel = lazy(() => import('../features/dev-tools').then(m => ({ default: m.DevelopmentDocsPanel })));
 const DatabaseManagementPanel = lazy(() => import('../features/dev-tools').then(m => ({ default: m.DatabaseManagementPanel })));
 const LogsViewerPanel = lazy(() => import('../features/dev-tools').then(m => ({ default: m.LogsViewerPanel })));
 const BuildDeployPanel = lazy(() => import('../features/dev-tools').then(m => ({ default: m.BuildDeployPanel })));
 const EnvironmentPanel = lazy(() => import('../features/dev-tools').then(m => ({ default: m.EnvironmentPanel })));
-const APITestingPanel = lazy(() => import('../features/dev-tools').then(m => ({ default: m.APITestingPanel })));
 const CodeQualityPanel = lazy(() => import('../features/dev-tools').then(m => ({ default: m.CodeQualityPanel })));
-const PerformancePanel = lazy(() => import('../features/dev-tools').then(m => ({ default: m.PerformancePanel })));
 const GitPanel = lazy(() => import('../features/dev-tools').then(m => ({ default: m.GitPanel })));
-const TaskRunnerPanel = lazy(() => import('../features/dev-tools').then(m => ({ default: m.TaskRunnerPanel })));
 
 // =============================================================================
 // ROUTE GUARD COMPONENTS
@@ -106,11 +102,11 @@ const ProtectedRoute: React.FC<{
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
     const isAdmin = user?.isAdmin || user?.role === 'ADMIN';
-    
+
     if (!isAdmin) {
         return <Navigate to="/dashboard" replace />;
     }
-    
+
     return <>{children}</>;
 };
 
@@ -119,7 +115,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
  */
 const DevRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
-    
+
     const devToolsEnabled =
         typeof import.meta !== 'undefined' &&
         typeof import.meta.env !== 'undefined' &&
@@ -163,17 +159,17 @@ const scrollPositions = new Map<string, number>();
 const ScrollRestoration: React.FC = () => {
     const location = useLocation();
     const prevPathRef = React.useRef<string>(location.pathname);
-    
+
     useEffect(() => {
         // Save scroll position of previous page before route change
         const prevPath = prevPathRef.current;
         if (prevPath !== location.pathname) {
             scrollPositions.set(prevPath, window.scrollY);
         }
-        
+
         // Check if we have a saved position for this route (back navigation)
         const savedPosition = scrollPositions.get(location.pathname);
-        
+
         // Small delay to let DOM render before scrolling
         const timeoutId = setTimeout(() => {
             if (savedPosition !== undefined && window.history.state?.idx !== undefined) {
@@ -184,13 +180,13 @@ const ScrollRestoration: React.FC = () => {
                 window.scrollTo(0, 0);
             }
         }, 0);
-        
+
         // Update ref for next navigation
         prevPathRef.current = location.pathname;
-        
+
         return () => clearTimeout(timeoutId);
     }, [location.pathname]);
-    
+
     return null;
 };
 
@@ -209,284 +205,248 @@ export const AppRoutes: React.FC = () => {
         <>
             {/* Scroll Restoration - preserves scroll position on back navigation */}
             <ScrollRestoration />
-            
-            <Routes>
-            {/* Default redirect: / -> /dashboard */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-            {/* =================================================================
+            <Routes>
+                {/* Default redirect: / -> /dashboard */}
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+                {/* =================================================================
                 MAIN ROUTES - Available to all authenticated users
                 Each route is wrapped in RouteErrorBoundary for granular fault tolerance.
                 If one page crashes, users can still navigate to other pages.
             ================================================================= */}
-            
-            <Route
-                path="/dashboard"
-                element={
-                    <ProtectedRoute routeName="Dashboard" fallback={<DashboardSkeleton />}>
-                        <DashboardPage />
-                    </ProtectedRoute>
-                }
-            />
 
-            <Route
-                path="/products"
-                element={
-                    <ProtectedRoute routeName="Products">
-                        <ProductsPage />
-                    </ProtectedRoute>
-                }
-            />
+                <Route
+                    path="/dashboard"
+                    element={
+                        <ProtectedRoute routeName="Dashboard" fallback={<DashboardSkeleton />}>
+                            <DashboardPage />
+                        </ProtectedRoute>
+                    }
+                />
 
-            <Route
-                path="/solutions"
-                element={
-                    <ProtectedRoute routeName="Solutions">
-                        <SolutionsPage />
-                    </ProtectedRoute>
-                }
-            />
+                <Route
+                    path="/products"
+                    element={
+                        <ProtectedRoute routeName="Products">
+                            <ProductsPage />
+                        </ProtectedRoute>
+                    }
+                />
 
-            <Route
-                path="/customers"
-                element={
-                    <ProtectedRoute routeName="Customers">
-                        <CustomersPage />
-                    </ProtectedRoute>
-                }
-            />
+                <Route
+                    path="/solutions"
+                    element={
+                        <ProtectedRoute routeName="Solutions">
+                            <SolutionsPage />
+                        </ProtectedRoute>
+                    }
+                />
 
-            <Route
-                path="/diary"
-                element={
-                    <ProtectedRoute routeName="Diary">
-                        <DiaryPage />
-                    </ProtectedRoute>
-                }
-            />
+                <Route
+                    path="/customers"
+                    element={
+                        <ProtectedRoute routeName="Customers">
+                            <CustomersPage />
+                        </ProtectedRoute>
+                    }
+                />
 
-            {/* =================================================================
+                <Route
+                    path="/diary"
+                    element={
+                        <ProtectedRoute routeName="Diary">
+                            <DiaryPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                {/* =================================================================
                 ADMIN ROUTES - Protected, requires admin role
             ================================================================= */}
-            
-            <Route
-                path="/admin/users"
-                element={
-                    <AdminRoute>
-                        <SuspenseRoute>
-                            <UserManagement />
-                        </SuspenseRoute>
-                    </AdminRoute>
-                }
-            />
 
-            <Route
-                path="/admin/roles"
-                element={
-                    <AdminRoute>
-                        <SuspenseRoute>
-                            <RoleManagement />
-                        </SuspenseRoute>
-                    </AdminRoute>
-                }
-            />
+                <Route
+                    path="/admin/users"
+                    element={
+                        <AdminRoute>
+                            <SuspenseRoute>
+                                <UserManagement />
+                            </SuspenseRoute>
+                        </AdminRoute>
+                    }
+                />
 
-            <Route
-                path="/admin/backup"
-                element={
-                    <AdminRoute>
-                        <SuspenseRoute>
-                            <BackupManagementPanel />
-                        </SuspenseRoute>
-                    </AdminRoute>
-                }
-            />
+                <Route
+                    path="/admin/roles"
+                    element={
+                        <AdminRoute>
+                            <SuspenseRoute>
+                                <RoleManagement />
+                            </SuspenseRoute>
+                        </AdminRoute>
+                    }
+                />
 
-            <Route
-                path="/admin/theme"
-                element={
-                    <AdminRoute>
-                        <SuspenseRoute fallback={<LoadingSpinner message="Loading themes..." />}>
-                            <ThemeSelector />
-                        </SuspenseRoute>
-                    </AdminRoute>
-                }
-            />
+                <Route
+                    path="/admin/backup"
+                    element={
+                        <AdminRoute>
+                            <SuspenseRoute>
+                                <BackupManagementPanel />
+                            </SuspenseRoute>
+                        </AdminRoute>
+                    }
+                />
 
-            <Route
-                path="/admin/about"
-                element={
-                    <AdminRoute>
-                        <SuspenseRoute>
-                            <AboutPage />
-                        </SuspenseRoute>
-                    </AdminRoute>
-                }
-            />
+                <Route
+                    path="/admin/theme"
+                    element={
+                        <AdminRoute>
+                            <SuspenseRoute fallback={<LoadingSpinner message="Loading themes..." />}>
+                                <ThemeSelector />
+                            </SuspenseRoute>
+                        </AdminRoute>
+                    }
+                />
 
-            {/* Admin default redirect */}
-            <Route 
-                path="/admin" 
-                element={<Navigate to="/admin/users" replace />} 
-            />
+                <Route
+                    path="/admin/about"
+                    element={
+                        <AdminRoute>
+                            <SuspenseRoute>
+                                <AboutPage />
+                            </SuspenseRoute>
+                        </AdminRoute>
+                    }
+                />
 
-            {/* =================================================================
+                {/* Admin default redirect */}
+                <Route
+                    path="/admin"
+                    element={<Navigate to="/admin/users" replace />}
+                />
+
+                {/* =================================================================
                 DEVELOPMENT ROUTES - Dev mode only, requires admin
             ================================================================= */}
 
-            <Route
-                path="/dev/tests"
-                element={
-                    <DevRoute>
-                        <SuspenseRoute fallback={<LoadingSpinner message="Loading test panel..." />}>
-                            <TestPanelNew />
-                        </SuspenseRoute>
-                    </DevRoute>
-                }
-            />
+                <Route
+                    path="/dev/tests"
+                    element={
+                        <DevRoute>
+                            <SuspenseRoute fallback={<LoadingSpinner message="Loading test panel..." />}>
+                                <TestPanelNew />
+                            </SuspenseRoute>
+                        </DevRoute>
+                    }
+                />
 
-            <Route
-                path="/dev/cicd"
-                element={
-                    <DevRoute>
-                        <SuspenseRoute>
-                            <DevelopmentCICDPanel />
-                        </SuspenseRoute>
-                    </DevRoute>
-                }
-            />
 
-            <Route
-                path="/dev/docs"
-                element={
-                    <DevRoute>
-                        <SuspenseRoute>
-                            <DevelopmentDocsPanel />
-                        </SuspenseRoute>
-                    </DevRoute>
-                }
-            />
 
-            <Route
-                path="/dev/database"
-                element={
-                    <DevRoute>
-                        <SuspenseRoute>
-                            <DatabaseManagementPanel />
-                        </SuspenseRoute>
-                    </DevRoute>
-                }
-            />
+                <Route
+                    path="/dev/docs"
+                    element={
+                        <DevRoute>
+                            <SuspenseRoute>
+                                <DevelopmentDocsPanel />
+                            </SuspenseRoute>
+                        </DevRoute>
+                    }
+                />
 
-            <Route
-                path="/dev/logs"
-                element={
-                    <DevRoute>
-                        <SuspenseRoute>
-                            <LogsViewerPanel />
-                        </SuspenseRoute>
-                    </DevRoute>
-                }
-            />
+                <Route
+                    path="/dev/database"
+                    element={
+                        <DevRoute>
+                            <SuspenseRoute>
+                                <DatabaseManagementPanel />
+                            </SuspenseRoute>
+                        </DevRoute>
+                    }
+                />
 
-            <Route
-                path="/dev/build"
-                element={
-                    <DevRoute>
-                        <SuspenseRoute>
-                            <BuildDeployPanel />
-                        </SuspenseRoute>
-                    </DevRoute>
-                }
-            />
+                <Route
+                    path="/dev/logs"
+                    element={
+                        <DevRoute>
+                            <SuspenseRoute>
+                                <LogsViewerPanel />
+                            </SuspenseRoute>
+                        </DevRoute>
+                    }
+                />
 
-            <Route
-                path="/dev/env"
-                element={
-                    <DevRoute>
-                        <SuspenseRoute>
-                            <EnvironmentPanel />
-                        </SuspenseRoute>
-                    </DevRoute>
-                }
-            />
+                <Route
+                    path="/dev/build"
+                    element={
+                        <DevRoute>
+                            <SuspenseRoute>
+                                <BuildDeployPanel />
+                            </SuspenseRoute>
+                        </DevRoute>
+                    }
+                />
 
-            <Route
-                path="/dev/api"
-                element={
-                    <DevRoute>
-                        <SuspenseRoute>
-                            <APITestingPanel />
-                        </SuspenseRoute>
-                    </DevRoute>
-                }
-            />
+                <Route
+                    path="/dev/env"
+                    element={
+                        <DevRoute>
+                            <SuspenseRoute>
+                                <EnvironmentPanel />
+                            </SuspenseRoute>
+                        </DevRoute>
+                    }
+                />
 
-            <Route
-                path="/dev/quality"
-                element={
-                    <DevRoute>
-                        <SuspenseRoute>
-                            <CodeQualityPanel />
-                        </SuspenseRoute>
-                    </DevRoute>
-                }
-            />
 
-            <Route
-                path="/dev/performance"
-                element={
-                    <DevRoute>
-                        <SuspenseRoute>
-                            <PerformancePanel />
-                        </SuspenseRoute>
-                    </DevRoute>
-                }
-            />
 
-            <Route
-                path="/dev/git"
-                element={
-                    <DevRoute>
-                        <SuspenseRoute>
-                            <GitPanel />
-                        </SuspenseRoute>
-                    </DevRoute>
-                }
-            />
+                <Route
+                    path="/dev/quality"
+                    element={
+                        <DevRoute>
+                            <SuspenseRoute>
+                                <CodeQualityPanel />
+                            </SuspenseRoute>
+                        </DevRoute>
+                    }
+                />
 
-            <Route
-                path="/dev/tasks"
-                element={
-                    <DevRoute>
-                        <SuspenseRoute>
-                            <TaskRunnerPanel />
-                        </SuspenseRoute>
-                    </DevRoute>
-                }
-            />
 
-            {/* Dev default redirect */}
-            <Route 
-                path="/dev" 
-                element={<Navigate to="/dev/tests" replace />} 
-            />
 
-            {/* =================================================================
+                <Route
+                    path="/dev/git"
+                    element={
+                        <DevRoute>
+                            <SuspenseRoute>
+                                <GitPanel />
+                            </SuspenseRoute>
+                        </DevRoute>
+                    }
+                />
+
+
+
+                {/* Dev default redirect */}
+                <Route
+                    path="/dev"
+                    element={<Navigate to="/dev/tests" replace />}
+                />
+
+                {/* =================================================================
                 FALLBACK - 404 Not Found
                 Uses explicit catch-all route (*) for unknown URLs
                 Shows a professional error page instead of silent redirect
             ================================================================= */}
-            
-            <Route 
-                path="*" 
-                element={
-                    <SuspenseRoute fallback={<LoadingSplash message="Loading page..." />}>
-                        <NotFoundPage />
-                    </SuspenseRoute>
-                } 
-            />
-        </Routes>
+
+                <Route
+                    path="*"
+                    element={
+                        <SuspenseRoute fallback={<LoadingSplash message="Loading page..." />}>
+                            <NotFoundPage />
+                        </SuspenseRoute>
+                    }
+                />
+            </Routes>
         </>
     );
 };
