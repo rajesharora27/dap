@@ -409,8 +409,8 @@ function AuthenticatedApp() {
               <ListItem
                 disablePadding
                 secondaryAction={
-                  <Tooltip title="Add Product">
-                    {(isAdmin || user?.roles?.includes('SME')) ? (
+                  (isAdmin || user?.roles?.includes('SME')) ? (
+                    <Tooltip title="Add Product">
                       <IconButton
                         edge="end"
                         size="small"
@@ -422,8 +422,8 @@ function AuthenticatedApp() {
                       >
                         <Add fontSize="small" />
                       </IconButton>
-                    ) : null}
-                  </Tooltip>
+                    </Tooltip>
+                  ) : null
                 }
                 sx={{
                   '&.Mui-selected': {
@@ -457,8 +457,8 @@ function AuthenticatedApp() {
               <ListItem
                 disablePadding
                 secondaryAction={
-                  <Tooltip title="Add Solution">
-                    {(isAdmin || user?.roles?.includes('SME')) ? (
+                  (isAdmin || user?.roles?.includes('SME')) ? (
+                    <Tooltip title="Add Solution">
                       <IconButton
                         edge="end"
                         size="small"
@@ -470,8 +470,8 @@ function AuthenticatedApp() {
                       >
                         <Add fontSize="small" />
                       </IconButton>
-                    ) : null}
-                  </Tooltip>
+                    </Tooltip>
+                  ) : null
                 }
                 sx={{
                   '&.Mui-selected': {
@@ -505,8 +505,8 @@ function AuthenticatedApp() {
               <ListItem
                 disablePadding
                 secondaryAction={
-                  <Tooltip title="Add Customer">
-                    {(isAdmin || user?.roles?.includes('CS') || user?.roles?.includes('CSS')) ? (
+                  (isAdmin || user?.roles?.includes('CS') || user?.roles?.includes('CSS')) ? (
+                    <Tooltip title="Add Customer">
                       <IconButton
                         edge="end"
                         size="small"
@@ -518,8 +518,8 @@ function AuthenticatedApp() {
                       >
                         <Add fontSize="small" />
                       </IconButton>
-                    ) : null}
-                  </Tooltip>
+                    </Tooltip>
+                  ) : null
                 }
                 sx={{
                   '&.Mui-selected': {
