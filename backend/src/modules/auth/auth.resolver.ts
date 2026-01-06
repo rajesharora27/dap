@@ -24,9 +24,12 @@ const getExtendedUser = async (context: any, userId: string) => {
     .filter((ur: any) => ur.role)
     .map((ur: any) => ur.role.name);
 
+  // GraphQL `UserExtended.role` is non-nullable; coalesce legacy NULLs.
+  const normalizedRole = (user.role ? String(user.role) : (user.isAdmin ? 'ADMIN' : 'USER'));
+
   return {
     ...user,
-    role: user.role,
+    role: normalizedRole,
     isAdmin: user.isAdmin,
     isActive: user.isActive,
     mustChangePassword: user.mustChangePassword,

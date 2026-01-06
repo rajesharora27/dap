@@ -61,6 +61,16 @@ export interface Permission {
 export class AuthService {
   constructor(private prisma: PrismaClient) { }
 
+  /**
+   * Normalizes legacy/null user.role values to a safe SystemRole.
+   * This is required because GraphQL `UserExtended.role` is non-nullable.
+   */
+  private normalizeSystemRole(user: { role?: any | null; isAdmin?: boolean | null }): string {
+    const raw = (user.role ?? '').toString().toUpperCase().trim();
+    if (raw) return raw;
+    return user.isAdmin ? 'ADMIN' : 'USER';
+  }
+
   // Hash password
   async hashPassword(password: string): Promise<string> {
     const saltRounds = 10;
@@ -910,6 +920,7 @@ export class AuthService {
       username: u.username,
       email: u.email,
       fullName: u.fullName,
+      role: this.normalizeSystemRole(u),
       isAdmin: u.isAdmin,
       isActive: u.isActive,
       mustChangePassword: u.mustChangePassword,
