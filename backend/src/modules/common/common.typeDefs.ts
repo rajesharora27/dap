@@ -5,7 +5,8 @@ export const commonTypeDefs = gql`
   scalar DateTime
   scalar Upload
 
-  enum Role { ADMIN USER }
+  # SystemRole mirror for GraphQL (must stay aligned with Prisma SystemRole)
+  enum Role { ADMIN USER SME CSS VIEWER }
   enum LicenseLevel { Essential Advantage Signature }
   enum CustomerTaskStatus { NOT_STARTED IN_PROGRESS COMPLETED DONE NOT_APPLICABLE NO_LONGER_USING }
   enum StatusUpdateSource { MANUAL TELEMETRY IMPORT SYSTEM }

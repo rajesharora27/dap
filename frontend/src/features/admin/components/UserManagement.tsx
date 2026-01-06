@@ -19,8 +19,6 @@ import {
   DialogContent,
   DialogActions,
   TextField,
-  Switch,
-  FormControlLabel,
   Alert,
   CircularProgress,
   FormControl,
@@ -51,6 +49,7 @@ const GET_USERS = gql`
       username
       email
       fullName
+      role
       isAdmin
       isActive
       mustChangePassword
@@ -155,6 +154,7 @@ interface User {
   username: string;
   email: string;
   fullName: string | null;
+  role?: string;
   isAdmin: boolean;
   isActive: boolean;
   mustChangePassword: boolean;
@@ -165,7 +165,8 @@ interface UserFormData {
   username: string;
   email: string;
   fullName: string;
-  isAdmin: boolean;
+  password: string;
+  role: string;
 }
 
 export const UserManagement: React.FC = () => {
@@ -179,7 +180,8 @@ export const UserManagement: React.FC = () => {
     username: '',
     email: '',
     fullName: '',
-    isAdmin: false
+    password: '',
+    role: 'USER'
   });
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState('');
@@ -310,7 +312,8 @@ export const UserManagement: React.FC = () => {
       username: '',
       email: '',
       fullName: '',
-      isAdmin: false
+      password: '',
+      role: 'USER'
     });
     setSelectedRoles([]);
     setUserDialog(true);
@@ -322,7 +325,8 @@ export const UserManagement: React.FC = () => {
       username: user.username,
       email: user.email,
       fullName: user.fullName || '',
-      isAdmin: user.isAdmin
+      password: '',
+      role: (user.role || (user.isAdmin ? 'ADMIN' : 'USER')) as string
     });
     setUserDialog(true);
     // Roles will be loaded by useEffect
@@ -362,9 +366,10 @@ export const UserManagement: React.FC = () => {
           variables: {
             userId: editingUser.id,
             input: {
+              username: formData.username,
               email: formData.email,
               fullName: formData.fullName || null,
-              isAdmin: formData.isAdmin
+              role: formData.role
             }
           }
         });
@@ -408,9 +413,19 @@ export const UserManagement: React.FC = () => {
       }
     } else {
       // Create user
+      if (!formData.password.trim()) {
+        setErrorMsg('Password is required');
+        return;
+      }
       createUser({
         variables: {
-          input: formData
+          input: {
+            username: formData.username,
+            email: formData.email,
+            fullName: formData.fullName || null,
+            password: formData.password,
+            role: formData.role
+          }
         }
       });
     }
@@ -542,13 +557,13 @@ export const UserManagement: React.FC = () => {
                 <TableCell>{user.username}</TableCell>
                 <TableCell>{user.fullName || '-'}</TableCell>
                 <TableCell>{user.email}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={user.isAdmin ? 'Admin' : 'User'}
-                    color={user.isAdmin ? 'primary' : 'default'}
-                    size="small"
-                  />
-                </TableCell>
+              <TableCell>
+                <Chip
+                  label={user.role || (user.isAdmin ? 'ADMIN' : 'USER')}
+                  color={(user.role || (user.isAdmin ? 'ADMIN' : 'USER')) === 'ADMIN' ? 'primary' : 'default'}
+                  size="small"
+                />
+              </TableCell>
                 <TableCell>
                   <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                     {user.roles && user.roles.length > 0 ? (
@@ -640,15 +655,21 @@ export const UserManagement: React.FC = () => {
               onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
               fullWidth
             />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.isAdmin}
-                  onChange={(e) => setFormData({ ...formData, isAdmin: e.target.checked })}
-                />
-              }
-              label="Administrator"
-            />
+            <FormControl fullWidth>
+              <InputLabel id="system-role-label">System Role</InputLabel>
+              <Select
+                labelId="system-role-label"
+                value={formData.role}
+                label="System Role"
+                onChange={(e) => setFormData({ ...formData, role: String(e.target.value) })}
+              >
+                <MenuItem value="USER">USER</MenuItem>
+                <MenuItem value="VIEWER">VIEWER</MenuItem>
+                <MenuItem value="CSS">CSS</MenuItem>
+                <MenuItem value="SME">SME</MenuItem>
+                <MenuItem value="ADMIN">ADMIN</MenuItem>
+              </Select>
+            </FormControl>
 
             {/* Role Assignment Section */}
             {editingUser && (
@@ -702,9 +723,20 @@ export const UserManagement: React.FC = () => {
             )}
 
             {!editingUser && (
-              <Alert severity="info">
-                New user will be created with default password <strong>DAP123</strong>.
-              </Alert>
+              <>
+                <TextField
+                  label="Password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  fullWidth
+                  required
+                  helperText="Min 8 characters. User will be asked to change password on first login."
+                />
+                <Alert severity="info">
+                  Admin sets the initial password. The user will be required to change it on first login.
+                </Alert>
+              </>
             )}
           </Box>
         </DialogContent>

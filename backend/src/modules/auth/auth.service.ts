@@ -687,8 +687,9 @@ export class AuthService {
     userData: {
       username: string;
       email: string;
-      fullName: string;
-      isAdmin?: boolean;
+      fullName?: string;
+      password: string;
+      role?: string;
     }
   ): Promise<User> {
     // Check if creator is admin
@@ -713,18 +714,33 @@ export class AuthService {
       throw new Error('Username or email already exists');
     }
 
-    // Hash default password
-    const passwordHash = await this.hashPassword(DEFAULT_PASSWORD);
+    // Password is required by GraphQL schema (CreateUserInput.password)
+    if (!userData.password?.trim()) {
+      throw new Error('Password is required');
+    }
 
-    // Create user with default password
+    // Basic safety: reject very short passwords (frontend should enforce too)
+    if (userData.password.trim().length < 8) {
+      throw new Error('Password must be at least 8 characters');
+    }
+
+    // Hash provided password (never log it)
+    const passwordHash = await this.hashPassword(userData.password);
+
+    // System role is stored on User.role; isAdmin is derived from role
+    const normalizedRole = (userData.role || 'USER').toUpperCase();
+    const isAdmin = normalizedRole === 'ADMIN';
+
+    // Create user
     const user = await this.prisma.user.create({
       data: {
         username: userData.username,
         email: userData.email,
         password: passwordHash,
-        fullName: userData.fullName,
-        isAdmin: userData.isAdmin || false,
-        mustChangePassword: false // Password change not required
+        fullName: userData.fullName || null,
+        role: normalizedRole as any,
+        isAdmin,
+        mustChangePassword: true // Force change on first login for admin-created accounts
       }
     });
 
@@ -734,7 +750,7 @@ export class AuthService {
       'create_user',
       'user',
       user.id,
-      `Created user ${userData.username} with default password`
+      `Created user ${userData.username}`
     );
 
     return {
@@ -753,9 +769,10 @@ export class AuthService {
     updatedBy: string,
     userId: string,
     userData: {
+      username?: string;
       email?: string;
       fullName?: string;
-      isAdmin?: boolean;
+      role?: string;
     }
   ): Promise<User> {
     // Check if updater is admin
@@ -784,13 +801,19 @@ export class AuthService {
       }
     }
 
+    const normalizedRole = userData.role ? userData.role.toUpperCase() : undefined;
+    const rolePatch = normalizedRole
+      ? { role: normalizedRole as any, isAdmin: normalizedRole === 'ADMIN' }
+      : {};
+
     // Update user
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: {
+        username: userData.username !== undefined ? userData.username : undefined,
         email: userData.email,
         fullName: userData.fullName !== undefined ? userData.fullName : undefined,
-        isAdmin: userData.isAdmin !== undefined ? userData.isAdmin : undefined,
+        ...rolePatch,
         updatedAt: new Date()
       }
     });
