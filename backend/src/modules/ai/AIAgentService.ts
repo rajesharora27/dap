@@ -134,29 +134,17 @@ export class AIAgentService {
    * Get the current LLM Provider based on settings
    */
   private async getProvider(): Promise<ILLMProvider | null> {
-    try {
-      // Get provider type from settings (default to env or mock)
-      const providerType = await getSettingValue('ai.provider', envConfig.llm.provider || 'mock');
+    // Get provider type from settings (default to env or mock)
+    const providerType = await getSettingValue('ai.provider', envConfig.llm.provider || 'mock');
 
-      // If we have a cached provider instance and the type matches, return it
-      if (this.llmProvider && this.llmProvider.name === providerType) {
-        return this.llmProvider;
-      }
-
-      // Otherwise create new provider instance
-      // If providerType is 'mock', createLLMProvider handles it.
-      // We need to map setting values to what createLLMProvider expects if they differ.
-      // Settings: 'mock', 'cisco', 'openai', 'gemini', 'anthropic'
-      // createLLMProvider: 'mock', 'cisco-ai' (?), 'openai', 'gemini', 'anthropic'
-      // Let's assume createLLMProvider handles the mapping or we fix it here.
-      // Checking INITIAL_SETTINGS: values are 'mock', 'cisco', 'openai', 'gemini', 'anthropic'.
-
-      this.llmProvider = createLLMProvider(providerType as any);
+    // If we have a cached provider instance and the type matches, return it
+    if (this.llmProvider && this.llmProvider.name === providerType) {
       return this.llmProvider;
-    } catch (error) {
-      console.warn('[AI Agent] Failed to initialize LLM provider:', error);
-      return null;
     }
+
+    // Create new provider instance
+    this.llmProvider = createLLMProvider(providerType as any);
+    return this.llmProvider;
   }
 
   /**
@@ -212,7 +200,37 @@ export class AIAgentService {
       // Heuristic: If question contains "Show me", "List", "Find", "Count" -> likely Data
       const intent = this.heuristicIntentDetection(request.question);
 
-      const provider = await this.getProvider();
+      let provider;
+      try {
+        const envDefault = envConfig.llm.provider || 'mock';
+        const providerType = await getSettingValue('ai.provider', envDefault);
+
+        // Manual check for undefined/null string (cast to any to avoid TS errors)
+        const typeStr = providerType as unknown as string;
+        if (typeStr === 'undefined' || typeStr === 'null' || !providerType) {
+          throw new Error(`Resolved provider type is invalid: ${providerType} (Env: ${envDefault})`);
+        }
+
+        // Check if cached provider matches
+        if (this.llmProvider && this.llmProvider.name === providerType) {
+          provider = this.llmProvider;
+        } else {
+          this.llmProvider = createLLMProvider({ type: providerType as any });
+          provider = this.llmProvider;
+        }
+
+      } catch (error: any) {
+        return {
+          answer: `Configuration Error: Failed to initialize AI provider. ${error.message}`,
+          metadata: {
+            providerUsed: 'none',
+            executionTime: 0,
+            rowCount: 0,
+            truncated: false,
+            cached: false
+          }
+        };
+      }
 
       // If INTENT is Documentation, perform RAG
       if (intent === 'DOCUMENTATION' && provider) {
