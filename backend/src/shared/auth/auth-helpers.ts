@@ -13,6 +13,10 @@ export function ensureAuth(ctx: any) {
     ctx.user.userId = ctx.user.id;
   }
 
+  if (ctx.user && !ctx.user.id && ctx.user.userId) {
+    ctx.user.id = ctx.user.userId;
+  }
+
   if (ctx.user && !ctx.user.roles) {
     ctx.user.roles = ctx.user.role ? [ctx.user.role] : [];
   }

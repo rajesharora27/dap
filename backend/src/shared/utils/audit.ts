@@ -5,7 +5,7 @@ export async function logAudit(action: string, entity?: string, entityId?: strin
     await prisma.auditLog.create({ data: { action, entity, entityId, details, userId: userId || undefined } });
   } catch (e) {
     // swallow to avoid mutation failures due to audit issues
-    // Ideally log somewhere persistent
-    // console.error('Audit log failed', e);
+    console.error('[AUDIT] Failed to create audit log:', e);
   }
 }
+

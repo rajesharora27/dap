@@ -21,6 +21,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **UI**: Resolved icon inconsistency for "My Diary" between sidebar and page view.
 
+## [3.9.0] - 2026-01-06
+
+### Added
+- **Activity**: Enhanced Login Statistics with an inline detail panel listing individual user login records (User ID, Username, Roles, Login Time).
+- **Activity**: Robust Entity Changes logging with automatic entity name lookup from database and improved user attribution for historical entries.
+- **Audit**: Implemented comprehensive audit logging across all critical services including Tag management (Create/Update/Delete).
+- **Audit**: Included entity names directly in audit log details for faster rendering and better UX.
+
+### Changed
+- **UI**: Simplified Login Statistics main table by removing the "Roles Active" column.
+- **Backend**: Normalized GraphQL context to ensure `id` and `userId` consistency, fixing "system" user attribution in new logs.
+
 ## [3.8.0] - 2026-01-06
 
 ### Added

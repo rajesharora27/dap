@@ -58,13 +58,19 @@ const GET_LOGIN_STATS = gql`
       date
       count
       roles
+      users {
+        id
+        username
+        roles
+        loginTime
+      }
     }
   }
 `;
 
 const GET_ENTITY_CHANGE_LOGS = gql`
-  query EntityChangeLogs($period: String!, $userId: String) {
-    entityChangeLogs(period: $period, userId: $userId) {
+  query EntityChangeLogs($period: String!, $userId: String, $entity: String) {
+    entityChangeLogs(period: $period, userId: $userId, entity: $entity) {
       id
       action
       entity
@@ -137,12 +143,14 @@ const ActiveSessionsTab: React.FC = () => {
     );
 };
 
-const LoginStatsTab: React.FC<{ userId?: string }> = ({ userId }) => {
+const LoginStatsTab: React.FC<{ users: any[] }> = ({ users }) => {
     const [period, setPeriod] = useState<string>('week');
+    const [userId, setUserId] = useState<string>('ALL');
     const [roleFilter, setRoleFilter] = useState<string>('ALL');
+    const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
     const { data, loading, error, refetch } = useQuery(GET_LOGIN_STATS, {
-        variables: { period, userId }
+        variables: { period, userId: userId === 'ALL' ? undefined : userId }
     });
 
     if (loading) return <CircularProgress />;
@@ -155,7 +163,7 @@ const LoginStatsTab: React.FC<{ userId?: string }> = ({ userId }) => {
 
     return (
         <Box>
-            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center', flexWrap: 'wrap' }}>
                 <FormControl size="small" sx={{ minWidth: 120 }}>
                     <InputLabel>Period</InputLabel>
                     <Select value={period} label="Period" onChange={(e) => setPeriod(e.target.value)}>
@@ -165,7 +173,20 @@ const LoginStatsTab: React.FC<{ userId?: string }> = ({ userId }) => {
                         <MenuItem value="year">This Year</MenuItem>
                     </Select>
                 </FormControl>
-                <FormControl size="small" sx={{ minWidth: 120 }}>
+
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                    <InputLabel>User</InputLabel>
+                    <Select value={userId} label="User" onChange={(e) => setUserId(e.target.value)}>
+                        <MenuItem value="ALL">All Users</MenuItem>
+                        {users.map(u => (
+                            <MenuItem key={u.id} value={u.id}>
+                                {u.fullName || u.username} ({u.username})
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: 150 }}>
                     <InputLabel>Role</InputLabel>
                     <Select value={roleFilter} label="Role" onChange={(e) => setRoleFilter(e.target.value)}>
                         <MenuItem value="ALL">All Roles</MenuItem>
@@ -176,23 +197,67 @@ const LoginStatsTab: React.FC<{ userId?: string }> = ({ userId }) => {
             </Box>
 
             <TableContainer component={Paper}>
-                <Table>
+                <Table size="small">
                     <TableHead>
                         <TableRow>
                             <TableCell>Date</TableCell>
                             <TableCell>Login Count</TableCell>
-                            <TableCell>Roles Active</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {filteredStats.map((stat: any) => (
-                            <TableRow key={stat.date}>
-                                <TableCell>{stat.date}</TableCell>
-                                <TableCell>{stat.count}</TableCell>
-                                <TableCell>
-                                    {stat.roles.map((r: string) => <Chip key={r} label={r} size="small" sx={{ mr: 0.5 }} />)}
-                                </TableCell>
-                            </TableRow>
+                            <React.Fragment key={stat.date}>
+                                <TableRow
+                                    hover
+                                    onClick={() => setSelectedDate(selectedDate === stat.date ? null : stat.date)}
+                                    selected={selectedDate === stat.date}
+                                    sx={{ cursor: 'pointer' }}
+                                >
+                                    <TableCell>{stat.date}</TableCell>
+                                    <TableCell>{stat.count}</TableCell>
+                                </TableRow>
+                                {selectedDate === stat.date && (
+                                    <TableRow sx={{ bgcolor: 'action.hover' }}>
+                                        <TableCell colSpan={2}>
+                                            <Box sx={{ p: 2, borderLeft: '4px solid', borderColor: 'primary.main' }}>
+                                                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700 }}>
+                                                    Users Logged In on {stat.date}
+                                                </Typography>
+                                                <Table size="small">
+                                                    <TableHead>
+                                                        <TableRow>
+                                                            <TableCell>User ID</TableCell>
+                                                            <TableCell>Username</TableCell>
+                                                            <TableCell>Roles</TableCell>
+                                                            <TableCell>Login Time</TableCell>
+                                                        </TableRow>
+                                                    </TableHead>
+                                                    <TableBody>
+                                                        {stat.users?.map((u: any, idx: number) => (
+                                                            <TableRow key={`${u.id}-${idx}`}>
+                                                                <TableCell>
+                                                                    <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
+                                                                        {u.id}
+                                                                    </Typography>
+                                                                </TableCell>
+                                                                <TableCell sx={{ fontWeight: 500 }}>{u.username}</TableCell>
+                                                                <TableCell>
+                                                                    {u.roles?.map((r: string) => (
+                                                                        <Chip key={r} label={r} size="small" sx={{ mr: 0.5 }} />
+                                                                    ))}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {new Date(u.loginTime).toLocaleTimeString()}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </React.Fragment>
                         ))}
                     </TableBody>
                 </Table>
@@ -201,10 +266,18 @@ const LoginStatsTab: React.FC<{ userId?: string }> = ({ userId }) => {
     );
 };
 
-const EntityChangesTab: React.FC<{ userId?: string }> = ({ userId }) => {
+const EntityChangesTab: React.FC<{ users: any[] }> = ({ users }) => {
     const [period, setPeriod] = useState<string>('week');
+    const [userId, setUserId] = useState<string>('ALL');
+    const [entityFilter, setEntityFilter] = useState<string>('ALL');
+    const [selectedLogId, setSelectedLogId] = useState<string | null>(null);
+
     const { data, loading, error, refetch } = useQuery(GET_ENTITY_CHANGE_LOGS, {
-        variables: { period, userId }
+        variables: {
+            period,
+            userId: userId === 'ALL' ? undefined : userId,
+            entity: entityFilter === 'ALL' ? undefined : entityFilter
+        }
     });
 
     if (loading) return <CircularProgress />;
@@ -212,7 +285,7 @@ const EntityChangesTab: React.FC<{ userId?: string }> = ({ userId }) => {
 
     return (
         <Box>
-            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3, alignItems: 'center', flexWrap: 'wrap' }}>
                 <FormControl size="small" sx={{ minWidth: 120 }}>
                     <InputLabel>Period</InputLabel>
                     <Select value={period} label="Period" onChange={(e) => setPeriod(e.target.value)}>
@@ -222,35 +295,98 @@ const EntityChangesTab: React.FC<{ userId?: string }> = ({ userId }) => {
                         <MenuItem value="year">This Year</MenuItem>
                     </Select>
                 </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                    <InputLabel>User</InputLabel>
+                    <Select value={userId} label="User" onChange={(e) => setUserId(e.target.value)}>
+                        <MenuItem value="ALL">All Users</MenuItem>
+                        {users.map(u => (
+                            <MenuItem key={u.id} value={u.id}>
+                                {u.fullName || u.username} ({u.username})
+                            </MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
+
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <InputLabel>Entity Type</InputLabel>
+                    <Select value={entityFilter} label="Entity Type" onChange={(e) => setEntityFilter(e.target.value)}>
+                        <MenuItem value="ALL">All Entities</MenuItem>
+                        <MenuItem value="Product">Product</MenuItem>
+                        <MenuItem value="Solution">Solution</MenuItem>
+                        <MenuItem value="Customer">Customer</MenuItem>
+                    </Select>
+                </FormControl>
                 <IconButton onClick={() => refetch()}><RefreshIcon /></IconButton>
             </Box>
 
-            <TableContainer component={Paper}>
-                <Table>
+            <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+                <Table stickyHeader size="small">
                     <TableHead>
                         <TableRow>
                             <TableCell>Time</TableCell>
                             <TableCell>User</TableCell>
                             <TableCell>Action</TableCell>
                             <TableCell>Entity</TableCell>
-                            <TableCell>Entity Name</TableCell>
-                            <TableCell>Details</TableCell>
+                            <TableCell>Name</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {data.entityChangeLogs.map((log: any) => (
-                            <TableRow key={log.id}>
-                                <TableCell>{format(new Date(log.createdAt), 'MM/dd HH:mm')}</TableCell>
-                                <TableCell>{log.username}</TableCell>
-                                <TableCell><Chip label={log.action} size="small" color={log.action === 'delete' ? 'error' : 'primary'} /></TableCell>
-                                <TableCell>{log.entity}</TableCell>
-                                <TableCell>{log.entityName}</TableCell>
-                                <TableCell sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    <Tooltip title={log.details}>
-                                        <Typography variant="caption">{log.details}</Typography>
-                                    </Tooltip>
-                                </TableCell>
-                            </TableRow>
+                            <React.Fragment key={log.id}>
+                                <TableRow
+                                    hover
+                                    onClick={() => setSelectedLogId(selectedLogId === log.id ? null : log.id)}
+                                    selected={selectedLogId === log.id}
+                                    sx={{ cursor: 'pointer' }}
+                                >
+                                    <TableCell>{format(new Date(log.createdAt), 'MM/dd HH:mm')}</TableCell>
+                                    <TableCell>{log.username}</TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={log.action}
+                                            size="small"
+                                            color={log.action.includes('DELETE') || log.action === 'delete' ? 'error' : 'primary'}
+                                            variant="outlined"
+                                        />
+                                    </TableCell>
+                                    <TableCell>{log.entity}</TableCell>
+                                    <TableCell sx={{ fontWeight: 500 }}>{log.entityName}</TableCell>
+                                </TableRow>
+                                {selectedLogId === log.id && (
+                                    <TableRow sx={{ bgcolor: 'action.hover' }}>
+                                        <TableCell colSpan={5}>
+                                            <Box sx={{ p: 2, borderLeft: '4px solid', borderColor: 'primary.main' }}>
+                                                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <HistoryIcon fontSize="small" /> Change Details - {log.entityName}
+                                                </Typography>
+                                                <Paper variant="outlined" sx={{ p: 2, bgcolor: 'background.paper' }}>
+                                                    <Typography
+                                                        variant="body2"
+                                                        component="pre"
+                                                        sx={{
+                                                            whiteSpace: 'pre-wrap',
+                                                            wordBreak: 'break-all',
+                                                            fontStyle: 'italic',
+                                                            fontFamily: 'monospace',
+                                                            color: 'text.secondary'
+                                                        }}
+                                                    >
+                                                        {(() => {
+                                                            try {
+                                                                const details = JSON.parse(log.details);
+                                                                return JSON.stringify(details, null, 2);
+                                                            } catch (e) {
+                                                                return log.details;
+                                                            }
+                                                        })()}
+                                                    </Typography>
+                                                </Paper>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </React.Fragment>
                         ))}
                     </TableBody>
                 </Table>
@@ -273,24 +409,6 @@ export const UserActivityPanel: React.FC = () => {
                     <HistoryIcon sx={{ mr: 2, fontSize: '2.5rem', color: 'primary.main' }} />
                     User Activity Tracking
                 </Typography>
-
-                {(tabValue === 1 || tabValue === 2) && (
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
-                        <InputLabel>Filter by User</InputLabel>
-                        <Select
-                            value={selectedUserId}
-                            label="Filter by User"
-                            onChange={(e) => setSelectedUserId(e.target.value)}
-                        >
-                            <MenuItem value="ALL">All Users</MenuItem>
-                            {users.map((u: any) => (
-                                <MenuItem key={u.id} value={u.id}>
-                                    {u.fullName || u.username} ({u.username})
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                )}
             </Box>
 
             <Paper sx={{ width: '100%', mb: 2 }}>
@@ -310,10 +428,10 @@ export const UserActivityPanel: React.FC = () => {
                     <ActiveSessionsTab />
                 </TabPanel>
                 <TabPanel value={tabValue} index={1}>
-                    <LoginStatsTab userId={selectedUserId === 'ALL' ? undefined : selectedUserId} />
+                    <LoginStatsTab users={users} />
                 </TabPanel>
                 <TabPanel value={tabValue} index={2}>
-                    <EntityChangesTab userId={selectedUserId === 'ALL' ? undefined : selectedUserId} />
+                    <EntityChangesTab users={users} />
                 </TabPanel>
             </Paper>
         </Box>

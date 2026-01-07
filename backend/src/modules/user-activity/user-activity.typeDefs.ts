@@ -10,10 +10,18 @@ export const userActivityTypeDefs = gql`
     ipAddress: String
   }
 
+  type LoginUser {
+    id: ID!
+    username: String!
+    roles: [String!]!
+    loginTime: DateTime!
+  }
+
   type UserLoginStats {
     date: String!
     count: Int!
     roles: [String!]!
+    users: [LoginUser!]!
   }
 
   type EntityChangeLog {
@@ -42,6 +50,6 @@ export const userActivityTypeDefs = gql`
     """
     Get detailed entity change logs (admin only)
     """
-    entityChangeLogs(period: String!, userId: String): [EntityChangeLog!]!
+    entityChangeLogs(period: String!, userId: String, entity: String): [EntityChangeLog!]!
   }
 `;

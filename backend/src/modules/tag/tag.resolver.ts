@@ -45,7 +45,7 @@ export const TagResolvers = {
         createProductTag: async (_: any, { input }: any, ctx: any) => {
             requireUser(ctx);
             await requirePermission(ctx, ResourceType.PRODUCT, input.productId, PermissionLevel.WRITE);
-            return TagService.createProductTag(input);
+            return TagService.createProductTag(input, ctx.user.id);
         },
         updateProductTag: async (_: any, { id, input }: any, ctx: any) => {
             requireUser(ctx);
@@ -53,7 +53,7 @@ export const TagResolvers = {
             if (!tag) throw new Error('Tag not found');
 
             await requirePermission(ctx, ResourceType.PRODUCT, tag.productId, PermissionLevel.WRITE);
-            return TagService.updateProductTag(id, input);
+            return TagService.updateProductTag(id, input, ctx.user.id);
         },
         deleteProductTag: async (_: any, { id }: any, ctx: any) => {
             requireUser(ctx);
@@ -61,7 +61,7 @@ export const TagResolvers = {
             if (!tag) throw new Error('Tag not found');
 
             await requirePermission(ctx, ResourceType.PRODUCT, tag.productId, PermissionLevel.WRITE);
-            return TagService.deleteProductTag(id);
+            return TagService.deleteProductTag(id, ctx.user.id);
         },
         setTaskTags: async (_: any, { taskId, tagIds }: any, ctx: any) => {
             requireUser(ctx);
@@ -93,21 +93,21 @@ export const TagResolvers = {
         createSolutionTag: async (_: any, { input }: any, ctx: any) => {
             requireUser(ctx);
             await requirePermission(ctx, ResourceType.SOLUTION, input.solutionId, PermissionLevel.WRITE);
-            return TagService.createSolutionTag(input);
+            return TagService.createSolutionTag(input, ctx.user.id);
         },
         updateSolutionTag: async (_: any, { id, input }: any, ctx: any) => {
             requireUser(ctx);
             const tag = await prisma.solutionTag.findUnique({ where: { id } });
             if (!tag) throw new Error('Tag not found');
             await requirePermission(ctx, ResourceType.SOLUTION, tag.solutionId, PermissionLevel.WRITE);
-            return TagService.updateSolutionTag(id, input);
+            return TagService.updateSolutionTag(id, input, ctx.user.id);
         },
         deleteSolutionTag: async (_: any, { id }: any, ctx: any) => {
             requireUser(ctx);
             const tag = await prisma.solutionTag.findUnique({ where: { id } });
             if (!tag) throw new Error('Tag not found');
             await requirePermission(ctx, ResourceType.SOLUTION, tag.solutionId, PermissionLevel.WRITE);
-            return TagService.deleteSolutionTag(id);
+            return TagService.deleteSolutionTag(id, ctx.user.id);
         },
         setSolutionTaskTags: async (_: any, { taskId, tagIds }: any, ctx: any) => {
             requireUser(ctx);

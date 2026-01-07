@@ -12,10 +12,18 @@ export interface EntityChangeLog {
     details: string;
 }
 
+export interface LoginUser {
+    id: string;
+    username: string;
+    roles: string[];
+    loginTime: Date;
+}
+
 export interface UserLoginStats {
     date: string;
     count: number;
     roles: string[];
+    users: LoginUser[];
 }
 
 export interface ActiveSession {

@@ -1,6 +1,7 @@
 
 import { prisma } from '../../shared/graphql/context';
 import { ProductTag, SolutionTag } from '@prisma/client';
+import { logAudit } from '../../shared/utils/audit';
 
 export class TagService {
     // Queries
@@ -37,7 +38,7 @@ export class TagService {
     }
 
     // Mutations - Product Tags
-    static async createProductTag(input: any) {
+    static async createProductTag(input: any, userId?: string) {
         const { productId, name, description, color, displayOrder } = input;
 
         // Check for duplicate name
@@ -51,7 +52,10 @@ export class TagService {
             orderBy: { displayOrder: 'desc' }
         });
 
-        return prisma.productTag.create({
+        // Get product name for audit log
+        const product = await prisma.product.findUnique({ where: { id: productId }, select: { name: true } });
+
+        const tag = await prisma.productTag.create({
             data: {
                 productId,
                 name,
@@ -60,9 +64,12 @@ export class TagService {
                 displayOrder: displayOrder ?? ((maxOrder?.displayOrder || 0) + 1)
             }
         });
+
+        await logAudit('CREATE_PRODUCT_TAG', 'Product', productId, { name: product?.name, tagName: name }, userId);
+        return tag;
     }
 
-    static async updateProductTag(id: string, input: any) {
+    static async updateProductTag(id: string, input: any, userId?: string) {
         const tag = await prisma.productTag.findUnique({ where: { id } });
         if (!tag) throw new Error('Tag not found');
 
@@ -77,14 +84,27 @@ export class TagService {
             if (existing) throw new Error(`Tag with name "${input.name}" already exists`);
         }
 
-        return prisma.productTag.update({
+        // Get product name for audit log
+        const product = await prisma.product.findUnique({ where: { id: tag.productId }, select: { name: true } });
+
+        const updated = await prisma.productTag.update({
             where: { id },
             data: input
         });
+
+        await logAudit('UPDATE_PRODUCT_TAG', 'Product', tag.productId, { name: product?.name, tagName: updated.name }, userId);
+        return updated;
     }
 
-    static async deleteProductTag(id: string) {
+    static async deleteProductTag(id: string, userId?: string) {
+        const tag = await prisma.productTag.findUnique({ where: { id } });
+        if (!tag) throw new Error('Tag not found');
+
+        // Get product name for audit log
+        const product = await prisma.product.findUnique({ where: { id: tag.productId }, select: { name: true } });
+
         await prisma.productTag.delete({ where: { id } });
+        await logAudit('DELETE_PRODUCT_TAG', 'Product', tag.productId, { name: product?.name, tagName: tag.name }, userId);
         return true;
     }
 
@@ -142,7 +162,7 @@ export class TagService {
     }
 
     // Mutations - Solution Tags
-    static async createSolutionTag(input: any) {
+    static async createSolutionTag(input: any, userId?: string) {
         const { solutionId, name, description, color, displayOrder } = input;
 
         const existing = await prisma.solutionTag.findFirst({
@@ -155,7 +175,10 @@ export class TagService {
             orderBy: { displayOrder: 'desc' }
         });
 
-        return prisma.solutionTag.create({
+        // Get solution name for audit log
+        const solution = await prisma.solution.findUnique({ where: { id: solutionId }, select: { name: true } });
+
+        const tag = await prisma.solutionTag.create({
             data: {
                 solutionId,
                 name,
@@ -164,9 +187,12 @@ export class TagService {
                 displayOrder: displayOrder ?? ((maxOrder?.displayOrder || 0) + 1)
             }
         });
+
+        await logAudit('CREATE_SOLUTION_TAG', 'Solution', solutionId, { name: solution?.name, tagName: name }, userId);
+        return tag;
     }
 
-    static async updateSolutionTag(id: string, input: any) {
+    static async updateSolutionTag(id: string, input: any, userId?: string) {
         const tag = await prisma.solutionTag.findUnique({ where: { id } });
         if (!tag) throw new Error('Tag not found');
 
@@ -181,11 +207,23 @@ export class TagService {
             if (existing) throw new Error(`Tag with name "${input.name}" already exists`);
         }
 
-        return prisma.solutionTag.update({ where: { id }, data: input });
+        // Get solution name for audit log
+        const solution = await prisma.solution.findUnique({ where: { id: tag.solutionId }, select: { name: true } });
+
+        const updated = await prisma.solutionTag.update({ where: { id }, data: input });
+        await logAudit('UPDATE_SOLUTION_TAG', 'Solution', tag.solutionId, { name: solution?.name, tagName: updated.name }, userId);
+        return updated;
     }
 
-    static async deleteSolutionTag(id: string) {
+    static async deleteSolutionTag(id: string, userId?: string) {
+        const tag = await prisma.solutionTag.findUnique({ where: { id } });
+        if (!tag) throw new Error('Tag not found');
+
+        // Get solution name for audit log
+        const solution = await prisma.solution.findUnique({ where: { id: tag.solutionId }, select: { name: true } });
+
         await prisma.solutionTag.delete({ where: { id } });
+        await logAudit('DELETE_SOLUTION_TAG', 'Solution', tag.solutionId, { name: solution?.name, tagName: tag.name }, userId);
         return true;
     }
 

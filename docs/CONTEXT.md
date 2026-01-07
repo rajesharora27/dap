@@ -5,6 +5,9 @@
 ### Session Summary - Part 3: Task Creation Reliability, Test Determinism, and Customer Overview UX
 This session focused on eliminating a task creation failure affecting both Products and Solutions, making the backend test environment deterministic, improving the Customers → Overview UI to visually distinguish solution-derived product assignments, and documenting a common MacBook “blank screen” root cause.
 
+### Session Summary - Part 5: User Activity Detail Refinement & Comprehensive Auditing (v3.9.0)
+This session focused on refining the detail display in the User Activity module and ensuring comprehensive auditing across all shared business entities. Key achievements include the implementation of detailed user login lists in the Login Statistics tab, robust entity name resolution for change logs, and the expansion of audit logging to include Tag management and other critical service operations.
+
 ### Session Summary - Part 4: Restoring Activity, Sessions, and RBAC Baseline (v3.8.0)
 This session focused on restoring the User Activity Tracking and Session Inactivity features that were recently reverted, hardening the RBAC model with a "default read-all" flag, and standardizing action icon colors based on product source. This culminates in the **v3.8.0** minor release.
 

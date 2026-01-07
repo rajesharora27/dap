@@ -110,7 +110,7 @@ export class SolutionService {
       });
     }
 
-    await logAudit('CREATE_SOLUTION', 'Solution', solution.id, { input }, userId);
+    await logAudit('CREATE_SOLUTION', 'Solution', solution.id, { name: solution.name, input }, userId);
     return solution;
   }
 
@@ -175,7 +175,7 @@ export class SolutionService {
       await recordChange(cs.id, 'Solution', id, before, updated);
     }
 
-    await logAudit('UPDATE_SOLUTION', 'Solution', id, { before, after: updated }, userId);
+    await logAudit('UPDATE_SOLUTION', 'Solution', id, { name: updated.name, before, after: updated }, userId);
     return updated;
   }
 

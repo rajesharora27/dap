@@ -225,6 +225,7 @@ export async function createContext({ req }: any): Promise<Context> {
       }
       if (isValidSession) {
         user = {
+          id: decoded.userId || decoded.uid,
           userId: decoded.userId || decoded.uid, // Support both new and old format
           username: decoded.username,
           email: decoded.email,

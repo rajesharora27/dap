@@ -71,7 +71,7 @@ export class CustomerService {
       }
     });
 
-    await logAudit('CREATE_CUSTOMER', 'Customer', customer.id, { input }, userId);
+    await logAudit('CREATE_CUSTOMER', 'Customer', customer.id, { name: customer.name, input }, userId);
     return customer;
   }
 
@@ -108,7 +108,7 @@ export class CustomerService {
       await recordChange(cs.id, 'Customer', id, before, updated);
     }
 
-    await logAudit('UPDATE_CUSTOMER', 'Customer', id, { before, after: updated }, userId);
+    await logAudit('UPDATE_CUSTOMER', 'Customer', id, { name: updated.name, before, after: updated }, userId);
     return updated;
   }
 

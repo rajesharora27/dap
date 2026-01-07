@@ -94,7 +94,7 @@ export class ProductService {
       });
     }
 
-    await logAudit('CREATE_PRODUCT', 'Product', product.id, { input }, userId);
+    await logAudit('CREATE_PRODUCT', 'Product', product.id, { name: product.name, input }, userId);
     return product;
   }
 
@@ -171,7 +171,7 @@ export class ProductService {
       await recordChange(cs.id, 'Product', id, before, product);
     }
 
-    await logAudit('UPDATE_PRODUCT', 'Product', product.id, { input }, userId);
+    await logAudit('UPDATE_PRODUCT', 'Product', product.id, { name: product.name, input }, userId);
     return product;
   }
 

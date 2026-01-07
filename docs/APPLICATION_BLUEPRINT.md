@@ -1,10 +1,11 @@
 # Application Blueprint Template
 
-**Version:** 1.4.0  
+**Version:** 1.5.0  
 **Last Updated:** January 6, 2026  
 **Purpose:** Generate new applications with 100/100 architecture score from day one  
 **Based On:** DAP (Digital Adoption Platform) - Production-proven architecture
 
+> **v1.5.0 Additions:** Comprehensive Entity Auditing, Enhanced Audit Detail Panels, Historical Data Attribution Fallbacks
 > **v1.4.0 Additions:** Session Inactivity Management (Sliding Window), RBAC Default Read-All Strategy
 > **v1.3.0 Additions:** Optimistic UI patterns, Route Error Boundaries, Focus Management (a11y)
 
