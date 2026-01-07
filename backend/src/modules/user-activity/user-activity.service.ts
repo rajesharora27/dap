@@ -133,8 +133,8 @@ export async function getEntityChangeLogs(prisma: PrismaClient, period: Activity
                 } : {},
                 {
                     OR: [
-                        { resourceType: { in: ['PRODUCT', 'SOLUTION', 'CUSTOMER'] } },
-                        { entity: { in: ['Product', 'Solution', 'Customer', 'PRODUCT', 'SOLUTION', 'CUSTOMER'] } }
+                        { resourceType: { in: ['PRODUCT', 'SOLUTION', 'CUSTOMER', 'APPSETTING'] } },
+                        { entity: { in: ['Product', 'Solution', 'Customer', 'AppSetting', 'PRODUCT', 'SOLUTION', 'CUSTOMER', 'APPSETTING'] } }
                     ]
                 }
             ]
@@ -152,6 +152,7 @@ export async function getEntityChangeLogs(prisma: PrismaClient, period: Activity
     const productIds: string[] = [];
     const solutionIds: string[] = [];
     const customerIds: string[] = [];
+    const appSettingIds: string[] = [];
 
     // First pass: extract entity names from details where possible
     const entityNamesFromDetails = new Map<string, string>();
@@ -164,11 +165,13 @@ export async function getEntityChangeLogs(prisma: PrismaClient, period: Activity
             detailsObj = {};
         }
 
+        // For AppSetting, prefer 'key' field as name
         const nameFromDetails =
             detailsObj?.name ||
             detailsObj?.input?.name ||
             detailsObj?.before?.name ||
             detailsObj?.after?.name ||
+            detailsObj?.key || // For AppSetting
             null;
 
         const entityId = log.entityId || log.resourceId;
@@ -181,6 +184,7 @@ export async function getEntityChangeLogs(prisma: PrismaClient, period: Activity
             if (entityType === 'product') productIds.push(entityId);
             else if (entityType === 'solution') solutionIds.push(entityId);
             else if (entityType === 'customer') customerIds.push(entityId);
+            else if (entityType === 'appsetting') appSettingIds.push(entityId);
         }
     });
 
@@ -209,6 +213,14 @@ export async function getEntityChangeLogs(prisma: PrismaClient, period: Activity
             select: { id: true, name: true }
         });
         customers.forEach(c => entityNamesById.set(c.id, c.name));
+    }
+
+    if (appSettingIds.length > 0) {
+        const settings = await prisma.appSetting.findMany({
+            where: { id: { in: [...new Set(appSettingIds)] } },
+            select: { id: true, key: true }
+        });
+        settings.forEach(s => entityNamesById.set(s.id, s.key));
     }
 
     // Collect userIds that need lookup (where user relation is missing)

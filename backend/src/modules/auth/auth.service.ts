@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { PrismaClient, ResourceType, PermissionLevel } from '@prisma/client';
 import { envConfig } from '../../config/env';
+import { getSettingValue } from '../../config/settings-provider';
 
 // =============================================================================
 // SECURITY: All secrets are loaded from centralized config (env.ts)

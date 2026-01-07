@@ -13,6 +13,8 @@
 
 import { getAIAgentService } from '.';
 import { Context } from '../../shared/graphql/context';
+import { getSettingValue } from '../../config/settings-provider';
+import { envConfig } from '../../config/env';
 
 /**
  * AI Query Resolvers
@@ -20,7 +22,7 @@ import { Context } from '../../shared/graphql/context';
 export const AIQueryResolvers = {
   /**
    * Check if the AI Agent is available
-   * AI Agent is available for any authenticated user
+   * AI Agent is available for any authenticated user if enabled in settings
    * 
    * @returns Object with available status and message
    */
@@ -30,6 +32,15 @@ export const AIQueryResolvers = {
         return {
           available: false,
           message: 'AI Agent requires authentication. Please log in to use the AI Assistant.',
+        };
+      }
+
+      // Check if AI is enabled in settings (database overrides env)
+      const isEnabled = await getSettingValue('ai.enabled', envConfig.llm.enabled);
+      if (!isEnabled) {
+        return {
+          available: false,
+          message: 'AI Agent is currently disabled by administrator.',
         };
       }
 
@@ -69,9 +80,28 @@ export const AIQueryResolvers = {
         data: null,
         error: 'AUTH_REQUIRED',
         metadata: {
-          queryType: 'error',
           executionTime: 0,
-          fromCache: false,
+          rowCount: 0,
+          truncated: false,
+          cached: false,
+          providerUsed: 'system',
+        },
+      };
+    }
+
+    // Check if AI is enabled in settings
+    const isEnabled = await getSettingValue('ai.enabled', envConfig.llm.enabled);
+    if (!isEnabled) {
+      return {
+        answer: 'AI Agent is currently disabled by administrator.',
+        data: null,
+        error: 'AI_DISABLED',
+        metadata: {
+          executionTime: 0,
+          rowCount: 0,
+          truncated: false,
+          cached: false,
+          providerUsed: 'system',
         },
       };
     }

@@ -298,8 +298,10 @@ export function useAIAssistant(options: UseAIAssistantOptions = {}): UseAIAssist
         try {
             const response = await executeQuery(question);
 
-            // Cache the response
-            cacheResponse(question, response);
+            // Cache the response only if successful
+            if (!response.error) {
+                cacheResponse(question, response);
+            }
 
             // Add assistant message
             const assistantMessage: AIMessage = {

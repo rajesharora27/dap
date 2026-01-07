@@ -212,9 +212,12 @@ export async function createContext({ req }: any): Promise<Context> {
           isValidSession = false;
         } else {
           // Heartbeat: Extend session expiration on every request
+          const { getSettingValue } = await import('../../config/settings-provider');
+          const timeoutMs = await getSettingValue('session.timeout.ms', envConfig.auth.sessionTimeoutMs);
+
           await prisma.session.update({
             where: { id: decoded.sessionId },
-            data: { expiresAt: new Date(Date.now() + envConfig.auth.sessionTimeoutMs) }
+            data: { expiresAt: new Date(Date.now() + timeoutMs) }
           }).catch((err: any) => console.error(`[Context] Failed to extend session ${decoded.sessionId}:`, err.message));
         }
       } else {

@@ -17,6 +17,7 @@ import { makeExecutableSchema } from '@graphql-tools/schema';
 import { createContext, prisma } from './shared/graphql/context';
 import { config as appConfig } from './config/app.config';
 import { envConfig } from './config/env';
+import { getSettingValue } from './config/settings-provider';
 import { CustomerTelemetryImportService } from './modules/telemetry/customer-telemetry-import.service';
 import { SessionManager } from './modules/auth/session.service';
 import { AutoBackupScheduler } from './modules/backup/auto-backup.scheduler';
@@ -98,54 +99,79 @@ export async function createApp() {
         upgradeInsecureRequests: null,  // Don't force HTTPS upgrade
       },
     } : false,
-    
+
     // HSTS - only in production with HTTPS
     hsts: isProduction ? {
       maxAge: 31536000,  // 1 year
       includeSubDomains: true,
       preload: true,
     } : false,
-    
+
     // Always enable these (work with HTTP)
     xContentTypeOptions: true,      // X-Content-Type-Options: nosniff
     xFrameOptions: { action: 'sameorigin' },  // Prevent clickjacking
     xXssProtection: true,           // X-XSS-Protection: 1; mode=block
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-    
+
     // Disable these for compatibility
     crossOriginEmbedderPolicy: false,
     crossOriginOpenerPolicy: false,
     crossOriginResourcePolicy: false,
   }));
 
-  const shouldRateLimit = envConfig.rateLimiting.enabled;
-  const windowMs = envConfig.rateLimiting.windowMs;
-  const maxRequests = envConfig.rateLimiting.max;
+  // Dynamic Rate Limiter Factory
+  const createDynamicLimiter = (type: 'general' | 'graphql') => {
+    let cached: { signature: string; limiter: any } | null = null;
 
-  const generalRateLimiter = shouldRateLimit ? rateLimit({
-    windowMs,
-    max: maxRequests,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    message: 'Too many requests, please try again later.'
-  }) : null;
+    return async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      // Check if feature is enabled globally
+      const enabled = await getSettingValue('rate.limit.enabled', envConfig.rateLimiting.enabled);
+      if (!enabled) return next();
 
-  const graphqlRateLimiter = shouldRateLimit ? rateLimit({
-    windowMs,
-    max: envConfig.rateLimiting.graphqlMax,
-    standardHeaders: 'draft-7',
-    legacyHeaders: false,
-    message: 'GraphQL rate limit exceeded.'
-  }) : null;
+      // Get configuration
+      const windowMs = await getSettingValue('rate.limit.window.ms', envConfig.rateLimiting.windowMs);
 
-  if (shouldRateLimit && generalRateLimiter) {
-    app.use((req, res, next) => {
-      if (req.path === '/health') {
-        return next();
+      let max: number;
+      if (type === 'general') {
+        max = await getSettingValue('rate.limit.max', envConfig.rateLimiting.max);
+      } else {
+        // Fallback to general max if graphql specific setting doesn't exist yet (or add it to settings later)
+        // For now using envConfig default for GraphQL if not explicit, but allow override via generic max if we wanted?
+        // Let's rely on envConfig for specific graphql max, but allow it to be disabled via the global toggle.
+        // Or better: Use 'rate.limit.max' as base? No, GraphQL limits are different.
+        // We will just use the env default for max, but allow window/enabled to be dynamic.
+        max = envConfig.rateLimiting.graphqlMax;
       }
-      return generalRateLimiter(req, res, next);
-    });
-  }
+
+      // Check cache signature
+      const signature = `${windowMs}-${max}`;
+
+      if (!cached || cached.signature !== signature) {
+        cached = {
+          signature,
+          limiter: rateLimit({
+            windowMs,
+            max,
+            standardHeaders: 'draft-7',
+            legacyHeaders: false,
+            message: type === 'graphql' ? 'GraphQL rate limit exceeded.' : 'Too many requests, please try again later.'
+          })
+        };
+      }
+
+      return cached.limiter(req, res, next);
+    };
+  };
+
+  const generalRateLimiter = createDynamicLimiter('general');
+  const graphqlRateLimiter = createDynamicLimiter('graphql');
+
+  app.use((req, res, next) => {
+    if (req.path === '/health') {
+      return next();
+    }
+    return generalRateLimiter(req, res, next);
+  });
 
   // Configure CORS to allow frontend requests
   // In development with no ALLOWED_ORIGINS set, allow all origins for SSH tunnel access
@@ -309,7 +335,7 @@ export async function createApp() {
   app.use('/api/dev', devToolsRouter);
 
   const schema = makeExecutableSchema({ typeDefs, resolvers });
-  
+
   // Build Apollo plugins array with performance features
   const apolloPlugins = [
     // Query complexity limiting - prevents resource exhaustion
@@ -336,9 +362,8 @@ export async function createApp() {
   const graphqlMiddleware: any[] = [
     expressMiddleware(apollo, { context: createContext })
   ];
-  if (graphqlRateLimiter) {
-    graphqlMiddleware.unshift(graphqlRateLimiter);
-  }
+  // Always mount the dynamic limiter wrapper, it handles enable/disable internally
+  graphqlMiddleware.unshift(graphqlRateLimiter);
   app.use('/graphql', ...graphqlMiddleware);
 
   // Optional: Serve frontend static files in production (if using single-server deployment)
@@ -412,6 +437,18 @@ if (isDirectRun) {
       console.log('✅ Auto-backup scheduler initialized');
     } catch (e) {
       console.error('⚠️  Failed to initialize auto-backup scheduler:', (e as any).message);
+    }
+
+    // Seed initial application settings
+    console.log('⚙️  Seeding application settings...');
+    try {
+      const { SettingsService } = await import('./modules/settings');
+      await SettingsService.seedInitialSettings();
+      // Preload settings cache for fast runtime access
+      const { preloadSettingsCache } = await import('./config/settings-provider');
+      await preloadSettingsCache();
+    } catch (e) {
+      console.error('⚠️  Failed to seed settings:', (e as any).message);
     }
 
     // Run maintenance job every minute

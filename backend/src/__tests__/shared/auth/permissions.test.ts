@@ -149,117 +149,7 @@ describe('Permissions Module', () => {
       });
     });
 
-    describe('SME Users', () => {
-      it('should grant SME users full access to products', async () => {
-        expect(
-          await checkUserPermission(
-            smeUser.id,
-            ResourceType.PRODUCT,
-            testProduct.id,
-            PermissionLevel.ADMIN,
-            prisma
-          )
-        ).toBe(true);
-      });
 
-      it('should grant SME users full access to solutions', async () => {
-        expect(
-          await checkUserPermission(
-            smeUser.id,
-            ResourceType.SOLUTION,
-            testSolution.id,
-            PermissionLevel.ADMIN,
-            prisma
-          )
-        ).toBe(true);
-      });
-
-      it('should deny SME users access to customers without permission', async () => {
-        expect(
-          await checkUserPermission(
-            smeUser.id,
-            ResourceType.CUSTOMER,
-            testCustomer.id,
-            PermissionLevel.READ,
-            prisma
-          )
-        ).toBe(false);
-      });
-    });
-
-    describe('CSS Users', () => {
-      it('should grant CSS users full access to customers', async () => {
-        expect(
-          await checkUserPermission(
-            cssUser.id,
-            ResourceType.CUSTOMER,
-            testCustomer.id,
-            PermissionLevel.ADMIN,
-            prisma
-          )
-        ).toBe(true);
-      });
-
-      it('should grant CSS users read access to products', async () => {
-        expect(
-          await checkUserPermission(
-            cssUser.id,
-            ResourceType.PRODUCT,
-            testProduct.id,
-            PermissionLevel.READ,
-            prisma
-          )
-        ).toBe(true);
-      });
-
-      it('should deny CSS users write access to products', async () => {
-        expect(
-          await checkUserPermission(
-            cssUser.id,
-            ResourceType.PRODUCT,
-            testProduct.id,
-            PermissionLevel.WRITE,
-            prisma
-          )
-        ).toBe(false);
-      });
-    });
-
-    describe('VIEWER Users', () => {
-      it('should grant VIEWER users read access to all resources', async () => {
-        expect(
-          await checkUserPermission(
-            viewerUser.id,
-            ResourceType.PRODUCT,
-            testProduct.id,
-            PermissionLevel.READ,
-            prisma
-          )
-        ).toBe(true);
-
-        expect(
-          await checkUserPermission(
-            viewerUser.id,
-            ResourceType.SOLUTION,
-            testSolution.id,
-            PermissionLevel.READ,
-            prisma
-          )
-        ).toBe(true);
-      });
-
-      it('should deny VIEWER users write access', async () => {
-        expect(
-          await checkUserPermission(
-            viewerUser.id,
-            ResourceType.PRODUCT,
-            testProduct.id,
-            PermissionLevel.WRITE,
-            prisma
-          )
-        ).toBe(false);
-      });
-    });
 
     describe('Inactive Users', () => {
       it('should deny inactive users all access', async () => {
@@ -418,16 +308,7 @@ describe('Permissions Module', () => {
       expect(resources).toBeNull();
     });
 
-    it('should return null for SME users on products', async () => {
-      const resources = await getUserAccessibleResources(
-        smeUser.id,
-        ResourceType.PRODUCT,
-        PermissionLevel.READ,
-        prisma
-      );
 
-      expect(resources).toBeNull();
-    });
 
     it('should return null for users with no explicit permissions (USER read-all default)', async () => {
       const newUser = await TestFactory.createUser({
@@ -643,27 +524,7 @@ describe('Permissions Module', () => {
       expect(level).toBe(PermissionLevel.ADMIN);
     });
 
-    it('should return ADMIN for SME on products', async () => {
-      const level = await getUserPermissionLevel(
-        smeUser.id,
-        ResourceType.PRODUCT,
-        testProduct.id,
-        prisma
-      );
 
-      expect(level).toBe(PermissionLevel.ADMIN);
-    });
-
-    it('should return READ for CSS on products', async () => {
-      const level = await getUserPermissionLevel(
-        cssUser.id,
-        ResourceType.PRODUCT,
-        testProduct.id,
-        prisma
-      );
-
-      expect(level).toBe(PermissionLevel.READ);
-    });
 
     it('should return null for users without access', async () => {
       const userNoAccess = await TestFactory.createUser({

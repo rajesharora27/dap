@@ -16,6 +16,7 @@ import { searchTypeDefs } from '../modules/search/search.typeDefs';
 import { changeTrackingTypeDefs } from '../modules/change-tracking/change-tracking.typeDefs';
 import { diaryTypeDefs } from '../modules/my-diary/diary.typeDefs';
 import { userActivityTypeDefs } from '../modules/user-activity';
+import { settingsTypeDefs } from '../modules/settings';
 
 export const typeDefs = [
   commonTypeDefs,
@@ -34,5 +35,6 @@ export const typeDefs = [
   searchTypeDefs,
   changeTrackingTypeDefs,
   diaryTypeDefs,
-  userActivityTypeDefs
+  userActivityTypeDefs,
+  settingsTypeDefs
 ];

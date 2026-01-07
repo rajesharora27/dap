@@ -54,6 +54,7 @@ const AboutPage = lazy(() => import('../pages/AboutPage').then(m => ({ default: 
 const UserManagement = lazy(() => import('../features/admin/components/UserManagement').then(m => ({ default: m.UserManagement })));
 const RoleManagement = lazy(() => import('../features/admin/components/RoleManagement').then(m => ({ default: m.RoleManagement })));
 const UserActivityPanel = lazy(() => import('../features/admin/components/UserActivityPanel').then(m => ({ default: m.UserActivityPanel })));
+const SettingsPanel = lazy(() => import('../features/admin/components/SettingsPanel'));
 const BackupManagementPanel = lazy(() => import('../features/backups/components/BackupManagementPanel').then(m => ({ default: m.BackupManagementPanel })));
 const ThemeSelector = lazy(() => import('../shared/components/ThemeSelector').then(m => ({ default: m.ThemeSelector })));
 
@@ -327,6 +328,17 @@ export const AppRoutes: React.FC = () => {
                         <AdminRoute>
                             <SuspenseRoute>
                                 <AboutPage />
+                            </SuspenseRoute>
+                        </AdminRoute>
+                    }
+                />
+
+                <Route
+                    path="/admin/settings"
+                    element={
+                        <AdminRoute>
+                            <SuspenseRoute>
+                                <SettingsPanel />
                             </SuspenseRoute>
                         </AdminRoute>
                     }

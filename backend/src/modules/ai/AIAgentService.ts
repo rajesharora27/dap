@@ -29,7 +29,11 @@ import { AuditLogger, getAuditLogger, generateRequestId, AuditLogEntry } from '.
 import { ErrorHandler, getErrorHandler, AIErrorType } from './ErrorHandler';
 import { DataContextManager, getDataContextManager } from './DataContextManager';
 import { PrismaClient } from '@prisma/client';
+
 import { prisma as sharedPrisma } from '../../shared/graphql/context';
+import { getSettingValue } from '../../config/settings-provider';
+import { envConfig } from '../../config/env';
+import { createLLMProvider } from './providers';
 
 /**
  * Default configuration for the AI Agent
@@ -118,18 +122,48 @@ export class AIAgentService {
     this.dataContextManager = getDataContextManager();
     console.log('[AI Agent] Data context manager initialized with shared Prisma client');
 
-    // Initialize LLM provider
-    try {
-      this.llmProvider = getDefaultProvider();
-      console.log(`[AI Agent] Initialized with LLM provider: ${this.llmProvider?.name || 'none'}`);
-    } catch (error) {
-      console.warn('[AI Agent] Failed to initialize LLM provider:', error);
-      this.llmProvider = null;
-    }
+    // Initialize LLM provider - NOW DYNAMIC
+    // We don't initialize this.llmProvider here anymore, it's fetched on demand via getProvider()
 
     // Pre-cache schema context
     this.schemaContextManager.getFullContext();
     this.initialized = true;
+  }
+
+  /**
+   * Get the current LLM Provider based on settings
+   */
+  private async getProvider(): Promise<ILLMProvider | null> {
+    try {
+      // Get provider type from settings (default to env or mock)
+      const providerType = await getSettingValue('ai.provider', envConfig.llm.provider || 'mock');
+
+      // If we have a cached provider instance and the type matches, return it
+      if (this.llmProvider && this.llmProvider.name === providerType) {
+        return this.llmProvider;
+      }
+
+      // Otherwise create new provider instance
+      // If providerType is 'mock', createLLMProvider handles it.
+      // We need to map setting values to what createLLMProvider expects if they differ.
+      // Settings: 'mock', 'cisco', 'openai', 'gemini', 'anthropic'
+      // createLLMProvider: 'mock', 'cisco-ai' (?), 'openai', 'gemini', 'anthropic'
+      // Let's assume createLLMProvider handles the mapping or we fix it here.
+      // Checking INITIAL_SETTINGS: values are 'mock', 'cisco', 'openai', 'gemini', 'anthropic'.
+
+      this.llmProvider = createLLMProvider(providerType as any);
+      return this.llmProvider;
+    } catch (error) {
+      console.warn('[AI Agent] Failed to initialize LLM provider:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Check if debug mode is enabled
+   */
+  private async isDebugEnabled(): Promise<boolean> {
+    return getSettingValue('ai.debug', false);
   }
 
   /**
@@ -178,8 +212,10 @@ export class AIAgentService {
       // Heuristic: If question contains "Show me", "List", "Find", "Count" -> likely Data
       const intent = this.heuristicIntentDetection(request.question);
 
+      const provider = await this.getProvider();
+
       // If INTENT is Documentation, perform RAG
-      if (intent === 'DOCUMENTATION' && this.llmProvider) {
+      if (intent === 'DOCUMENTATION' && provider) {
         return this.handleDocumentationQuery(request, startTime);
       }
 
@@ -206,7 +242,7 @@ export class AIAgentService {
         response = await this.handleTemplateMatch(templateMatch, request, startTime);
 
         // Check if template returned no data - fallback to LLM if available
-        if (this.shouldFallbackToLLM(response) && this.llmProvider) {
+        if (this.shouldFallbackToLLM(response) && provider) {
           console.log(`[AI Agent] Template "${templateUsed}" returned no data, falling back to LLM provider`);
           llmUsed = true;
           const llmResponse = await this.handleLLMQuery(request, startTime);
@@ -220,7 +256,7 @@ export class AIAgentService {
             }
           }
         }
-      } else if (this.llmProvider) {
+      } else if (provider) {
         // No template match - use LLM query generation
         llmUsed = true;
         response = await this.handleLLMQuery(request, startTime);
@@ -774,7 +810,13 @@ export class AIAgentService {
     startTime: number
   ): Promise<AIQueryResponse> {
     const executionTimeMs = () => Date.now() - startTime;
-    const providerName = this.llmProvider?.name || 'unknown';
+    const provider = await this.getProvider();
+    const providerName = provider?.name || 'unknown';
+    const isDebug = await this.isDebugEnabled();
+
+    if (isDebug) {
+      console.log(`[AI Agent Debug] Processing query: "${request.question}"`);
+    }
 
     console.log(`[AI Agent] Starting LLM query processing for: "${request.question}" using provider: ${providerName}`);
 

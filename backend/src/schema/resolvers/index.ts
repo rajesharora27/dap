@@ -76,6 +76,7 @@ import { pubsub, PUBSUB_EVENTS } from '../../shared/pubsub/pubsub';
 import { solutionReportingService } from '../../modules/solution/solution-reporting.service';
 import { requireUser } from '../../shared/auth/auth-helpers';
 import { prisma } from '../../shared/graphql/context';
+import { SettingsQueryResolvers, SettingsMutationResolvers } from '../../modules/settings';
 
 export const resolvers = {
   JSON: JSONScalar,
@@ -127,6 +128,7 @@ export const resolvers = {
     ...AuditQueryResolvers,
     ...UserActivityQueryResolvers,
     ...diaryResolvers.Query,
+    ...SettingsQueryResolvers,
 
     node: async (_: any, { id }: any) => {
       // Generic fallback node resolver if domain resolvers don't handle it
@@ -155,7 +157,8 @@ export const resolvers = {
     ...AIMutationResolvers,
     ...ImportMutationResolvers,
     ...ChangeTrackingMutationResolvers,
-    ...diaryResolvers.Mutation
+    ...diaryResolvers.Mutation,
+    ...SettingsMutationResolvers
   },
 
   Subscription: {

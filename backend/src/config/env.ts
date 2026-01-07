@@ -143,17 +143,7 @@ const envSchema = z.object({
       if (['0', 'false', 'no', 'n', 'off'].includes(s)) return false;
       return undefined;
     }),
-  // Backward-compat: allow legacy system-role shortcuts (SME/CSS/VIEWER) while migrating to pure RBAC.
-  RBAC_ENABLE_SYSTEM_ROLE_SHORTCUTS: z
-    .string()
-    .optional()
-    .transform((v) => {
-      if (v == null) return undefined;
-      const s = String(v).trim().toLowerCase();
-      if (['1', 'true', 'yes', 'y', 'on'].includes(s)) return true;
-      if (['0', 'false', 'no', 'n', 'off'].includes(s)) return false;
-      return undefined;
-    }),
+
 
   // Rate Limiting
   RATE_LIMIT_ENABLED: z.string().optional().transform(v => v === '1' || v === 'true'),
@@ -260,7 +250,7 @@ export const envConfig = {
     enforceStrict: env.RBAC_STRICT ?? isProd,
     warnOnViolation: env.RBAC_WARN ?? isDev,
     autoGrantPermissions: env.RBAC_AUTO_GRANT ?? isDev,
-    enableSystemRoleShortcuts: env.RBAC_ENABLE_SYSTEM_ROLE_SHORTCUTS ?? true,
+
     defaultUserReadAll: env.RBAC_DEFAULT_USER_READ_ALL ?? true
   },
   database: {

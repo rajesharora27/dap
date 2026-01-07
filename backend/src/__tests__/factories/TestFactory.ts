@@ -484,6 +484,8 @@ export class TestFactory {
       'TaskTag',
       'SolutionTag',
       'ProductTag',
+      'AppSetting',
+      'AuditLog',
       'CustomerSolutionTask',
       'SolutionAdoptionProduct',
       'SolutionAdoptionPlan',

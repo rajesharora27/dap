@@ -1052,9 +1052,7 @@ export function verifyAccessToken(token: string): TokenPayload {
 // backend/src/shared/auth/permissions.ts
 export enum Role {
   ADMIN = 'ADMIN',
-  MANAGER = 'MANAGER',
   USER = 'USER',
-  VIEWER = 'VIEWER',
 }
 
 export enum Permission {
@@ -1076,17 +1074,9 @@ const rolePermissions: Record<Role, Record<Resource, Permission[]>> = {
     [Resource.CUSTOMER]: [Permission.READ, Permission.WRITE, Permission.DELETE, Permission.ADMIN],
     [Resource.SYSTEM]: [Permission.ADMIN],
   },
-  [Role.MANAGER]: {
-    [Resource.PRODUCT]: [Permission.READ, Permission.WRITE],
-    [Resource.CUSTOMER]: [Permission.READ, Permission.WRITE],
-    [Resource.SYSTEM]: [],
-  },
   [Role.USER]: {
-    [Resource.PRODUCT]: [Permission.READ],
-    [Resource.CUSTOMER]: [Permission.READ, Permission.WRITE],
-    [Resource.SYSTEM]: [],
-  },
-  [Role.VIEWER]: {
+    // Basic users have READ access by default (via RBAC_DEFAULT_USER_READ_ALL)
+    // specific WRITE/ADMIN permissions are granted via dynamic RBAC roles
     [Resource.PRODUCT]: [Permission.READ],
     [Resource.CUSTOMER]: [Permission.READ],
     [Resource.SYSTEM]: [],
@@ -1461,7 +1451,7 @@ module.exports = {
   - **READ vs WRITE** enforcement for a non-admin user
   - Role-based permissions (`RolePermission`) are respected
   - “Type-level” grants (`resourceId=null`) are required for create operations
-- Include at least one toggle/regression test for any RBAC feature flags (e.g. default read-all, legacy shortcuts).
+- Include at least one toggle/regression test for any RBAC feature flags (e.g. default read-all).
 
 ### 6.6 GraphQL Contract Gate (MANDATORY)
 

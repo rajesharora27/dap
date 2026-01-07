@@ -206,6 +206,30 @@ This session focused on (1) simplifying “system roles” to `ADMIN` vs `USER` 
 - `frontend/src/shared/components/RouteErrorBoundary.tsx`
 - `frontend/vite.config.ts`
 
+#### 6. Dynamic Admin Settings Panel
+**Goal:** Allow admins to configure system behavior (RBAC defaults, AI settings, Rate Limits) at runtime without deployments.
+
+**Solution:**
+- Created `AdminSettingsPanel` in frontend with tabs for Security, AI, and System.
+- Backend `SettingsService` persists typed settings to database (`AppSetting` table).
+- Dynamic configuration for:
+  - `rbac.default.user.read.all`: Toggle baseline visibility.
+  - `ai.provider` / `ai.model`: Switch LLM backends.
+  - `rate.limit.*`: Adjust API throttle limits.
+
+**Files Added:**
+- `frontend/src/features/admin/components/AdminSettingsPanel.tsx`
+- `backend/src/modules/settings/` (Service, Resolver, Schema)
+
+#### 7. Legacy Cleanup: Removed System Role Shortcuts
+**Goal:** Eliminate "magic" hardcoded permissions for legacy system roles (SME, CSS) to enforce strict RBAC.
+
+**Solution:**
+- Removed `rbac.enable.system.role.shortcuts` setting and all associated logic in `permissions.ts`.
+- Removed legacy tests that verified these shortcuts.
+- Force-deleted the persistent database setting to prevent UI confusion.
+- All non-admin users are now treated as standard `USER`s, with access strictly controlled by the 'Default Read-All' setting or specific RBAC grants.
+
 ---
 
 ## Previous Changes (January 5, 2026)

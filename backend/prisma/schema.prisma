@@ -74,6 +74,29 @@ model LockedEntity {
 }
 
 // =============================================================================
+// APPLICATION SETTINGS
+// =============================================================================
+// Runtime-configurable application settings stored in database.
+// Settings override environment variables when present.
+// =============================================================================
+
+/// Application setting for runtime configuration
+model AppSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  dataType    String   @default("string") // string, number, boolean, json
+  category    String   @default("general") // security, ai, performance, ui
+  label       String   // Human-readable label for UI
+  description String?  // Help text shown in UI
+  isSecret    Boolean  @default(false) // If true, value is masked in UI
+  updatedAt   DateTime @default(now()) @updatedAt
+  updatedBy   String?  // userId who last changed this setting
+
+  @@index([category])
+}
+
+// =============================================================================
 // PRODUCT DOMAIN
 // =============================================================================
 // Products are the core entities containing tasks, licenses, outcomes, and
