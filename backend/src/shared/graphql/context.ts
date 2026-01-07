@@ -210,6 +210,12 @@ export async function createContext({ req }: any): Promise<Context> {
         if (!session || session.expiresAt < new Date()) {
           console.warn(`Invalid or expired session: ${decoded.sessionId}`);
           isValidSession = false;
+        } else {
+          // Heartbeat: Extend session expiration on every request
+          await prisma.session.update({
+            where: { id: decoded.sessionId },
+            data: { expiresAt: new Date(Date.now() + envConfig.auth.sessionTimeoutMs) }
+          }).catch((err: any) => console.error(`[Context] Failed to extend session ${decoded.sessionId}:`, err.message));
         }
       } else {
         // Token missing sessionId - treat as invalid to enforce session tracking

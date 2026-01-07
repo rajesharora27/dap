@@ -41,13 +41,11 @@ export class SessionManager {
    * Sessions older than 7 days are removed
    */
   static async clearExpiredSessions(): Promise<number> {
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
     try {
       const result = await prisma.session.deleteMany({
         where: {
-          updatedAt: {
-            lt: sevenDaysAgo
+          expiresAt: {
+            lt: new Date()
           }
         }
       });

@@ -25,15 +25,15 @@ const CRITICAL_SECRETS = ['JWT_SECRET', 'DATABASE_URL'] as const;
  */
 function validateCriticalSecrets(): void {
   if (!isProduction) return; // Only enforce in production
-  
+
   const missing: string[] = [];
-  
+
   for (const secret of CRITICAL_SECRETS) {
     if (!process.env[secret] || process.env[secret]?.trim() === '') {
       missing.push(secret);
     }
   }
-  
+
   // Check for development fallback values that should never be in production
   const jwtSecret = process.env.JWT_SECRET || '';
   const dangerousPatterns = [
@@ -46,7 +46,7 @@ function validateCriticalSecrets(): void {
     'password',
     'test'
   ];
-  
+
   const lowerSecret = jwtSecret.toLowerCase();
   for (const pattern of dangerousPatterns) {
     if (lowerSecret.includes(pattern)) {
@@ -63,7 +63,7 @@ function validateCriticalSecrets(): void {
       process.exit(1);
     }
   }
-  
+
   if (missing.length > 0) {
     console.error(`
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -78,7 +78,7 @@ ${missing.map(s => `║    • ${s.padEnd(68)}║`).join('\n')}
 `);
     process.exit(1);
   }
-  
+
   // Additional JWT_SECRET length check for production
   if (jwtSecret.length < 32) {
     console.error(`
@@ -122,7 +122,7 @@ const envSchema = z.object({
   JWT_REFRESH_EXPIRES_IN: z.string().default('7d'),
   AUTH_BYPASS: z.string().optional().transform(v => v === '1' || v === 'true'),
   AUTH_FALLBACK: z.string().optional().transform(v => v === '1' || v === 'true'),
-  
+
   // Default password for admin-created accounts and password resets.
   // Never hardcode credentials in source; configure via environment instead.
   DEFAULT_USER_PASSWORD: z.string().optional(),
@@ -131,12 +131,36 @@ const envSchema = z.object({
   RBAC_STRICT: z.string().optional().transform(v => v === '1' || v === 'true'),
   RBAC_WARN: z.string().optional().transform(v => v === '1' || v === 'true'),
   RBAC_AUTO_GRANT: z.string().optional().transform(v => v === '1' || v === 'true'),
+  // Default read access for SystemRole.USER (read-only access to all resources).
+  // This matches the desired "everyone can view everything; writes are RBAC-gated" model.
+  RBAC_DEFAULT_USER_READ_ALL: z
+    .string()
+    .optional()
+    .transform((v) => {
+      if (v == null) return undefined;
+      const s = String(v).trim().toLowerCase();
+      if (['1', 'true', 'yes', 'y', 'on'].includes(s)) return true;
+      if (['0', 'false', 'no', 'n', 'off'].includes(s)) return false;
+      return undefined;
+    }),
+  // Backward-compat: allow legacy system-role shortcuts (SME/CSS/VIEWER) while migrating to pure RBAC.
+  RBAC_ENABLE_SYSTEM_ROLE_SHORTCUTS: z
+    .string()
+    .optional()
+    .transform((v) => {
+      if (v == null) return undefined;
+      const s = String(v).trim().toLowerCase();
+      if (['1', 'true', 'yes', 'y', 'on'].includes(s)) return true;
+      if (['0', 'false', 'no', 'n', 'off'].includes(s)) return false;
+      return undefined;
+    }),
 
   // Rate Limiting
   RATE_LIMIT_ENABLED: z.string().optional().transform(v => v === '1' || v === 'true'),
   RATE_LIMIT_WINDOW_MS: z.string().optional().transform(v => parseInt(v || '900000', 10)),
   RATE_LIMIT_MAX: z.string().optional().transform(v => parseInt(v || '5000', 10)),
   RATE_LIMIT_GRAPHQL_MAX: z.string().optional().transform(v => parseInt(v || '10000', 10)),
+  SESSION_INACTIVITY_TIMEOUT_MS: z.string().optional().transform(v => parseInt(v || '1800000', 10)),
 
   // CORS
   CORS_ORIGIN: z.string().optional(),
@@ -216,12 +240,12 @@ export const envConfig = {
     jwtRefreshSecret: env.JWT_REFRESH_SECRET || env.JWT_SECRET,
     jwtExpiresIn: env.JWT_EXPIRES_IN,
     jwtRefreshExpiresIn: env.JWT_REFRESH_EXPIRES_IN,
+    sessionTimeoutMs: env.SESSION_INACTIVITY_TIMEOUT_MS,
     /**
      * Default password for admin-created user accounts.
-     * Users will be prompted to change this on first login.
-     * In production, consider using a more secure default or requiring admin to set.
+     * Configure via environment only. Never hardcode credentials in source.
      */
-    defaultUserPassword: env.DEFAULT_USER_PASSWORD || 'ChangeMe123!',
+    defaultUserPassword: env.DEFAULT_USER_PASSWORD,
     defaultDevUser: {
       id: 'dev-admin',
       userId: 'dev-admin',
@@ -235,7 +259,9 @@ export const envConfig = {
   rbac: {
     enforceStrict: env.RBAC_STRICT ?? isProd,
     warnOnViolation: env.RBAC_WARN ?? isDev,
-    autoGrantPermissions: env.RBAC_AUTO_GRANT ?? isDev
+    autoGrantPermissions: env.RBAC_AUTO_GRANT ?? isDev,
+    enableSystemRoleShortcuts: env.RBAC_ENABLE_SYSTEM_ROLE_SHORTCUTS ?? true,
+    defaultUserReadAll: env.RBAC_DEFAULT_USER_READ_ALL ?? true
   },
   database: {
     autoSeed: env.AUTO_SEED ?? isDev,

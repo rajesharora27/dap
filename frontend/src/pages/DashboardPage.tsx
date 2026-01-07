@@ -376,16 +376,14 @@ export const DashboardPage = () => {
         };
     }, [products]);
 
-    // --- RBAC & Visibility ---
+    // --- RBAC & Visibility (prefer RBAC-derived access summary over system roles) ---
+    const canSeeProducts = user?.access?.products?.read !== false;
+    const canSeeSolutions = user?.access?.solutions?.read !== false;
+    const canSeeCustomers = user?.access?.customers?.read !== false;
 
-    // Role Logic
-    const isSME = user?.role === 'SME';
-    const isCSS = user?.role === 'CSS';
-    // Admin sees everything
-
-    const showProductOutcomes = !isCSS; // SME & Admin
-    const showDeployment = !isSME;      // CSS & Admin
-    const showTelemetry = !isCSS;       // SME & Admin (Technical Metric)
+    const showProductOutcomes = canSeeProducts;
+    const showDeployment = canSeeCustomers;
+    const showTelemetry = canSeeProducts;
 
 
     if (loading) return (
@@ -402,8 +400,6 @@ export const DashboardPage = () => {
     );
 
     const getRoleBadge = () => {
-        if (isSME) return { label: 'SME ACCOUNT', icon: <PersonIcon style={{ fontSize: 12, color: 'white' }} /> };
-        if (isCSS) return { label: 'CUSTOMER SUCCESS', icon: <SupportIcon style={{ fontSize: 12, color: 'white' }} /> };
         if (user?.isAdmin || user?.role === 'ADMIN') return { label: 'ADMINISTRATOR', icon: <ShieldIcon style={{ fontSize: 12, color: 'white' }} /> };
         return { label: 'STANDARD ACCOUNT', icon: <PersonIcon style={{ fontSize: 12, color: 'white' }} /> };
     };
@@ -433,33 +429,25 @@ export const DashboardPage = () => {
                     boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                 }}
             >
-                {!isCSS && (
-                    <ContextRibbonItem
-                        value={products.length || 0}
-                        label="Products"
-                        icon={<ProductIcon />}
-                        tooltip="Total number of active products currently managed in the portfolio."
-                        isLast={!(!isCSS) && !(!isSME)}
-                    />
-                )}
-                {!isCSS && (
-                    <ContextRibbonItem
-                        value={solutions.length || 0}
-                        label="Solutions"
-                        icon={<SolutionIcon />}
-                        tooltip="Number of defined solutions."
-                        isLast={!(!isSME)}
-                    />
-                )}
-                {!isSME && (
-                    <ContextRibbonItem
-                        value={customers.length || 0}
-                        label="Customers"
-                        icon={<CustomerIcon />}
-                        tooltip="Count of active customers."
-                        isLast
-                    />
-                )}
+                {(() => {
+                    const visible = [
+                        { key: 'products', show: canSeeProducts, value: products.length || 0, label: 'Products', icon: <ProductIcon />, tooltip: 'Total number of active products currently managed in the portfolio.' },
+                        { key: 'solutions', show: canSeeSolutions, value: solutions.length || 0, label: 'Solutions', icon: <SolutionIcon />, tooltip: 'Number of defined solutions.' },
+                        { key: 'customers', show: canSeeCustomers, value: customers.length || 0, label: 'Customers', icon: <CustomerIcon />, tooltip: 'Count of active customers.' },
+                    ].filter(i => i.show);
+
+                    const lastIdx = visible.length - 1;
+                    return visible.map((item, idx) => (
+                        <ContextRibbonItem
+                            key={item.key}
+                            value={item.value}
+                            label={item.label}
+                            icon={item.icon}
+                            tooltip={item.tooltip}
+                            isLast={idx === lastIdx}
+                        />
+                    ));
+                })()}
             </Paper>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>

@@ -98,6 +98,11 @@ interface CreatePermissionOptions {
   permissionLevel?: PermissionLevel;
 }
 
+interface CreateRoleOptions {
+  name?: string;
+  description?: string;
+}
+
 /**
  * Test Factory Class
  * 
@@ -197,6 +202,41 @@ export class TestFactory {
         name: overrides.name || faker.company.name(),
         description: overrides.description || faker.company.catchPhrase(),
       }
+    });
+  }
+
+  static async createRole(overrides: CreateRoleOptions = {}) {
+    const name = overrides.name || `role_${faker.string.alphanumeric({ length: 8 }).toUpperCase()}`;
+    return prisma.role.create({
+      data: {
+        name,
+        description: overrides.description || `Test role: ${name}`,
+      },
+    });
+  }
+
+  static async grantRolePermission(args: {
+    roleId: string;
+    resourceType: ResourceType;
+    permissionLevel: PermissionLevel;
+    resourceId?: string | null;
+  }) {
+    return prisma.rolePermission.create({
+      data: {
+        roleId: args.roleId,
+        resourceType: args.resourceType,
+        resourceId: args.resourceId ?? null,
+        permissionLevel: args.permissionLevel,
+      },
+    });
+  }
+
+  static async assignRoleToUser(args: { userId: string; roleId: string }) {
+    return prisma.userRole.create({
+      data: {
+        userId: args.userId,
+        roleId: args.roleId,
+      },
     });
   }
 

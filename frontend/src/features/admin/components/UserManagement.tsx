@@ -325,12 +325,16 @@ export const UserManagement: React.FC = () => {
 
   const handleEditUser = (user: User) => {
     setEditingUser(user);
+    // System Role is now simplified: ADMIN vs USER. Any legacy roles (SME/CSS/VIEWER)
+    // are treated as USER in the UI; granular access is managed via RBAC roles.
+    const normalizedSystemRole =
+      user.isAdmin || user.role === 'ADMIN' ? 'ADMIN' : 'USER';
     setFormData({
       username: user.username,
       email: user.email,
       fullName: user.fullName || '',
       password: '',
-      role: (user.role || (user.isAdmin ? 'ADMIN' : 'USER')) as string
+      role: normalizedSystemRole
     });
     setUserDialog(true);
     // Roles will be loaded by useEffect
@@ -561,13 +565,13 @@ export const UserManagement: React.FC = () => {
                 <TableCell>{user.username}</TableCell>
                 <TableCell>{user.fullName || '-'}</TableCell>
                 <TableCell>{user.email}</TableCell>
-              <TableCell>
-                <Chip
-                  label={user.role || (user.isAdmin ? 'ADMIN' : 'USER')}
-                  color={(user.role || (user.isAdmin ? 'ADMIN' : 'USER')) === 'ADMIN' ? 'primary' : 'default'}
-                  size="small"
-                />
-              </TableCell>
+                <TableCell>
+                  <Chip
+                    label={user.isAdmin || user.role === 'ADMIN' ? 'ADMIN' : 'USER'}
+                    color={(user.isAdmin || user.role === 'ADMIN') ? 'primary' : 'default'}
+                    size="small"
+                  />
+                </TableCell>
                 <TableCell>
                   <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                     {user.roles && user.roles.length > 0 ? (
@@ -668,9 +672,6 @@ export const UserManagement: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, role: String(e.target.value) })}
               >
                 <MenuItem value="USER">USER</MenuItem>
-                <MenuItem value="VIEWER">VIEWER</MenuItem>
-                <MenuItem value="CSS">CSS</MenuItem>
-                <MenuItem value="SME">SME</MenuItem>
                 <MenuItem value="ADMIN">ADMIN</MenuItem>
               </Select>
             </FormControl>

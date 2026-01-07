@@ -81,7 +81,23 @@ export class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, Route
     this.props.onError?.(error, errorInfo);
   }
 
+  private isChunkLoadError = (err: Error | null): boolean => {
+    const msg = (err?.message || '').toLowerCase();
+    return (
+      msg.includes('failed to fetch dynamically imported module') ||
+      msg.includes('loading chunk') ||
+      msg.includes('chunkloaderror') ||
+      msg.includes('failed to load module script')
+    );
+  };
+
   handleRetry = (): void => {
+    // If this is a chunk/load error (common after rebuild/deploy), a soft retry won't help.
+    // Force a full reload so the browser fetches the latest index.html + asset hashes.
+    if (this.isChunkLoadError(this.state.error)) {
+      window.location.reload();
+      return;
+    }
     this.setState({
       hasError: false,
       error: null,
@@ -108,6 +124,7 @@ export class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, Route
 
       const { routeName = 'This page' } = this.props;
       const { error, errorInfo, showDetails } = this.state;
+      const isChunkError = this.isChunkLoadError(error);
 
       return (
         <Box
@@ -152,6 +169,13 @@ export class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, Route
               Something went wrong while loading this section. The rest of the app is still working—you can navigate to another page using the sidebar.
             </Typography>
 
+            {isChunkError && (
+              <Alert severity="warning" sx={{ mb: 3, textAlign: 'left' }}>
+                This usually happens after a rebuild/deploy when your browser cached an older app bundle.
+                Click <strong>Try Again</strong> to reload and fetch the latest assets.
+              </Alert>
+            )}
+
             {/* Error Message Alert */}
             {error && (
               <Alert 
@@ -172,7 +196,7 @@ export class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, Route
                 onClick={this.handleRetry}
                 color="primary"
               >
-                Try Again
+                {isChunkError ? 'Reload App' : 'Try Again'}
               </Button>
               <Button
                 variant="outlined"

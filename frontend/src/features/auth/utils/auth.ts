@@ -11,6 +11,8 @@ interface JWTPayload {
   isAdmin?: boolean;
   role?: string;
   roles?: string[];
+  permissions?: any;
+  access?: any;
   exp?: number;
   iat?: number;
 }
@@ -90,7 +92,9 @@ export function getUserFromToken(token: string): any | null {
     fullName: payload.fullName,
     role: primaryRole, // Back-compat: older tokens may only include role, newer include roles[]
     roles,
-    isAdmin: payload.isAdmin || primaryRole === 'ADMIN'
+    isAdmin: payload.isAdmin || primaryRole === 'ADMIN',
+    permissions: payload.permissions,
+    access: payload.access
   };
 }
 

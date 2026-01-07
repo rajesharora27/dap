@@ -33,6 +33,7 @@ import { AuthQueryResolvers, AuthMutationResolvers } from '../../modules/auth';
 import { AIQueryResolvers, AIMutationResolvers } from '../../modules/ai';
 import { ImportQueryResolvers, ImportMutationResolvers } from '../../modules/import';
 import { AuditQueryResolvers } from '../../modules/audit/audit.resolver';
+import { UserActivityQueryResolvers } from '../../modules/user-activity';
 import {
   ProductFieldResolvers,
   ProductQueryResolvers,
@@ -124,6 +125,7 @@ export const resolvers = {
     ...SearchQueryResolvers,
     ...ImportQueryResolvers,
     ...AuditQueryResolvers,
+    ...UserActivityQueryResolvers,
     ...diaryResolvers.Query,
 
     node: async (_: any, { id }: any) => {

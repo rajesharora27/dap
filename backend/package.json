@@ -20,6 +20,7 @@
     "seed:light-demo": "ts-node scripts/seed-light-demo.ts",
     "seed:sample": "ts-node scripts/add-laptop-sample.ts",
     "seed:dev": "ts-node src/seed-dev.ts",
+    "migrate:system-roles": "ts-node scripts/migrate-system-roles-to-rbac.ts",
     "fix-auth": "ts-node scripts/fix_user_auth.ts",
     "reset": "ts-node scripts/reset-dev-db.ts",
     "test": "DATABASE_URL=postgresql://rajarora@localhost:5432/dap_test NODE_ENV=test jest --runInBand --passWithNoTests",

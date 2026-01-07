@@ -35,7 +35,13 @@ const REFRESH_TOKEN_EXPIRES_IN: string = envConfig.auth.jwtRefreshExpiresIn;
  * Default password for admin-created accounts.
  * From centralized config - users should change on first login.
  */
-const DEFAULT_PASSWORD: string = envConfig.auth.defaultUserPassword;
+function getDefaultPasswordOrThrow(): string {
+  const pwd = envConfig.auth.defaultUserPassword;
+  if (!pwd?.trim()) {
+    throw new Error('DEFAULT_USER_PASSWORD is not configured');
+  }
+  return pwd;
+}
 
 export interface User {
   id: string;
@@ -50,6 +56,12 @@ export interface User {
 export interface AuthTokens {
   token: string;
   refreshToken: string;
+}
+
+export interface AccessSummary {
+  products: { read: boolean; write: boolean };
+  solutions: { read: boolean; write: boolean };
+  customers: { read: boolean; write: boolean };
 }
 
 export interface Permission {
@@ -84,7 +96,13 @@ export class AuthService {
 
   // Generate JWT token
   // Generate JWT token
-  generateToken(user: User, permissions: Permission[], sessionId: string, roles: string[] = []): string {
+  generateToken(
+    user: User,
+    permissions: Permission[],
+    sessionId: string,
+    roles: string[] = [],
+    access?: AccessSummary
+  ): string {
     const normalizedRoles = Array.from(new Set([...(roles || [])].filter(Boolean)));
     const primaryRole = user.isAdmin ? 'ADMIN' : (normalizedRoles[0] || 'USER');
 
@@ -99,6 +117,7 @@ export class AuthService {
       permissions: this.formatPermissionsForToken(permissions),
       role: primaryRole, // Back-compat: many frontend codepaths expect a single role
       roles: normalizedRoles, // Include roles in JWT for frontend menu visibility
+      access, // RBAC-derived access summary for navigation gating
     };
 
     const options: SignOptions = { expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn'] };
@@ -255,11 +274,12 @@ export class AuthService {
     const session = await this.prisma.session.create({
       data: {
         userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        expiresAt: new Date(Date.now() + envConfig.auth.sessionTimeoutMs)
       }
     });
 
-    const token = this.generateToken(userData, permissions, session.id, roles);
+    const access = await this.getAccessSummary(user.id);
+    const token = this.generateToken(userData, permissions, session.id, roles, access);
     const refreshToken = this.generateRefreshToken(user.id, session.id);
 
     // Log successful login
@@ -268,6 +288,37 @@ export class AuthService {
     return {
       user: userData,
       tokens: { token, refreshToken }
+    };
+  }
+
+  private async getAccessSummary(userId: string): Promise<AccessSummary> {
+    // Use the same authorization logic as resolvers.
+    // (Dynamic import avoids circular dependency issues with AuthService.)
+    const { getUserAccessibleResources } = await import('../../shared/auth/permissions');
+
+    const [productsRead, solutionsRead, customersRead, productsWrite, solutionsWrite, customersWrite] = await Promise.all([
+      getUserAccessibleResources(userId, ResourceType.PRODUCT, PermissionLevel.READ, this.prisma),
+      getUserAccessibleResources(userId, ResourceType.SOLUTION, PermissionLevel.READ, this.prisma),
+      getUserAccessibleResources(userId, ResourceType.CUSTOMER, PermissionLevel.READ, this.prisma),
+      // WRITE is used for "create" (resourceId=null) gating in resolvers.
+      getUserAccessibleResources(userId, ResourceType.PRODUCT, PermissionLevel.WRITE, this.prisma),
+      getUserAccessibleResources(userId, ResourceType.SOLUTION, PermissionLevel.WRITE, this.prisma),
+      getUserAccessibleResources(userId, ResourceType.CUSTOMER, PermissionLevel.WRITE, this.prisma),
+    ]);
+
+    return {
+      products: {
+        read: productsRead === null || productsRead.length > 0,
+        write: productsWrite === null,
+      },
+      solutions: {
+        read: solutionsRead === null || solutionsRead.length > 0,
+        write: solutionsWrite === null,
+      },
+      customers: {
+        read: customersRead === null || customersRead.length > 0,
+        write: customersWrite === null,
+      },
     };
   }
 
@@ -312,7 +363,7 @@ export class AuthService {
     const session = await this.prisma.session.create({
       data: {
         userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+        expiresAt: new Date(Date.now() + envConfig.auth.sessionTimeoutMs)
       }
     });
 
@@ -339,7 +390,8 @@ export class AuthService {
       mustChangePassword: false
     };
 
-    return this.generateToken(userData, permissions, session.id, []); // New users start with no roles
+    const access = await this.getAccessSummary(userData.id);
+    return this.generateToken(userData, permissions, session.id, [], access); // New users start with no roles
   }
 
   // Change password
@@ -415,7 +467,7 @@ export class AuthService {
     }
 
     // Hash default password
-    const defaultPasswordHash = await this.hashPassword(DEFAULT_PASSWORD);
+    const defaultPasswordHash = await this.hashPassword(getDefaultPasswordOrThrow());
 
     // Update password
     await this.prisma.user.update({

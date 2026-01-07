@@ -85,6 +85,13 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
+    // Vite preview serves the production build (dist/) and can aggressively cache hashed assets.
+    // Ensure index.html isn't cached to avoid "Failed to fetch dynamically imported module" after rebuilds.
+    preview: {
+      headers: {
+        'Cache-Control': 'no-store'
+      }
+    },
     optimizeDeps: {
       include: ['react', 'react-dom', '@apollo/client', '@mui/material', '@mui/icons-material'],
       force: false

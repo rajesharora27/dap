@@ -257,7 +257,7 @@ export function CustomerAssignmentsTable({
                                                     if (item.type === 'product') onSyncProduct(item.id);
                                                     else if (item.adoptionPlanId) onSyncSolution(item.id, item.adoptionPlanId);
                                                 }}
-                                                sx={{ color: item.type === 'solution' ? '#3B82F6' : '#10B981' }}
+                                                sx={{ color: (item.type === 'solution' || (item.type === 'product' && item.source === 'solution')) ? '#3B82F6' : '#10B981' }}
                                             >
                                                 <Sync fontSize="small" />
                                             </IconButton>
@@ -270,7 +270,7 @@ export function CustomerAssignmentsTable({
                                                     if (item.type === 'product') onEditProduct(item.id);
                                                     else onEditSolution(item.id);
                                                 }}
-                                                sx={{ color: item.type === 'solution' ? '#3B82F6' : '#10B981' }}
+                                                sx={{ color: (item.type === 'solution' || (item.type === 'product' && item.source === 'solution')) ? '#3B82F6' : '#10B981' }}
                                             >
                                                 <Edit fontSize="small" />
                                             </IconButton>

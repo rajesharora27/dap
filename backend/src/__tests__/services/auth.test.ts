@@ -36,7 +36,7 @@ describe('Authentication Service', () => {
             const user = await TestFactory.createUser();
 
             expect(user.role).toBeDefined();
-            expect(['ADMIN', 'USER', 'SME', 'CSS']).toContain(user.role);
+            expect(['ADMIN', 'USER', 'SME', 'CSS', 'VIEWER']).toContain(user.role);
         });
 
         it('should enforce unique email', async () => {

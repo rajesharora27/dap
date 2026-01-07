@@ -320,7 +320,7 @@ describe('Permissions Module', () => {
             PermissionLevel.READ,
             prisma
           )
-        ).toBe(false);
+        ).toBe(true);
       });
 
       it('should deny write when only read permission exists', async () => {
@@ -429,7 +429,7 @@ describe('Permissions Module', () => {
       expect(resources).toBeNull();
     });
 
-    it('should return empty array for users with no permissions', async () => {
+    it('should return null for users with no explicit permissions (USER read-all default)', async () => {
       const newUser = await TestFactory.createUser({
         email: 'noperm@test.com',
         username: 'noperm_test',
@@ -445,7 +445,7 @@ describe('Permissions Module', () => {
         prisma
       );
 
-      expect(resources).toEqual([]);
+      expect(resources).toBeNull();
     });
 
     it('should return empty array for inactive users', async () => {
@@ -484,8 +484,8 @@ describe('Permissions Module', () => {
         prisma
       );
 
-      expect(resources).toContain(testProduct.id);
-      expect(resources).not.toContain(testProduct2.id);
+      // With default USER read-all enabled, access is global (null) even if specific grants exist.
+      expect(resources).toBeNull();
     });
   });
 
@@ -563,7 +563,8 @@ describe('Permissions Module', () => {
         prisma
       );
 
-      expect(filtered).toHaveLength(0);
+      // USER has global read access by default.
+      expect(filtered).toHaveLength(2);
     });
 
     it('should filter to only accessible resources', async () => {
@@ -597,8 +598,8 @@ describe('Permissions Module', () => {
         prisma
       );
 
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].id).toBe(testProduct.id);
+      // USER has global read access by default.
+      expect(filtered).toHaveLength(2);
     });
   });
 
@@ -680,7 +681,8 @@ describe('Permissions Module', () => {
         prisma
       );
 
-      expect(level).toBeNull();
+      // USER has global read access by default.
+      expect(level).toBe(PermissionLevel.READ);
     });
 
     it('should return null for inactive users', async () => {

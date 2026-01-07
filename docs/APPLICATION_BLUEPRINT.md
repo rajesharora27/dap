@@ -1,10 +1,11 @@
 # Application Blueprint Template
 
-**Version:** 1.3.0  
-**Last Updated:** January 5, 2026  
+**Version:** 1.4.0  
+**Last Updated:** January 6, 2026  
 **Purpose:** Generate new applications with 100/100 architecture score from day one  
 **Based On:** DAP (Digital Adoption Platform) - Production-proven architecture
 
+> **v1.4.0 Additions:** Session Inactivity Management (Sliding Window), RBAC Default Read-All Strategy
 > **v1.3.0 Additions:** Optimistic UI patterns, Route Error Boundaries, Focus Management (a11y)
 
 ---
@@ -1113,7 +1114,36 @@ export function requirePermission(
 }
 ```
 
-### 5.3 Security Headers (MANDATORY)
+### 5.3 RBAC Default Read-Only Strategy (MANDATORY for Catalog Visibility)
+
+> ⚠️ **CRITICAL:** To reduce administration friction, the system provides a "Default Read-All" capability for common catalog resources.
+
+**Pattern:**
+- All `USER` role accounts have baseline `READ` visibility to `PRODUCT`, `SOLUTION`, and `CUSTOMER`.
+- This is controlled by a feature flag: `RBAC_DEFAULT_USER_READ_ALL`.
+- Logic: `canRead = user.isAdmin || (isUser && RBAC_DEFAULT_USER_READ_ALL) || rolePermissions.has(READ)`.
+
+### 5.4 Session Inactivity Management (Sliding Window)
+
+> ⚠️ **CRITICAL:** High-security applications MUST implement session expiration that resets on activity.
+
+**Pattern:**
+1. **Initial Expiration**: Set `expiresAt` during login/signup based on `SESSION_INACTIVITY_TIMEOUT_MS`.
+2. **Heartbeat Extension**: On every valid GraphQL request, extend the `expiresAt` of the current session.
+3. **Automated Cleanup**: A background process or scheduled job clears sessions where `expiresAt < now`.
+
+**Implementation Example (`context.ts`):**
+```typescript
+// On every request
+if (session && envConfig.auth.sessionTimeoutMs) {
+  await prisma.session.update({
+    where: { id: session.id },
+    data: { expiresAt: new Date(Date.now() + envConfig.auth.sessionTimeoutMs) }
+  });
+}
+```
+
+### 5.5 Security Headers (MANDATORY)
 
 ```typescript
 // backend/src/server.ts
@@ -1420,6 +1450,17 @@ module.exports = {
 - **Refuse Non-Test DBs**: If `DATABASE_URL` does not look like a test DB, abort tests unless explicitly overridden.
 - **Deterministic Secrets**: If your runtime validates secrets at import time (e.g. `JWT_SECRET` min length), tests must set a safe in-process value to prevent env drift.
 - **No Hardcoded Credentials**: Never commit passwords/tokens/keys in source (including “default/demo” passwords). Prefer generated secrets in tests and env-provided values for dev tooling/UI.
+
+### 6.7 RBAC Testing Requirements (MANDATORY)
+
+> ⚠️ **CRITICAL:** RBAC regressions must be caught by tests that exercise the real GraphQL schema + resolvers.
+
+**Rules:**
+- Add at least one integration test suite that hits `/graphql` and verifies:
+  - **READ vs WRITE** enforcement for a non-admin user
+  - Role-based permissions (`RolePermission`) are respected
+  - “Type-level” grants (`resourceId=null`) are required for create operations
+- Include at least one toggle/regression test for any RBAC feature flags (e.g. default read-all, legacy shortcuts).
 
 ### 6.6 GraphQL Contract Gate (MANDATORY)
 
@@ -1800,6 +1841,16 @@ npm install
 - If the app is served at **root** (e.g. `http://localhost:5173/`), base should be `/`.
 - If the app is served under a subpath (e.g. `https://host/dap/`), base must be `/dap/` so assets load from `/dap/assets/...`.
 - Validate by checking DevTools → Network: the referenced `/assets/*.js` requests must return **200**.
+
+### Frontend Hosting Resilience (MANDATORY)
+
+> ⚠️ **CRITICAL:** Lazy route chunks must be resilient to stale cached entry bundles after rebuilds/deploys.
+
+**Required Pattern:**
+- When a dynamically imported chunk fails to load (e.g. `Failed to fetch dynamically imported module` / `ChunkLoadError`):
+  - Show a user-friendly message
+  - Provide a **full reload** action that refreshes `index.html` and asset hashes
+- If using preview/static hosting, ensure `index.html` is not cached aggressively (`Cache-Control: no-store` or equivalent).
 
 ---
 

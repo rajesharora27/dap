@@ -265,7 +265,7 @@ export function CustomerProductsTab() {
                     onAssignNew={() => setAssignProductDialogOpen(true)}
                     assignNewLabel="Assign New Product"
                     actions={adoptionPlan ? headerActions : []}
-                    themeColor="#10B981"
+                    themeColor={selectedCustomerProduct?.customerSolutionId ? "#3B82F6" : "#10B981"}
                 />
 
                 {/* Main Content Area */}

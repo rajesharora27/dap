@@ -408,45 +408,29 @@ run_all_tests() {
     log_header "RUNNING ALL TESTS"
     
     local failed=0
-    
-    # E2E Tests
-    log_info "Running E2E CRUD tests..."
-    if ! run_comprehensive_test; then
-        failed=1
-    fi
-    
-    echo ""
-    
-    # Tags Tests
-    log_info "Running Tags tests..."
-    if ! run_tags_test; then
-        failed=1
-    fi
-    
-    echo ""
-    
-    # Integration Tests
-    log_info "Running Integration tests..."
-    if ! run_integration_tests; then
+
+    # Prepare shadow DB once
+    ensure_test_database
+    cd "$BACKEND_DIR"
+    run_migrations_on_test_db
+    export NODE_ENV="test"
+    export CI="true"
+    cd "$PROJECT_DIR"
+
+    # Backend Jest (unit + integration + e2e-in-jest)
+    log_info "Running Backend Jest (all)..."
+    if ! (cd "$BACKEND_DIR" && npm test -- --runInBand --passWithNoTests); then
         failed=1
     fi
     
     echo ""
 
-    # Export Tests
-    log_info "Running Export tests..."
-    if ! run_excel_export_test; then
+    # Frontend Jest
+    log_info "Running Frontend Jest (all)..."
+    if ! (cd "$FRONTEND_DIR" && npm test -- --passWithNoTests); then
         failed=1
     fi
-    
-    echo ""
 
-    # Import Tests
-    log_info "Running Import tests..."
-    if ! run_excel_import_test; then
-        failed=1
-    fi
-    
     echo ""
     
     if [ $failed -eq 0 ]; then
@@ -454,6 +438,18 @@ run_all_tests() {
         return 0
     else
         log_header "SOME TESTS FAILED ❌"
+        return 1
+    fi
+}
+
+run_frontend_tests() {
+    log_header "FRONTEND TESTS"
+    cd "$FRONTEND_DIR"
+    if npm test -- --passWithNoTests; then
+        log_success "🎉 FRONTEND TESTS PASSED!"
+        return 0
+    else
+        log_error "❌ FRONTEND TESTS FAILED!"
         return 1
     fi
 }
@@ -496,12 +492,13 @@ show_help() {
     echo "Usage: $0 [command] [options]"
     echo ""
     echo "Commands:"
-    echo -e "  ${GREEN}all${NC}           - Run all test suites (e2e, tags, integration)"
+    echo -e "  ${GREEN}all${NC}           - Run ALL tests (backend Jest all + frontend Jest all)"
     echo -e "  ${GREEN}e2e${NC}           - Run comprehensive E2E CRUD tests (38 tests)"
     echo -e "  ${GREEN}crud${NC}          - Alias for e2e"
     echo -e "  ${CYAN}unit${NC}          - Run unit tests (optional: pattern, --coverage)"
     echo -e "  ${CYAN}tags${NC}          - Run tags implementation tests"
     echo -e "  ${CYAN}integration${NC}   - Run GraphQL integration tests"
+    echo -e "  ${CYAN}frontend${NC}      - Run frontend Jest tests"
     echo -e "  ${CYAN}excel-export${NC}  - Run Excel Export tests"
     echo -e "  ${CYAN}excel-import${NC}  - Run Excel Import tests"
     echo -e "  ${YELLOW}coverage${NC}      - Run all tests with coverage report"
@@ -627,6 +624,9 @@ main() {
             ;;
         integration)
             run_integration_tests
+            ;;
+        frontend)
+            run_frontend_tests
             ;;
         excel-export)
             run_excel_export_test

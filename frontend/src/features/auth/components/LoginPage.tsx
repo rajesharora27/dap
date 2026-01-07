@@ -95,7 +95,8 @@ export const LoginPage: React.FC = () => {
             isAdmin: payload.isAdmin || payload.role === 'ADMIN',
             role: payload.role,
             roles: payload.roles || [],
-            permissions: payload.permissions || { products: [], solutions: [], customers: [], system: false }
+            permissions: payload.permissions || { products: [], solutions: [], customers: [], system: false },
+            access: payload.access
           });
         } catch (err) {
           setUser({ username });

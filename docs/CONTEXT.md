@@ -5,6 +5,9 @@
 ### Session Summary - Part 3: Task Creation Reliability, Test Determinism, and Customer Overview UX
 This session focused on eliminating a task creation failure affecting both Products and Solutions, making the backend test environment deterministic, improving the Customers → Overview UI to visually distinguish solution-derived product assignments, and documenting a common MacBook “blank screen” root cause.
 
+### Session Summary - Part 4: Restoring Activity, Sessions, and RBAC Baseline
+This session focused on restoring the User Activity Tracking and Session Inactivity features that were recently reverted, hardening the RBAC model with a "default read-all" flag, and standardizing action icon colors based on product source.
+
 ### Key Changes
 
 #### 1. Task Creation: Support `licenseId` + Partial Inputs (Products & Solutions)
@@ -108,6 +111,97 @@ Latest patches were deployed to production (`dapoc`) using `./deploy-to-producti
 - `scripts/check-graphql-contract.sh`
 - `package.json` (root) `check:graphql` / `check:all` integration
 - `frontend/codegen.yml`
+
+#### 9. Session Inactivity Timeout: Sliding Window Restoration
+**Goal:** Restore the 30-minute inactivity timeout (heartbeat) and automated cleanup.
+**Solution:**
+- Re-implemented the heartbeat extension in `createContext` (`context.ts`).
+- Updated `SessionManager.clearExpiredSessions` to delete based on `expiresAt < now`.
+- Confirmed use of `SESSION_INACTIVITY_TIMEOUT_MS` for session length.
+
+#### 10. User Activity Tracking: Full Feature Restoration
+**Goal:** Restore the deleted User Activity module and ensure only admins can access it.
+**Solution:**
+- Re-implemented `user-activity` backend module (resolvers, typeDefs, service).
+- Restored `UserActivityPanel.tsx` in the frontend and re-activated its route.
+- Wired schema registrations back into the main application.
+
+#### 11. UI: Standardized Action Icon Colors
+**Goal:** Ensure all action icons (Sync, Edit) follow the same color theme as their parent category (Direct = Green, Solution = Blue).
+**Solution:**
+- Updated `CustomerAssignmentsTable.tsx` and `CustomerProductsTab.tsx` to dynamically select icon colors based on the assignment source.
+
+---
+
+## Recent Changes (January 7, 2026)
+
+### Session Summary: RBAC Hardening, Unified Test Runners, and MacBook Chunk-Load Resilience
+This session focused on (1) simplifying “system roles” to `ADMIN` vs `USER` while keeping granular access governed by RBAC roles, (2) ensuring `USER` has safe read-only visibility by default without granting write privileges, (3) adding real RBAC tests that exercise the actual GraphQL resolver path, (4) making both `npm test` and `./dap-test all` run the full test suite, and (5) eliminating recurring MacBook “lazy chunk 404” issues by hardening cache behavior and adding a self-healing reload path.
+
+### Key Changes
+
+#### 1. RBAC Policy: `USER` Has Read-Only Access to Everything
+**Goal:** Ensure baseline visibility for all `USER` accounts without requiring per-resource grants.
+
+**Solution:**
+- `SystemRole.USER` now has **global READ** access to `PRODUCT`, `SOLUTION`, and `CUSTOMER` by default.
+- WRITE / ADMIN actions remain **RBAC-gated** (RolePermissions / direct permissions) and are not granted by default.
+- Added feature flag for future tightening: `RBAC_DEFAULT_USER_READ_ALL` (defaults to true).
+
+**Files Modified:**
+- `backend/src/shared/auth/permissions.ts`
+- `backend/src/config/env.ts`
+
+#### 2. System Roles Simplified in UI (Admin Users): `USER` / `ADMIN` Only
+**Goal:** Treat “system role” as platform-level capability (admin vs non-admin) and move all business permissions into RBAC roles.
+
+**Solution:**
+- “Add User” and “Edit User” dialogs now only allow selecting **`USER`** or **`ADMIN`**.
+- Any legacy system roles (`SME`/`CSS`/`VIEWER`) are rendered as `USER` in the admin UI; granular permissions are handled via RBAC role assignments.
+
+**Files Modified:**
+- `frontend/src/features/admin/components/UserManagement.tsx`
+
+#### 3. Bulletproof RBAC Tests (Real Resolver Path)
+**Goal:** Prevent RBAC regressions by testing the real GraphQL schema + resolvers end-to-end.
+
+**New Tests:**
+- `backend/src/__tests__/integration/graphql-rbac-enforcement.test.ts`
+  - USER can read all Products by default
+  - USER cannot `createProduct` without PRODUCT WRITE (type-level)
+  - RolePermission `PRODUCT WRITE` (resourceId=null) enables create
+- `backend/src/__tests__/shared/auth/permissions.default-user-readall-toggle.test.ts`
+  - `RBAC_DEFAULT_USER_READ_ALL=false` disables the default read-all behavior
+- `backend/src/__tests__/shared/auth/permissions.system-role-shortcuts.test.ts`
+  - `RBAC_ENABLE_SYSTEM_ROLE_SHORTCUTS=false` disables legacy SME/CSS/VIEWER bypass behavior
+
+**Factory Enhancements:**
+- `backend/src/__tests__/factories/TestFactory.ts` now includes helpers to create roles, grant role permissions, and assign roles.
+
+#### 4. Unified Test Runners: `npm test` and `./dap-test all` Run Everything
+**Goal:** Eliminate gaps where “all tests” didn’t actually run all suites.
+
+**Solution:**
+- `npm test` (root) continues to run backend Jest + frontend Jest.
+- `./dap-test all` now runs:
+  - backend Jest (all)
+  - frontend Jest (all)
+- Added convenient per-suite commands (unit/integration/e2e/export/import/frontend).
+
+**Files Modified:**
+- `dap-test`
+- `package.json` (root)
+
+#### 5. MacBook Route Chunk Load Failures: Self-Healing + No-Cache Preview
+**Problem:** Users could hit route-level errors like “Failed to fetch dynamically imported module …/assets/<Chunk>.js” after rebuilds, due to stale cached entry bundles pointing to older hashed chunks.
+
+**Solution:**
+- `RouteErrorBoundary` detects chunk-load errors and forces a full reload (“Reload App”) to refresh `index.html` and asset hashes.
+- Vite `preview` sets `Cache-Control: no-store` to prevent stale `index.html` caching.
+
+**Files Modified:**
+- `frontend/src/shared/components/RouteErrorBoundary.tsx`
+- `frontend/vite.config.ts`
 
 ---
 

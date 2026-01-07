@@ -28,6 +28,7 @@
  */
 
 import { PrismaClient, ResourceType, PermissionLevel } from '@prisma/client';
+import { envConfig } from '../../config/env';
 
 /**
  * Permission hierarchy mapping.
@@ -133,6 +134,19 @@ export async function checkUserPermission(
     return true;
   }
 
+  // Default SystemRole.USER read-only access to everything (Products/Solutions/Customers).
+  // Writes remain RBAC-gated by permissions/roles.
+  if (
+    envConfig.rbac.defaultUserReadAll &&
+    user.role === 'USER' &&
+    requiredLevel === PermissionLevel.READ &&
+    (resourceType === ResourceType.PRODUCT ||
+      resourceType === ResourceType.SOLUTION ||
+      resourceType === ResourceType.CUSTOMER)
+  ) {
+    return true;
+  }
+
   // Fetch user roles to check for named roles acting as system roles
   const userRolesForSystemCheck = await prisma.userRole.findMany({
     where: { userId },
@@ -141,31 +155,33 @@ export async function checkUserPermission(
   const roleNames = userRolesForSystemCheck.map((ur: UserRoleWithRole) => ur.role?.name).filter(Boolean) as string[];
   const effectiveRoles = [user.role, ...roleNames];
 
-  const isSME = effectiveRoles.includes('SME');
-  const isCSS = effectiveRoles.includes('CSS');
-  const isViewer = effectiveRoles.includes('VIEWER');
+  if (envConfig.rbac.enableSystemRoleShortcuts) {
+    const isSME = effectiveRoles.includes('SME');
+    const isCSS = effectiveRoles.includes('CSS');
+    const isViewer = effectiveRoles.includes('VIEWER');
 
-  // Check System Roles
-  // VIEWER role: Read-only access to everything
-  if (isViewer) {
-    if (requiredLevel === PermissionLevel.READ) {
-      return true; // VIEWER can read all resources
+    // Check System Roles (legacy shortcuts)
+    // VIEWER role: Read-only access to everything
+    if (isViewer) {
+      if (requiredLevel === PermissionLevel.READ) {
+        return true; // VIEWER can read all resources
+      }
+      // VIEWER cannot write or admin anything
     }
-    // VIEWER cannot write or admin anything
-  }
 
-  if (isSME) {
-    if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
-      return true;
+    if (isSME) {
+      if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
+        return true;
+      }
     }
-  }
 
-  if (isCSS) {
-    if (resourceType === ResourceType.CUSTOMER) {
-      return true;
-    }
-    if ((resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) && requiredLevel === PermissionLevel.READ) {
-      return true;
+    if (isCSS) {
+      if (resourceType === ResourceType.CUSTOMER) {
+        return true;
+      }
+      if ((resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) && requiredLevel === PermissionLevel.READ) {
+        return true;
+      }
     }
   }
 
@@ -531,6 +547,19 @@ export async function getUserAccessibleResources(
     return null; // Admin has access to all resources
   }
 
+  // Default SystemRole.USER read-only access to everything (Products/Solutions/Customers).
+  // For filtering, return null to indicate "all resources" when READ is requested.
+  if (
+    envConfig.rbac.defaultUserReadAll &&
+    user.role === 'USER' &&
+    minPermissionLevel === PermissionLevel.READ &&
+    (resourceType === ResourceType.PRODUCT ||
+      resourceType === ResourceType.SOLUTION ||
+      resourceType === ResourceType.CUSTOMER)
+  ) {
+    return null;
+  }
+
   // Fetch user roles to check for named roles acting as system roles
   const userRolesList = await prisma.userRole.findMany({
     where: { userId },
@@ -539,28 +568,30 @@ export async function getUserAccessibleResources(
   const roleNames = userRolesList.map((ur: UserRoleWithRole) => ur.role?.name).filter(Boolean) as string[];
   const effectiveRoles = [user.role, ...roleNames];
 
-  const isSME = effectiveRoles.includes('SME');
-  const isCSS = effectiveRoles.includes('CSS');
-  const isViewer = effectiveRoles.includes('VIEWER');
+  if (envConfig.rbac.enableSystemRoleShortcuts) {
+    const isSME = effectiveRoles.includes('SME');
+    const isCSS = effectiveRoles.includes('CSS');
+    const isViewer = effectiveRoles.includes('VIEWER');
 
-  // Check System Roles
-  // VIEWER role: Read-only access to everything
-  if (isViewer && minPermissionLevel === PermissionLevel.READ) {
-    return null; // VIEWER has read access to ALL resources
-  }
-
-  if (isSME) {
-    if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
-      return null; // SME has access to all Products and Solutions
+    // Check System Roles (legacy shortcuts)
+    // VIEWER role: Read-only access to everything
+    if (isViewer && minPermissionLevel === PermissionLevel.READ) {
+      return null; // VIEWER has read access to ALL resources
     }
-  }
 
-  if (isCSS) {
-    if (resourceType === ResourceType.CUSTOMER) {
-      return null; // CS has access to all Customers
+    if (isSME) {
+      if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
+        return null; // SME has access to all Products and Solutions
+      }
     }
-    if ((resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) && minPermissionLevel === PermissionLevel.READ) {
-      return null; // CSS has Read-only access to all Products and Solutions
+
+    if (isCSS) {
+      if (resourceType === ResourceType.CUSTOMER) {
+        return null; // CS has access to all Customers
+      }
+      if ((resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) && minPermissionLevel === PermissionLevel.READ) {
+        return null; // CSS has Read-only access to all Products and Solutions
+      }
     }
   }
 
@@ -1029,6 +1060,15 @@ export async function getUserPermissionLevel(
     return PermissionLevel.ADMIN;
   }
 
+  // Default SystemRole.USER read-only access to everything (Products/Solutions/Customers).
+  // This is a BASELINE. We still compute higher levels (WRITE/ADMIN) from RBAC grants.
+  const baselineRead =
+    envConfig.rbac.defaultUserReadAll &&
+    user.role === 'USER' &&
+    (resourceType === ResourceType.PRODUCT ||
+      resourceType === ResourceType.SOLUTION ||
+      resourceType === ResourceType.CUSTOMER);
+
   // Fetch user roles to check for named roles acting as system roles
   const userRolesForSystemCheck = await prisma.userRole.findMany({
     where: { userId },
@@ -1036,27 +1076,28 @@ export async function getUserPermissionLevel(
   });
   const roleNames = userRolesForSystemCheck.map((ur: UserRoleWithRole) => ur.role?.name).filter(Boolean) as string[];
   const effectiveRoles = [user.role, ...roleNames];
+  if (envConfig.rbac.enableSystemRoleShortcuts) {
+    const isSME = effectiveRoles.includes('SME');
+    const isCSS = effectiveRoles.includes('CSS');
 
-  const isSME = effectiveRoles.includes('SME');
-  const isCSS = effectiveRoles.includes('CSS');
+    // Check System Roles (legacy shortcuts)
+    if (isSME) {
+      if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
+        return PermissionLevel.ADMIN;
+      }
+    }
 
-  // Check System Roles
-  if (isSME) {
-    if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
-      return PermissionLevel.ADMIN;
+    if (isCSS) {
+      if (resourceType === ResourceType.CUSTOMER) {
+        return PermissionLevel.ADMIN;
+      }
+      if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
+        return PermissionLevel.READ;
+      }
     }
   }
 
-  if (isCSS) {
-    if (resourceType === ResourceType.CUSTOMER) {
-      return PermissionLevel.ADMIN;
-    }
-    if (resourceType === ResourceType.PRODUCT || resourceType === ResourceType.SOLUTION) {
-      return PermissionLevel.READ;
-    }
-  }
-
-  let highestLevel: PermissionLevel | null = null;
+  let highestLevel: PermissionLevel | null = baselineRead ? PermissionLevel.READ : null;
 
   // Check direct permissions
   const directPermissions = await prisma.permission.findMany({

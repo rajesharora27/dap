@@ -15,6 +15,12 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
     process.env.JWT_SECRET = crypto.randomBytes(32).toString('hex'); // 64 chars
 }
 
+// Ensure DEFAULT_USER_PASSWORD exists for tests that exercise password reset flows.
+// This is not a real credential; it's generated per-run.
+if (!process.env.DEFAULT_USER_PASSWORD) {
+    process.env.DEFAULT_USER_PASSWORD = `test-default-${crypto.randomBytes(8).toString('hex')}`;
+}
+
 // Safety guard: never allow tests to run against a non-test database
 const dbUrl = process.env.DATABASE_URL || '';
 if (!dbUrl.includes('dap_test')) {
