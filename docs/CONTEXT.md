@@ -5,8 +5,8 @@
 ### Session Summary - Part 3: Task Creation Reliability, Test Determinism, and Customer Overview UX
 This session focused on eliminating a task creation failure affecting both Products and Solutions, making the backend test environment deterministic, improving the Customers → Overview UI to visually distinguish solution-derived product assignments, and documenting a common MacBook “blank screen” root cause.
 
-### Session Summary - Part 4: Restoring Activity, Sessions, and RBAC Baseline
-This session focused on restoring the User Activity Tracking and Session Inactivity features that were recently reverted, hardening the RBAC model with a "default read-all" flag, and standardizing action icon colors based on product source.
+### Session Summary - Part 4: Restoring Activity, Sessions, and RBAC Baseline (v3.8.0)
+This session focused on restoring the User Activity Tracking and Session Inactivity features that were recently reverted, hardening the RBAC model with a "default read-all" flag, and standardizing action icon colors based on product source. This culminates in the **v3.8.0** minor release.
 
 ### Key Changes
 

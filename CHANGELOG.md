@@ -21,6 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **UI**: Resolved icon inconsistency for "My Diary" between sidebar and page view.
 
+## [3.8.0] - 2026-01-06
+
+### Added
+- **Activity**: Restored the User Activity Tracking feature including backend module (resolvers, service, typeDefs) and frontend panel.
+- **Auth**: Restored Session Inactivity Timeout with a 30-minute sliding window (heartbeat extension and expired session cleanup).
+- **RBAC**: Implemented a "Default Read-Only" access baseline for the `USER` role via the `RBAC_DEFAULT_USER_READ_ALL` flag.
+- **Documentation**: Updated `APPLICATION_BLUEPRINT.md` to v1.4.0 with new Session Management and RBAC patterns.
+
+### Changed
+- **UI**: Standardized action icon colors (Sync, Edit) in Customer Overview and Products tabs to match the assignment source (Direct = Green, Solution = Blue).
+
 ## [3.7.0] - 2026-01-06
 
 ### Added
