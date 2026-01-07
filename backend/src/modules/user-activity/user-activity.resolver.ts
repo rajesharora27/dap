@@ -7,7 +7,7 @@ export const UserActivityQueryResolvers = {
         return UserActivityService.getActiveSessions(context.prisma);
     },
 
-    loginStats: async (_: any, { period }: { period: ActivityPeriod }, context: any) => {
+    loginStats: async (_: any, { period, userId }: { period: ActivityPeriod; userId?: string }, context: any) => {
         if (!context.user?.isAdmin) throw new Error('Admin access required');
 
         const validPeriods = ['day', 'week', 'month', 'year'];
@@ -15,10 +15,10 @@ export const UserActivityQueryResolvers = {
             throw new Error(`Invalid period: ${period}. Must be one of: ${validPeriods.join(', ')}`);
         }
 
-        return UserActivityService.getLoginStats(context.prisma, period);
+        return UserActivityService.getLoginStats(context.prisma, period, userId);
     },
 
-    entityChangeLogs: async (_: any, { period }: { period: ActivityPeriod }, context: any) => {
+    entityChangeLogs: async (_: any, { period, userId }: { period: ActivityPeriod; userId?: string }, context: any) => {
         if (!context.user?.isAdmin) throw new Error('Admin access required');
 
         const validPeriods = ['day', 'week', 'month', 'year'];
@@ -26,6 +26,6 @@ export const UserActivityQueryResolvers = {
             throw new Error(`Invalid period: ${period}. Must be one of: ${validPeriods.join(', ')}`);
         }
 
-        return UserActivityService.getEntityChangeLogs(context.prisma, period);
+        return UserActivityService.getEntityChangeLogs(context.prisma, period, userId);
     }
 };

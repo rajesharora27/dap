@@ -24,7 +24,7 @@ export async function getActiveSessions(prisma: PrismaClient): Promise<ActiveSes
     }));
 }
 
-export async function getLoginStats(prisma: PrismaClient, period: ActivityPeriod = 'week'): Promise<UserLoginStats[]> {
+export async function getLoginStats(prisma: PrismaClient, period: ActivityPeriod = 'week', userId?: string): Promise<UserLoginStats[]> {
     const now = new Date();
     let startDate: Date;
 
@@ -48,7 +48,8 @@ export async function getLoginStats(prisma: PrismaClient, period: ActivityPeriod
     const logs = await prisma.auditLog.findMany({
         where: {
             action: 'login',
-            createdAt: { gte: startDate }
+            createdAt: { gte: startDate },
+            ...(userId ? { userId } : {})
         },
         include: {
             user: {
@@ -85,7 +86,7 @@ export async function getLoginStats(prisma: PrismaClient, period: ActivityPeriod
     }));
 }
 
-export async function getEntityChangeLogs(prisma: PrismaClient, period: ActivityPeriod = 'week'): Promise<EntityChangeLog[]> {
+export async function getEntityChangeLogs(prisma: PrismaClient, period: ActivityPeriod = 'week', userId?: string): Promise<EntityChangeLog[]> {
     const now = new Date();
     let startDate: Date;
 
@@ -109,7 +110,11 @@ export async function getEntityChangeLogs(prisma: PrismaClient, period: Activity
     const logs = await prisma.auditLog.findMany({
         where: {
             createdAt: { gte: startDate },
-            resourceType: { in: ['PRODUCT', 'SOLUTION', 'CUSTOMER'] }
+            ...(userId ? { userId } : {}),
+            OR: [
+                { resourceType: { in: ['PRODUCT', 'SOLUTION', 'CUSTOMER'] } },
+                { entity: { in: ['Product', 'Solution', 'Customer', 'PRODUCT', 'SOLUTION', 'CUSTOMER'] } }
+            ]
         },
         include: {
             user: {

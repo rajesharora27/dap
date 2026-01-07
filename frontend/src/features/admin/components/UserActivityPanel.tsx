@@ -30,6 +30,16 @@ import {
 import { useQuery, gql } from '@apollo/client';
 import { format } from 'date-fns';
 
+const GET_USERS = gql`
+  query Users {
+    users {
+      id
+      username
+      fullName
+    }
+  }
+`;
+
 const GET_ACTIVE_SESSIONS = gql`
   query ActiveSessions {
     activeSessions {
@@ -43,8 +53,8 @@ const GET_ACTIVE_SESSIONS = gql`
 `;
 
 const GET_LOGIN_STATS = gql`
-  query LoginStats($period: String!) {
-    loginStats(period: $period) {
+  query LoginStats($period: String!, $userId: String) {
+    loginStats(period: $period, userId: $userId) {
       date
       count
       roles
@@ -53,8 +63,8 @@ const GET_LOGIN_STATS = gql`
 `;
 
 const GET_ENTITY_CHANGE_LOGS = gql`
-  query EntityChangeLogs($period: String!) {
-    entityChangeLogs(period: $period) {
+  query EntityChangeLogs($period: String!, $userId: String) {
+    entityChangeLogs(period: $period, userId: $userId) {
       id
       action
       entity
@@ -127,12 +137,12 @@ const ActiveSessionsTab: React.FC = () => {
     );
 };
 
-const LoginStatsTab: React.FC = () => {
+const LoginStatsTab: React.FC<{ userId?: string }> = ({ userId }) => {
     const [period, setPeriod] = useState<string>('week');
     const [roleFilter, setRoleFilter] = useState<string>('ALL');
 
     const { data, loading, error, refetch } = useQuery(GET_LOGIN_STATS, {
-        variables: { period }
+        variables: { period, userId }
     });
 
     if (loading) return <CircularProgress />;
@@ -191,10 +201,10 @@ const LoginStatsTab: React.FC = () => {
     );
 };
 
-const EntityChangesTab: React.FC = () => {
+const EntityChangesTab: React.FC<{ userId?: string }> = ({ userId }) => {
     const [period, setPeriod] = useState<string>('week');
     const { data, loading, error, refetch } = useQuery(GET_ENTITY_CHANGE_LOGS, {
-        variables: { period }
+        variables: { period, userId }
     });
 
     if (loading) return <CircularProgress />;
@@ -251,13 +261,37 @@ const EntityChangesTab: React.FC = () => {
 
 export const UserActivityPanel: React.FC = () => {
     const [tabValue, setTabValue] = useState(0);
+    const [selectedUserId, setSelectedUserId] = useState<string>('ALL');
+
+    const { data: userData } = useQuery(GET_USERS);
+    const users = userData?.users || [];
 
     return (
         <Box sx={{ p: 4 }}>
-            <Typography variant="h4" sx={{ mb: 4, display: 'flex', alignItems: 'center' }}>
-                <HistoryIcon sx={{ mr: 2, fontSize: '2.5rem', color: 'primary.main' }} />
-                User Activity Tracking
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
+                <Typography variant="h4" sx={{ display: 'flex', alignItems: 'center' }}>
+                    <HistoryIcon sx={{ mr: 2, fontSize: '2.5rem', color: 'primary.main' }} />
+                    User Activity Tracking
+                </Typography>
+
+                {(tabValue === 1 || tabValue === 2) && (
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                        <InputLabel>Filter by User</InputLabel>
+                        <Select
+                            value={selectedUserId}
+                            label="Filter by User"
+                            onChange={(e) => setSelectedUserId(e.target.value)}
+                        >
+                            <MenuItem value="ALL">All Users</MenuItem>
+                            {users.map((u: any) => (
+                                <MenuItem key={u.id} value={u.id}>
+                                    {u.fullName || u.username} ({u.username})
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                )}
+            </Box>
 
             <Paper sx={{ width: '100%', mb: 2 }}>
                 <Tabs
@@ -272,9 +306,15 @@ export const UserActivityPanel: React.FC = () => {
                     <Tab icon={<HistoryIcon />} label="Entity Changes" iconPosition="start" />
                 </Tabs>
 
-                <TabPanel value={tabValue} index={0}><ActiveSessionsTab /></TabPanel>
-                <TabPanel value={tabValue} index={1}><LoginStatsTab /></TabPanel>
-                <TabPanel value={tabValue} index={2}><EntityChangesTab /></TabPanel>
+                <TabPanel value={tabValue} index={0}>
+                    <ActiveSessionsTab />
+                </TabPanel>
+                <TabPanel value={tabValue} index={1}>
+                    <LoginStatsTab userId={selectedUserId === 'ALL' ? undefined : selectedUserId} />
+                </TabPanel>
+                <TabPanel value={tabValue} index={2}>
+                    <EntityChangesTab userId={selectedUserId === 'ALL' ? undefined : selectedUserId} />
+                </TabPanel>
             </Paper>
         </Box>
     );

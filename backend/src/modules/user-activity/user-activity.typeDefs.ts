@@ -37,11 +37,11 @@ export const userActivityTypeDefs = gql`
     """
     Get user login statistics over a period (admin only)
     """
-    loginStats(period: String!): [UserLoginStats!]!
+    loginStats(period: String!, userId: String): [UserLoginStats!]!
 
     """
     Get detailed entity change logs (admin only)
     """
-    entityChangeLogs(period: String!): [EntityChangeLog!]!
+    entityChangeLogs(period: String!, userId: String): [EntityChangeLog!]!
   }
 `;
