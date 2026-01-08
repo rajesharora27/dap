@@ -396,18 +396,28 @@ export function SortableTaskItem({
                             <Chip
                                 label={task.statusUpdateSource}
                                 size="small"
+                                variant={task.statusUpdateSource === 'TELEMETRY' ? 'outlined' : 'filled'}
                                 sx={{
                                     fontSize: '0.65rem',
                                     height: 18,
                                     borderRadius: '4px',
                                     textTransform: 'uppercase',
                                     fontWeight: 700,
-                                    bgcolor: task.statusUpdateSource === 'TELEMETRY' ? 'primary.light' : 'grey.200',
-                                    color: task.statusUpdateSource === 'TELEMETRY' ? 'primary.contrastText' : 'text.primary',
+                                    ...(task.statusUpdateSource === 'TELEMETRY' ? {
+                                        borderColor: '#10B981',
+                                        color: '#10B981',
+                                        bgcolor: 'transparent',
+                                    } : task.statusUpdateSource === 'MANUAL' ? {
+                                        bgcolor: 'primary.light',
+                                        color: 'primary.contrastText',
+                                    } : {
+                                        bgcolor: 'grey.200',
+                                        color: 'text.primary',
+                                    }),
                                 }}
                             />
                         ) : (
-                            <Typography variant="caption" color="text.secondary">System</Typography>
+                            <Typography variant="caption" color="text.secondary">—</Typography>
                         )}
                     </TableCell>
                 )}
