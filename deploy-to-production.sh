@@ -24,6 +24,36 @@ PROJECT_ROOT=$(pwd)
 echo "✅ Using local environment: $PROJECT_ROOT"
 echo ""
 
+# Step 0.5: Create pre-deployment backup (if server is running)
+echo "💾 Step 0.5: Creating pre-deployment backup..."
+if [ -f "$PROJECT_ROOT/scripts/pre-deploy-backup.sh" ]; then
+  # Try to create backup, but don't fail deployment if server isn't running
+  if "$PROJECT_ROOT/scripts/pre-deploy-backup.sh" --skip-if-recent 60 2>/dev/null; then
+    echo "✅ Pre-deployment backup complete"
+  else
+    EXIT_CODE=$?
+    if [ $EXIT_CODE -eq 2 ]; then
+      echo "⚠️  Server not running locally, skipping local backup"
+      echo "   IMPORTANT: Ensure backup exists on production before proceeding!"
+      read -p "Continue without local backup? (y/N): " CONTINUE
+      if [ "$CONTINUE" != "y" ] && [ "$CONTINUE" != "Y" ]; then
+        echo "Deployment cancelled"
+        exit 1
+      fi
+    else
+      echo "⚠️  Backup failed with exit code $EXIT_CODE"
+      read -p "Continue without backup? (y/N): " CONTINUE
+      if [ "$CONTINUE" != "y" ] && [ "$CONTINUE" != "Y" ]; then
+        echo "Deployment cancelled"
+        exit 1
+      fi
+    fi
+  fi
+else
+  echo "⚠️  Pre-deploy backup script not found, skipping"
+fi
+echo ""
+
 # Step 1: Build frontend
 echo "📦 Step 1: Building frontend..."
 cd "$PROJECT_ROOT/frontend"
