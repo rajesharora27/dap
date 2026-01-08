@@ -637,6 +637,7 @@ export async function evaluateTaskStatusFromTelemetry(
 
     // Determine new status using consistent logic
     // Status values: NOT_STARTED, IN_PROGRESS, DONE, NO_LONGER_USING, NOT_APPLICABLE
+    // Status values: NOT_STARTED, IN_PROGRESS, COMPLETED, NO_LONGER_USING, NOT_APPLICABLE
     const wasPreviouslyDoneByTelemetry =
         (task.status === 'DONE' || task.status === 'COMPLETED') &&
         task.statusUpdateSource?.toUpperCase() === 'TELEMETRY';
@@ -653,15 +654,21 @@ export async function evaluateTaskStatusFromTelemetry(
         // Has required attributes - evaluate based on those
         if (metRequiredCount === requiredAttributes.length) {
             // All required telemetry criteria met
-            newStatus = 'DONE';
+            newStatus = 'COMPLETED';
         } else if (wasPreviouslyDoneByTelemetry && !hasAnyTelemetryData) {
-            // DONE by Telemetry + No Data -> NO_LONGER_USING
+            // COMPLETED by Telemetry + No Data -> NO_LONGER_USING
             newStatus = 'NO_LONGER_USING';
         } else if (wasPreviouslyDoneByUser && !hasAnyTelemetryData) {
-            // DONE by User + No Data -> Stay DONE
-            newStatus = 'DONE';
+            // COMPLETED by User + No Data -> Stay COMPLETED/DONE
+            // Preserve 'DONE' if it was already DONE to avoid forced migration, 
+            // but new status assignments use 'COMPLETED'.
+            // Actually, for consistency let's standardise on COMPLETED if we touch it,
+            // but here we are just determining IF we should update.
+            // If it is 'DONE', let's keep it 'DONE' unless we change state.
+            // If we are just re-evaluating, we update if status changes.
+            newStatus = task.status;
         } else if (wasPreviouslyDone && hasAnyTelemetryData && metRequiredCount < requiredAttributes.length) {
-            // DONE (any source) + Has Data + Criteria Failed -> IN_PROGRESS
+            // COMPLETED (any source) + Has Data + Criteria Failed -> IN_PROGRESS
             newStatus = 'IN_PROGRESS';
         } else if (hasAnyTelemetryData && requiredWithDataCount > 0) {
             // Has telemetry data but doesn't meet all criteria (and wasn't previously done)
@@ -675,17 +682,12 @@ export async function evaluateTaskStatusFromTelemetry(
         if (wasPreviouslyDoneByTelemetry && !hasAnyTelemetryData) {
             newStatus = 'NO_LONGER_USING';
         } else if (wasPreviouslyDoneByUser && !hasAnyTelemetryData) {
-            newStatus = 'DONE';
+            newStatus = task.status;
         } else if (wasPreviouslyDone && hasAnyTelemetryData && metCount === 0) {
-            // DONE + Has Data + No criteria met -> NO_LONGER_USING? 
-            // User said "if criteria fails - it should go to in progress".
-            // But for optional attributes, usually 0 met means no usage.
-            // Let's stick to IN_PROGRESS for consistency with required logic if that's what user wants,
-            // OR keep NO_LONGER_USING if it implies "stopped using".
-            // User said: "if criteria fails - it should go to in progress".
+            // COMPLETED + Has Data + No criteria met
             newStatus = 'IN_PROGRESS';
         } else if (hasAnyTelemetryData && metCount > 0) {
-            newStatus = 'DONE';
+            newStatus = 'COMPLETED';
         } else if (hasAnyTelemetryData) {
             newStatus = 'IN_PROGRESS';
         }

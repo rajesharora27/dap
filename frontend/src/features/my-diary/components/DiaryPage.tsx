@@ -15,9 +15,11 @@ import {
     BookmarkBorder as BookmarkIcon,
     Book as DiaryIcon,
     Add as AddIcon,
+    Inventory as ProductIcon,
 } from '@shared/components/FAIcon';
 import { TodoTab, TodoTabRef } from './TodoTab';
 import { BookmarkTab, BookmarkTabRef } from './BookmarkTab';
+import { PersonalProductsTab, PersonalProductsTabRef } from './PersonalProductsTab';
 
 interface TabPanelProps {
     children?: React.ReactNode;
@@ -49,16 +51,35 @@ export const DiaryPage: React.FC = () => {
     const [tabValue, setTabValue] = useState(0);
     const todoTabRef = useRef<TodoTabRef>(null);
     const bookmarkTabRef = useRef<BookmarkTabRef>(null);
+    const productsTabRef = useRef<PersonalProductsTabRef>(null);
 
     const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
         setTabValue(newValue);
     };
 
     const handleAddItem = () => {
-        if (tabValue === 0) {
-            todoTabRef.current?.triggerAdd();
-        } else {
-            bookmarkTabRef.current?.triggerAdd();
+        switch (tabValue) {
+            case 0:
+                todoTabRef.current?.triggerAdd();
+                break;
+            case 1:
+                bookmarkTabRef.current?.triggerAdd();
+                break;
+            case 2:
+                // productsTabRef.current?.triggerAdd(); // Should open assign dialog
+                if (productsTabRef.current) {
+                    productsTabRef.current.triggerAdd();
+                }
+                break;
+        }
+    };
+
+    const getAddTooltip = () => {
+        switch (tabValue) {
+            case 0: return 'Add Task';
+            case 1: return 'Add Bookmark';
+            case 2: return 'Add from Catalog';
+            default: return 'Add';
         }
     };
 
@@ -84,7 +105,7 @@ export const DiaryPage: React.FC = () => {
                         My Diary
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Your personal space for tasks and bookmarks.
+                        Your personal space for tasks, bookmarks, and sandbox products.
                     </Typography>
                 </Box>
             </Box>
@@ -118,20 +139,52 @@ export const DiaryPage: React.FC = () => {
                             id="diary-tab-1"
                             aria-controls="diary-tabpanel-1"
                         />
+                        <Tab
+                            label={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    My Products
+                                    <Box
+                                        component="span"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (productsTabRef.current) {
+                                                productsTabRef.current.triggerAdd();
+                                            }
+                                        }}
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            width: 24,
+                                            height: 24,
+                                            borderRadius: '50%',
+                                            color: '#10B981',
+                                            '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' }
+                                        }}
+                                    >
+                                        <AddIcon fontSize="small" />
+                                    </Box>
+                                </Box>
+                            }
+                            id="diary-tab-2"
+                            aria-controls="diary-tabpanel-2"
+                        />
                     </Tabs>
-                    <Tooltip title={tabValue === 0 ? 'Add Task' : 'Add Bookmark'}>
-                        <IconButton
-                            onClick={handleAddItem}
-                            sx={{
-                                bgcolor: 'primary.main',
-                                color: 'white',
-                                '&:hover': { bgcolor: 'primary.dark' },
-                                mr: 1,
-                            }}
-                        >
-                            <AddIcon />
-                        </IconButton>
-                    </Tooltip>
+                    {tabValue !== 2 && (
+                        <Tooltip title={getAddTooltip()}>
+                            <IconButton
+                                onClick={handleAddItem}
+                                sx={{
+                                    bgcolor: 'primary.main',
+                                    color: 'white',
+                                    '&:hover': { bgcolor: 'primary.dark' },
+                                    mr: 1,
+                                }}
+                            >
+                                <AddIcon />
+                            </IconButton>
+                        </Tooltip>
+                    )}
                 </Box>
 
                 <Box sx={{ px: { xs: 2, sm: 4 }, minHeight: 400 }}>
@@ -140,6 +193,9 @@ export const DiaryPage: React.FC = () => {
                     </CustomTabPanel>
                     <CustomTabPanel value={tabValue} index={1}>
                         <BookmarkTab ref={bookmarkTabRef} />
+                    </CustomTabPanel>
+                    <CustomTabPanel value={tabValue} index={2}>
+                        <PersonalProductsTab ref={productsTabRef} />
                     </CustomTabPanel>
                 </Box>
             </Paper>

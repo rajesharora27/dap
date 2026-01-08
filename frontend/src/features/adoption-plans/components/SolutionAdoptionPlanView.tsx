@@ -29,10 +29,12 @@ import { SolutionTasksGroup } from './SolutionTasksGroup';
 import { TelemetryImportResultDialog } from './TelemetryImportResultDialog';
 import {
   downloadFileFromUrl,
-  importProductTelemetry,
-  importSolutionTelemetry,
   ImportResultDialogState
 } from '@/features/telemetry/utils/telemetryOperations';
+import {
+  IMPORT_ADOPTION_PLAN_TELEMETRY,
+  IMPORT_SOLUTION_ADOPTION_PLAN_TELEMETRY
+} from '@/features/telemetry/graphql/telemetry.mutations';
 
 const ALL_RELEASES_ID = '__ALL_RELEASES__';
 const ALL_OUTCOMES_ID = '__ALL_OUTCOMES__';
@@ -335,6 +337,20 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     });
   };
 
+  // Import product telemetry mutation
+  const [importAdoptionPlanTelemetry] = useMutation(IMPORT_ADOPTION_PLAN_TELEMETRY, {
+    onCompleted: () => {
+      refetch();
+    }
+  });
+
+  // Import solution telemetry mutation
+  const [importSolutionAdoptionPlanTelemetry] = useMutation(IMPORT_SOLUTION_ADOPTION_PLAN_TELEMETRY, {
+    onCompleted: () => {
+      refetch();
+    }
+  });
+
   // Handlers for product telemetry
   const handleExportProductTelemetry = (adoptionPlanId: string) => {
     exportProductTelemetryTemplate({ variables: { adoptionPlanId } });
@@ -342,14 +358,16 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
 
   const handleImportProductTelemetry = async (adoptionPlanId: string, file: File) => {
     try {
-      const result = await importProductTelemetry(adoptionPlanId, file);
-      refetch();
+      const { data } = await importAdoptionPlanTelemetry({
+        variables: { adoptionPlanId, file }
+      });
+      const result = data.importAdoptionPlanTelemetry;
       setImportResultDialog({
         open: true,
         success: result.success,
         summary: result.summary,
         taskResults: result.taskResults,
-        errorMessage: result.error,
+        errorMessage: result.summary.errors ? result.summary.errors.join(', ') : undefined,
       });
     } catch (err: any) {
       setImportResultDialog({
@@ -367,14 +385,16 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
 
   const handleImportSolutionTelemetry = async (file: File) => {
     try {
-      const result = await importSolutionTelemetry(solutionAdoptionPlanId, file);
-      refetch();
+      const { data } = await importSolutionAdoptionPlanTelemetry({
+        variables: { solutionAdoptionPlanId, file }
+      });
+      const result = data.importSolutionAdoptionPlanTelemetry;
       setImportResultDialog({
         open: true,
         success: result.success,
         summary: result.summary,
-        taskResults: result.taskResults,
-        errorMessage: result.error,
+        taskResults: [], // Solution import might not return detailed task results in the same structure, or check type definition
+        errorMessage: result.summary.errors ? result.summary.errors.join(', ') : undefined,
       });
     } catch (err: any) {
       setImportResultDialog({

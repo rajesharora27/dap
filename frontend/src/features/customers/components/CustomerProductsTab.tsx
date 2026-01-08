@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useEffect, useMemo } from 'react';
-import { useQuery } from '@apollo/client';
+import { useQuery, useMutation, gql } from '@apollo/client';
 import {
     Box,
     Button,
@@ -30,7 +30,7 @@ import {
 import { AssignProductDialog } from '@features/products';
 import { EditLicensesDialog } from './EditLicensesDialog';
 import { TaskDetailsDialog } from '@features/tasks/components/TaskDetailsDialog';
-import { importProductTelemetry, downloadFileFromUrl } from '@/features/telemetry/utils/telemetryOperations';
+import { downloadFileFromUrl } from '@/features/telemetry/utils/telemetryOperations';
 import { ProductAdoptionPlanView } from '@features/adoption-plans';
 import { CustomerAssignmentHeader } from './CustomerAssignmentHeader';
 import { useCustomerContext } from '../context/CustomerContext';
@@ -124,6 +124,18 @@ export function CustomerProductsTab() {
         }
     };
 
+    const [importAdoptionPlanTelemetry] = useMutation(gql`
+        mutation ImportAdoptionPlanTelemetry($adoptionPlanId: ID!, $file: Upload!) {
+            importAdoptionPlanTelemetry(adoptionPlanId: $adoptionPlanId, file: $file) {
+                success
+                summary {
+                    tasksProcessed
+                    errors
+                }
+            }
+        }
+    `);
+
     const handleImportTelemetryClick = () => {
         fileInputRef.current?.click();
     };
@@ -133,10 +145,15 @@ export function CustomerProductsTab() {
         if (!file || !adoptionPlanId) return;
 
         try {
-            const result = await importProductTelemetry(adoptionPlanId, file);
-            if (result.success) {
+            const { data } = await importAdoptionPlanTelemetry({
+                variables: { adoptionPlanId, file }
+            });
+
+            if (data?.importAdoptionPlanTelemetry?.success) {
                 refetchPlan();
                 setSuccessMessage('Telemetry imported successfully');
+            } else {
+                setErrorMessage('Import failed');
             }
         } catch (err: any) {
             setErrorMessage(`Failed to import: ${err.message}`);

@@ -45,6 +45,8 @@ model User {
   grantedPermissions Permission[] @relation("GrantedBy")
   diaryTodos         DiaryTodo[]
   diaryBookmarks     DiaryBookmark[]
+  personalProducts   PersonalProduct[]
+  personalAssignments PersonalAssignment[]
 }
 
 /// Active user session with expiration tracking
@@ -1078,3 +1080,253 @@ model DiaryBookmark {
 
   @@index([userId])
 }
+
+// =============================================================================
+// PERSONAL SANDBOX
+// =============================================================================
+// Personal products and assignments for user simulation/learning environments.
+// Mirrors main Product/AdoptionPlan structure for high-fidelity sandbox.
+// =============================================================================
+
+/// User's personal product (sandbox copy or custom creation)
+model PersonalProduct {
+  id          String              @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  resources   Json?               // { label: string, url: string }[]
+  customAttrs Json?               // For parity with Product
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks       PersonalTask[]
+  outcomes    PersonalOutcome[]
+  releases    PersonalRelease[]
+  licenses    PersonalLicense[]
+  tags        PersonalTag[]
+  assignments PersonalAssignment[]
+  
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+/// Task within a personal product
+model PersonalTask {
+  id                String           @id @default(cuid())
+  personalProductId String
+  name              String
+  description       String?
+  notes             String?
+  status            CustomerTaskStatus @default(NOT_STARTED)
+  statusNotes       String?
+  statusUpdatedAt   DateTime?          @updatedAt
+  statusUpdatedBy   String?
+  statusUpdateSource String?
+  licenseLevel      Int?
+  estMinutes        Int              @default(30)
+  weight            Decimal          @db.Decimal(5, 2) @default(1.0)
+  sequenceNumber    Int              @default(0)
+  howToDoc          String[]
+  howToVideo        String[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  personalProduct   PersonalProduct  @relation(fields: [personalProductId], references: [id], onDelete: Cascade)
+  outcomes          PersonalTaskOutcome[]
+  releases          PersonalTaskRelease[]
+  taskTags          PersonalTaskTag[]
+  telemetryAttributes PersonalTelemetryAttribute[]
+  assignmentTasks   PersonalAssignmentTask[]
+  
+  @@index([personalProductId])
+}
+
+/// Outcome within a personal product
+model PersonalOutcome {
+  id                String           @id @default(cuid())
+  personalProductId String
+  name              String
+  description       String?
+  createdAt         DateTime         @default(now())
+  
+  personalProduct   PersonalProduct  @relation(fields: [personalProductId], references: [id], onDelete: Cascade)
+  tasks             PersonalTaskOutcome[]
+  
+  @@unique([personalProductId, name])
+  @@index([personalProductId])
+}
+
+/// Release within a personal product
+model PersonalRelease {
+  id                String           @id @default(cuid())
+  personalProductId String
+  name              String
+  description       String?
+  level             Float            @default(1.0)
+  version           String?
+  releaseDate       DateTime?
+  createdAt         DateTime         @default(now())
+  
+  personalProduct   PersonalProduct  @relation(fields: [personalProductId], references: [id], onDelete: Cascade)
+  tasks             PersonalTaskRelease[]
+  
+  @@unique([personalProductId, name])
+  @@index([personalProductId])
+}
+
+/// Junction: Task to Outcome
+model PersonalTaskOutcome {
+  id                String          @id @default(cuid())
+  personalTaskId    String
+  personalOutcomeId String
+  
+  personalTask      PersonalTask    @relation(fields: [personalTaskId], references: [id], onDelete: Cascade)
+  personalOutcome   PersonalOutcome @relation(fields: [personalOutcomeId], references: [id], onDelete: Cascade)
+  
+  @@unique([personalTaskId, personalOutcomeId])
+  @@index([personalTaskId])
+  @@index([personalOutcomeId])
+}
+
+/// Junction: Task to Release
+model PersonalTaskRelease {
+  id                String          @id @default(cuid())
+  personalTaskId    String
+  personalReleaseId String
+  
+  personalTask      PersonalTask    @relation(fields: [personalTaskId], references: [id], onDelete: Cascade)
+  personalRelease   PersonalRelease @relation(fields: [personalReleaseId], references: [id], onDelete: Cascade)
+  
+  @@unique([personalTaskId, personalReleaseId])
+  @@index([personalTaskId])
+  @@index([personalReleaseId])
+}
+
+/// User's personal assignment (adoption plan simulation)
+model PersonalAssignment {
+  id                String           @id @default(cuid())
+  userId            String
+  personalProductId String
+  name              String           // e.g., "My Learning Plan"
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  personalProduct   PersonalProduct  @relation(fields: [personalProductId], references: [id], onDelete: Cascade)
+  tasks             PersonalAssignmentTask[]
+  
+  @@unique([userId, personalProductId, name])
+  @@index([userId])
+  @@index([personalProductId])
+}
+
+/// Task status within a personal assignment
+model PersonalAssignmentTask {
+  id                   String             @id @default(cuid())
+  personalAssignmentId String
+  personalTaskId       String
+  status               CustomerTaskStatus @default(NOT_STARTED)
+  statusNotes          String?
+  statusUpdatedAt      DateTime?
+  sequenceNumber       Int                @default(0)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+  
+  personalAssignment   PersonalAssignment @relation(fields: [personalAssignmentId], references: [id], onDelete: Cascade)
+  personalTask         PersonalTask       @relation(fields: [personalTaskId], references: [id], onDelete: Cascade)
+  
+  @@unique([personalAssignmentId, personalTaskId])
+  @@index([personalAssignmentId])
+  @@index([personalTaskId])
+}
+
+/// License within a personal product
+model PersonalLicense {
+  id                String           @id @default(cuid())
+  personalProductId String
+  name              String
+  description       String?
+  level             Int              @default(1)
+  isActive          Boolean          @default(true)
+  customAttrs       Json?
+  displayOrder      Int              @default(0)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  personalProduct   PersonalProduct  @relation(fields: [personalProductId], references: [id], onDelete: Cascade)
+  
+  @@unique([personalProductId, name])
+  @@index([personalProductId])
+}
+
+/// Tag within a personal product
+model PersonalTag {
+  id                String           @id @default(cuid())
+  personalProductId String
+  name              String
+  description       String?
+  color             String?
+  displayOrder      Int              @default(0)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  personalProduct   PersonalProduct  @relation(fields: [personalProductId], references: [id], onDelete: Cascade)
+  taskTags          PersonalTaskTag[]
+  
+  @@unique([personalProductId, name])
+  @@index([personalProductId])
+}
+
+/// Junction: Task to Tag (Personal)
+model PersonalTaskTag {
+  id             String       @id @default(cuid())
+  personalTaskId String
+  personalTagId  String
+  
+  personalTask   PersonalTask @relation(fields: [personalTaskId], references: [id], onDelete: Cascade)
+  personalTag    PersonalTag  @relation(fields: [personalTagId], references: [id], onDelete: Cascade)
+  
+  @@unique([personalTaskId, personalTagId])
+  @@index([personalTaskId])
+  @@index([personalTagId])
+}
+
+/// Telemetry Attribute for Personal Task
+model PersonalTelemetryAttribute {
+  id                String           @id @default(cuid())
+  personalTaskId    String
+  name              String
+  description       String?
+  dataType          TelemetryDataType @default(STRING)
+  isRequired        Boolean          @default(false)
+  successCriteria   Json
+  order             Int              @default(0)
+  isActive          Boolean          @default(true)
+  isMet             Boolean          @default(false)
+  lastCheckedAt     DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  
+  personalTask      PersonalTask     @relation(fields: [personalTaskId], references: [id], onDelete: Cascade)
+  values            PersonalTelemetryValue[]
+  
+  @@unique([personalTaskId, name])
+  @@index([personalTaskId])
+}
+
+model PersonalTelemetryValue {
+  id                String           @id @default(cuid())
+  personalAttributeId String
+  value             String
+  source            String?          @default("manual") // manual, import, api
+  batchId           String?          // Used to group imports
+  notes             String?
+  createdAt         DateTime         @default(now())
+  
+  personalAttribute PersonalTelemetryAttribute @relation(fields: [personalAttributeId], references: [id], onDelete: Cascade)
+  
+  @@index([personalAttributeId])
+  @@index([batchId])
+}
+

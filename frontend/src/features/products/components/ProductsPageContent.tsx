@@ -429,10 +429,10 @@ export function ProductsPageContent() {
                             <Tab label="Summary" value="summary" />
                             <Tab label="Resources" value="resources" />
                             <Tab label={filteredTasks ? `Tasks (${filteredTasks.length})` : 'Tasks'} value="tasks" />
-                            <Tab label="Tags" value="tags" />
-                            <Tab label="Outcomes" value="outcomes" />
-                            <Tab label="Releases" value="releases" />
-                            <Tab label="Licenses" value="licenses" />
+                            <Tab label={`Tags (${selectedProduct.tags?.length || 0})`} value="tags" />
+                            <Tab label={`Outcomes (${selectedProduct.outcomes?.length || 0})`} value="outcomes" />
+                            <Tab label={`Releases (${selectedProduct.releases?.length || 0})`} value="releases" />
+                            <Tab label={`Licenses (${selectedProduct.licenses?.length || 0})`} value="licenses" />
                             <Tab label="Custom Attributes" value="customAttributes" />
                         </Tabs>
 

@@ -82,9 +82,22 @@ export const ImportMutationResolvers = {
         requireUser(context);
 
         try {
+            const mappedType = mapEntityType(args.entityType);
+
+            // If forcing global type, check permissions
+            if (mappedType === 'product' || mappedType === 'solution') {
+                ensureRole(context, ['ADMIN', 'SME']);
+            }
+
             const result = await ExcelImportService.dryRun(prisma, args.content, {
-                entityType: mapEntityType(args.entityType),
+                entityType: mappedType,
+                userId: context.user?.id,
             });
+
+            // If auto-detected as global type, check permissions
+            if (result.entityType === 'product' || result.entityType === 'solution') {
+                ensureRole(context, ['ADMIN', 'SME']);
+            }
 
             // Convert internal types to GraphQL types
             return {
@@ -124,8 +137,20 @@ export const ImportMutationResolvers = {
         requireUser(context);
 
         try {
+            // Verify permission based on session content
+            const session = ExcelImportService.getSessionDetails(args.sessionId);
+            if (!session) {
+                throw new Error('Session not found or expired');
+            }
+
+            const type = session.parsedData.entityType;
+            if (type === 'product' || type === 'solution') {
+                ensureRole(context, ['ADMIN', 'SME']);
+            }
+
             const result = await ExcelImportService.commitImport(prisma, {
                 sessionId: args.sessionId,
+                userId: context.user?.id,
             });
 
             return {
@@ -173,6 +198,24 @@ export const ImportMutationResolvers = {
         ensureRole(context, ['ADMIN', 'SME']);
         // Need to check if there is an importProductsCsv in TaskService or similar
         return TaskService.importTasksCsv(context.user.id, null as any, csv, 'APPEND' as any); // Placeholder
+    },
+};
+
+// ============================================================================
+// Subscription Resolvers
+// ============================================================================
+
+import { pubsub, EVENTS } from '../../shared/graphql/pubsub';
+import { withFilter } from 'graphql-subscriptions';
+
+export const ImportSubscriptionResolvers = {
+    importProgress: {
+        subscribe: withFilter(
+            () => (pubsub as any).asyncIterator([EVENTS.IMPORT_PROGRESS]),
+            (payload, variables) => {
+                return payload.importProgress.sessionId === variables.sessionId;
+            }
+        )
     }
 };
 

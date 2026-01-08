@@ -37,3 +37,42 @@ export const DELETE_TELEMETRY_ATTRIBUTE = gql`
     deleteTelemetryAttribute(id: $id)
   }
 `;
+
+export const IMPORT_ADOPTION_PLAN_TELEMETRY = gql`
+  mutation ImportAdoptionPlanTelemetry($adoptionPlanId: ID!, $file: Upload!) {
+  importAdoptionPlanTelemetry(adoptionPlanId: $adoptionPlanId, file: $file) {
+    success
+    batchId
+      summary {
+      tasksProcessed
+      attributesUpdated
+      criteriaEvaluated
+      errors
+    }
+      taskResults {
+      taskId
+      taskName
+      attributesUpdated
+      criteriaMet
+      criteriaTotal
+      completionPercentage
+      errors
+    }
+  }
+}
+`;
+
+export const IMPORT_SOLUTION_ADOPTION_PLAN_TELEMETRY = gql`
+  mutation ImportSolutionAdoptionPlanTelemetry($solutionAdoptionPlanId: ID!, $file: Upload!) {
+  importSolutionAdoptionPlanTelemetry(solutionAdoptionPlanId: $solutionAdoptionPlanId, file: $file) {
+    success
+    batchId
+      summary {
+      tasksProcessed
+      attributesUpdated
+      criteriaEvaluated
+      errors
+    }
+  }
+}
+`;

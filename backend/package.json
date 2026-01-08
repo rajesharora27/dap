@@ -30,7 +30,9 @@
     "test:crud": "ts-node src/__tests__/e2e/comprehensive-crud.test.ts",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
-    "manage:users": "ts-node scripts/user-manager.ts"
+    "manage:users": "ts-node scripts/user-manager.ts",
+    "backup:user": "ts-node scripts/backup-user-data.ts",
+    "restore:user": "ts-node scripts/restore-user-data.ts"
   },
   "dependencies": {
     "@apollo/server": "^5.0.0",
@@ -51,6 +53,7 @@
     "graphql": "^16.9.0",
     "graphql-query-complexity": "^1.1.0",
     "graphql-relay": "^0.10.1",
+    "graphql-subscriptions": "^3.0.0",
     "graphql-tag": "^2.12.6",
     "graphql-upload": "^16.0.2",
     "graphql-ws": "^5.16.2",

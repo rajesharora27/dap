@@ -83,6 +83,7 @@ function normalizeOperator(op: string): string {
 export interface ValidationContext {
     prisma: PrismaClient;
     entityType: EntityType;
+    userId?: string;
 }
 
 export interface ValidationResult {
@@ -117,12 +118,14 @@ const EMPTY_EXISTING_DATA: ExistingData = {
 export class BusinessValidator {
     private prisma: PrismaClient;
     private entityType: EntityType;
+    private userId?: string;
     private errors: ValidationError[] = [];
     private warnings: ValidationWarning[] = [];
 
     constructor(context: ValidationContext) {
         this.prisma = context.prisma;
         this.entityType = context.entityType;
+        this.userId = context.userId;
     }
 
     /**
@@ -316,9 +319,16 @@ export class BusinessValidator {
                 where: { name },
                 select: { id: true, name: true },
             });
-        } else {
+        } else if (this.entityType === 'solution') {
             return await this.prisma.solution.findFirst({
                 where: { name },
+                select: { id: true, name: true },
+            });
+        } else {
+            // Personal Product
+            if (!this.userId) return null;
+            return await (this.prisma as any).personalProduct.findFirst({
+                where: { name, userId: this.userId },
                 select: { id: true, name: true },
             });
         }
@@ -358,7 +368,7 @@ export class BusinessValidator {
                     data,
                 });
             }
-        } else {
+        } else if (this.entityType === 'solution') {
             // For solutions, use CustomerSolutionTask
             const tasks = await this.prisma.customerSolutionTask.findMany({
                 where: {
@@ -372,6 +382,33 @@ export class BusinessValidator {
                     id: task.id,
                     name: task.name,
                     data: task as unknown as Record<string, unknown>,
+                });
+            }
+        } else {
+            // Personal Product
+            const tasks = await (this.prisma as any).personalTask.findMany({
+                where: { personalProductId: entityId },
+                include: {
+                    outcomes: { include: { personalOutcome: true } },
+                    releases: { include: { personalRelease: true } },
+                }
+            });
+            for (const task of tasks) {
+                const data = task as unknown as Record<string, unknown>;
+                // Normalize Decimal weight to number
+                if (task.weight && typeof task.weight === 'object' && 'toNumber' in task.weight) {
+                    data.weight = (task.weight as any).toNumber();
+                }
+
+                // Map relations
+                data.outcomes = task.outcomes.map((to: any) => to.personalOutcome.name).sort();
+                data.releases = task.releases.map((tr: any) => tr.personalRelease.name).sort();
+                // No tags
+
+                map.set(task.name.toLowerCase(), {
+                    id: task.id,
+                    name: task.name,
+                    data,
                 });
             }
         }
@@ -395,8 +432,18 @@ export class BusinessValidator {
                     data: license as unknown as Record<string, unknown>,
                 });
             }
+        } else if (this.entityType === 'personal_product') {
+            const licenses = await (this.prisma as any).personalLicense.findMany({
+                where: { personalProductId: entityId },
+            });
+            for (const license of licenses) {
+                map.set(license.name.toLowerCase(), {
+                    id: license.id,
+                    name: license.name,
+                    data: license as unknown as Record<string, unknown>,
+                });
+            }
         }
-        // Solutions don't have licenses directly in this schema
         return this.createExistingData(map);
     }
 
@@ -409,6 +456,17 @@ export class BusinessValidator {
         if (this.entityType === 'product') {
             const outcomes = await this.prisma.outcome.findMany({
                 where: { productId: entityId },
+            });
+            for (const outcome of outcomes) {
+                map.set(outcome.name.toLowerCase(), {
+                    id: outcome.id,
+                    name: outcome.name,
+                    data: outcome as unknown as Record<string, unknown>,
+                });
+            }
+        } else if (this.entityType === 'personal_product') {
+            const outcomes = await (this.prisma as any).personalOutcome.findMany({
+                where: { personalProductId: entityId },
             });
             for (const outcome of outcomes) {
                 map.set(outcome.name.toLowerCase(), {
@@ -430,6 +488,17 @@ export class BusinessValidator {
         if (this.entityType === 'product') {
             const releases = await this.prisma.release.findMany({
                 where: { productId: entityId },
+            });
+            for (const release of releases) {
+                map.set(release.name.toLowerCase(), {
+                    id: release.id,
+                    name: release.name,
+                    data: release as unknown as Record<string, unknown>,
+                });
+            }
+        } else if (this.entityType === 'personal_product') {
+            const releases = await (this.prisma as any).personalRelease.findMany({
+                where: { personalProductId: entityId },
             });
             for (const release of releases) {
                 map.set(release.name.toLowerCase(), {
@@ -491,6 +560,27 @@ export class BusinessValidator {
                             }
                         });
                     }
+                }
+            }
+        } else if (this.entityType === 'personal_product') {
+            // Personal Product uses JSON customAttrs directly
+            const personalProduct = await (this.prisma as any).personalProduct.findUnique({
+                where: { id: entityId },
+                select: { customAttrs: true }
+            });
+
+            if (personalProduct?.customAttrs && typeof personalProduct.customAttrs === 'object') {
+                for (const [key, value] of Object.entries(personalProduct.customAttrs as Record<string, unknown>)) {
+                    const lowerKey = key.toLowerCase();
+                    map.set(lowerKey, {
+                        id: `personal-${key}`,
+                        name: key,
+                        data: {
+                            key,
+                            value: String(value ?? ''),
+                            displayOrder: 99
+                        }
+                    });
                 }
             }
         }
@@ -593,8 +683,70 @@ export class BusinessValidator {
 
                 map.set(key, {
                     id: attr.id,
-                    name: attr.name, // Just for display
-                    data,
+                    name: key,
+                    data
+                });
+            }
+        } else if (this.entityType === 'personal_product') {
+            const attributes = await (this.prisma as any).personalTelemetryAttribute.findMany({
+                where: {
+                    personalTask: { personalProductId: entityId }
+                },
+                include: {
+                    personalTask: { select: { name: true } }
+                }
+            });
+
+            for (const attr of attributes) {
+                const key = `${attr.personalTask.name.toLowerCase()}:${attr.name.toLowerCase()}`;
+                const data: Record<string, unknown> = {
+                    id: attr.id,
+                    taskName: attr.personalTask.name,
+                    attributeName: attr.name,
+                    attributeType: (attr.dataType || 'string').toLowerCase(),
+                    expectedValue: '',
+                    operator: 'equals',
+                };
+
+                const criteria = attr.successCriteria as any;
+                if (criteria && typeof criteria === 'object') {
+                    if (criteria.type) {
+                        switch (criteria.type) {
+                            case 'boolean_flag':
+                                data.operator = 'equals';
+                                data.expectedValue = String(criteria.expectedValue ?? '');
+                                break;
+                            case 'number_threshold':
+                                data.operator = normalizeOperator(criteria.operator || 'gte');
+                                data.expectedValue = String(criteria.threshold ?? '');
+                                break;
+                            case 'string_match':
+                                data.operator = criteria.mode === 'exact' ? 'equals' : 'contains';
+                                data.expectedValue = String(criteria.pattern ?? '');
+                                break;
+                            case 'string_not_null':
+                                data.operator = 'not_null';
+                                data.expectedValue = '';
+                                break;
+                            case 'timestamp_not_null':
+                                data.operator = 'not_null';
+                                data.expectedValue = '';
+                                break;
+                            case 'timestamp_comparison':
+                                data.operator = 'within_days';
+                                data.expectedValue = String(criteria.withinDays ?? '');
+                                break;
+                        }
+                    } else {
+                        data.operator = criteria.operator || 'equals';
+                        data.expectedValue = String(criteria.value || criteria.expectedValue || '');
+                    }
+                }
+
+                map.set(key, {
+                    id: attr.id,
+                    name: key,
+                    data
                 });
             }
         }
@@ -614,9 +766,20 @@ export class BusinessValidator {
                     data: tag as unknown as Record<string, unknown>,
                 });
             }
-        } else {
+        } else if (this.entityType === 'solution') {
             const tags = await this.prisma.solutionTag.findMany({
                 where: { solutionId: entityId }
+            });
+            for (const tag of tags) {
+                map.set(tag.name.toLowerCase(), {
+                    id: tag.id,
+                    name: tag.name,
+                    data: tag as unknown as Record<string, unknown>,
+                });
+            }
+        } else if (this.entityType === 'personal_product') {
+            const tags = await (this.prisma as any).personalTag.findMany({
+                where: { personalProductId: entityId }
             });
             for (const tag of tags) {
                 map.set(tag.name.toLowerCase(), {
@@ -887,13 +1050,21 @@ export class BusinessValidator {
             if (product?.resources && Array.isArray(product.resources)) {
                 entityResources = product.resources;
             }
-        } else {
+        } else if (this.entityType === 'solution') {
             const solution = await this.prisma.solution.findUnique({
                 where: { id: entityId },
                 select: { resources: true }
             });
             if (solution?.resources && Array.isArray(solution.resources)) {
                 entityResources = solution.resources;
+            }
+        } else if (this.entityType === 'personal_product') {
+            const personalProduct = await (this.prisma as any).personalProduct.findUnique({
+                where: { id: entityId },
+                select: { resources: true }
+            });
+            if (personalProduct?.resources && Array.isArray(personalProduct.resources)) {
+                entityResources = personalProduct.resources;
             }
         }
 
@@ -1009,11 +1180,13 @@ export class BusinessValidator {
  */
 export async function validateWorkbook(
     prisma: PrismaClient,
-    parsedData: ParsedWorkbook
+    parsedData: ParsedWorkbook,
+    userId?: string
 ): Promise<ValidationResult> {
     const validator = new BusinessValidator({
         prisma,
         entityType: parsedData.entityType,
+        userId,
     });
     return validator.validate(parsedData);
 }

@@ -188,14 +188,15 @@ export class WorkbookParser {
      * Parse the entity sheet (Product Info or Solution Info)
      */
     private parseEntitySheet(): ValidatedProductRow | ValidatedSolutionRow | null {
-        const sheetName = this.entityType === 'product' ? 'Product Info' : 'Solution Info';
-        const columns = this.entityType === 'product' ? PRODUCT_INFO_COLUMNS : SOLUTION_INFO_COLUMNS;
-        const schema = this.entityType === 'product' ? ProductRowSchema : SolutionRowSchema;
+        const isProduct = this.entityType === 'product' || this.entityType === 'personal_product';
+        const sheetName = isProduct ? 'Product Info' : 'Solution Info';
+        const columns = isProduct ? PRODUCT_INFO_COLUMNS : SOLUTION_INFO_COLUMNS;
+        const schema = isProduct ? ProductRowSchema : SolutionRowSchema;
 
         const worksheet = findWorksheet(this.workbook, sheetName);
         if (!worksheet) {
             // Try alternative names
-            const altNames = this.entityType === 'product'
+            const altNames = isProduct
                 ? ['Product', 'ProductInfo', 'Info']
                 : ['Solution', 'SolutionInfo', 'Info'];
 

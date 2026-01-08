@@ -1,10 +1,11 @@
 # Application Blueprint Template
 
-**Version:** 1.5.0  
-**Last Updated:** January 6, 2026  
+**Version:** 1.6.0  
+**Last Updated:** January 7, 2026  
 **Purpose:** Generate new applications with 100/100 architecture score from day one  
 **Based On:** DAP (Digital Adoption Platform) - Production-proven architecture
 
+> **v1.6.0 Additions:** Personal Sandbox Pattern (User-scoped Practice Environments)
 > **v1.5.0 Additions:** Comprehensive Entity Auditing, Enhanced Audit Detail Panels, Historical Data Attribution Fallbacks
 > **v1.4.0 Additions:** Session Inactivity Management (Sliding Window), RBAC Default Read-All Strategy
 > **v1.3.0 Additions:** Optimistic UI patterns, Route Error Boundaries, Focus Management (a11y)
@@ -76,7 +77,7 @@ Role 2: [ROLE_NAME]
 Database: PostgreSQL (default) / [Other]
 Authentication: JWT + Refresh Tokens (default) / [Other]
 Frontend Framework: React + TypeScript (default) / [Other]
-Backend Framework: Node.js + GraphQL (default) / [Other]
+Backend Framework: Node.js + GraphQL (default) - **GraphQL First Policy: REST is strictly limited to webhooks/infrastructure.** / [Other]
 ```
 
 ---
@@ -886,6 +887,87 @@ const loadPrev = () => { setArgs({...}); setPendingFocus('table'); };
 - After **Next Page**: Focus moves to "Previous" button (user can go back)
 - After **Previous Page**: Focus moves to top of table
 - All interactive elements have `aria-label` attributes
+
+### 3.12 Personal Sandbox Pattern (User-Scoped Practice Environments)
+
+> **Purpose:** Allow users to create personal "sandbox" copies of production entities for practice, learning, or simulation without affecting shared data.
+
+**When to Use:**
+- Training environments where users practice workflows
+- Simulation of adoption/assignment plans
+- Personal note-taking tied to business entities
+- Safe experimentation before committing to production
+
+**Database Schema Pattern:**
+```prisma
+// Personal copy of production entity (isolated per user)
+model PersonalProduct {
+  id          String    @id @default(cuid())
+  userId      String    // CRITICAL: Always scope to user
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks       PersonalTask[]
+  
+  @@index([userId])
+}
+
+// Personal assignment (simulated adoption)
+model PersonalAssignment {
+  id                String    @id @default(cuid())
+  userId            String
+  personalProductId String
+  name              String
+  createdAt         DateTime  @default(now())
+  
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  personalProduct   PersonalProduct @relation(fields: [personalProductId], references: [id], onDelete: Cascade)
+  tasks             PersonalAssignmentTask[]
+  
+  @@index([userId])
+}
+```
+
+**Service Layer Pattern:**
+```typescript
+// CRITICAL: Always enforce ownership checks
+export async function getMyPersonalProducts(userId: string) {
+  return prisma.personalProduct.findMany({
+    where: { userId }, // User can only see their own
+    include: { tasks: true },
+  });
+}
+
+// Enforce limits to prevent abuse
+export async function createPersonalProduct(userId: string, input: CreateInput) {
+  const count = await prisma.personalProduct.count({ where: { userId } });
+  if (count >= 10) {
+    throw new Error('Personal product limit (10) reached');
+  }
+  return prisma.personalProduct.create({ data: { ...input, userId } });
+}
+```
+
+**Frontend Integration Pattern:**
+```tsx
+// Tab-based UI in "My Diary" or personal section
+<Tabs value={tabValue} onChange={handleTabChange}>
+  <Tab label="To-Do List" />
+  <Tab label="Bookmarks" />
+  <Tab label="My Products" />      {/* Personal sandbox */}
+  <Tab label="My Assignments" />   {/* Practice tracking */}
+</Tabs>
+```
+
+**Key Implementation Rules:**
+1. **Always scope to userId** - Every query must filter by current user
+2. **Cascade deletes** - When user is deleted, all sandbox data goes too
+3. **Enforce limits** - Prevent storage abuse (e.g., max 10 products)
+4. **Progress tracking** - Calculate completion % for assignments
+5. **Import/Export** - Allow importing production data into sandbox
 
 ---
 

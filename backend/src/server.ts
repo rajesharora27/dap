@@ -11,6 +11,7 @@ import bodyParser from 'body-parser';
 import path from 'path';
 import fs from 'fs';
 import multer from 'multer';
+import graphqlUploadExpress from 'graphql-upload/graphqlUploadExpress.mjs';
 import { typeDefs } from './schema/typeDefs';
 import { resolvers } from './schema/resolvers';
 import { makeExecutableSchema } from '@graphql-tools/schema';
@@ -19,7 +20,9 @@ import { config as appConfig } from './config/app.config';
 import { envConfig } from './config/env';
 import { getSettingValue } from './config/settings-provider';
 import { CustomerTelemetryImportService } from './modules/telemetry/customer-telemetry-import.service';
+import { PersonalTelemetryService } from './modules/personal-product/personal-telemetry.service';
 import { SessionManager } from './modules/auth/session.service';
+import jwt from 'jsonwebtoken';
 import { AutoBackupScheduler } from './modules/backup/auto-backup.scheduler';
 import { initSentry, captureException } from './shared/monitoring/sentry';
 import { ApolloServerPluginLandingPageLocalDefault, ApolloServerPluginLandingPageProductionDefault } from '@apollo/server/plugin/landingPage/default';
@@ -183,6 +186,7 @@ export async function createApp() {
     methods: ['GET', 'POST', 'OPTIONS']
   }));
 
+
   // Health check endpoints (Kubernetes-compatible)
   // - /health - Detailed health status
   // - /health/live - Liveness probe
@@ -197,139 +201,6 @@ export async function createApp() {
   // Serve backup files
   const backupDir = path.join(process.cwd(), 'temp', 'backups');
   app.use('/api/downloads/backups', express.static(backupDir));
-
-  // REST endpoint for telemetry import (multipart file upload)
-  const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-
-  // Configure multer for larger SQL backup files (up to 100MB)
-  const backupUpload = multer({
-    storage: multer.memoryStorage(),
-    limits: { fileSize: 100 * 1024 * 1024 }
-  });
-
-  app.post('/api/telemetry/import/:adoptionPlanId', upload.single('file'), async (req, res) => {
-    try {
-      const { adoptionPlanId } = req.params;
-      const file = req.file;
-
-      if (!file) {
-        return res.status(400).json({ success: false, message: 'No file uploaded' });
-      }
-
-      if (!adoptionPlanId) {
-        return res.status(400).json({ success: false, message: 'Adoption plan ID is required' });
-      }
-
-      // Import the telemetry values
-      const result = await CustomerTelemetryImportService.importTelemetryValues(adoptionPlanId, file.buffer);
-
-      // NOTE: Re-evaluation is now handled inside CustomerTelemetryImportService to support
-      // "missing data" logic (checking batch freshness). Calling evaluateAllTasksTelemetry here
-      // would override that logic and incorrectly set status back to DONE for missing tasks.
-
-      res.json(result);
-    } catch (error: any) {
-      console.error('Telemetry import error:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Import failed'
-      });
-    }
-  });
-
-  // REST endpoint for solution telemetry import
-  app.post('/api/solution-telemetry/import/:solutionAdoptionPlanId', upload.single('file'), async (req, res) => {
-    try {
-      const { solutionAdoptionPlanId } = req.params;
-      const file = req.file;
-
-      if (!file) {
-        return res.status(400).json({ success: false, message: 'No file uploaded' });
-      }
-
-      if (!solutionAdoptionPlanId) {
-        return res.status(400).json({ success: false, message: 'Solution adoption plan ID is required' });
-      }
-
-      // Import the telemetry values
-      const result = await CustomerTelemetryImportService.importSolutionTelemetryValues(solutionAdoptionPlanId, file.buffer);
-
-      // NOTE: Re-evaluation is now handled inside CustomerTelemetryImportService
-
-      res.json(result);
-    } catch (error: any) {
-      console.error('Solution telemetry import error:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Import failed'
-      });
-    }
-  });
-
-  // REST endpoint for backup restoration from uploaded SQL file
-  app.post('/api/backup/restore-from-file', backupUpload.single('file'), async (req, res) => {
-    try {
-      const file = req.file;
-
-      if (!file) {
-        return res.status(400).json({ success: false, message: 'No SQL file uploaded' });
-      }
-
-      // Validate file extension
-      if (!file.originalname.endsWith('.sql')) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid file type. Only .sql files are accepted.'
-        });
-      }
-
-      // Save the uploaded file to the backups directory
-      const backupsDir = path.join(process.cwd(), 'temp', 'backups');
-      if (!fs.existsSync(backupsDir)) {
-        fs.mkdirSync(backupsDir, { recursive: true });
-      }
-
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `uploaded_${timestamp}_${file.originalname}`;
-      const filePath = path.join(backupsDir, filename);
-
-      // Write file to disk
-      fs.writeFileSync(filePath, file.buffer);
-
-      // Import the BackupRestoreService dynamically
-      const { BackupRestoreService } = await import('./modules/backup/backup.service');
-
-      // Restore from the uploaded file
-      const result = await BackupRestoreService.restoreBackup(filename);
-
-      res.json(result);
-    } catch (error: any) {
-      console.error('Backup restore from file error:', error);
-      res.status(500).json({
-        success: false,
-        message: error.message || 'Restore from file failed',
-        error: error.message
-      });
-    }
-  });
-
-  // SSE endpoint for import progress
-  app.get('/api/import/progress/:sessionId', (req, res) => {
-    const { sessionId } = req.params;
-    if (!sessionId) {
-      res.status(400).send('Missing session ID');
-      return;
-    }
-
-    // Import dynamically to avoid circular dependencies if any (though unlikely here)
-    // or just use the imported service if available.
-    // Better to import along with others at top, but for replacing content block safely:
-    // I will assume specific import at top or import here using dynamic import if needed.
-    // Let's use dynamic import to be safe with tool usage without modifying top of file.
-    import('./modules/import/progress/ProgressService').then(({ ProgressService }) => {
-      ProgressService.getInstance().addClient(sessionId, res);
-    });
-  });
 
   // Development Tools API (Dev mode only)
   app.use('/api/dev', devToolsRouter);
@@ -364,7 +235,8 @@ export async function createApp() {
   ];
   // Always mount the dynamic limiter wrapper, it handles enable/disable internally
   graphqlMiddleware.unshift(graphqlRateLimiter);
-  app.use('/graphql', ...graphqlMiddleware);
+  // Add graphql-upload middleware for file upload support
+  app.use('/graphql', graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 }), ...graphqlMiddleware);
 
   // Optional: Serve frontend static files in production (if using single-server deployment)
   // Set SERVE_FRONTEND=true to enable this mode

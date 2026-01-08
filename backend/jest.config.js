@@ -10,6 +10,9 @@ module.exports = {
     '!src/seed*.ts',
     '!src/**/index.ts'
   ],
+  moduleNameMapper: {
+    '^graphql-upload/GraphQLUpload.mjs$': '<rootDir>/src/__tests__/mocks/graphql-upload-mock.js'
+  },
   // Ignore legacy suites that no longer match the current Prisma schema
   // (keeps Dev Tools Test Panel green until those suites are modernized)
   testPathIgnorePatterns: [
@@ -51,5 +54,9 @@ module.exports = {
   forceExit: true,
   detectOpenHandles: true,
   // Limit workers to prevent resource issues
-  maxWorkers: 1
+  maxWorkers: 1,
+  // Transform ESM modules
+  transformIgnorePatterns: [
+    'node_modules/(?!(graphql-upload|fs-capacitor|blob-polyfill)/)'
+  ]
 };

@@ -1,4 +1,16 @@
 import { useState, useEffect } from 'react';
+import { useSubscription, gql } from '@apollo/client';
+
+const IMPORT_PROGRESS_SUBSCRIPTION = gql`
+  subscription ImportProgress($sessionId: String!) {
+    importProgress(sessionId: $sessionId) {
+      sessionId
+      status
+      progress
+      message
+    }
+  }
+`;
 
 interface ImportProgressState {
     progress: number;
@@ -15,68 +27,41 @@ export function useImportProgress(sessionId: string | null, enabled: boolean = t
         error: null
     });
 
+    const { data, error } = useSubscription(IMPORT_PROGRESS_SUBSCRIPTION, {
+        variables: { sessionId: sessionId || '' },
+        skip: !sessionId || !enabled,
+        shouldResubscribe: true
+    });
+
     useEffect(() => {
-        if (!sessionId || !enabled) return;
+        if (!sessionId || !enabled) {
+            // Reset state when session clears or disabled
+            setState({
+                progress: 0,
+                message: 'Waiting for server...',
+                completed: false,
+                error: null
+            });
+            return;
+        }
 
-        // Reset state
-        setState({
-            progress: 0,
-            message: 'Waiting for server...',
-            completed: false,
-            error: null
-        });
+        if (error) {
+            setState(prev => ({ ...prev, error: error.message }));
+            return;
+        }
 
-        // Determine API URL using base path for production subpath deployments
-        // In production with subpath (e.g., /dap/), this becomes /dap/api/import/progress/...
-        // The web server (Apache/Nginx) proxies this to the backend
-        const basePath = import.meta.env.VITE_BASE_PATH || '/';
-        const normalizedBasePath = basePath.endsWith('/') ? basePath.slice(0, -1) : basePath;
-        const url = `${normalizedBasePath}/api/import/progress/${sessionId}`;
+        if (data?.importProgress) {
+            const { progress, message, status } = data.importProgress;
 
-        const eventSource = new EventSource(url);
-
-        eventSource.onopen = () => {
-            // console.log('SSE Open');
-        };
-
-        eventSource.onmessage = (event) => {
-            if (event.data === ': connected') return;
-
-            try {
-                const data = JSON.parse(event.data);
-                if (typeof data.progress === 'number') {
-                    setState(prev => ({
-                        ...prev,
-                        progress: data.progress,
-                        message: data.message || prev.message
-                    }));
-                }
-            } catch (e) {
-                // Ignore
-            }
-        };
-
-        eventSource.addEventListener('complete', () => {
-            setState(prev => ({ ...prev, completed: true, progress: 100, message: 'Import Complete!' }));
-            eventSource.close();
-        });
-
-        eventSource.addEventListener('error', (event: any) => {
-            if (event.data) {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.error) {
-                        setState(prev => ({ ...prev, error: data.error }));
-                    }
-                } catch (e) { }
-            }
-            // EventSource has built-in retry, so we don't close unless we get a specific error event
-        });
-
-        return () => {
-            eventSource.close();
-        };
-    }, [sessionId, enabled]);
+            setState(prev => ({
+                ...prev,
+                progress,
+                message: message || prev.message,
+                completed: status === 'COMPLETED' || progress === 100,
+                error: status === 'ERROR' ? (message || 'Import failed') : null
+            }));
+        }
+    }, [data, error, sessionId, enabled]);
 
     return state;
 }

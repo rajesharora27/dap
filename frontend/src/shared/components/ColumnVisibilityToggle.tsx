@@ -24,6 +24,7 @@ export const TASK_COLUMNS: ColumnConfig[] = [
     { key: 'resources', label: 'Resources', alwaysVisible: false },
     { key: 'implPercent', label: 'Weight', alwaysVisible: false },
     { key: 'validationCriteria', label: 'Validation Criteria', alwaysVisible: false },
+    { key: 'updatedVia', label: 'Updated Via', alwaysVisible: false },
 ];
 
 // Default visible columns (all visible by default)

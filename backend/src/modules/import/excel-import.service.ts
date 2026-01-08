@@ -29,11 +29,20 @@ import { ProgressService } from './progress';
 
 export interface DryRunOptions {
     entityType?: EntityType; // If not provided, auto-detect
+    userId?: string;
 }
 
 export interface CommitOptions {
     sessionId: string;
+    userId?: string;
 }
+
+// ... (skipping unchanged parts is handled by replace_file_content logic if I target specific block, but here I redefine interface)
+// Wait, replace_file_content targets specific lines. 
+// I will split this into two replacements if needed or one block.
+
+// Interface update
+
 
 export interface CommitResult {
     success: boolean;
@@ -98,7 +107,7 @@ export async function dryRun(
     }
 
     // Validate against business rules
-    const validationResult = await validateWorkbook(prisma, parseResult.data);
+    const validationResult = await validateWorkbook(prisma, parseResult.data, options.userId);
 
     // Combine all errors and warnings
     const allErrors = [...parseResult.errors, ...validationResult.errors];
@@ -203,7 +212,8 @@ export async function commitImport(
         existingEntityId: session.dryRunResult.entitySummary.existingId,
         onProgress: (percent, message) => {
             progressService.emitProgress(options.sessionId, percent, message);
-        }
+        },
+        userId: options.userId
     });
 
     // Remove session after successful commit

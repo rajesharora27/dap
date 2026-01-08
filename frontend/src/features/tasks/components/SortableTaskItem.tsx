@@ -8,7 +8,9 @@ import {
     IconButton,
     Tooltip,
     Menu,
-    MenuItem
+    MenuItem,
+    Select,
+    FormControl
 } from '@mui/material';
 import {
     DragIndicator,
@@ -23,9 +25,18 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { SortableHandle } from '@shared/components/SortableHandle';
 import { Lock as LockIcon } from '@shared/components/FAIcon';
+import { TagsDropdown, TagItem } from '@shared/components/TagsDropdown';
 
 // Default visible columns (all visible)
-const DEFAULT_VISIBLE_COLUMNS = ['tags', 'resources', 'implPercent', 'validationCriteria'];
+const DEFAULT_VISIBLE_COLUMNS = ['tags', 'resources', 'implPercent', 'validationCriteria', 'updatedVia', 'license'];
+
+const TASK_STATUSES = [
+    { value: 'NOT_STARTED', label: 'Not Started', color: '#9FA6B2' },
+    { value: 'IN_PROGRESS', label: 'In Progress', color: '#3B82F6' },
+    { value: 'COMPLETED', label: 'Completed', color: '#10B981' },
+    { value: 'NOT_APPLICABLE', label: 'Not Applicable', color: '#6B7280' },
+    { value: 'NO_LONGER_USING', label: 'No Longer Using', color: '#EF4444' },
+];
 
 export function SortableTaskItem({
     task,
@@ -36,6 +47,7 @@ export function SortableTaskItem({
     onWeightChange,
     onSequenceChange,
     onTagChange,
+    onStatusChange,
     availableTags,
     disableDrag,
     locked = false,
@@ -43,7 +55,6 @@ export function SortableTaskItem({
 }: any) {
     const [docMenuAnchor, setDocMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
     const [videoMenuAnchor, setVideoMenuAnchor] = useState<{ el: HTMLElement; links: string[] } | null>(null);
-    const [tagMenuAnchor, setTagMenuAnchor] = useState<{ el: HTMLElement; task: any } | null>(null);
 
     // Helper function to check if a column is visible
     const isColumnVisible = (columnKey: string) => visibleColumns.includes(columnKey);
@@ -146,7 +157,6 @@ export function SortableTaskItem({
                     )}
                 </TableCell>
 
-                {/* Task name */}
                 <TableCell sx={{ maxWidth: 300, textAlign: 'left' }}>
                     <Tooltip title={task.description || 'No description available'} placement="top-start" arrow>
                         <Typography variant="body2" sx={{
@@ -162,74 +172,30 @@ export function SortableTaskItem({
                 {/* Tags column - hideable */}
                 {isColumnVisible('tags') && (
                     <TableCell sx={{ minWidth: 150, textAlign: 'left' }}>
-                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', alignItems: 'center' }}>
-                            {(() => {
+                        <TagsDropdown
+                            tags={(() => {
                                 const allTags = [...(task.tags || []), ...(task.solutionTags || [])];
                                 return allTags.map((tagRef: any) => {
                                     const tag = tagRef.tag || tagRef;
-                                    return (
-                                        <Tooltip
-                                            key={tag.id}
-                                            title={
-                                                <Box>
-                                                    <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>Tag: {tag.name}</Typography>
-                                                    {tag.description && <Typography variant="caption" display="block">{tag.description}</Typography>}
-                                                </Box>
-                                            }
-                                            arrow
-                                        >
-                                            <Chip
-                                                label={tag.name}
-                                                size="small"
-                                                onDelete={locked ? undefined : (e) => {
-                                                    e.stopPropagation();
-                                                    // Call the new onTagChange handler to remove this tag
-                                                    // This requires the parent component to pass onTagChange
-                                                    if (onTagChange) {
-                                                        const currentTagIds = (task.tags || []).map((t: any) => t.id);
-                                                        const newTagIds = currentTagIds.filter((id: string) => id !== tag.id);
-                                                        onTagChange(task.id, newTagIds);
-                                                    }
-                                                }}
-                                                sx={{
-                                                    height: 20,
-                                                    fontSize: '0.7rem',
-                                                    backgroundColor: tag.color || '#888',
-                                                    color: '#fff',
-                                                    fontWeight: 600,
-                                                    '& .MuiChip-deleteIcon': {
-                                                        color: 'rgba(255, 255, 255, 0.7)',
-                                                        fontSize: '12px',
-                                                        '&:hover': {
-                                                            color: '#fff'
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                        </Tooltip>
-                                    );
+                                    return { id: tag.id, name: tag.name, description: tag.description, color: tag.color } as TagItem;
                                 });
                             })()}
-                            {/* Dropdown to add tags - Only visible on hover */}
-                            {!locked && (
-                                <IconButton
-                                    size="small"
-                                    className="add-tag-btn"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setTagMenuAnchor({ el: e.currentTarget, task });
-                                    }}
-                                    sx={{
-                                        padding: 0.5,
-                                        marginLeft: 0.5,
-                                        opacity: 0,
-                                        transition: 'opacity 0.2s'
-                                    }}
-                                >
-                                    <Add sx={{ fontSize: '1rem' }} />
-                                </IconButton>
-                            )}
-                        </Box>
+                            disabled={locked}
+                            availableTags={(availableTags || []).map((t: any) => ({ id: t.id, name: t.name, description: t.description, color: t.color }))}
+                            onRemoveTag={(tagId) => {
+                                if (onTagChange) {
+                                    const currentTagIds = (task.tags || []).map((t: any) => t.id);
+                                    const newTagIds = currentTagIds.filter((id: string) => id !== tagId);
+                                    onTagChange(task.id, newTagIds);
+                                }
+                            }}
+                            onAddTag={(tagId) => {
+                                if (onTagChange) {
+                                    const currentTagIds = (task.tags || []).map((t: any) => t.id);
+                                    onTagChange(task.id, [...currentTagIds, tagId]);
+                                }
+                            }}
+                        />
                     </TableCell>
                 )}
 
@@ -423,6 +389,90 @@ export function SortableTaskItem({
                     </TableCell>
                 )}
 
+                {/* Updated Via column - hideable */}
+                {isColumnVisible('updatedVia') && (
+                    <TableCell sx={{ minWidth: 100, textAlign: 'center' }}>
+                        {task.statusUpdateSource ? (
+                            <Chip
+                                label={task.statusUpdateSource}
+                                size="small"
+                                sx={{
+                                    fontSize: '0.65rem',
+                                    height: 18,
+                                    borderRadius: '4px',
+                                    textTransform: 'uppercase',
+                                    fontWeight: 700,
+                                    bgcolor: task.statusUpdateSource === 'TELEMETRY' ? 'primary.light' : 'grey.200',
+                                    color: task.statusUpdateSource === 'TELEMETRY' ? 'primary.contrastText' : 'text.primary',
+                                }}
+                            />
+                        ) : (
+                            <Typography variant="caption" color="text.secondary">System</Typography>
+                        )}
+                    </TableCell>
+                )}
+
+                {/* License Level column - hideable */}
+                {isColumnVisible('license') && (
+                    <TableCell sx={{ minWidth: 60, textAlign: 'center' }}>
+                        {task.licenseLevel !== undefined && task.licenseLevel !== null ? (
+                            <Chip
+                                label={`L${task.licenseLevel}`}
+                                size="small"
+                                sx={{
+                                    fontSize: '0.7rem',
+                                    height: 20,
+                                    fontWeight: 600,
+                                }}
+                            />
+                        ) : (
+                            <Typography variant="caption" color="text.secondary">-</Typography>
+                        )}
+                    </TableCell>
+                )}
+
+                {/* Status column - hideable */}
+                {isColumnVisible('status') && (
+                    <TableCell sx={{ minWidth: 140, textAlign: 'left' }}>
+                        <FormControl size="small" fullWidth sx={{
+                            '& .MuiOutlinedInput-root': {
+                                fontSize: '0.8rem', // Slightly smaller font
+                                height: 28,        // Compact height
+                                backgroundColor: 'white'
+                            },
+                            '& .MuiSelect-select': {
+                                paddingTop: '4px',
+                                paddingBottom: '4px'
+                            }
+                        }}>
+                            <Select
+                                value={task.status || 'NOT_STARTED'}
+                                onChange={(e) => onStatusChange && onStatusChange(task.id, e.target.value as string)}
+                                disabled={locked || !onStatusChange}
+                                displayEmpty
+                                renderValue={(selected) => {
+                                    const status = TASK_STATUSES.find(s => s.value === selected);
+                                    return (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: status?.color || '#ccc' }} />
+                                            {status?.label || selected}
+                                        </Box>
+                                    );
+                                }}
+                            >
+                                {TASK_STATUSES.map((s) => (
+                                    <MenuItem key={s.value} value={s.value} sx={{ fontSize: '0.8rem' }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: s.color }} />
+                                            {s.label}
+                                        </Box>
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </TableCell>
+                )}
+
                 {/* Actions */}
                 <TableCell sx={{ width: 100, minWidth: 100, whiteSpace: 'nowrap', textAlign: 'left' }}>
                     {!locked && (
@@ -506,45 +556,6 @@ export function SortableTaskItem({
                 </MenuItem>
             </Menu>
 
-            {/* Menu for adding tags */}
-            <Menu
-                anchorEl={tagMenuAnchor?.el}
-                open={Boolean(tagMenuAnchor)}
-                onClose={() => setTagMenuAnchor(null)}
-            >
-                <MenuItem disabled sx={{ fontSize: '0.875rem', fontWeight: 'bold', opacity: '1 !important' }}>
-                    Select tag to add:
-                </MenuItem>
-                {availableTags && availableTags.length > 0 ? (
-                    availableTags
-                        .filter((tag: any) => !tagMenuAnchor?.task.tags?.some((t: any) => t.id === tag.id))
-                        .map((tag: any) => (
-                            <MenuItem
-                                key={tag.id}
-                                onClick={() => {
-                                    if (onTagChange && tagMenuAnchor) {
-                                        const currentTagIds = (tagMenuAnchor.task.tags || []).map((t: any) => t.id);
-                                        onTagChange(tagMenuAnchor.task.id, [...currentTagIds, tag.id]);
-                                    }
-                                    setTagMenuAnchor(null);
-                                }}
-                                sx={{ fontSize: '0.875rem' }}
-                            >
-                                <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: tag.color, mr: 1, display: 'inline-block' }} />
-                                {tag.name}
-                            </MenuItem>
-                        ))
-                ) : (
-                    <MenuItem disabled sx={{ fontSize: '0.875rem' }}>
-                        No available tags
-                    </MenuItem>
-                )}
-                {availableTags && availableTags.length > 0 && availableTags.every((tag: any) => tagMenuAnchor?.task.tags?.some((t: any) => t.id === tag.id)) && (
-                    <MenuItem disabled sx={{ fontSize: '0.875rem', fontStyle: 'italic' }}>
-                        All available tags assigned
-                    </MenuItem>
-                )}
-            </Menu>
         </>
     );
 }

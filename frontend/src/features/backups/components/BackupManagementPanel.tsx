@@ -119,7 +119,16 @@ const RESTORE_BACKUP = gql`
         tasks
         customerTasks
         customerSolutionTasks
-      }
+    }
+  }
+`;
+
+const RESTORE_BACKUP_FROM_FILE = gql`
+  mutation RestoreBackupFromFile($file: Upload!) {
+    restoreBackupFromFile(file: $file) {
+      success
+      message
+      error
     }
   }
 `;
@@ -385,46 +394,7 @@ export const BackupManagementPanel: React.FC = () => {
     setUploadingFile(true);
     setStatusMessage({ type: 'info', message: 'Uploading and restoring backup...' });
 
-    try {
-      const formData = new FormData();
-      formData.append('file', selectedFile);
-
-      // Use BASE_URL for subpath deployment support
-      const basePath = import.meta.env.BASE_URL || '/';
-      const restoreUrl = basePath === '/'
-        ? '/api/backup/restore-from-file'
-        : `${basePath.replace(/\/$/, '')}/api/backup/restore-from-file`;
-
-      const response = await fetch(restoreUrl, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (result.success) {
-        setStatusMessage({
-          type: 'success',
-          message: result.message || 'Database restored successfully from uploaded file!',
-        });
-        // Reload the page to refresh all data
-        setTimeout(() => window.location.reload(), 2000);
-      } else {
-        setStatusMessage({
-          type: 'error',
-          message: result.error || result.message || 'Failed to restore from uploaded file',
-        });
-      }
-    } catch (error: any) {
-      setStatusMessage({
-        type: 'error',
-        message: `Error restoring from file: ${error.message}`,
-      });
-    } finally {
-      setUploadingFile(false);
-      setSelectedFile(null);
-      setConfirmDialog({ open: false, type: null, filename: null });
-    }
+    restoreBackupFromFile({ variables: { file: selectedFile } });
   };
 
   const handleToggleAutoBackup = () => {

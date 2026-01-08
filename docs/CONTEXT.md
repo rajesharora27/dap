@@ -138,6 +138,158 @@ Latest patches were deployed to production (`dapoc`) using `./deploy-to-producti
 
 ## Recent Changes (January 7, 2026)
 
+### Session Summary: REST to GraphQL Migration (File Uploads & Progress)
+This session focused on eliminating hybrid REST/GraphQL patterns by migrating legacy file upload endpoints (Telemetry Import, Backup Restore) and real-time progress updates (Import Progress) to native GraphQL operations. This enforces the "GraphQL First" architecture for all data management features.
+
+### Key Changes
+
+#### 1. GraphQL File Uploads (Scalar Upload)
+**Goal:** Remove `multipart/form-data` REST endpoints and use GraphQL Mutations for file handling.
+
+**Solution:**
+- Implemented `Upload` scalar for backup restore and telemetry imports.
+- Created `restoreBackupFromFile` mutation replacing `/api/backup/restore-from-file`.
+- Created telemetry import mutations replacing `/api/telemetry/import/*`.
+- Removed `multer` middleware and 4 legacy REST endpoints from `server.ts`.
+
+**Files Modified:**
+- `backend/src/modules/backup/backup.resolver.ts`
+- `backend/src/modules/telemetry/telemetry.resolver.ts`
+- `frontend/src/features/backups/components/BackupManagementPanel.tsx`
+- `frontend/src/features/telemetry/graphql/telemetry.mutations.ts`
+
+#### 2. Real-Time GraphQL Subscriptions
+**Goal:** Replace Server-Sent Events (SSE) with standard GraphQL Subscriptions for progress tracking.
+
+**Solution:**
+- Implemented `PubSub` infrastructure in `shared/graphql/pubsub.ts`.
+- Added `importProgress` subscription to `import.typeDefs.ts`.
+- Refactored `ProgressService` to publish to PubSub system.
+- Updated frontend `useImportProgress` hook to use `useSubscription`.
+
+**Files Modified:**
+- `backend/src/modules/import/progress/ProgressService.ts`
+- `backend/src/modules/import/import.resolver.ts`
+- `frontend/src/features/data-management/hooks/useImportProgress.ts`
+
+#### 3. Test Suite Integrity
+**Goal:** Fix regressions in backend integration tests caused by PubSub type definitions.
+
+**Solution:**
+- Fixed TypeScript error `Property 'asyncIterator' does not exist on type 'PubSub'` in `import.resolver.ts` by correctly casting the PubSub instance.
+- Verified `graphql-customers.test.ts` and full test suite pass.
+
+---
+
+### Session Summary: Personal Sandbox Feature Implementation
+This session focused on implementing the "Personal Products & Assignments Sandbox" feature, allowing users to create personal simulation environments within "My Diary". Users can now create personal products with tasks, outcomes, and releases, then start assignments to practice adoption workflows with progress tracking.
+
+### Key Changes
+
+#### 1. Personal Sandbox Database Models (10 New Models)
+**Goal:** Create a personal sandbox for users to practice adoption plans without affecting production data.
+
+**New Prisma Models:**
+- `PersonalProduct` - User's personal product copy with tasks, outcomes, releases
+- `PersonalTask` - Tasks within personal products
+- `PersonalOutcome` - Outcomes for filtering
+- `PersonalRelease` - Releases for filtering  
+- `PersonalTaskOutcome` / `PersonalTaskRelease` - Junction tables
+- `PersonalAssignment` - Simulated adoption plan instance
+- `PersonalAssignmentTask` - Task status tracking with notes
+
+**Files Modified:**
+- `backend/prisma/schema.prisma`
+
+#### 2. Personal Product Backend Module
+**Goal:** CRUD operations for personal products with import/export functionality.
+
+**Features:**
+- Create up to 10 personal products per user
+- Add/edit/delete tasks, outcomes, releases
+- Import products from DAP JSON export format
+- Reorder tasks within products
+
+**Files Created:**
+- `backend/src/modules/personal-product/personal-product.service.ts`
+- `backend/src/modules/personal-product/personal-product.resolver.ts`
+- `backend/src/modules/personal-product/personal-product.typeDefs.ts`
+- `backend/src/modules/personal-product/index.ts`
+
+#### 3. Personal Assignment Backend Module
+**Goal:** Simulated adoption plans with progress tracking.
+
+**Features:**
+- Create assignments from personal products
+- Sync tasks when product changes
+- Update task status with notes
+- Calculate progress percentage
+
+**Files Created:**
+- `backend/src/modules/personal-assignment/personal-assignment.service.ts`
+- `backend/src/modules/personal-assignment/personal-assignment.resolver.ts`
+- `backend/src/modules/personal-assignment/personal-assignment.typeDefs.ts`
+- `backend/src/modules/personal-assignment/index.ts`
+
+#### 4. My Products Tab (Frontend)
+**Goal:** UI for managing personal products within My Diary.
+
+**Components:**
+- `PersonalProductsTab` - Product grid with cards showing task counts
+- `PersonalProductDialog` - Multi-tab dialog for editing products
+- `ProductImportDialog` - Drag & drop JSON import
+
+**Files Created:**
+- `frontend/src/features/my-diary/components/PersonalProductsTab.tsx`
+- `frontend/src/features/my-diary/components/PersonalProductDialog.tsx`
+- `frontend/src/features/my-diary/components/ProductImportDialog.tsx`
+- `frontend/src/features/my-diary/graphql/personal-sandbox.ts`
+
+#### 5. My Assignments Tab (Frontend)
+**Goal:** UI for tracking assignment progress.
+
+**Components:**
+- `PersonalAssignmentsTab` - Assignment cards with progress bars
+- `PersonalTaskTable` - Inline status editing with notes
+
+**Files Created:**
+- `frontend/src/features/my-diary/components/PersonalAssignmentsTab.tsx`
+- `frontend/src/features/my-diary/components/PersonalTaskTable.tsx`
+
+**Files Modified:**
+- `frontend/src/features/my-diary/components/DiaryPage.tsx` (added 2 new tabs)
+
+
+### Session Summary - Part 2: Personal Product Refinements & Test Fixes
+This session focused on aligning "My Products" functionality with the core "Catalogue Products" to ensure a unified user experience. Key achievements include enabling full Excel Import/Export parity for Personal Products, unifying the UI for product editing (removing discrepancies like "Description" field in My Products), adding dynamic tab counts, fixing backend test suites by mocking ESM dependencies, and ensuring consistent font usage.
+
+### Key Changes
+
+#### 1. Excel Import/Export Parity for Personal Products
+**Goal:** Replace legacy JSON import with robust Excel wizard.
+**Solution:**
+- Updated `ExcelExportService` to support all Personal Product fields (Tags, Attributes, Telemetry).
+- Updated `ImportExecutor` to handle Personal Product entities.
+- Switched frontend to use shared `BulkImportDialog`.
+
+#### 2. UI Unification: Product Dialog & Tabs
+**Goal:** Ensure "My Products" and "Catalogue Products" feel identical.
+**Solution:**
+- Removed "Description" field from `PersonalProductDialog` to match Global Product dialog.
+- Added dynamic item counts to main Product tabs (Tags, Outcomes, Releases, Licenses) to match "My Products" style.
+- Standardized fonts using MUI typography.
+
+#### 3. Test Suite Integrity
+**Goal:** Fix failing backend tests caused by ESM module (`graphql-upload`).
+**Solution:**
+- Created `graphql-upload-mock.js` to bypass ESM transformation issues in Jest.
+- Updated `jest.config.js` to map `graphql-upload` to the mock.
+- Verified all 32 test suites pass.
+
+---
+
+## Recent Changes (January 7, 2026)
+
 ### Session Summary: RBAC Hardening, Unified Test Runners, and MacBook Chunk-Load Resilience
 This session focused on (1) simplifying “system roles” to `ADMIN` vs `USER` while keeping granular access governed by RBAC roles, (2) ensuring `USER` has safe read-only visibility by default without granting write privileges, (3) adding real RBAC tests that exercise the actual GraphQL resolver path, (4) making both `npm test` and `./dap-test all` run the full test suite, and (5) eliminating recurring MacBook “lazy chunk 404” issues by hardening cache behavior and adding a self-healing reload path.
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
     Box, Paper, Typography, Collapse, FormControl, InputLabel, Select, MenuItem,
     OutlinedInput, Checkbox, Chip, Button, TableContainer, Table, TableHead, TableRow, TableCell, TableBody,
-    useTheme
+    useTheme, LinearProgress
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -18,6 +18,7 @@ export interface TasksTabContentProps {
     loading: boolean;
     tasks: any[];
     filteredTasks: any[];
+    progress?: number;
 
     // Configuration
     entityId: string;
@@ -67,6 +68,7 @@ export interface TasksTabContentProps {
         onWeightChange: (taskId: string, taskName: string, weight: number) => Promise<void>;
         onSequenceChange: (taskId: string, taskName: string, newSeq: number) => Promise<void>;
         onTagChange: (taskId: string, tagIds: string[]) => Promise<void>;
+        onStatusChange?: (taskId: string, status: string, statusNotes?: string) => Promise<void>;
     }
 }
 
@@ -74,6 +76,7 @@ export function TasksTabContent({
     loading,
     tasks,
     filteredTasks,
+    progress = 0,
     entityId,
     entityType,
     isLocked,
@@ -101,6 +104,7 @@ export function TasksTabContent({
         tableId: tableId,
         columns: [
             { key: 'order', minWidth: 40, defaultWidth: 80 },
+            { key: 'status', minWidth: 120, defaultWidth: 140 },
             { key: 'name', minWidth: 200, defaultWidth: 400 },
             { key: 'tags', minWidth: 100, defaultWidth: 150 },
             { key: 'resources', minWidth: 100, defaultWidth: 150 },
@@ -260,6 +264,31 @@ export function TasksTabContent({
                 </Box>
             </Collapse>
 
+            {/* Progress Bar Section */}
+            <Box sx={{ mb: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                    <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                        Implementation Progress
+                    </Typography>
+                    <Typography variant="body2" color="primary" fontWeight={700}>
+                        {Math.round(progress)}% Complete
+                    </Typography>
+                </Box>
+                <LinearProgress
+                    variant="determinate"
+                    value={progress}
+                    sx={{
+                        height: 8,
+                        borderRadius: 4,
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                        '& .MuiLinearProgress-bar': {
+                            borderRadius: 4,
+                            bgcolor: progress === 100 ? theme.palette.success.main : theme.palette.primary.main
+                        }
+                    }}
+                />
+            </Box>
+
             {/* Tasks Table */}
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <TableContainer component={Paper} sx={{ maxHeight: '70vh' }}>
@@ -329,6 +358,39 @@ export function TasksTabContent({
                                         Validation Criteria
                                     </ResizableTableCell>
                                 )}
+                                {visibleColumns.includes('updatedVia') && (
+                                    <ResizableTableCell
+                                        width={columnWidths['updatedVia'] || 100}
+                                        resizable
+                                        resizeHandleProps={getResizeHandleProps('updatedVia')}
+                                        isResizing={isResizing}
+                                        align="center"
+                                    >
+                                        Updated Via
+                                    </ResizableTableCell>
+                                )}
+                                {visibleColumns.includes('license') && (
+                                    <ResizableTableCell
+                                        width={columnWidths['license'] || 80}
+                                        resizable
+                                        resizeHandleProps={getResizeHandleProps('license')}
+                                        isResizing={isResizing}
+                                        align="center"
+                                    >
+                                        License
+                                    </ResizableTableCell>
+                                )}
+                                {visibleColumns.includes('status') && (
+                                    <ResizableTableCell
+                                        width={columnWidths['status']}
+                                        resizable
+                                        resizeHandleProps={getResizeHandleProps('status')}
+                                        isResizing={isResizing}
+                                        align="left"
+                                    >
+                                        Status
+                                    </ResizableTableCell>
+                                )}
                                 <TableCell width={columnWidths['actions']} align="left">Actions</TableCell>
                             </TableRow>
                         </TableHead>
@@ -346,6 +408,7 @@ export function TasksTabContent({
                                         onWeightChange={actions.onWeightChange}
                                         onSequenceChange={actions.onSequenceChange}
                                         onTagChange={actions.onTagChange}
+                                        onStatusChange={actions.onStatusChange}
                                         availableTags={availableTags || []}
                                         disableDrag={hasActiveFilters}
                                         locked={isLocked}

@@ -31,7 +31,12 @@ import { TagResolvers } from '../../modules/tag/tag.resolver';
 import { BackupQueryResolvers, BackupMutationResolvers } from '../../modules/backup';
 import { AuthQueryResolvers, AuthMutationResolvers } from '../../modules/auth';
 import { AIQueryResolvers, AIMutationResolvers } from '../../modules/ai';
-import { ImportQueryResolvers, ImportMutationResolvers } from '../../modules/import';
+import { ImportQueryResolvers, ImportMutationResolvers, ImportSubscriptionResolvers } from '../../modules/import';
+
+// ... (existing imports)
+
+// ... (existing imports)
+
 import { AuditQueryResolvers } from '../../modules/audit/audit.resolver';
 import { UserActivityQueryResolvers } from '../../modules/user-activity';
 import {
@@ -77,6 +82,8 @@ import { solutionReportingService } from '../../modules/solution/solution-report
 import { requireUser } from '../../shared/auth/auth-helpers';
 import { prisma } from '../../shared/graphql/context';
 import { SettingsQueryResolvers, SettingsMutationResolvers } from '../../modules/settings';
+import { personalProductResolvers } from '../../modules/personal-product';
+import { personalAssignmentResolvers } from '../../modules/personal-assignment';
 
 export const resolvers = {
   JSON: JSONScalar,
@@ -129,6 +136,8 @@ export const resolvers = {
     ...UserActivityQueryResolvers,
     ...diaryResolvers.Query,
     ...SettingsQueryResolvers,
+    ...personalProductResolvers.Query,
+    ...personalAssignmentResolvers.Query,
 
     node: async (_: any, { id }: any) => {
       // Generic fallback node resolver if domain resolvers don't handle it
@@ -158,8 +167,17 @@ export const resolvers = {
     ...ImportMutationResolvers,
     ...ChangeTrackingMutationResolvers,
     ...diaryResolvers.Mutation,
-    ...SettingsMutationResolvers
+    ...SettingsMutationResolvers,
+    ...personalProductResolvers.Mutation,
+    ...personalAssignmentResolvers.Mutation
   },
+
+  PersonalProduct: personalProductResolvers.PersonalProduct,
+  PersonalTask: personalProductResolvers.PersonalTask,
+  PersonalTelemetryAttribute: personalProductResolvers.PersonalTelemetryAttribute,
+  PersonalTelemetryValue: personalProductResolvers.PersonalTelemetryValue,
+  PersonalLicense: personalProductResolvers.PersonalLicense,
+  PersonalAssignment: personalAssignmentResolvers.PersonalAssignment,
 
   Subscription: {
     productUpdated: {
@@ -167,6 +185,7 @@ export const resolvers = {
     },
     taskUpdated: {
       subscribe: () => pubsub.asyncIterator(PUBSUB_EVENTS.TASK_UPDATED)
-    }
+    },
+    ...ImportSubscriptionResolvers
   }
 };

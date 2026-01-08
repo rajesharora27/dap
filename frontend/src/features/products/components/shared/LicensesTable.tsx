@@ -360,9 +360,19 @@ export const LicensesTable: React.FC<LicensesTableProps> = ({
 
                     {sortedItems.map((license) => {
                         const id = license.id || license._tempId;
-                        // Cumulative: count tasks from same or lower license levels
+                        // Use taskCount from license if available (from GraphQL resolver), otherwise calculate
                         const currentLevel = license.level || 0;
-                        const taskCount = tasks ? tasks.filter(t => t.license && (t.license.level || 0) <= currentLevel).length : undefined;
+                        let taskCount: number | undefined = license.taskCount;
+                        if (taskCount === undefined && tasks) {
+                            // For personal products: check t.licenseLevel (int)
+                            // For regular products: check t.license.level
+                            taskCount = tasks.filter(t => {
+                                if (typeof t.licenseLevel === 'number') {
+                                    return t.licenseLevel <= currentLevel;
+                                }
+                                return t.license && (t.license.level || 0) <= currentLevel;
+                            }).length;
+                        }
                         return (
                             <LicenseRow
                                 key={id}

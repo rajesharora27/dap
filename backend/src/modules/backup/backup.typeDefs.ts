@@ -70,5 +70,6 @@ export const backupTypeDefs = gql`
     deleteBackup(filename: String!): BackupResult!
     updateAutoBackupConfig(input: AutoBackupUpdateInput!): AutoBackupConfig!
     triggerAutoBackup: BackupResult!
+    restoreBackupFromFile(file: Upload!): RestoreResult!
   }
 `;

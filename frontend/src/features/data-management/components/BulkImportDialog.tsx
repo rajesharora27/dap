@@ -166,7 +166,7 @@ interface BulkImportDialogProps {
     open: boolean;
     onClose: () => void;
     onSuccess?: () => void;
-    entityType?: 'PRODUCT' | 'SOLUTION';
+    entityType?: 'PRODUCT' | 'SOLUTION' | 'PERSONAL_PRODUCT';
 }
 
 type ImportStep = 'upload' | 'preview' | 'committing' | 'complete';
@@ -319,7 +319,7 @@ export const BulkImportDialog: React.FC<BulkImportDialogProps> = ({
                         📥 Import from Excel
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        {entityType === 'SOLUTION' ? 'Import a solution' : 'Import a product'} and all related data
+                        {entityType === 'SOLUTION' ? 'Import a solution' : (entityType === 'PERSONAL_PRODUCT' ? 'Import a personal product' : 'Import a product')} and all related data
                     </Typography>
                 </Box>
                 <IconButton onClick={onClose} size="small">
@@ -340,6 +340,13 @@ export const BulkImportDialog: React.FC<BulkImportDialogProps> = ({
                         <StepLabel>Import</StepLabel>
                     </Step>
                 </Stepper>
+
+                {/* Error Display - Moved to top for visibility */}
+                {commitError && step !== 'upload' && (
+                    <Alert severity="error" sx={{ mb: 3 }}>
+                        {commitError}
+                    </Alert>
+                )}
 
                 {/* Step: Upload */}
                 {step === 'upload' && (
@@ -423,12 +430,6 @@ export const BulkImportDialog: React.FC<BulkImportDialogProps> = ({
                     </Box>
                 )}
 
-                {/* Error Display */}
-                {commitError && step !== 'upload' && (
-                    <Alert severity="error" sx={{ mt: 2 }}>
-                        {commitError}
-                    </Alert>
-                )}
             </DialogContent>
 
             <DialogActions sx={{ px: 3, py: 2, borderTop: 1, borderColor: 'divider' }}>

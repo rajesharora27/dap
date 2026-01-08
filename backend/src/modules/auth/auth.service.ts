@@ -247,8 +247,8 @@ export class AuthService {
       }
     });
     const roles = userRoles
-      .filter((ur: any) => ur.role)
-      .map((ur: any) => ur.role.name);
+      .map((ur: any) => ur.role?.name || ur.roleName)
+      .filter((name: string | null) => name);
 
     // Ensure the user's base role (from User.role) is always present for system-role behavior
     // and menu visibility, even if there are no Role table assignments.

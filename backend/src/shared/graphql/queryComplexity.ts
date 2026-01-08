@@ -7,10 +7,10 @@
  * @module shared/graphql/queryComplexity
  */
 
-import { 
-    getComplexity, 
-    simpleEstimator, 
-    fieldExtensionsEstimator 
+import {
+    getComplexity,
+    simpleEstimator,
+    fieldExtensionsEstimator
 } from 'graphql-query-complexity';
 import { GraphQLSchema, separateOperations } from 'graphql';
 import { ApolloServerPlugin, GraphQLRequestListener } from '@apollo/server';
@@ -51,20 +51,20 @@ const fieldCosts = {
     outcomes: 5,
     licenses: 5,
     releases: 5,
-    
+
     // Single item queries
     product: 5,
     solution: 5,
     customer: 5,
     task: 3,
     user: 3,
-    
+
     // Nested fields
     productTasks: 20, // Can be expensive
     solutionProducts: 15,
     customerProducts: 15,
     customerSolutions: 15,
-    
+
     // Default field cost
     default: 1,
 };
@@ -116,6 +116,15 @@ export function queryComplexityPlugin(
                     if (!query) return;
 
                     try {
+                        // Skip complexity calculation for file upload operations
+                        // The Upload scalar can't be validated before graphql-upload processes it
+                        const hasUploadVariable = Object.values(request.variables || {}).some(
+                            (v: any) => v && typeof v === 'object' && (v.file || v.promise || Object.keys(v).length === 0)
+                        );
+                        if (hasUploadVariable) {
+                            return; // Skip complexity check for file uploads
+                        }
+
                         const complexity = getComplexity({
                             schema,
                             query,
@@ -132,7 +141,7 @@ export function queryComplexityPlugin(
 
                         // Log complexity for monitoring
                         const operationName = request.operationName || 'anonymous';
-                        
+
                         if (complexity > warnThreshold) {
                             console.warn(
                                 `[QueryComplexity] High complexity query: ${operationName} ` +
@@ -179,7 +188,7 @@ export function queryDepthPlugin(maxDepth: number = 10): ApolloServerPlugin {
                     if (!document) return;
 
                     const depth = calculateQueryDepth(document);
-                    
+
                     if (depth > maxDepth) {
                         throw new Error(
                             `Query depth ${depth} exceeds maximum allowed depth of ${maxDepth}. ` +

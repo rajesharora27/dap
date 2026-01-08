@@ -43,6 +43,15 @@ import { getStatusBackgroundColor, getStatusColor, getUpdateSourceChipColor } fr
 import { TaskDetailsDialog, TaskDetailsData } from '@features/tasks/components/TaskDetailsDialog';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
+import { TagsDropdown, TagItem } from '@shared/components/TagsDropdown';
+
+const TASK_STATUSES = [
+  { value: 'NOT_STARTED', label: 'Not Started', color: '#9FA6B2' },
+  { value: 'IN_PROGRESS', label: 'In Progress', color: '#3B82F6' },
+  { value: 'COMPLETED', label: 'Completed', color: '#10B981' },
+  { value: 'NOT_APPLICABLE', label: 'Not Applicable', color: '#6B7280' },
+  { value: 'NO_LONGER_USING', label: 'No Longer Using', color: '#EF4444' },
+];
 
 export interface TaskData {
   id: string;
@@ -311,25 +320,10 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
                 </TableCell>
                 {isColumnVisible('tags') && (
                   <TableCell>
-                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                      {task.tags?.map((tag) => (
-                        <Chip
-                          key={tag.id}
-                          label={tag.name}
-                          size="small"
-                          sx={{
-                            height: 20,
-                            fontSize: '0.7rem',
-                            backgroundColor: tag.color || '#888',
-                            color: '#fff',
-                            fontWeight: 600
-                          }}
-                        />
-                      ))}
-                      {(!task.tags || task.tags.length === 0) && (
-                        <Typography variant="caption" color="text.secondary">-</Typography>
-                      )}
-                    </Box>
+                    <TagsDropdown
+                      tags={(task.tags || []) as TagItem[]}
+                      disabled
+                    />
                   </TableCell>
                 )}
                 {isColumnVisible('resources') && (
@@ -534,14 +528,20 @@ export const AdoptionTaskTable: React.FC<AdoptionTaskTableProps> = ({
                         '& .MuiSelect-select': {
                           py: 0.5,
                           fontSize: '0.8rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 1
                         },
                       }}
                     >
-                      <MenuItem value="NOT_STARTED">Not Started</MenuItem>
-                      <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
-                      <MenuItem value="DONE">Done</MenuItem>
-                      <MenuItem value="NO_LONGER_USING">No Longer Using</MenuItem>
-                      <MenuItem value="NOT_APPLICABLE">Not Applicable</MenuItem>
+                      {TASK_STATUSES.map((s) => (
+                        <MenuItem key={s.value} value={s.value} sx={{ fontSize: '0.8rem' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: s.color }} />
+                            {s.label}
+                          </Box>
+                        </MenuItem>
+                      ))}
                     </Select>
                   </FormControl>
                 </TableCell>

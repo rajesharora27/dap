@@ -54,65 +54,6 @@ export const downloadFileFromUrl = async (url: string, filename: string): Promis
   }, 100);
 };
 
-/**
- * Import telemetry data for a product adoption plan (REST API)
- */
-export const importProductTelemetry = async (
-  adoptionPlanId: string,
-  file: File
-): Promise<{ success: boolean; summary?: any; taskResults?: any[]; error?: string }> => {
-  const basePath = getBasePath();
-  const url = `${basePath}/api/telemetry/import/${adoptionPlanId}`;
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const token = localStorage.getItem('token');
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': token ? `Bearer ${token}` : 'admin', // Fallback to admin for dev/backward compatibility if needed, but primarily token
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Import failed: ${response.statusText}`);
-  }
-
-  return await response.json();
-};
-
-/**
- * Import telemetry data for a solution adoption plan (REST API)
- */
-export const importSolutionTelemetry = async (
-  solutionAdoptionPlanId: string,
-  file: File
-): Promise<{ success: boolean; summary?: any; taskResults?: any[]; error?: string }> => {
-  const basePath = getBasePath();
-  const url = `${basePath}/api/solution-telemetry/import/${solutionAdoptionPlanId}`;
-
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const token = localStorage.getItem('token');
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Authorization': token ? `Bearer ${token}` : 'admin',
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Import failed: ${response.statusText}`);
-  }
-
-  return await response.json();
-};
 
 /**
  * Import result dialog state interface

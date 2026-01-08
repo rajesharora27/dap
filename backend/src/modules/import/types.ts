@@ -9,7 +9,7 @@
 // Entity Types
 // ============================================================================
 
-export type EntityType = 'product' | 'solution';
+export type EntityType = 'product' | 'solution' | 'personal_product';
 
 export type RecordAction = 'create' | 'update' | 'delete' | 'skip';
 

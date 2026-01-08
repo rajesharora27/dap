@@ -56,7 +56,7 @@ export const importTypeDefs = gql`
     attributesCreated: Int!
   }
 
-  enum EntityType { PRODUCT SOLUTION }
+  enum EntityType { PRODUCT SOLUTION PERSONAL_PRODUCT }
 
   type ImportDryRunResult {
     sessionId: String!
@@ -218,5 +218,16 @@ export const importTypeDefs = gql`
     importAdoptionPlanTelemetry(adoptionPlanId: ID!, file: Upload!): TelemetryImportResult!
     exportSolutionAdoptionPlanTelemetryTemplate(solutionAdoptionPlanId: ID!): TelemetryTemplateExport!
     importSolutionAdoptionPlanTelemetry(solutionAdoptionPlanId: ID!, file: Upload!): TelemetryImportResult!
+  }
+
+  type ImportProgress {
+    sessionId: String!
+    status: String!
+    progress: Int!
+    message: String
+  }
+
+  extend type Subscription {
+    importProgress(sessionId: String!): ImportProgress!
   }
 `;

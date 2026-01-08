@@ -42,14 +42,5 @@ export const DateTimeScalar = new GraphQLScalarType({
     }
 });
 
-export const UploadScalar = new GraphQLScalarType({
-    name: 'Upload',
-    description: 'File upload scalar type',
-    parseValue: (value: any) => value,
-    serialize: () => {
-        throw new Error('Upload serialization not supported');
-    },
-    parseLiteral: () => {
-        throw new Error('Upload literal parsing not supported');
-    }
-});
+// Use GraphQLUpload from graphql-upload for proper file upload handling
+export { default as UploadScalar } from 'graphql-upload/GraphQLUpload.mjs';

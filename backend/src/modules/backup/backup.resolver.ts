@@ -39,6 +39,7 @@ export const BackupMutationResolvers = {
     return await BackupRestoreService.createBackup();
   },
 
+
   /**
    * Restore database from a backup
    */
@@ -48,6 +49,39 @@ export const BackupMutationResolvers = {
     const result = await BackupRestoreService.restoreBackup(filename);
 
     return result;
+  },
+
+  /**
+   * Restore database from an uploaded SQL file
+   */
+  restoreBackupFromFile: async (_: any, { file }: { file: any }, ctx: any) => {
+    ensureRole(ctx, 'ADMIN');
+
+    const { createReadStream, filename } = await file;
+    const stream = createReadStream();
+
+    // Convert stream to buffer
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(chunk);
+    }
+    const fileBuffer = Buffer.concat(chunks);
+
+    // Save to temp file to reuse existing restore service
+    const tempName = `uploaded_${Date.now()}_${filename}`;
+    const fs = require('fs');
+    const path = require('path');
+    const backupsDir = path.join(process.cwd(), 'temp', 'backups');
+
+    if (!fs.existsSync(backupsDir)) {
+      fs.mkdirSync(backupsDir, { recursive: true });
+    }
+
+    const filePath = path.join(backupsDir, tempName);
+    fs.writeFileSync(filePath, fileBuffer);
+
+    // Restore using the temp file
+    return await BackupRestoreService.restoreBackup(tempName);
   },
 
   /**
