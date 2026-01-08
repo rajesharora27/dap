@@ -339,6 +339,34 @@ export const BackupManagementPanel: React.FC = () => {
     },
   });
 
+  const [restoreBackupFromFile, { loading: uploadingFromLocal }] = useMutation(RESTORE_BACKUP_FROM_FILE, {
+    onCompleted: (data) => {
+      setUploadingFile(false);
+      if (data.restoreBackupFromFile.success) {
+        setStatusMessage({
+          type: 'success',
+          message: data.restoreBackupFromFile.message || 'Database restored from file successfully!',
+        });
+        // Reload the page to refresh all data
+        setTimeout(() => window.location.reload(), 2000);
+      } else {
+        setStatusMessage({
+          type: 'error',
+          message: data.restoreBackupFromFile.error || 'Failed to restore backup from file',
+        });
+      }
+      setConfirmDialog({ open: false, type: null, filename: null });
+    },
+    onError: (error) => {
+      setUploadingFile(false);
+      setStatusMessage({
+        type: 'error',
+        message: `Error restoring backup from file: ${error.message}`,
+      });
+      setConfirmDialog({ open: false, type: null, filename: null });
+    },
+  });
+
   const handleCreateBackup = () => {
     setStatusMessage({ type: null, message: '' });
     createBackup();
