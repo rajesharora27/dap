@@ -123,12 +123,15 @@ function SortableDevMenuItem({ item, selected, onClick, onContextMenu, icon }: a
         onContextMenu={onContextMenu}
         sx={{
           pl: 4,
+          borderLeft: '3px solid transparent',
+          transition: 'all 0.15s ease-in-out',
           '&.Mui-selected': {
-            backgroundColor: 'rgba(233, 30, 99, 0.08)',
+            backgroundColor: '#e91e6312',
+            borderLeft: '3px solid #e91e63',
             '& .MuiListItemIcon-root': { color: '#e91e63' },
             '& .MuiListItemText-primary': { color: '#e91e63', fontWeight: 600 }
           },
-          '&.Mui-selected:hover': { backgroundColor: 'rgba(233, 30, 99, 0.12)' },
+          '&.Mui-selected:hover': { backgroundColor: '#e91e6318' },
           '&:hover .drag-handle': { opacity: 1 }
         }}
       >
@@ -308,6 +311,29 @@ function AuthenticatedApp() {
   const selectedDevSubSection = getSelectedDevSubSection();
   const isAdmin = user?.isAdmin;
 
+  // Professional selected state styling - left border indicator + subtle background
+  const getSelectedStyle = (accentColor: string = '#049FD9') => ({
+    '&.Mui-selected': {
+      backgroundColor: `${accentColor}12`,
+      borderLeft: `3px solid ${accentColor}`,
+      '& .MuiListItemIcon-root': { color: accentColor },
+      '& .MuiListItemText-primary': { 
+        color: accentColor, 
+        fontWeight: 600 
+      }
+    },
+    '&.Mui-selected:hover': { 
+      backgroundColor: `${accentColor}18` 
+    },
+    '&:hover': {
+      backgroundColor: theme.palette.mode === 'dark' 
+        ? 'rgba(255, 255, 255, 0.05)' 
+        : 'rgba(0, 0, 0, 0.04)'
+    },
+    borderLeft: '3px solid transparent', // Reserve space for selected border
+    transition: 'all 0.15s ease-in-out',
+  });
+
   // Handlers for Navigation from AuthBar (if it passes onNavigate)
   // Supports both direct paths ("/products") and type+id navigation from AI Assistant
   const handleNavigate = (typeOrPath: string, id?: string) => {
@@ -390,14 +416,7 @@ function AuthenticatedApp() {
             <ListItemButton
               selected={selectedSection === 'dashboard'}
               onClick={() => navigate('/dashboard')}
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                  '& .MuiListItemIcon-root': { color: '#049FD9' },
-                  '& .MuiListItemText-primary': { color: '#049FD9', fontWeight: 600 }
-                },
-                '&.Mui-selected:hover': { backgroundColor: 'rgba(4, 159, 217, 0.12)' }
-              }}
+              sx={getSelectedStyle('#049FD9')}
             >
               <ListItemIcon><MainIcon /></ListItemIcon>
               <ListItemText primary="Getting Started" />
@@ -405,37 +424,11 @@ function AuthenticatedApp() {
 
             {/* Products - Visible if user can READ products (RBAC-derived) */}
             {(isAdmin || user?.access?.products?.read || (user?.permissions?.products?.length > 0)) && (
-              <ListItem
-                disablePadding
-                secondaryAction={
-                  (isAdmin || user?.access?.products?.write) ? (
-                    <Tooltip title="Add Product">
-                      <IconButton
-                        edge="end"
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate('/products?add=true');
-                        }}
-                        sx={{ color: '#10B981', mr: 1 }}
-                      >
-                        <Add fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  ) : null
-                }
-                sx={{
-                  '&.Mui-selected': {
-                    backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                    '& .MuiListItemIcon-root': { color: '#049FD9' },
-                    '& .MuiListItemText-primary': { color: '#049FD9', fontWeight: 600 }
-                  },
-                  '&.Mui-selected:hover': { backgroundColor: 'rgba(4, 159, 217, 0.12)' }
-                }}
-              >
+              <ListItem disablePadding>
                 <ListItemButton
                   selected={selectedSection === 'products'}
                   onClick={() => navigate('/products')}
+                  sx={getSelectedStyle('#10B981')}
                 >
                   <ListItemIcon>
                     <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', alignItems: 'center' }}>
@@ -444,42 +437,31 @@ function AuthenticatedApp() {
                   </ListItemIcon>
                   <ListItemText primary="Products" />
                 </ListItemButton>
+                {(isAdmin || user?.access?.products?.write) && (
+                  <Tooltip title="Add Product">
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/products?add=true');
+                      }}
+                      sx={{ color: '#10B981', mr: 1 }}
+                    >
+                      <Add fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </ListItem>
             )}
 
             {/* Solutions - Visible if user can READ solutions (RBAC-derived) */}
             {(isAdmin || user?.access?.solutions?.read || (user?.permissions?.solutions?.length > 0)) && (
-              <ListItem
-                disablePadding
-                secondaryAction={
-                  (isAdmin || user?.access?.solutions?.write) ? (
-                    <Tooltip title="Add Solution">
-                      <IconButton
-                        edge="end"
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate('/solutions?add=true');
-                        }}
-                        sx={{ color: '#3B82F6', mr: 1 }}
-                      >
-                        <Add fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  ) : null
-                }
-                sx={{
-                  '&.Mui-selected': {
-                    backgroundColor: 'rgba(237, 108, 2, 0.08)',
-                    '& .MuiListItemIcon-root': { color: '#ed6c02' },
-                    '& .MuiListItemText-primary': { color: '#ed6c02', fontWeight: 600 }
-                  },
-                  '&.Mui-selected:hover': { backgroundColor: 'rgba(237, 108, 2, 0.12)' }
-                }}
-              >
+              <ListItem disablePadding>
                 <ListItemButton
                   selected={selectedSection === 'solutions'}
                   onClick={() => navigate('/solutions')}
+                  sx={getSelectedStyle('#3B82F6')}
                 >
                   <ListItemIcon>
                     <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
@@ -488,42 +470,31 @@ function AuthenticatedApp() {
                   </ListItemIcon>
                   <ListItemText primary="Solutions" />
                 </ListItemButton>
+                {(isAdmin || user?.access?.solutions?.write) && (
+                  <Tooltip title="Add Solution">
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/solutions?add=true');
+                      }}
+                      sx={{ color: '#3B82F6', mr: 1 }}
+                    >
+                      <Add fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </ListItem>
             )}
 
             {/* Customers - Visible if user can READ customers (RBAC-derived) */}
             {(isAdmin || user?.access?.customers?.read || (user?.permissions?.customers?.length > 0)) && (
-              <ListItem
-                disablePadding
-                secondaryAction={
-                  (isAdmin || user?.access?.customers?.write) ? (
-                    <Tooltip title="Add Customer">
-                      <IconButton
-                        edge="end"
-                        size="small"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate('/customers?add=true');
-                        }}
-                        sx={{ color: '#2e7d32', mr: 1 }}
-                      >
-                        <Add fontSize="small" />
-                      </IconButton>
-                    </Tooltip>
-                  ) : null
-                }
-                sx={{
-                  '&.Mui-selected': {
-                    backgroundColor: 'rgba(46, 125, 50, 0.08)',
-                    '& .MuiListItemIcon-root': { color: '#2e7d32' },
-                    '& .MuiListItemText-primary': { color: '#2e7d32', fontWeight: 600 }
-                  },
-                  '&.Mui-selected:hover': { backgroundColor: 'rgba(46, 125, 50, 0.12)' }
-                }}
-              >
+              <ListItem disablePadding>
                 <ListItemButton
                   selected={selectedSection === 'customers'}
                   onClick={() => navigate('/customers')}
+                  sx={getSelectedStyle('#8B5CF6')}
                 >
                   <ListItemIcon>
                     <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
@@ -532,6 +503,21 @@ function AuthenticatedApp() {
                   </ListItemIcon>
                   <ListItemText primary="Customers" />
                 </ListItemButton>
+                {(isAdmin || user?.access?.customers?.write) && (
+                  <Tooltip title="Add Customer">
+                    <IconButton
+                      edge="end"
+                      size="small"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/customers?add=true');
+                      }}
+                      sx={{ color: '#8B5CF6', mr: 1 }}
+                    >
+                      <Add fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
               </ListItem>
             )}
 
@@ -539,14 +525,7 @@ function AuthenticatedApp() {
             <ListItemButton
               selected={selectedSection === 'myDiary'}
               onClick={() => navigate('/diary')}
-              sx={{
-                '&.Mui-selected': {
-                  backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                  '& .MuiListItemIcon-root': { color: '#049FD9' },
-                  '& .MuiListItemText-primary': { color: '#049FD9', fontWeight: 600 }
-                },
-                '&.Mui-selected:hover': { backgroundColor: 'rgba(4, 159, 217, 0.12)' }
-              }}
+              sx={getSelectedStyle('#EC4899')}
             >
               <ListItemIcon>
                 <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(236, 72, 153, 0.08)', border: '1px solid rgba(236, 72, 153, 0.25)', display: 'flex', alignItems: 'center' }}>
@@ -571,14 +550,7 @@ function AuthenticatedApp() {
                       setAdminExpanded(!adminExpanded);
                     }
                   }}
-                  sx={{
-                    '&.Mui-selected': {
-                      backgroundColor: 'rgba(4, 159, 217, 0.08)',
-                      '& .MuiListItemIcon-root': { color: '#049FD9' },
-                      '& .MuiListItemText-primary': { color: '#049FD9', fontWeight: 600 }
-                    },
-                    '&.Mui-selected:hover': { backgroundColor: 'rgba(4, 159, 217, 0.12)' }
-                  }}
+                  sx={getSelectedStyle('#64748B')}
                 >
                   <ListItemIcon>
                     <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(100, 116, 139, 0.08)', border: '1px solid rgba(100, 116, 139, 0.25)', display: 'flex', alignItems: 'center' }}>
@@ -591,7 +563,7 @@ function AuthenticatedApp() {
                 <Collapse in={adminExpanded} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding>
                     <ListItemButton
-                      sx={{ pl: 4, '&.Mui-selected': { bgcolor: 'rgba(4, 159, 217, 0.08)' } }}
+                      sx={{ pl: 4, ...getSelectedStyle('#14B8A6') }}
                       selected={selectedSection === 'admin' && selectedAdminSubSection === 'users'}
                       onClick={() => navigate('/admin/users')}
                     >
@@ -603,7 +575,7 @@ function AuthenticatedApp() {
                       <ListItemText primary="Users" />
                     </ListItemButton>
                     <ListItemButton
-                      sx={{ pl: 4, '&.Mui-selected': { bgcolor: 'rgba(4, 159, 217, 0.08)' } }}
+                      sx={{ pl: 4, ...getSelectedStyle('#F59E0B') }}
                       selected={selectedSection === 'admin' && selectedAdminSubSection === 'roles'}
                       onClick={() => navigate('/admin/roles')}
                     >
@@ -615,7 +587,7 @@ function AuthenticatedApp() {
                       <ListItemText primary="Roles" />
                     </ListItemButton>
                     <ListItemButton
-                      sx={{ pl: 4, '&.Mui-selected': { bgcolor: 'rgba(4, 159, 217, 0.08)' } }}
+                      sx={{ pl: 4, ...getSelectedStyle('#22C55E') }}
                       selected={selectedSection === 'admin' && selectedAdminSubSection === 'backup'}
                       onClick={() => navigate('/admin/backup')}
                     >
@@ -627,7 +599,7 @@ function AuthenticatedApp() {
                       <ListItemText primary="Backup & Restore" />
                     </ListItemButton>
                     <ListItemButton
-                      sx={{ pl: 4, '&.Mui-selected': { bgcolor: 'rgba(4, 159, 217, 0.08)' } }}
+                      sx={{ pl: 4, ...getSelectedStyle('#3B82F6') }}
                       selected={selectedSection === 'admin' && selectedAdminSubSection === 'activity'}
                       onClick={() => navigate('/admin/activity')}
                     >
@@ -639,7 +611,7 @@ function AuthenticatedApp() {
                       <ListItemText primary="Activity" />
                     </ListItemButton>
                     <ListItemButton
-                      sx={{ pl: 4, '&.Mui-selected': { bgcolor: 'rgba(4, 159, 217, 0.08)' } }}
+                      sx={{ pl: 4, ...getSelectedStyle('#6B7280') }}
                       selected={selectedSection === 'admin' && selectedAdminSubSection === 'settings'}
                       onClick={() => navigate('/admin/settings')}
                     >
@@ -651,7 +623,7 @@ function AuthenticatedApp() {
                       <ListItemText primary="Settings" />
                     </ListItemButton>
                     <ListItemButton
-                      sx={{ pl: 4, '&.Mui-selected': { bgcolor: 'rgba(4, 159, 217, 0.08)' } }}
+                      sx={{ pl: 4, ...getSelectedStyle('#A855F7') }}
                       selected={selectedSection === 'admin' && selectedAdminSubSection === 'theme'}
                       onClick={() => navigate('/admin/theme')}
                     >
@@ -663,7 +635,7 @@ function AuthenticatedApp() {
                       <ListItemText primary="Theme" />
                     </ListItemButton>
                     <ListItemButton
-                      sx={{ pl: 4, '&.Mui-selected': { bgcolor: 'rgba(4, 159, 217, 0.08)' } }}
+                      sx={{ pl: 4, ...getSelectedStyle('#06B6D4') }}
                       selected={selectedSection === 'admin' && selectedAdminSubSection === 'about'}
                       onClick={() => navigate('/admin/about')}
                     >
@@ -686,14 +658,7 @@ function AuthenticatedApp() {
                 <ListItemButton
                   selected={selectedSection === 'development'}
                   onClick={() => setDevExpanded(!devExpanded)}
-                  sx={{
-                    '&.Mui-selected': {
-                      backgroundColor: 'rgba(233, 30, 99, 0.08)',
-                      '& .MuiListItemIcon-root': { color: '#e91e63' },
-                      '& .MuiListItemText-primary': { color: '#e91e63', fontWeight: 600 }
-                    },
-                    '&.Mui-selected:hover': { backgroundColor: 'rgba(233, 30, 99, 0.12)' }
-                  }}
+                  sx={getSelectedStyle('#e91e63')}
                 >
                   <ListItemIcon><BugReportIcon /></ListItemIcon>
                   <ListItemText primary="Development" />

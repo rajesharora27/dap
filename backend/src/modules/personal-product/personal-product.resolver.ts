@@ -194,8 +194,10 @@ export const personalProductResolvers = {
                 summary: {
                     tasksProcessed: result.summary?.tasksProcessed ?? 0,
                     attributesUpdated: result.summary?.attributesUpdated ?? 0,
+                    criteriaEvaluated: result.summary?.criteriaEvaluated ?? 0,
                     errors: result.summary?.errors ?? []
-                }
+                },
+                taskResults: result.taskResults ?? []
             };
         },
 

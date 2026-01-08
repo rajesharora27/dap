@@ -1,6 +1,21 @@
 import { PrismaClient } from '@prisma/client';
 import { ActivityPeriod, EntityChangeLog, UserLoginStats, ActiveSession } from './user-activity.types';
 
+/**
+ * Retrieves all currently active user sessions.
+ * 
+ * Sessions are considered active if their expiration time is in the future.
+ * Results are ordered by creation time (newest first) and limited to 100.
+ * 
+ * @param prisma - Prisma client instance for database access
+ * @returns Promise resolving to array of active sessions with user info
+ * 
+ * @example
+ * ```typescript
+ * const sessions = await getActiveSessions(prisma);
+ * console.log(`${sessions.length} active sessions`);
+ * ```
+ */
 export async function getActiveSessions(prisma: PrismaClient): Promise<ActiveSession[]> {
     const sessions = await prisma.session.findMany({
         where: {
@@ -24,6 +39,26 @@ export async function getActiveSessions(prisma: PrismaClient): Promise<ActiveSes
     }));
 }
 
+/**
+ * Retrieves login statistics aggregated by date for a given time period.
+ * 
+ * Statistics include login counts, roles involved, and individual user details.
+ * Can be filtered by specific user ID for individual user tracking.
+ * 
+ * @param prisma - Prisma client instance for database access
+ * @param period - Time period to query: 'day', 'week', 'month', or 'year'
+ * @param userId - Optional user ID to filter stats for a specific user
+ * @returns Promise resolving to array of daily login statistics
+ * 
+ * @example
+ * ```typescript
+ * // Get all login stats for past week
+ * const stats = await getLoginStats(prisma, 'week');
+ * 
+ * // Get stats for specific user
+ * const userStats = await getLoginStats(prisma, 'month', 'user-123');
+ * ```
+ */
 export async function getLoginStats(prisma: PrismaClient, period: ActivityPeriod = 'week', userId?: string): Promise<UserLoginStats[]> {
     const now = new Date();
     let startDate: Date;
@@ -99,6 +134,36 @@ export async function getLoginStats(prisma: PrismaClient, period: ActivityPeriod
 }
 
 
+/**
+ * Retrieves entity change logs (audit trail) for the specified time period.
+ * 
+ * Tracks all CRUD operations on major entities (Product, Solution, Customer, Task,
+ * Outcome, Release, License, Tag, User, Role, etc.). Excludes personal/diary items
+ * which are user-private sandbox data.
+ * 
+ * **Implementation Notes:**
+ * - Uses bulletproof fetch-all + JavaScript filter approach for reliability
+ * - Automatically resolves entity names from IDs via batch lookups
+ * - Falls back to "(historical)" attribution for pre-audit logs without userId
+ * 
+ * @param prisma - Prisma client instance for database access
+ * @param period - Time period to query: 'day', 'week', 'month', or 'year'
+ * @param userId - Optional user ID to filter changes by specific user
+ * @param entity - Optional entity type filter (e.g., 'Product', 'Task')
+ * @returns Promise resolving to array of entity change logs with resolved names
+ * 
+ * @example
+ * ```typescript
+ * // Get all entity changes for past week
+ * const changes = await getEntityChangeLogs(prisma, 'week');
+ * 
+ * // Get only Task changes for specific user
+ * const taskChanges = await getEntityChangeLogs(prisma, 'month', 'user-123', 'Task');
+ * ```
+ * 
+ * @see ActivityPeriod for valid period values
+ * @see EntityChangeLog for return type structure
+ */
 export async function getEntityChangeLogs(prisma: PrismaClient, period: ActivityPeriod = 'week', userId?: string, entity?: string): Promise<EntityChangeLog[]> {
     const now = new Date();
     let startDate: Date;
@@ -120,24 +185,21 @@ export async function getEntityChangeLogs(prisma: PrismaClient, period: Activity
             startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     }
 
-    const logs = await prisma.auditLog.findMany({
+    // BULLETPROOF: Simple query + code filtering for maximum reliability
+    // Fetch all non-login audit logs, then filter in JavaScript
+    const allLogs = await prisma.auditLog.findMany({
         where: {
             createdAt: { gte: startDate },
             ...(userId ? { userId } : {}),
-            AND: [
-                entity ? {
-                    OR: [
-                        { resourceType: { equals: entity.toUpperCase() } },
-                        { entity: { equals: entity, mode: 'insensitive' as any } }
-                    ]
-                } : {},
-                {
-                    OR: [
-                        { resourceType: { in: ['PRODUCT', 'SOLUTION', 'CUSTOMER', 'APPSETTING'] } },
-                        { entity: { in: ['Product', 'Solution', 'Customer', 'AppSetting', 'PRODUCT', 'SOLUTION', 'CUSTOMER', 'APPSETTING'] } }
-                    ]
-                }
-            ]
+            // Basic exclusion - login actions shown in separate tab
+            action: { not: 'login' },
+            // Filter by specific entity if provided
+            ...(entity ? {
+                OR: [
+                    { resourceType: { equals: entity.toUpperCase() } },
+                    { entity: { equals: entity, mode: 'insensitive' as any } }
+                ]
+            } : {})
         },
         include: {
             user: {
@@ -145,14 +207,44 @@ export async function getEntityChangeLogs(prisma: PrismaClient, period: Activity
             }
         },
         orderBy: { createdAt: 'desc' },
-        take: 200
+        take: 1000 // Fetch more, filter down
     });
+
+    // Filter out personal/diary items in JavaScript (bulletproof approach)
+    const excludedPrefixes = ['personal', 'diary'];
+    const excludedExact = ['session', 'login'];
+    
+    const logs = allLogs.filter(log => {
+        const entityLower = (log.entity || '').toLowerCase();
+        const resourceTypeLower = (log.resourceType || '').toLowerCase();
+        
+        // Exclude exact matches
+        if (excludedExact.includes(entityLower) || excludedExact.includes(resourceTypeLower)) {
+            return false;
+        }
+        
+        // Exclude prefix matches
+        for (const prefix of excludedPrefixes) {
+            if (entityLower.startsWith(prefix) || resourceTypeLower.startsWith(prefix)) {
+                return false;
+            }
+        }
+        
+        return true;
+    }).slice(0, 500);
 
     // Collect entity IDs that need name lookup (grouped by type)
     const productIds: string[] = [];
     const solutionIds: string[] = [];
     const customerIds: string[] = [];
     const appSettingIds: string[] = [];
+    const taskIds: string[] = [];
+    const outcomeIds: string[] = [];
+    const releaseIds: string[] = [];
+    const licenseIds: string[] = [];
+    const tagIds: string[] = [];
+    const userIds: string[] = [];
+    const roleIds: string[] = [];
 
     // First pass: extract entity names from details where possible
     const entityNamesFromDetails = new Map<string, string>();
@@ -185,6 +277,13 @@ export async function getEntityChangeLogs(prisma: PrismaClient, period: Activity
             else if (entityType === 'solution') solutionIds.push(entityId);
             else if (entityType === 'customer') customerIds.push(entityId);
             else if (entityType === 'appsetting') appSettingIds.push(entityId);
+            else if (entityType === 'task') taskIds.push(entityId);
+            else if (entityType === 'outcome') outcomeIds.push(entityId);
+            else if (entityType === 'release') releaseIds.push(entityId);
+            else if (entityType === 'license') licenseIds.push(entityId);
+            else if (entityType === 'tag') tagIds.push(entityId);
+            else if (entityType === 'user') userIds.push(entityId);
+            else if (entityType === 'role') roleIds.push(entityId);
         }
     });
 
@@ -221,6 +320,70 @@ export async function getEntityChangeLogs(prisma: PrismaClient, period: Activity
             select: { id: true, key: true }
         });
         settings.forEach(s => entityNamesById.set(s.id, s.key));
+    }
+
+    if (taskIds.length > 0) {
+        const tasks = await prisma.task.findMany({
+            where: { id: { in: [...new Set(taskIds)] } },
+            select: { id: true, name: true }
+        });
+        tasks.forEach(t => entityNamesById.set(t.id, t.name));
+    }
+
+    if (outcomeIds.length > 0) {
+        const outcomes = await prisma.outcome.findMany({
+            where: { id: { in: [...new Set(outcomeIds)] } },
+            select: { id: true, name: true }
+        });
+        outcomes.forEach(o => entityNamesById.set(o.id, o.name));
+    }
+
+    if (releaseIds.length > 0) {
+        const releases = await prisma.release.findMany({
+            where: { id: { in: [...new Set(releaseIds)] } },
+            select: { id: true, name: true }
+        });
+        releases.forEach(r => entityNamesById.set(r.id, r.name));
+    }
+
+    if (licenseIds.length > 0) {
+        const licenses = await prisma.license.findMany({
+            where: { id: { in: [...new Set(licenseIds)] } },
+            select: { id: true, name: true }
+        });
+        licenses.forEach(l => entityNamesById.set(l.id, l.name));
+    }
+
+    if (tagIds.length > 0) {
+        // Tags are stored in ProductTag and SolutionTag tables
+        const [productTags, solutionTags] = await Promise.all([
+            prisma.productTag.findMany({
+                where: { id: { in: [...new Set(tagIds)] } },
+                select: { id: true, name: true }
+            }),
+            prisma.solutionTag.findMany({
+                where: { id: { in: [...new Set(tagIds)] } },
+                select: { id: true, name: true }
+            })
+        ]);
+        productTags.forEach((t: { id: string; name: string }) => entityNamesById.set(t.id, t.name));
+        solutionTags.forEach((t: { id: string; name: string }) => entityNamesById.set(t.id, t.name));
+    }
+
+    if (userIds.length > 0) {
+        const usersLookup = await prisma.user.findMany({
+            where: { id: { in: [...new Set(userIds)] } },
+            select: { id: true, username: true, fullName: true }
+        });
+        usersLookup.forEach(u => entityNamesById.set(u.id, u.fullName || u.username));
+    }
+
+    if (roleIds.length > 0) {
+        const roles = await prisma.role.findMany({
+            where: { id: { in: [...new Set(roleIds)] } },
+            select: { id: true, name: true }
+        });
+        roles.forEach(r => entityNamesById.set(r.id, r.name));
     }
 
     // Collect userIds that need lookup (where user relation is missing)

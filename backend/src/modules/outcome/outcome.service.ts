@@ -33,7 +33,7 @@ export class OutcomeService {
             }
         });
 
-        await logAudit('CREATE_OUTCOME', 'Outcome', outcome.id, { input }, userId);
+        await logAudit('CREATE_OUTCOME', 'Outcome', outcome.id, { name: outcome.name, input }, userId);
         return outcome;
     }
 
@@ -51,12 +51,15 @@ export class OutcomeService {
             }
         });
 
-        await logAudit('UPDATE_OUTCOME', 'Outcome', id, { before, after: outcome }, userId);
+        await logAudit('UPDATE_OUTCOME', 'Outcome', id, { name: outcome.name, before, after: outcome }, userId);
         return outcome;
     }
 
     static async deleteOutcome(userId: string, id: string) {
         console.log(`Deleting outcome: ${id}`);
+
+        // Get outcome name before deletion for audit
+        const outcome = await prisma.outcome.findUnique({ where: { id }, select: { id: true, name: true } });
 
         try {
             await prisma.outcome.delete({ where: { id } });
@@ -66,7 +69,7 @@ export class OutcomeService {
             throw new Error(`Failed to delete outcome: ${error.message}`);
         }
 
-        await logAudit('DELETE_OUTCOME', 'Outcome', id, {}, userId);
+        await logAudit('DELETE_OUTCOME', 'Outcome', id, { name: outcome?.name }, userId);
         return true;
     }
 

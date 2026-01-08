@@ -1,10 +1,11 @@
 # Application Blueprint Template
 
-**Version:** 1.6.0  
-**Last Updated:** January 7, 2026  
+**Version:** 1.7.0  
+**Last Updated:** January 8, 2026  
 **Purpose:** Generate new applications with 100/100 architecture score from day one  
 **Based On:** DAP (Digital Adoption Platform) - Production-proven architecture
 
+> **v1.7.0 Additions:** Default Settings Optimization (Strict RBAC, AI enabled, Rate limiting disabled)
 > **v1.6.0 Additions:** Personal Sandbox Pattern (User-scoped Practice Environments)
 > **v1.5.0 Additions:** Comprehensive Entity Auditing, Enhanced Audit Detail Panels, Historical Data Attribution Fallbacks
 > **v1.4.0 Additions:** Session Inactivity Management (Sliding Window), RBAC Default Read-All Strategy
@@ -1187,14 +1188,17 @@ export function requirePermission(
 }
 ```
 
-### 5.3 RBAC Default Read-Only Strategy (MANDATORY for Catalog Visibility)
+### 5.3 RBAC Default Read-Only Strategy (Configurable)
 
-> ⚠️ **CRITICAL:** To reduce administration friction, the system provides a "Default Read-All" capability for common catalog resources.
+> ⚠️ **NOTE:** The system provides a configurable "Default Read-All" capability for common catalog resources.
 
 **Pattern:**
-- All `USER` role accounts have baseline `READ` visibility to `PRODUCT`, `SOLUTION`, and `CUSTOMER`.
-- This is controlled by a feature flag: `RBAC_DEFAULT_USER_READ_ALL`.
+- Controlled by feature flag: `RBAC_DEFAULT_USER_READ_ALL` (defaults to `false` for strict RBAC).
+- When `true`: All `USER` role accounts have baseline `READ` visibility to `PRODUCT`, `SOLUTION`, and `CUSTOMER`.
+- When `false` (default): Users only see resources explicitly granted by their RBAC roles.
 - Logic: `canRead = user.isAdmin || (isUser && RBAC_DEFAULT_USER_READ_ALL) || rolePermissions.has(READ)`.
+
+**Recommendation:** Keep `false` (strict mode) for production environments with role-based data segregation. Set to `true` for small teams where everyone should browse everything.
 
 ### 5.4 Session Inactivity Management (Sliding Window)
 
@@ -1649,6 +1653,67 @@ echo "✓ All pre-push checks passed"
     "quality:full": "npm run check:all && npm run test:e2e"
   }
 }
+```
+
+### 7.4 Frontend Development Modes (Vite)
+
+The frontend uses Vite which provides two distinct server modes:
+
+#### Dev Mode (`npm run dev`)
+```bash
+cd frontend && npm run dev
+# → http://localhost:5173
+```
+
+| Property | Value |
+|----------|-------|
+| **Port** | 5173 |
+| **Source** | Unbundled source files (on-demand compilation) |
+| **Hot Reload** | ✅ Instant HMR (Hot Module Replacement) |
+| **Startup** | Fast (no build required) |
+| **Code** | Development (unminified, with source maps) |
+| **Use Case** | Active development, debugging |
+
+#### Preview Mode (`npm run preview`)
+```bash
+cd frontend && npm run build && npm run preview
+# → http://localhost:4173
+```
+
+| Property | Value |
+|----------|-------|
+| **Port** | 4173 |
+| **Source** | Production build from `dist/` folder |
+| **Hot Reload** | ❌ Requires rebuild for changes |
+| **Startup** | Requires build step first |
+| **Code** | Production (minified, optimized, tree-shaken) |
+| **Use Case** | Testing production build before deployment, QA |
+
+#### When to Use Each Mode
+
+| Scenario | Recommended Mode |
+|----------|------------------|
+| Writing/editing code | Dev (5173) |
+| Debugging issues | Dev (5173) |
+| Testing production behavior | Preview (4173) |
+| Verifying bundle optimization | Preview (4173) |
+| Final QA before deploy | Preview (4173) |
+| Performance testing | Preview (4173) |
+
+#### Quick Reference Commands
+```bash
+# Development (day-to-day coding)
+cd frontend && npm run dev              # http://localhost:5173
+
+# Production preview (pre-deploy testing)
+cd frontend && npm run build && npm run preview  # http://localhost:4173
+
+# Full stack development
+# Terminal 1: Backend
+cd backend && npm run dev               # http://localhost:4000
+
+# Terminal 2: Frontend
+cd frontend && npm run dev              # http://localhost:5173
 ```
 
 ---

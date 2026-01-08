@@ -204,6 +204,9 @@ export class ProductService {
    */
   static async deleteProduct(userId: string, id: string) {
     try {
+      // Get product name before deletion for audit
+      const product = await prisma.product.findUnique({ where: { id }, select: { id: true, name: true } });
+      
       // Delete related tasks
       await prisma.task.deleteMany({ where: { productId: id } });
 
@@ -225,7 +228,7 @@ export class ProductService {
       // Finally, delete the product itself
       await prisma.product.delete({ where: { id } });
 
-      await logAudit('DELETE_PRODUCT', 'Product', id, {}, userId);
+      await logAudit('DELETE_PRODUCT', 'Product', id, { name: product?.name }, userId);
       return true;
     } catch (error) {
       console.error('Error deleting product:', error);

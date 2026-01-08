@@ -57,32 +57,6 @@ export const DiaryPage: React.FC = () => {
         setTabValue(newValue);
     };
 
-    const handleAddItem = () => {
-        switch (tabValue) {
-            case 0:
-                todoTabRef.current?.triggerAdd();
-                break;
-            case 1:
-                bookmarkTabRef.current?.triggerAdd();
-                break;
-            case 2:
-                // productsTabRef.current?.triggerAdd(); // Should open assign dialog
-                if (productsTabRef.current) {
-                    productsTabRef.current.triggerAdd();
-                }
-                break;
-        }
-    };
-
-    const getAddTooltip = () => {
-        switch (tabValue) {
-            case 0: return 'Add Task';
-            case 1: return 'Add Bookmark';
-            case 2: return 'Add from Catalog';
-            default: return 'Add';
-        }
-    };
-
     return (
         <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
@@ -128,63 +102,100 @@ export const DiaryPage: React.FC = () => {
                         <Tab
                             icon={<TodoIcon sx={{ fontSize: 20 }} />}
                             iconPosition="start"
-                            label="To-Do List"
+                            label={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    To-Do List
+                                    <Tooltip title="Add Task">
+                                        <Box
+                                            component="span"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                todoTabRef.current?.triggerAdd();
+                                            }}
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                width: 24,
+                                                height: 24,
+                                                borderRadius: '50%',
+                                                color: '#10B981',
+                                                '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' }
+                                            }}
+                                        >
+                                            <AddIcon fontSize="small" />
+                                        </Box>
+                                    </Tooltip>
+                                </Box>
+                            }
                             id="diary-tab-0"
                             aria-controls="diary-tabpanel-0"
                         />
                         <Tab
                             icon={<BookmarkIcon sx={{ fontSize: 20 }} />}
                             iconPosition="start"
-                            label="Bookmarks"
+                            label={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    Bookmarks
+                                    <Tooltip title="Add Bookmark">
+                                        <Box
+                                            component="span"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                bookmarkTabRef.current?.triggerAdd();
+                                            }}
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                width: 24,
+                                                height: 24,
+                                                borderRadius: '50%',
+                                                color: '#10B981',
+                                                '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' }
+                                            }}
+                                        >
+                                            <AddIcon fontSize="small" />
+                                        </Box>
+                                    </Tooltip>
+                                </Box>
+                            }
                             id="diary-tab-1"
                             aria-controls="diary-tabpanel-1"
                         />
                         <Tab
+                            icon={<ProductIcon sx={{ fontSize: 20 }} />}
+                            iconPosition="start"
                             label={
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     My Products
-                                    <Box
-                                        component="span"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (productsTabRef.current) {
-                                                productsTabRef.current.triggerAdd();
-                                            }
-                                        }}
-                                        sx={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            width: 24,
-                                            height: 24,
-                                            borderRadius: '50%',
-                                            color: '#10B981',
-                                            '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' }
-                                        }}
-                                    >
-                                        <AddIcon fontSize="small" />
-                                    </Box>
+                                    <Tooltip title="Add from Catalog">
+                                        <Box
+                                            component="span"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                productsTabRef.current?.triggerAdd();
+                                            }}
+                                            sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                width: 24,
+                                                height: 24,
+                                                borderRadius: '50%',
+                                                color: '#10B981',
+                                                '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' }
+                                            }}
+                                        >
+                                            <AddIcon fontSize="small" />
+                                        </Box>
+                                    </Tooltip>
                                 </Box>
                             }
                             id="diary-tab-2"
                             aria-controls="diary-tabpanel-2"
                         />
                     </Tabs>
-                    {tabValue !== 2 && (
-                        <Tooltip title={getAddTooltip()}>
-                            <IconButton
-                                onClick={handleAddItem}
-                                sx={{
-                                    bgcolor: 'primary.main',
-                                    color: 'white',
-                                    '&:hover': { bgcolor: 'primary.dark' },
-                                    mr: 1,
-                                }}
-                            >
-                                <AddIcon />
-                            </IconButton>
-                        </Tooltip>
-                    )}
                 </Box>
 
                 <Box sx={{ px: { xs: 2, sm: 4 }, minHeight: 400 }}>

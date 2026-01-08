@@ -200,7 +200,7 @@ export class TelemetryService {
 
             // Log audit trail
             if (userId) {
-                await logAudit('DELETE_TELEMETRY_ATTRIBUTE', 'TelemetryAttribute', attributeId, {}, userId);
+                await logAudit('DELETE_TELEMETRY_ATTRIBUTE', 'TelemetryAttribute', attributeId, { name: attribute.name }, userId);
             }
 
             return true;
@@ -506,7 +506,7 @@ export class TelemetryService {
 
             // Log audit trail
             if (userId) {
-                await logAudit('DELETE_TELEMETRY_VALUE', 'TelemetryValue', valueId, {}, userId);
+                await logAudit('DELETE_TELEMETRY_VALUE', 'TelemetryValue', valueId, { value: value.value }, userId);
             }
 
             return true;

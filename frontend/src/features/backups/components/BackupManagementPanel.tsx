@@ -119,6 +119,7 @@ const RESTORE_BACKUP = gql`
         tasks
         customerTasks
         customerSolutionTasks
+      }
     }
   }
 `;

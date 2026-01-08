@@ -173,6 +173,20 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     onError: (err) => setError(`Export failed: ${err.message}`)
   });
 
+  // Import product telemetry mutation (must be before any early returns - rules of hooks)
+  const [importAdoptionPlanTelemetry] = useMutation(IMPORT_ADOPTION_PLAN_TELEMETRY, {
+    onCompleted: () => {
+      refetch();
+    }
+  });
+
+  // Import solution telemetry mutation (must be before any early returns - rules of hooks)
+  const [importSolutionAdoptionPlanTelemetry] = useMutation(IMPORT_SOLUTION_ADOPTION_PLAN_TELEMETRY, {
+    onCompleted: () => {
+      refetch();
+    }
+  });
+
   // Extract solution tasks (must be called before any conditional returns - rules of hooks)
   const allSolutionTasks = useMemo(() => {
     if (!data?.solutionAdoptionPlan) return [];
@@ -337,44 +351,39 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
     });
   };
 
-  // Import product telemetry mutation
-  const [importAdoptionPlanTelemetry] = useMutation(IMPORT_ADOPTION_PLAN_TELEMETRY, {
-    onCompleted: () => {
-      refetch();
-    }
-  });
-
-  // Import solution telemetry mutation
-  const [importSolutionAdoptionPlanTelemetry] = useMutation(IMPORT_SOLUTION_ADOPTION_PLAN_TELEMETRY, {
-    onCompleted: () => {
-      refetch();
-    }
-  });
-
   // Handlers for product telemetry
   const handleExportProductTelemetry = (adoptionPlanId: string) => {
     exportProductTelemetryTemplate({ variables: { adoptionPlanId } });
   };
 
   const handleImportProductTelemetry = async (adoptionPlanId: string, file: File) => {
+    // Close any existing dialog first to ensure state change is detected
+    setImportResultDialog({ open: false, success: false });
+    
     try {
       const { data } = await importAdoptionPlanTelemetry({
         variables: { adoptionPlanId, file }
       });
       const result = data.importAdoptionPlanTelemetry;
-      setImportResultDialog({
-        open: true,
-        success: result.success,
-        summary: result.summary,
-        taskResults: result.taskResults,
-        errorMessage: result.summary.errors ? result.summary.errors.join(', ') : undefined,
-      });
+      
+      // Use setTimeout to ensure React processes the close before opening again
+      setTimeout(() => {
+        setImportResultDialog({
+          open: true,
+          success: result.success,
+          summary: result.summary,
+          taskResults: result.taskResults,
+          errorMessage: result.summary.errors ? result.summary.errors.join(', ') : undefined,
+        });
+      }, 50);
     } catch (err: any) {
-      setImportResultDialog({
-        open: true,
-        success: false,
-        errorMessage: err.message,
-      });
+      setTimeout(() => {
+        setImportResultDialog({
+          open: true,
+          success: false,
+          errorMessage: err.message,
+        });
+      }, 50);
     }
   };
 
@@ -384,24 +393,35 @@ export const SolutionAdoptionPlanView: React.FC<Props> = ({
   };
 
   const handleImportSolutionTelemetry = async (file: File) => {
+    // Close any existing dialog first to ensure state change is detected
+    setImportResultDialog({ open: false, success: false });
+    
     try {
       const { data } = await importSolutionAdoptionPlanTelemetry({
         variables: { solutionAdoptionPlanId, file }
       });
       const result = data.importSolutionAdoptionPlanTelemetry;
-      setImportResultDialog({
-        open: true,
-        success: result.success,
-        summary: result.summary,
-        taskResults: [], // Solution import might not return detailed task results in the same structure, or check type definition
-        errorMessage: result.summary.errors ? result.summary.errors.join(', ') : undefined,
-      });
+      
+      // Use setTimeout to ensure React processes the close before opening again
+      setTimeout(() => {
+        setImportResultDialog({
+          open: true,
+          success: result.success,
+          summary: result.summary,
+          taskResults: result.taskResults ?? [],
+          errorMessage: result.summary.errors ? result.summary.errors.join(', ') : undefined,
+          timestamp: Date.now(),
+        });
+      }, 50);
     } catch (err: any) {
-      setImportResultDialog({
-        open: true,
-        success: false,
-        errorMessage: err.message,
-      });
+      setTimeout(() => {
+        setImportResultDialog({
+          open: true,
+          success: false,
+          errorMessage: err.message,
+          timestamp: Date.now(),
+        });
+      }, 50);
     }
   };
 

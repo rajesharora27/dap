@@ -515,7 +515,16 @@ export const IMPORT_PERSONAL_TELEMETRY = gql`
       summary {
         tasksProcessed
         attributesUpdated
+        criteriaEvaluated
         errors
+      }
+      taskResults {
+        taskId
+        taskName
+        attributesUpdated
+        criteriaMet
+        criteriaTotal
+        completionPercentage
       }
     }
   }

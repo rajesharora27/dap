@@ -251,7 +251,7 @@ export const envConfig = {
     warnOnViolation: env.RBAC_WARN ?? isDev,
     autoGrantPermissions: env.RBAC_AUTO_GRANT ?? isDev,
 
-    defaultUserReadAll: env.RBAC_DEFAULT_USER_READ_ALL ?? true
+    defaultUserReadAll: env.RBAC_DEFAULT_USER_READ_ALL ?? false
   },
   database: {
     autoSeed: env.AUTO_SEED ?? isDev,
@@ -267,7 +267,7 @@ export const envConfig = {
     credentials: true
   },
   rateLimiting: {
-    enabled: env.RATE_LIMIT_ENABLED ?? isProd,
+    enabled: env.RATE_LIMIT_ENABLED ?? false,
     windowMs: env.RATE_LIMIT_WINDOW_MS || 900000,
     max: env.RATE_LIMIT_MAX || (isDev ? 10000 : 100),
     graphqlMax: env.RATE_LIMIT_GRAPHQL_MAX || (isDev ? 5000 : 300)

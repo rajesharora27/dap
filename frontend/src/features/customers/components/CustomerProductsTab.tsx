@@ -30,11 +30,34 @@ import {
 import { AssignProductDialog } from '@features/products';
 import { EditLicensesDialog } from './EditLicensesDialog';
 import { TaskDetailsDialog } from '@features/tasks/components/TaskDetailsDialog';
-import { downloadFileFromUrl } from '@/features/telemetry/utils/telemetryOperations';
-import { ProductAdoptionPlanView } from '@features/adoption-plans';
+import { downloadFileFromUrl, ImportResultDialogState } from '@/features/telemetry/utils/telemetryOperations';
+import { ProductAdoptionPlanView, TelemetryImportResultDialog } from '@features/adoption-plans';
 import { CustomerAssignmentHeader } from './CustomerAssignmentHeader';
 import { useCustomerContext } from '../context/CustomerContext';
 import { ConfirmDialog } from '@shared/components';
+
+// Define mutation outside component to prevent recreation on each render
+const IMPORT_ADOPTION_PLAN_TELEMETRY = gql`
+    mutation ImportAdoptionPlanTelemetry($adoptionPlanId: ID!, $file: Upload!) {
+        importAdoptionPlanTelemetry(adoptionPlanId: $adoptionPlanId, file: $file) {
+            success
+            summary {
+                tasksProcessed
+                attributesUpdated
+                criteriaEvaluated
+                errors
+            }
+            taskResults {
+                taskId
+                taskName
+                attributesUpdated
+                criteriaMet
+                criteriaTotal
+                completionPercentage
+            }
+        }
+    }
+`;
 
 export function CustomerProductsTab() {
     const {
@@ -55,6 +78,7 @@ export function CustomerProductsTab() {
     const [deleteProductDialogOpen, setDeleteProductDialogOpen] = useState(false);
     const [taskDetailsDialogOpen, setTaskDetailsDialogOpen] = useState(false);
     const [selectedTask, setSelectedTask] = useState<any>(null);
+    const [importResultDialog, setImportResultDialog] = useState<ImportResultDialogState>({ open: false, success: false });
 
     // Mutations from context
     const {
@@ -124,17 +148,7 @@ export function CustomerProductsTab() {
         }
     };
 
-    const [importAdoptionPlanTelemetry] = useMutation(gql`
-        mutation ImportAdoptionPlanTelemetry($adoptionPlanId: ID!, $file: Upload!) {
-            importAdoptionPlanTelemetry(adoptionPlanId: $adoptionPlanId, file: $file) {
-                success
-                summary {
-                    tasksProcessed
-                    errors
-                }
-            }
-        }
-    `);
+    const [importAdoptionPlanTelemetry] = useMutation(IMPORT_ADOPTION_PLAN_TELEMETRY);
 
     const handleImportTelemetryClick = () => {
         fileInputRef.current?.click();
@@ -144,19 +158,40 @@ export function CustomerProductsTab() {
         const file = event.target.files?.[0];
         if (!file || !adoptionPlanId) return;
 
+        // Close dialog first, then reopen with delay
+        setImportResultDialog({ open: false, success: false });
+
         try {
             const { data } = await importAdoptionPlanTelemetry({
                 variables: { adoptionPlanId, file }
             });
 
-            if (data?.importAdoptionPlanTelemetry?.success) {
+            const result = data?.importAdoptionPlanTelemetry;
+            
+            // Use setTimeout to ensure React processes the close before opening again
+            setTimeout(() => {
+                setImportResultDialog({
+                    open: true,
+                    success: result?.success ?? false,
+                    summary: result?.summary,
+                    taskResults: result?.taskResults ?? [],
+                    errorMessage: result?.summary?.errors?.length ? result.summary.errors.join(', ') : undefined,
+                    timestamp: Date.now(),
+                });
+            }, 50);
+            
+            if (result?.success) {
                 refetchPlan();
-                setSuccessMessage('Telemetry imported successfully');
-            } else {
-                setErrorMessage('Import failed');
             }
         } catch (err: any) {
-            setErrorMessage(`Failed to import: ${err.message}`);
+            setTimeout(() => {
+                setImportResultDialog({
+                    open: true,
+                    success: false,
+                    errorMessage: err.message,
+                    timestamp: Date.now(),
+                });
+            }, 50);
         }
         event.target.value = '';
     };
@@ -345,6 +380,12 @@ export function CustomerProductsTab() {
                 onConfirm={handleDeleteProduct}
                 onCancel={() => setDeleteProductDialogOpen(false)}
                 severity="error"
+            />
+
+            {/* Telemetry Import Result Dialog */}
+            <TelemetryImportResultDialog
+                state={importResultDialog}
+                onClose={() => setImportResultDialog({ ...importResultDialog, open: false })}
             />
         </Box>
     );

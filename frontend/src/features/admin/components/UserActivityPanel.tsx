@@ -157,7 +157,8 @@ const LoginStatsTab: React.FC<{ users: any[] }> = ({ users }) => {
     if (error) return <Alert severity="error">{error.message}</Alert>;
 
     const filteredStats = data.loginStats
-        .filter((stat: any) => roleFilter === 'ALL' || stat.roles.includes(roleFilter));
+        .filter((stat: any) => roleFilter === 'ALL' || stat.roles.includes(roleFilter))
+        .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const uniqueRoles = Array.from(new Set(data.loginStats.flatMap((s: any) => s.roles))) as string[];
 
@@ -266,6 +267,111 @@ const LoginStatsTab: React.FC<{ users: any[] }> = ({ users }) => {
     );
 };
 
+// Helper to check if a string looks like a database ID (cuid or uuid)
+const looksLikeId = (str: string): boolean => {
+    if (!str || typeof str !== 'string') return false;
+    // CUID pattern: starts with 'c' and is ~25 chars of lowercase alphanumeric
+    const cuidPattern = /^c[a-z0-9]{20,30}$/;
+    // UUID pattern
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return cuidPattern.test(str) || uuidPattern.test(str);
+};
+
+// Helper to format a value, hiding IDs
+const formatValue = (val: any): string => {
+    if (val === null || val === undefined) return '(empty)';
+    if (typeof val === 'string' && looksLikeId(val)) return '(reference)';
+    if (typeof val === 'object') {
+        // For arrays and objects, stringify but skip ID fields
+        const cleaned = JSON.parse(JSON.stringify(val, (key, v) => {
+            if (key.endsWith('Id') || key === 'id') return undefined;
+            return v;
+        }));
+        return JSON.stringify(cleaned);
+    }
+    return String(val);
+};
+
+// Helper to format change details in a user-friendly way
+const formatChangeDetails = (details: string, entityName: string, action: string) => {
+    try {
+        const parsed = JSON.parse(details);
+        const lines: string[] = [];
+        
+        // Extract name from various places in the details
+        const extractedName = parsed.name || parsed.input?.name || parsed.before?.name || parsed.after?.name || parsed.key;
+        const displayName = extractedName || (looksLikeId(entityName) ? '(deleted entity)' : entityName);
+        
+        // Show name prominently
+        if (displayName && displayName !== '(deleted entity)') {
+            lines.push(`📌 ${displayName}`);
+        }
+        
+        // Handle different detail formats
+        if (parsed.changes && typeof parsed.changes === 'object') {
+            const changeEntries = Object.entries(parsed.changes as Record<string, any>)
+                .filter(([field]) => !field.endsWith('Id') && field !== 'id' && field !== 'updatedAt' && field !== 'createdAt');
+            
+            if (changeEntries.length > 0) {
+                lines.push('📝 Changes:');
+                for (const [field, change] of changeEntries) {
+                    const from = formatValue((change as any).from);
+                    const to = formatValue((change as any).to);
+                    lines.push(`  • ${field}: ${from} → ${to}`);
+                }
+            }
+        }
+        
+        if (parsed.before && parsed.after) {
+            const changedFields = Object.keys(parsed.after)
+                .filter(key => !key.endsWith('Id') && key !== 'id' && key !== 'updatedAt' && key !== 'createdAt')
+                .filter(key => JSON.stringify(parsed.before[key]) !== JSON.stringify(parsed.after[key]));
+            
+            if (changedFields.length > 0) {
+                lines.push('📝 Field Changes:');
+                for (const key of changedFields) {
+                    lines.push(`  • ${key}: ${formatValue(parsed.before[key])} → ${formatValue(parsed.after[key])}`);
+                }
+            }
+        }
+        
+        // For simple input objects (create operations)
+        if (parsed.input && !parsed.changes && !parsed.before) {
+            const inputFields = Object.entries(parsed.input)
+                .filter(([key]) => !key.endsWith('Id') && key !== 'id' && key !== 'name');
+            
+            if (inputFields.length > 0) {
+                lines.push('📝 Created with:');
+                for (const [key, val] of inputFields) {
+                    lines.push(`  • ${key}: ${formatValue(val)}`);
+                }
+            }
+        }
+        
+        // Show action-specific info
+        if (action.toLowerCase().includes('delete')) {
+            lines.push(`🗑️ Deleted: ${displayName}`);
+        }
+        
+        // If nothing meaningful was extracted, show a simple summary
+        if (lines.length === 0) {
+            if (displayName) lines.push(`📌 ${displayName}`);
+            lines.push(`Action: ${action}`);
+        }
+        
+        return lines.join('\n');
+    } catch (e) {
+        return details;
+    }
+};
+
+// Format entity name for display
+const formatEntityName = (name: string): string => {
+    if (!name) return '(unknown)';
+    if (looksLikeId(name)) return '(deleted entity)';
+    return name;
+};
+
 const EntityChangesTab: React.FC<{ users: any[] }> = ({ users }) => {
     const [period, setPeriod] = useState<string>('week');
     const [userId, setUserId] = useState<string>('ALL');
@@ -315,6 +421,14 @@ const EntityChangesTab: React.FC<{ users: any[] }> = ({ users }) => {
                         <MenuItem value="Product">Product</MenuItem>
                         <MenuItem value="Solution">Solution</MenuItem>
                         <MenuItem value="Customer">Customer</MenuItem>
+                        <MenuItem value="Task">Task</MenuItem>
+                        <MenuItem value="Outcome">Outcome</MenuItem>
+                        <MenuItem value="Release">Release</MenuItem>
+                        <MenuItem value="License">License</MenuItem>
+                        <MenuItem value="Tag">Tag</MenuItem>
+                        <MenuItem value="User">User</MenuItem>
+                        <MenuItem value="Role">Role</MenuItem>
+                        <MenuItem value="AppSetting">Settings</MenuItem>
                     </Select>
                 </FormControl>
                 <IconButton onClick={() => refetch()}><RefreshIcon /></IconButton>
@@ -351,7 +465,9 @@ const EntityChangesTab: React.FC<{ users: any[] }> = ({ users }) => {
                                         />
                                     </TableCell>
                                     <TableCell>{log.entity}</TableCell>
-                                    <TableCell sx={{ fontWeight: 500 }}>{log.entityName}</TableCell>
+                                    <TableCell sx={{ fontWeight: 500, fontStyle: looksLikeId(log.entityName) ? 'italic' : 'normal', color: looksLikeId(log.entityName) ? 'text.secondary' : 'text.primary' }}>
+                                        {formatEntityName(log.entityName)}
+                                    </TableCell>
                                 </TableRow>
                                 {selectedLogId === log.id && (
                                     <TableRow sx={{ bgcolor: 'action.hover' }}>
@@ -366,20 +482,13 @@ const EntityChangesTab: React.FC<{ users: any[] }> = ({ users }) => {
                                                         component="pre"
                                                         sx={{
                                                             whiteSpace: 'pre-wrap',
-                                                            wordBreak: 'break-all',
-                                                            fontStyle: 'italic',
-                                                            fontFamily: 'monospace',
-                                                            color: 'text.secondary'
+                                                            wordBreak: 'break-word',
+                                                            fontFamily: 'system-ui, -apple-system, sans-serif',
+                                                            color: 'text.primary',
+                                                            lineHeight: 1.8
                                                         }}
                                                     >
-                                                        {(() => {
-                                                            try {
-                                                                const details = JSON.parse(log.details);
-                                                                return JSON.stringify(details, null, 2);
-                                                            } catch (e) {
-                                                                return log.details;
-                                                            }
-                                                        })()}
+                                                        {formatChangeDetails(log.details, log.entityName, log.action)}
                                                     </Typography>
                                                 </Paper>
                                             </Box>

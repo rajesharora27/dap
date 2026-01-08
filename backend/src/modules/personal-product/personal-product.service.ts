@@ -134,6 +134,7 @@ export async function createPersonalTask(
         weight?: number;
         howToDoc?: string[];
         howToVideo?: string[];
+        licenseLevel?: number;
         outcomeIds?: string[];
         releaseIds?: string[];
     }
@@ -160,6 +161,7 @@ export async function createPersonalTask(
             sequenceNumber: (maxSeq._max.sequenceNumber ?? 0) + 1,
             howToDoc: data.howToDoc ?? [],
             howToVideo: data.howToVideo ?? [],
+            licenseLevel: data.licenseLevel,
             status: 'NOT_STARTED',
             outcomes: data.outcomeIds ? {
                 create: data.outcomeIds.map(oid => ({ personalOutcomeId: oid })),
@@ -193,6 +195,7 @@ export async function updatePersonalTask(
         sequenceNumber?: number;
         howToDoc?: string[];
         howToVideo?: string[];
+        licenseLevel?: number;
         outcomeIds?: string[];
         releaseIds?: string[];
         tagIds?: string[];
@@ -241,6 +244,7 @@ export async function updatePersonalTask(
             sequenceNumber: data.sequenceNumber,
             howToDoc: data.howToDoc,
             howToVideo: data.howToVideo,
+            licenseLevel: data.licenseLevel,
             status: data.status as any,
             statusNotes: data.statusNotes,
             statusUpdatedAt: data.status ? new Date() : undefined,

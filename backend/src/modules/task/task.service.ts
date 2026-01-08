@@ -204,7 +204,7 @@ export class TaskService {
             });
         }
 
-        await logAudit('CREATE_TASK', 'Task', task.id, { input }, userId);
+        await logAudit('CREATE_TASK', 'Task', task.id, { name: task.name, input }, userId);
         return task;
     }
 
@@ -505,7 +505,7 @@ export class TaskService {
             await recordChange(cs.id, 'Task', id, before, task);
         }
 
-        await logAudit('UPDATE_TASK', 'Task', id, { before, after: task }, userId);
+        await logAudit('UPDATE_TASK', 'Task', id, { name: task.name, before, after: task }, userId);
         pubsub.publish(PUBSUB_EVENTS.TASK_UPDATED, { taskUpdated: task });
         return task;
     }
@@ -541,7 +541,7 @@ export class TaskService {
         });
 
         console.log(`Task deleted successfully: ${id}`);
-        await logAudit('DELETE_TASK', 'Task', id, {}, userId);
+        await logAudit('DELETE_TASK', 'Task', id, { name: before.name, deletedTask: { id: before.id, name: before.name } }, userId);
         return true;
     }
 
@@ -626,7 +626,7 @@ export class TaskService {
             console.log(`Reordered ${remainingTasks.length} remaining tasks after deletion`);
             console.log(`Task deleted successfully: ${id}`);
 
-            await logAudit('DELETE_TASK', 'Task', id, {}, userId);
+            await logAudit('DELETE_TASK', 'Task', id, { name: taskToDelete.name, deletedTask: { id: taskToDelete.id, name: taskToDelete.name } }, userId);
             // Return the task that was deleted (captured before deletion)
             // We need to ensure it has the ID since it's the most critical field for the frontend
             return {
@@ -963,7 +963,7 @@ export class TaskService {
 
     static async addTelemetry(userId: string, taskId: string, data: any) {
         await prisma.telemetry.create({ data: { taskId, data } });
-        await logAudit('ADD_TELEMETRY', 'Telemetry', taskId, {});
+        await logAudit('ADD_TELEMETRY', 'Telemetry', taskId, { taskId, action: 'telemetry_added' });
         return true;
     }
 }

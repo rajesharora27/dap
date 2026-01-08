@@ -73,6 +73,15 @@ export const IMPORT_SOLUTION_ADOPTION_PLAN_TELEMETRY = gql`
       criteriaEvaluated
       errors
     }
+    taskResults {
+      taskId
+      taskName
+      attributesUpdated
+      criteriaMet
+      criteriaTotal
+      completionPercentage
+      errors
+    }
   }
 }
 `;

@@ -138,12 +138,23 @@ export const personalProductTypeDefs = gql`
   type PersonalTelemetryImportSummary {
     tasksProcessed: Int!
     attributesUpdated: Int!
+    criteriaEvaluated: Int!
     errors: [String!]!
+  }
+
+  type PersonalTaskTelemetryResult {
+    taskId: ID!
+    taskName: String!
+    attributesUpdated: Int!
+    criteriaMet: Int!
+    criteriaTotal: Int!
+    completionPercentage: Float!
   }
 
   type PersonalTelemetryImportResult {
     success: Boolean!
     summary: PersonalTelemetryImportSummary!
+    taskResults: [PersonalTaskTelemetryResult!]!
   }
   
   # ===================
@@ -186,6 +197,9 @@ export const personalProductTypeDefs = gql`
     outcomeIds: [String!]
     releaseIds: [String!]
     tagIds: [String!]
+    howToDoc: [String!]
+    howToVideo: [String!]
+    licenseLevel: Int
   }
   
   input UpdatePersonalTaskInput {
@@ -199,6 +213,9 @@ export const personalProductTypeDefs = gql`
     tagIds: [String!]
     status: TaskStatus
     statusNotes: String
+    howToDoc: [String!]
+    howToVideo: [String!]
+    licenseLevel: Int
   }
   
   input CreatePersonalOutcomeInput {

@@ -1,6 +1,41 @@
 # DAP Application Context
 
-## Recent Changes (January 6, 2026)
+## Recent Changes (January 8, 2026)
+
+### Session Summary: RBAC Strict Mode & Default Settings Optimization
+This session focused on validating RBAC enforcement for custom roles and optimizing default application settings for production use.
+
+### Key Changes
+
+#### 1. Default Settings Changed for Production-Ready Defaults
+**Goal:** Ensure sensible defaults that prioritize security and functionality out-of-the-box.
+
+**Changes:**
+| Setting | Old Default | New Default | Rationale |
+|---------|-------------|-------------|-----------|
+| `rbac.default.user.read.all` | `true` | `false` | Strict RBAC by default - users only see what their roles grant |
+| `ai.enabled` | `false` | `true` | AI features enabled by default |
+| `rate.limit.enabled` | `true` | `false` | Rate limiting disabled for development convenience |
+
+**Files Modified:**
+- `backend/src/modules/settings/settings.service.ts` - Updated `INITIAL_SETTINGS` defaults
+- `backend/src/config/env.ts` - Updated environment config fallbacks
+
+#### 2. RBAC Validation for Custom Roles
+**Issue:** User reported SME role (configured for Products and Solutions only) was also seeing Customers.
+
+**Root Cause:** The `rbac.default.user.read.all` setting was `true`, which grants READ access to all Products, Solutions, AND Customers regardless of role permissions.
+
+**Resolution:** Setting `rbac.default.user.read.all` to `false` enforces strict RBAC where users only see resources explicitly granted by their roles.
+
+**How RBAC Works:**
+- When `rbac.default.user.read.all = true`: All users get READ access to everything (convenience mode)
+- When `rbac.default.user.read.all = false`: Users only see resources their roles explicitly grant (strict mode)
+- WRITE/ADMIN permissions always require explicit role grants regardless of this setting
+
+---
+
+## Previous Changes (January 6, 2026)
 
 ### Session Summary - Part 3: Task Creation Reliability, Test Determinism, and Customer Overview UX
 This session focused on eliminating a task creation failure affecting both Products and Solutions, making the backend test environment deterministic, improving the Customers → Overview UI to visually distinguish solution-derived product assignments, and documenting a common MacBook “blank screen” root cause.
@@ -295,13 +330,14 @@ This session focused on (1) simplifying “system roles” to `ADMIN` vs `USER` 
 
 ### Key Changes
 
-#### 1. RBAC Policy: `USER` Has Read-Only Access to Everything
-**Goal:** Ensure baseline visibility for all `USER` accounts without requiring per-resource grants.
+#### 1. RBAC Policy: Configurable Default Read Access
+**Goal:** Provide flexible baseline visibility for `USER` accounts.
 
 **Solution:**
-- `SystemRole.USER` now has **global READ** access to `PRODUCT`, `SOLUTION`, and `CUSTOMER` by default.
-- WRITE / ADMIN actions remain **RBAC-gated** (RolePermissions / direct permissions) and are not granted by default.
-- Added feature flag for future tightening: `RBAC_DEFAULT_USER_READ_ALL` (defaults to true).
+- Added feature flag `RBAC_DEFAULT_USER_READ_ALL` to control baseline visibility.
+- When `true`: `SystemRole.USER` has **global READ** access to `PRODUCT`, `SOLUTION`, and `CUSTOMER`.
+- When `false` (default as of v3.9.1): Users only see resources explicitly granted by RBAC roles.
+- WRITE / ADMIN actions remain **RBAC-gated** (RolePermissions / direct permissions) regardless of this setting.
 
 **Files Modified:**
 - `backend/src/shared/auth/permissions.ts`
@@ -365,8 +401,10 @@ This session focused on (1) simplifying “system roles” to `ADMIN` vs `USER` 
 - Created `AdminSettingsPanel` in frontend with tabs for Security, AI, and System.
 - Backend `SettingsService` persists typed settings to database (`AppSetting` table).
 - Dynamic configuration for:
-  - `rbac.default.user.read.all`: Toggle baseline visibility.
+  - `rbac.default.user.read.all`: Toggle baseline visibility (default: `false` for strict RBAC).
+  - `ai.enabled`: Enable/disable AI features (default: `true`).
   - `ai.provider` / `ai.model`: Switch LLM backends.
+  - `rate.limit.enabled`: Toggle rate limiting (default: `false`).
   - `rate.limit.*`: Adjust API throttle limits.
 
 **Files Added:**

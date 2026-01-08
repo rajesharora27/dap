@@ -5,7 +5,7 @@ import {
     IconButton, Tabs, Tab, CircularProgress, Tooltip, Divider
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
-import { Add, Edit, Delete, FileUpload, FileDownload } from '@shared/components/FAIcon';
+import { Add, Edit, Delete, CloudUpload, CloudDownload } from '@shared/components/FAIcon';
 import { useApolloClient, useLazyQuery } from '@apollo/client';
 
 import { useSolutionContext } from '../context/SolutionContext';
@@ -200,7 +200,7 @@ export function SolutionsPageContent() {
                     <Button
                         variant="outlined"
                         size="small"
-                        startIcon={<FileUpload />}
+                        startIcon={<CloudUpload />}
                         onClick={() => setImportDialogOpen(true)}
                         sx={{ height: 40 }}
                     >
@@ -209,7 +209,7 @@ export function SolutionsPageContent() {
                     <Button
                         variant="outlined"
                         size="small"
-                        startIcon={<FileDownload />}
+                        startIcon={<CloudDownload />}
                         onClick={handleExportSolution}
                         disabled={!selectedSolutionId}
                         sx={{ height: 40 }}
@@ -269,14 +269,14 @@ export function SolutionsPageContent() {
                             sx={{ borderBottom: 1, borderColor: 'divider', flex: 1 }}
                         >
                             <Tab label="Summary" value="summary" />
-                            <Tab label="Resources" value="resources" />
-                            <Tab label="Products" value="products" />
+                            <Tab label={`Resources (${selectedSolution?.resources?.length || 0})`} value="resources" />
+                            <Tab label={`Products (${selectedSolution?.products?.length || 0})`} value="products" />
                             <Tab label={filteredTasks ? `Tasks (${filteredTasks.length})` : 'Tasks'} value="tasks" />
-                            <Tab label="Tags" value="tags" />
-                            <Tab label="Outcomes" value="outcomes" />
-                            <Tab label="Releases" value="releases" />
-                            <Tab label="Licenses" value="licenses" />
-                            <Tab label="Custom Attributes" value="customAttributes" />
+                            <Tab label={`Tags (${selectedSolution?.tags?.length || 0})`} value="tags" />
+                            <Tab label={`Outcomes (${selectedSolution?.outcomes?.length || 0})`} value="outcomes" />
+                            <Tab label={`Releases (${selectedSolution?.releases?.length || 0})`} value="releases" />
+                            <Tab label={`Licenses (${selectedSolution?.licenses?.length || 0})`} value="licenses" />
+                            <Tab label={`Custom Attributes (${Object.keys(selectedSolution?.customAttrs || {}).length})`} value="customAttributes" />
                         </Tabs>
 
                         {/* Tasks Tab Toolbar - inline with tabs */}

@@ -49,23 +49,27 @@ export const TelemetryImportResultDialog: React.FC<TelemetryImportResultDialogPr
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 2 }}>
                   <Box>
                     <Typography variant="caption" color="text.secondary">Tasks Processed</Typography>
-                    <Typography variant="h6">{state.summary.tasksProcessed}</Typography>
+                    <Typography variant="h6">{state.summary.tasksProcessed ?? 0}</Typography>
                   </Box>
                   <Box>
                     <Typography variant="caption" color="text.secondary">Attributes Updated</Typography>
-                    <Typography variant="h6">{state.summary.attributesUpdated}</Typography>
+                    <Typography variant="h6">{state.summary.attributesUpdated ?? 0}</Typography>
                   </Box>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">Criteria Evaluated</Typography>
-                    <Typography variant="h6">{state.summary.criteriaEvaluated}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="caption" color="text.secondary">Criteria Met</Typography>
-                    <Typography variant="h6" color="success.main">
-                      {state.taskResults?.reduce((sum, task) => sum + task.criteriaMet, 0) || 0}
-                      /{state.summary.criteriaEvaluated}
-                    </Typography>
-                  </Box>
+                  {(state.summary.criteriaEvaluated ?? 0) > 0 && (
+                    <>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Criteria Evaluated</Typography>
+                        <Typography variant="h6">{state.summary.criteriaEvaluated}</Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Criteria Met</Typography>
+                        <Typography variant="h6" color="success.main">
+                          {state.taskResults?.reduce((sum, task) => sum + task.criteriaMet, 0) || 0}
+                          /{state.summary.criteriaEvaluated}
+                        </Typography>
+                      </Box>
+                    </>
+                  )}
                 </Box>
               </CardContent>
             </Card>

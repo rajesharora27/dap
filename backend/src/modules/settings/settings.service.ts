@@ -27,7 +27,7 @@ export const INITIAL_SETTINGS: SettingDefinition[] = [
     },
     {
         key: 'rbac.default.user.read.all',
-        defaultValue: 'true',
+        defaultValue: 'false',
         dataType: 'boolean',
         category: 'security',
         label: 'Default Read Access for Users',
@@ -36,7 +36,7 @@ export const INITIAL_SETTINGS: SettingDefinition[] = [
     // AI
     {
         key: 'ai.enabled',
-        defaultValue: 'false',
+        defaultValue: 'true',
         dataType: 'boolean',
         category: 'ai',
         label: 'AI Agent Enabled',
@@ -68,7 +68,7 @@ export const INITIAL_SETTINGS: SettingDefinition[] = [
     // Performance
     {
         key: 'rate.limit.enabled',
-        defaultValue: 'true',
+        defaultValue: 'false',
         dataType: 'boolean',
         category: 'performance',
         label: 'Rate Limiting Enabled',

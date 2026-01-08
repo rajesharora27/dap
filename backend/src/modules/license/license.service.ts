@@ -42,7 +42,7 @@ export class LicenseService {
             }
         });
 
-        await logAudit('CREATE_LICENSE', 'License', license.id, { input }, userId);
+        await logAudit('CREATE_LICENSE', 'License', license.id, { name: license.name, input }, userId);
         return license;
     }
 
@@ -82,12 +82,15 @@ export class LicenseService {
 
         console.log(`[DEBUG] updateLicense result:`, JSON.stringify(license, null, 2));
 
-        await logAudit('UPDATE_LICENSE', 'License', id, { before, after: license }, userId);
+        await logAudit('UPDATE_LICENSE', 'License', id, { name: license.name, before, after: license }, userId);
         return license;
     }
 
     static async deleteLicense(userId: string, id: string) {
         console.log(`Deleting license: ${id}`);
+
+        // Get license name before deletion for audit
+        const license = await prisma.license.findUnique({ where: { id }, select: { id: true, name: true } });
 
         try {
             await prisma.license.delete({ where: { id } });
@@ -97,7 +100,7 @@ export class LicenseService {
             throw new Error(`Failed to delete license: ${error.message}`);
         }
 
-        await logAudit('DELETE_LICENSE', 'License', id, {}, userId);
+        await logAudit('DELETE_LICENSE', 'License', id, { name: license?.name }, userId);
         return true;
     }
 

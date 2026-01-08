@@ -188,7 +188,7 @@ function CustomersPanelContent({ forceTab, hideTabs }: CustomersPanelProps) {
                     <Tab
                       label={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          Products Assigned
+                          Products Assigned ({selectedCustomer?.products?.length || 0})
                           <Box component="span" onClick={(e) => { e.stopPropagation(); openAssignProduct(); }} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', color: '#10B981', '&:hover': { backgroundColor: 'rgba(16, 185, 129, 0.1)' } }}><Add fontSize="small" /></Box>
                         </Box>
                       }
@@ -197,7 +197,7 @@ function CustomersPanelContent({ forceTab, hideTabs }: CustomersPanelProps) {
                     <Tab
                       label={
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          Solutions Assigned
+                          Solutions Assigned ({selectedCustomer?.solutions?.length || 0})
                           <Box component="span" onClick={(e) => { e.stopPropagation(); openAssignSolution(); }} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 24, height: 24, borderRadius: '50%', color: '#3B82F6', '&:hover': { backgroundColor: 'rgba(59, 130, 246, 0.1)' } }}><Add fontSize="small" /></Box>
                         </Box>
                       }

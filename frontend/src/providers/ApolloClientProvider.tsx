@@ -1,7 +1,8 @@
 import * as React from 'react';
-import { ApolloClient, InMemoryCache, ApolloProvider, HttpLink, from } from '@apollo/client';
+import { ApolloClient, InMemoryCache, ApolloProvider, from } from '@apollo/client';
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
+import createUploadLink from 'apollo-upload-client/createUploadLink.mjs';
 import { getApiUrl, isDevelopment, getBasePath } from '../config/frontend.config';
 
 interface WrapperProps { children: React.ReactNode }
@@ -93,21 +94,20 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
       };
     });
 
-    const httpLink = new HttpLink({
+    // Use createUploadLink instead of HttpLink to support file uploads
+    const uploadLink = createUploadLink({
       uri: httpUrl,
       headers: {
-        'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
       fetchOptions: {
         mode: 'cors',
       },
-      fetch: (uri, options) => {
+      fetch: (uri: RequestInfo | URL, options?: RequestInit) => {
         console.log('🌐 Raw Fetch Call:', {
           uri,
           method: options?.method,
           headers: options?.headers,
-          body: options?.body,
           timestamp: new Date().toISOString()
         });
 
@@ -152,7 +152,7 @@ export const ApolloClientWrapper: React.FC<WrapperProps> = ({ children }) => {
     });
 
     const apolloClient = new ApolloClient({
-      link: from([errorLink, authLink, httpLink]),
+      link: from([errorLink, authLink, uploadLink]),
       cache: new InMemoryCache(),
       defaultOptions: {
         watchQuery: {

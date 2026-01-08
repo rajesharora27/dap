@@ -29,11 +29,11 @@ import {
     Add as AddIcon,
     Delete as DeleteIcon,
     MoreVert as MoreIcon,
-    FileUpload as ImportIcon,
-    FileDownload as ExportIcon,
+    CloudUpload as ProductImportIcon,    // Cloud upload for product import
+    CloudDownload as ProductExportIcon,  // Cloud download for product export  
     Edit as EditIcon,
-    Download as DownloadIcon,
-    Upload as UploadIcon,
+    Download as TelemetryExportIcon,     // Download arrow for telemetry export
+    Upload as TelemetryImportIcon,       // Upload arrow for telemetry import
 } from '@shared/components/FAIcon';
 import {
     GET_MY_PERSONAL_PRODUCTS,
@@ -51,6 +51,8 @@ import { BulkImportDialog } from '../../data-management/components/BulkImportDia
 import { PersonalProductMetadataSection } from './PersonalProductMetadataSection';
 import { TasksTabToolbar } from '@shared/components/TasksTabToolbar';
 import { DEFAULT_VISIBLE_COLUMNS } from '@shared/components/ColumnVisibilityToggle';
+import { TelemetryImportResultDialog } from '@features/adoption-plans/components/TelemetryImportResultDialog';
+import { ImportResultDialogState } from '@/features/telemetry/utils/telemetryOperations';
 
 
 export interface PersonalProductsTabRef {
@@ -69,6 +71,10 @@ export const PersonalProductsTab = forwardRef<PersonalProductsTabRef>((props, re
     const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
     const [externalAddMode, setExternalAddMode] = useState<string | null>(null);
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [importResultDialog, setImportResultDialog] = useState<ImportResultDialogState & { timestamp?: number }>({
+        open: false,
+        success: false,
+    });
 
     // Task Tab UI State (Lifted for Toolbar)
     const [isTasksLocked, setIsTasksLocked] = useState(false);
@@ -174,6 +180,10 @@ export const PersonalProductsTab = forwardRef<PersonalProductsTabRef>((props, re
 
     const handleTelemetryImport = async (file: File) => {
         if (!selectedProductId) return;
+        
+        // Close any existing dialog first to ensure state change is detected
+        setImportResultDialog({ open: false, success: false });
+        
         try {
             const { data } = await importPersonalTelemetry({
                 variables: {
@@ -183,17 +193,32 @@ export const PersonalProductsTab = forwardRef<PersonalProductsTabRef>((props, re
             });
 
             const result = data?.importPersonalTelemetry;
-
+            
+            // Use setTimeout to ensure React processes the close before opening again
+            setTimeout(() => {
+                setImportResultDialog({
+                    open: true,
+                    success: result?.success ?? false,
+                    summary: result?.summary,
+                    taskResults: result?.taskResults ?? [],
+                    errorMessage: result?.summary?.errors?.length ? result.summary.errors.join(', ') : undefined,
+                    timestamp: Date.now(), // Force state change detection
+                });
+            }, 50);
+            
             if (result?.success) {
-                alert(`Import successful! Processed ${result.summary?.tasksProcessed || 0} tasks.`);
                 refetch();
-            } else {
-                const errors = result.summary?.errors || ['Unknown error'];
-                alert(`Import failed: ${errors.join('\n')}`);
             }
         } catch (error: any) {
             console.error(error);
-            alert(`Import failed: ${error.message}`);
+            setTimeout(() => {
+                setImportResultDialog({
+                    open: true,
+                    success: false,
+                    errorMessage: error.message,
+                    timestamp: Date.now(), // Force state change detection
+                });
+            }, 50);
         }
     };
 
@@ -281,7 +306,7 @@ export const PersonalProductsTab = forwardRef<PersonalProductsTabRef>((props, re
                         <Box sx={{ display: 'flex', gap: 1 }}>
                             <Button
                                 variant="outlined"
-                                startIcon={<ImportIcon />}
+                                startIcon={<ProductImportIcon />}
                                 onClick={() => setIsImportDialogOpen(true)}
                                 size="small"
                                 sx={{ color: 'primary.main', borderColor: 'divider', '&:hover': { borderColor: 'primary.main', bgcolor: 'primary.50' } }}
@@ -290,7 +315,7 @@ export const PersonalProductsTab = forwardRef<PersonalProductsTabRef>((props, re
                             </Button>
                             <Button
                                 variant="outlined"
-                                startIcon={<ExportIcon />}
+                                startIcon={<ProductExportIcon />}
                                 onClick={handleExport}
                                 disabled={!selectedProduct}
                                 size="small"
@@ -343,13 +368,13 @@ export const PersonalProductsTab = forwardRef<PersonalProductsTabRef>((props, re
                     }}>
                         <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} variant="scrollable" scrollButtons="auto">
                             <Tab label="Summary" value="summary" />
-                            <Tab label="Resources" value="resources" />
+                            <Tab label={`Resources (${selectedProduct.resources?.length || 0})`} value="resources" />
                             <Tab label={`Tasks (${filteredTasks.length})`} value="tasks" />
                             <Tab label={`Tags (${selectedProduct.tags?.length || 0})`} value="tags" />
                             <Tab label={`Outcomes (${selectedProduct.outcomes?.length || 0})`} value="outcomes" />
                             <Tab label={`Releases (${selectedProduct.releases?.length || 0})`} value="releases" />
                             <Tab label={`Licenses (${selectedProduct.licenses?.length || 0})`} value="licenses" />
-                            <Tab label="Custom Attributes" value="customAttributes" />
+                            <Tab label={`Custom Attributes (${Object.keys(selectedProduct.customAttrs || {}).length})`} value="customAttributes" />
                         </Tabs>
 
                         {/* Tasks Tab Toolbar */}
@@ -359,12 +384,12 @@ export const PersonalProductsTab = forwardRef<PersonalProductsTabRef>((props, re
                                 <Box sx={{ display: 'flex', gap: 0.5, mr: 1, borderRight: '1px solid', borderColor: 'divider', pr: 1 }}>
                                     <Tooltip title="Export Telemetry Template">
                                         <IconButton size="small" onClick={handleTelemetryExport} color="primary">
-                                            <DownloadIcon fontSize="small" />
+                                            <TelemetryExportIcon fontSize="small" />
                                         </IconButton>
                                     </Tooltip>
                                     <Tooltip title="Import Telemetry">
                                         <IconButton size="small" component="label" color="primary">
-                                            <UploadIcon fontSize="small" />
+                                            <TelemetryImportIcon fontSize="small" />
                                             <input
                                                 type="file"
                                                 hidden
@@ -482,6 +507,12 @@ export const PersonalProductsTab = forwardRef<PersonalProductsTabRef>((props, re
                     setIsImportDialogOpen(false);
                 }}
                 entityType="PERSONAL_PRODUCT"
+            />
+
+            {/* Telemetry Import Result Dialog */}
+            <TelemetryImportResultDialog
+                state={importResultDialog}
+                onClose={() => setImportResultDialog({ ...importResultDialog, open: false })}
             />
         </Box>
     );

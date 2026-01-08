@@ -26,8 +26,8 @@ import { DELETE_LICENSE, CREATE_LICENSE, UPDATE_LICENSE, REORDER_LICENSES } from
 import { DELETE_PRODUCT_TAG, CREATE_PRODUCT_TAG, UPDATE_PRODUCT_TAG, REORDER_PRODUCT_TAGS } from '@features/tags';
 
 
-// Fix Icon imports
-import { FileUpload, FileDownload } from '@shared/components/FAIcon';
+// Product Import/Export Icons (Cloud style to differentiate from telemetry)
+import { CloudUpload, CloudDownload } from '@shared/components/FAIcon';
 
 export function ProductsPageContent() {
     const theme = useTheme();
@@ -358,7 +358,7 @@ export function ProductsPageContent() {
                     <Button
                         variant="outlined"
                         size="small"
-                        startIcon={<FileUpload />}
+                        startIcon={<CloudUpload />}
                         onClick={() => setImportDialogOpen(true)}
                         sx={{ height: 40 }}
                     >
@@ -367,7 +367,7 @@ export function ProductsPageContent() {
                     <Button
                         variant="outlined"
                         size="small"
-                        startIcon={<FileDownload />}
+                        startIcon={<CloudDownload />}
                         onClick={handleExportProduct}
                         disabled={!selectedProductId}
                         sx={{ height: 40 }}
@@ -427,13 +427,13 @@ export function ProductsPageContent() {
                             sx={{ borderBottom: 1, borderColor: 'divider', flex: 1 }}
                         >
                             <Tab label="Summary" value="summary" />
-                            <Tab label="Resources" value="resources" />
+                            <Tab label={`Resources (${selectedProduct.resources?.length || 0})`} value="resources" />
                             <Tab label={filteredTasks ? `Tasks (${filteredTasks.length})` : 'Tasks'} value="tasks" />
                             <Tab label={`Tags (${selectedProduct.tags?.length || 0})`} value="tags" />
                             <Tab label={`Outcomes (${selectedProduct.outcomes?.length || 0})`} value="outcomes" />
                             <Tab label={`Releases (${selectedProduct.releases?.length || 0})`} value="releases" />
                             <Tab label={`Licenses (${selectedProduct.licenses?.length || 0})`} value="licenses" />
-                            <Tab label="Custom Attributes" value="customAttributes" />
+                            <Tab label={`Custom Attributes (${Object.keys(selectedProduct.customAttrs || {}).length})`} value="customAttributes" />
                         </Tabs>
 
                         {/* Tasks Tab Toolbar - inline with tabs */}

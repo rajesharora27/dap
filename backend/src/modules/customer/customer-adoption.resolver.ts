@@ -687,7 +687,9 @@ export const CustomerAdoptionMutationResolvers = {
       where: { id },
       include: {
         adoptionPlan: { include: { tasks: true } },
-        customerSolution: true // Include the linked solution if it exists
+        customerSolution: true, // Include the linked solution if it exists
+        product: { select: { id: true, name: true } },
+        customer: { select: { id: true, name: true } }
       },
     });
 
@@ -708,7 +710,12 @@ export const CustomerAdoptionMutationResolvers = {
       where: { id },
     });
 
-    await logAudit('REMOVE_PRODUCT_FROM_CUSTOMER', 'CustomerProduct', id, {}, ctx.user?.id);
+    await logAudit('REMOVE_PRODUCT_FROM_CUSTOMER', 'CustomerProduct', id, {
+      productName: customerProduct.product?.name,
+      customerName: customerProduct.customer?.name,
+      productId: customerProduct.productId,
+      customerId: customerProduct.customerId
+    }, ctx.user?.id);
 
     return { success: true, message: 'Product removed from customer successfully' };
   },

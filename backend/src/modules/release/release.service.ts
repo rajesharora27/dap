@@ -40,7 +40,7 @@ export class ReleaseService {
             }
         });
 
-        await logAudit('CREATE_RELEASE', 'Release', release.id, { input }, userId);
+        await logAudit('CREATE_RELEASE', 'Release', release.id, { name: release.name, input }, userId);
         return release;
     }
 
@@ -61,12 +61,15 @@ export class ReleaseService {
             }
         });
 
-        await logAudit('UPDATE_RELEASE', 'Release', id, { before, after: release }, userId);
+        await logAudit('UPDATE_RELEASE', 'Release', id, { name: release.name, before, after: release }, userId);
         return release;
     }
 
     static async deleteRelease(userId: string, id: string) {
         console.log(`Deleting release: ${id}`);
+
+        // Get release name before deletion for audit
+        const release = await prisma.release.findUnique({ where: { id }, select: { id: true, name: true } });
 
         try {
             await prisma.release.delete({ where: { id } });
@@ -76,7 +79,7 @@ export class ReleaseService {
             throw new Error(`Failed to delete release: ${error.message}`);
         }
 
-        await logAudit('DELETE_RELEASE', 'Release', id, {}, userId);
+        await logAudit('DELETE_RELEASE', 'Release', id, { name: release?.name }, userId);
         return true;
     }
 

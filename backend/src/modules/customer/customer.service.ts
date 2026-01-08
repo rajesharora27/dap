@@ -127,8 +127,10 @@ export class CustomerService {
    * @warning Ensure customer has no active adoption plans before deletion.
    */
   static async deleteCustomer(userId: string, id: string) {
+    // Get customer name before deletion for audit
+    const customer = await prisma.customer.findUnique({ where: { id }, select: { id: true, name: true } });
     await prisma.customer.delete({ where: { id } });
-    await logAudit('DELETE_CUSTOMER', 'Customer', id, {}, userId);
+    await logAudit('DELETE_CUSTOMER', 'Customer', id, { name: customer?.name }, userId);
     return true;
   }
 
@@ -150,12 +152,22 @@ export class CustomerService {
    * ```
    */
   static async addProductToCustomer(userId: string, customerId: string, productId: string) {
+    // Get names for audit
+    const [customer, product] = await Promise.all([
+      prisma.customer.findUnique({ where: { id: customerId }, select: { name: true } }),
+      prisma.product.findUnique({ where: { id: productId }, select: { name: true } })
+    ]);
+    
     await prisma.customerProduct.upsert({
       where: { customerId_productId: { customerId, productId } },
       update: {},
       create: { customerId, productId }
     });
-    await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, userId);
+    await logAudit('ADD_PRODUCT_CUSTOMER', 'Customer', customerId, { 
+      customerName: customer?.name, 
+      productName: product?.name,
+      productId 
+    }, userId);
     return true;
   }
 
@@ -171,8 +183,18 @@ export class CustomerService {
    * @returns Promise resolving to true on success
    */
   static async removeProductFromCustomer(userId: string, customerId: string, productId: string) {
+    // Get names for audit before deletion
+    const [customer, product] = await Promise.all([
+      prisma.customer.findUnique({ where: { id: customerId }, select: { name: true } }),
+      prisma.product.findUnique({ where: { id: productId }, select: { name: true } })
+    ]);
+    
     await prisma.customerProduct.deleteMany({ where: { customerId, productId } });
-    await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { productId }, userId);
+    await logAudit('REMOVE_PRODUCT_CUSTOMER', 'Customer', customerId, { 
+      customerName: customer?.name, 
+      productName: product?.name,
+      productId 
+    }, userId);
     return true;
   }
 
@@ -195,12 +217,22 @@ export class CustomerService {
    * ```
    */
   static async addSolutionToCustomer(userId: string, customerId: string, solutionId: string) {
+    // Get names for audit
+    const [customer, solution] = await Promise.all([
+      prisma.customer.findUnique({ where: { id: customerId }, select: { name: true } }),
+      prisma.solution.findUnique({ where: { id: solutionId }, select: { name: true } })
+    ]);
+    
     await prisma.customerSolution.upsert({
       where: { customerId_solutionId: { customerId, solutionId } },
       update: {},
       create: { customerId, solutionId }
     });
-    await logAudit('ADD_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, userId);
+    await logAudit('ADD_SOLUTION_CUSTOMER', 'Customer', customerId, { 
+      customerName: customer?.name, 
+      solutionName: solution?.name,
+      solutionId 
+    }, userId);
     return true;
   }
 
@@ -219,8 +251,18 @@ export class CustomerService {
    * Consider the impact before removing.
    */
   static async removeSolutionFromCustomer(userId: string, customerId: string, solutionId: string) {
+    // Get names for audit before deletion
+    const [customer, solution] = await Promise.all([
+      prisma.customer.findUnique({ where: { id: customerId }, select: { name: true } }),
+      prisma.solution.findUnique({ where: { id: solutionId }, select: { name: true } })
+    ]);
+    
     await prisma.customerSolution.deleteMany({ where: { customerId, solutionId } });
-    await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { solutionId }, userId);
+    await logAudit('REMOVE_SOLUTION_CUSTOMER', 'Customer', customerId, { 
+      customerName: customer?.name, 
+      solutionName: solution?.name,
+      solutionId 
+    }, userId);
     return true;
   }
 }

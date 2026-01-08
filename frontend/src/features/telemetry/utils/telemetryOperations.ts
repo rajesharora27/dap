@@ -68,11 +68,14 @@ export interface ImportResultDialogState {
     errors?: string[];
   };
   taskResults?: Array<{
+    taskId?: string;
     taskName: string;
+    attributesUpdated?: number;
     criteriaMet: number;
     criteriaTotal: number;
     completionPercentage: number;
   }>;
   errorMessage?: string;
+  timestamp?: number; // Force React state change detection
 }
 

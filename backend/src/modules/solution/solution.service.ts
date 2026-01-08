@@ -203,6 +203,9 @@ export class SolutionService {
   static async deleteSolution(userId: string, id: string) {
     console.log(`Deleting solution: ${id}`);
 
+    // Get solution name before deletion for audit
+    const solution = await prisma.solution.findUnique({ where: { id }, select: { id: true, name: true } });
+
     // Perform a safe cascading delete of all dependent records
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1) Solution adoption plans and their children
@@ -249,7 +252,7 @@ export class SolutionService {
     });
 
     console.log(`Solution deleted successfully: ${id}`);
-    await logAudit('DELETE_SOLUTION', 'Solution', id, {}, userId);
+    await logAudit('DELETE_SOLUTION', 'Solution', id, { name: solution?.name }, userId);
     return true;
   }
 
