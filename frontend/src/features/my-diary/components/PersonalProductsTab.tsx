@@ -563,7 +563,15 @@ export const PersonalProductsTab = forwardRef<PersonalProductsTabRef>((props, re
             <AssignFromCatalogDialog
                 open={isAssignDialogOpen}
                 onClose={() => setIsAssignDialogOpen(false)}
-                onSuccess={() => { refetch(); setIsAssignDialogOpen(false); }}
+                onSuccess={(newProductId) => { 
+                    refetch().then(() => {
+                        if (newProductId) {
+                            setSelectedProductId(newProductId);
+                            setActiveTab('summary');
+                        }
+                    });
+                    setIsAssignDialogOpen(false); 
+                }}
             />
             <BulkImportDialog
                 open={isImportDialogOpen}

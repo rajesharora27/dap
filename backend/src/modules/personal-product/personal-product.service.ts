@@ -537,11 +537,32 @@ export async function copyGlobalProductToPersonal(userId: string, productId: str
 
     if (!globalProduct) throw new Error('Global product not found');
 
-    // Create Personal Product
+    // Generate unique name for the copy
+    let uniqueName = globalProduct.name;
+    let suffix = 1;
+    
+    // Check if base name already exists
+    const existingNames = await prisma.personalProduct.findMany({
+        where: { 
+            userId,
+            name: { startsWith: globalProduct.name }
+        },
+        select: { name: true }
+    });
+    
+    const nameSet = new Set(existingNames.map(p => p.name));
+    
+    // If base name exists, find a unique numbered version
+    while (nameSet.has(uniqueName)) {
+        suffix++;
+        uniqueName = `${globalProduct.name} (${suffix})`;
+    }
+
+    // Create Personal Product with unique name
     const product = await prisma.personalProduct.create({
         data: {
             userId,
-            name: `${globalProduct.name} (Copy)`,
+            name: uniqueName,
             description: globalProduct.description,
             resources: globalProduct.resources as any,
             customAttrs: globalProduct.customAttrs as any,

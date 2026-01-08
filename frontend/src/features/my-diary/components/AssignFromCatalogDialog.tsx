@@ -20,7 +20,7 @@ import { COPY_GLOBAL_PRODUCT_TO_PERSONAL } from '../graphql/personal-sandbox';
 interface AssignFromCatalogDialogProps {
     open: boolean;
     onClose: () => void;
-    onSuccess: () => void;
+    onSuccess: (newProductId?: string) => void;
 }
 
 export const AssignFromCatalogDialog: React.FC<AssignFromCatalogDialogProps> = ({ open, onClose, onSuccess }) => {
@@ -31,17 +31,13 @@ export const AssignFromCatalogDialog: React.FC<AssignFromCatalogDialogProps> = (
 
     // Mutation
     const [copyProduct, { loading: copying }] = useMutation(COPY_GLOBAL_PRODUCT_TO_PERSONAL, {
-        onCompleted: () => {
-            onSuccess();
+        onCompleted: (data) => {
+            const newProductId = data?.copyGlobalProductToPersonal?.id;
+            onSuccess(newProductId);
             handleClose();
         },
         onError: (err) => {
-            // Check for unique constraint violation
-            if (err.message.includes('Unique constraint') && err.message.includes('name')) {
-                alert('You already have a product with this name in your sandbox. Please choose a different product or delete the existing one first.');
-            } else {
-                alert(`Error copying product: ${err.message}`);
-            }
+            alert(`Error copying product: ${err.message}`);
         }
     });
 
