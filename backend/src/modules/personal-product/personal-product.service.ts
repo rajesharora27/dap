@@ -550,7 +550,7 @@ export async function copyGlobalProductToPersonal(userId: string, productId: str
         select: { name: true }
     });
     
-    const nameSet = new Set(existingNames.map(p => p.name));
+    const nameSet = new Set(existingNames.map((p: { name: string }) => p.name));
     
     // If base name exists, find a unique numbered version
     while (nameSet.has(uniqueName)) {
