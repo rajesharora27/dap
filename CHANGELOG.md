@@ -21,6 +21,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **UI**: Resolved icon inconsistency for "My Diary" between sidebar and page view.
 
+## [3.10.0] - 2026-01-07
+
+### Added
+- **Personal Sandbox**: Introduced "My Products" and "My Assignments" allowing users to maintain a personal simulation environment.
+- **Personal Sandbox**: Support for full Excel Import/Export parity for Personal Products.
+- **GraphQL**: Implemented `Upload` scalar for file-based mutations.
+- **GraphQL**: Subscriptions for real-time `importProgress` tracking.
+
+### Changed
+- **Architecture**: Migrated legacy REST endpoints (Telemetry Import, Backup Restore) to native GraphQL Mutations.
+- **Architecture**: Decommissioned Server-Sent Events (SSE) in favor of GraphQL Subscriptions.
+- **Architecture**: Enforced "GraphQL First" policy for all newly developed data management features.
+- **Backend**: Hardened RBAC enforcement and simplified system roles to `ADMIN` and `USER`.
+
+### Fixed
+- **Testing**: Resolved ESM transformation issues with `graphql-upload` by implementing a mock for Jest.
+- **Refinement**: Standardized "Updated Via" defaults and status mapping consistency.
+
 ## [3.9.0] - 2026-01-06
 
 ### Added
