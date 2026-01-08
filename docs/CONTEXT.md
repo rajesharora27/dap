@@ -2,7 +2,90 @@
 
 ## Recent Changes (January 8, 2026)
 
-### Session Summary: RBAC Strict Mode & Default Settings Optimization
+### Session Summary: My Products Adoption Progress & UI Consistency (v3.10.0)
+This session focused on aligning the "My Products" personal sandbox experience with customer adoption plans, ensuring visual and functional consistency across telemetry operations, and deploying all changes to production.
+
+### Key Changes
+
+#### 1. My Products: Adoption Progress Card (Identical to Adoption Plans)
+**Goal:** Unify the progress display between "My Products" and customer adoption plans.
+
+**Changes:**
+- Renamed "Implementation Progress" to "Adoption Progress" in My Products
+- Added `AdoptionPlanProgressCard` component above the tabs (below product dropdown)
+- Progress calculation now uses weight-based formula identical to adoption plans:
+  - Excludes `NOT_APPLICABLE` tasks from calculation
+  - Uses task weights for weighted completion percentage
+  - Falls back to simple count-based % if no weights defined
+- Displays task counts (Completed / Total) identical to adoption plans
+
+**Files Modified:**
+- `frontend/src/features/my-diary/components/PersonalProductsTab.tsx`
+- `frontend/src/features/my-diary/components/PersonalProductTasksTab.tsx`
+- `frontend/src/features/tasks/components/TasksTabContent.tsx`
+
+#### 2. Manual Status Update Tracking
+**Goal:** Track when task status is changed manually vs. via telemetry import.
+
+**Changes:**
+- When a task status is updated manually (via UI), `statusUpdateSource` is set to `'MANUAL'`
+- Previously, manual updates didn't set this field, making it unclear how the status changed
+
+**Files Modified:**
+- `backend/src/modules/personal-product/personal-product.service.ts`
+
+#### 3. Telemetry Button Styling (Green Outlined Border)
+**Goal:** Visually distinguish telemetry import/export buttons with consistent styling.
+
+**Changes:**
+- All telemetry import/export `IconButton` components now use green outlined border (unfilled)
+- Styling: `border: '1px solid'`, `borderColor: 'success.main'`, `color: 'success.main'`
+- Applied consistently across:
+  - My Products
+  - Customer Products Assigned
+  - Customer Solutions Assigned
+  - Product Adoption Groups
+  - Solution Tasks Groups
+
+**Files Modified:**
+- `frontend/src/features/my-diary/components/PersonalProductsTab.tsx`
+- `frontend/src/features/customers/components/CustomerProductsTab.tsx`
+- `frontend/src/features/adoption-plans/components/ProductAdoptionGroup.tsx`
+- `frontend/src/features/adoption-plans/components/SolutionTasksGroup.tsx`
+
+#### 4. Telemetry Status Chip Styling (Green Outlined)
+**Goal:** Make "TELEMETRY" status indicator visually consistent with Adoption Tasks.
+
+**Changes:**
+- Updated `getUpdateSourceChipColor()` to return appropriate colors:
+  - `'TELEMETRY'` → `'success'` (green outlined)
+  - `'MANUAL'` → `'primary'` (blue outlined)
+  - `'IMPORT'` → `'info'` (info blue outlined)
+- `SortableTaskItem` now uses `variant="outlined"` for the status chip
+
+**Files Modified:**
+- `frontend/src/shared/theme/statusStyles.ts`
+- `frontend/src/features/tasks/components/SortableTaskItem.tsx`
+
+#### 5. Unique Product Naming on Catalog Copy
+**Goal:** Prevent name collisions when copying products from catalog to personal sandbox.
+
+**Changes:**
+- `copyGlobalProductToPersonal` now auto-generates unique names
+- If "Product Name" exists, creates "Product Name (2)", "Product Name (3)", etc.
+- The newly copied product is automatically selected in the UI
+
+**Files Modified:**
+- `backend/src/modules/personal-product/personal-product.service.ts`
+- `frontend/src/features/my-diary/components/PersonalProductsTab.tsx`
+- `frontend/src/features/my-diary/components/AssignFromCatalogDialog.tsx`
+
+#### 6. Production Deployment
+All changes successfully deployed to production (dapoc.cisco.com) using `./deploy-to-production.sh`.
+
+---
+
+### Previous Session: RBAC Strict Mode & Default Settings Optimization
 This session focused on validating RBAC enforcement for custom roles and optimizing default application settings for production use.
 
 ### Key Changes

@@ -1,10 +1,11 @@
 # Application Blueprint Template
 
-**Version:** 1.7.0  
+**Version:** 1.8.0  
 **Last Updated:** January 8, 2026  
 **Purpose:** Generate new applications with 100/100 architecture score from day one  
 **Based On:** DAP (Digital Adoption Platform) - Production-proven architecture
 
+> **v1.8.0 Additions:** Unified Progress Display Pattern, Manual vs Automated Status Tracking, Unique Copy Naming
 > **v1.7.0 Additions:** Default Settings Optimization (Strict RBAC, AI enabled, Rate limiting disabled)
 > **v1.6.0 Additions:** Personal Sandbox Pattern (User-scoped Practice Environments)
 > **v1.5.0 Additions:** Comprehensive Entity Auditing, Enhanced Audit Detail Panels, Historical Data Attribution Fallbacks
@@ -969,6 +970,154 @@ export async function createPersonalProduct(userId: string, input: CreateInput) 
 3. **Enforce limits** - Prevent storage abuse (e.g., max 10 products)
 4. **Progress tracking** - Calculate completion % for assignments
 5. **Import/Export** - Allow importing production data into sandbox
+
+### 3.13 Unified Progress Display Pattern (Weighted Completion)
+
+> **Purpose:** Ensure progress calculations are consistent across all contexts (adoption plans, personal sandbox, etc.)
+
+**Progress Calculation Formula:**
+```typescript
+// Weight-based progress (excludes NOT_APPLICABLE tasks)
+function calculateProgress(tasks: Task[]): { progress: number; completed: number; total: number } {
+  const applicableTasks = tasks.filter(t => t.status !== 'NOT_APPLICABLE');
+  const total = applicableTasks.length;
+  
+  if (total === 0) return { progress: 0, completed: 0, total: 0 };
+  
+  const completedTasks = applicableTasks.filter(t => t.status === 'COMPLETED');
+  const completed = completedTasks.length;
+  
+  // Weight-based calculation
+  const totalWeight = applicableTasks.reduce((sum, t) => sum + (t.weight || 0), 0);
+  const completedWeight = completedTasks.reduce((sum, t) => sum + (t.weight || 0), 0);
+  
+  // Use weighted % if weights exist, otherwise use count-based %
+  const progress = totalWeight > 0
+    ? Math.round((completedWeight / totalWeight) * 100)
+    : Math.round((completed / total) * 100);
+  
+  return { progress, completed, total };
+}
+```
+
+**UI Display Pattern:**
+```tsx
+// Progress card positioned above tabs, below entity selector
+<AdoptionProgressCard
+  progress={progress}
+  completedTasks={completed}
+  totalTasks={total}
+/>
+
+<Tabs value={tabValue}>
+  <Tab label="Tasks" />
+  <Tab label="Resources" />
+  {/* ... */}
+</Tabs>
+```
+
+### 3.14 Status Update Source Tracking
+
+> **Purpose:** Track whether a status change was made manually, via telemetry, or via import.
+
+**Database Field:**
+```prisma
+model Task {
+  // ...
+  statusUpdateSource String? // 'MANUAL' | 'TELEMETRY' | 'IMPORT'
+}
+```
+
+**Service Implementation:**
+```typescript
+// Manual update (UI action)
+async function updateTaskStatus(taskId: string, newStatus: string) {
+  return prisma.task.update({
+    where: { id: taskId },
+    data: {
+      status: newStatus,
+      statusUpdateSource: 'MANUAL', // Track source
+      updatedAt: new Date(),
+    },
+  });
+}
+
+// Telemetry import
+async function importTelemetry(data: TelemetryData) {
+  // ...
+  await prisma.task.update({
+    data: {
+      status: evaluatedStatus,
+      statusUpdateSource: 'TELEMETRY',
+    },
+  });
+}
+```
+
+**UI Indicator:**
+```tsx
+// Display chip with color based on source
+<Chip
+  label={task.statusUpdateSource || 'N/A'}
+  variant="outlined"
+  color={getUpdateSourceChipColor(task.statusUpdateSource)}
+  size="small"
+/>
+
+// Color mapping
+const getUpdateSourceChipColor = (source: string) => {
+  switch (source) {
+    case 'TELEMETRY': return 'success';  // Green outlined
+    case 'MANUAL': return 'primary';      // Blue outlined
+    case 'IMPORT': return 'info';         // Info blue outlined
+    default: return 'default';
+  }
+};
+```
+
+### 3.15 Unique Copy Naming Pattern
+
+> **Purpose:** Prevent name collisions when copying entities, automatically generating unique names.
+
+**Implementation:**
+```typescript
+async function copyEntityWithUniqueName(
+  sourceEntity: Entity,
+  userId: string
+): Promise<Entity> {
+  // Get existing names for this user
+  const existingEntities = await prisma.entity.findMany({
+    where: { userId },
+    select: { name: true },
+  });
+  const nameSet = new Set(existingEntities.map(e => e.name));
+  
+  // Generate unique name
+  let newName = sourceEntity.name;
+  let counter = 2;
+  
+  while (nameSet.has(newName)) {
+    newName = `${sourceEntity.name} (${counter})`;
+    counter++;
+  }
+  
+  // Create copy with unique name
+  return prisma.entity.create({
+    data: {
+      ...sourceEntity,
+      id: undefined, // Generate new ID
+      name: newName,
+      userId,
+      createdAt: new Date(),
+    },
+  });
+}
+```
+
+**UI Behavior:**
+- After copying, automatically select/open the newly created entity
+- Display success message with the new name
+- Handle duplicate name errors gracefully with user-friendly message
 
 ---
 
