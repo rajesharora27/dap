@@ -26,6 +26,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { SortableHandle } from '@shared/components/SortableHandle';
 import { Lock as LockIcon } from '@shared/components/FAIcon';
 import { TagsDropdown, TagItem } from '@shared/components/TagsDropdown';
+import { getUpdateSourceChipColor } from '@shared/theme/statusStyles';
 
 // Default visible columns (all visible)
 const DEFAULT_VISIBLE_COLUMNS = ['tags', 'resources', 'implPercent', 'validationCriteria', 'updatedVia', 'license'];
@@ -396,28 +397,12 @@ export function SortableTaskItem({
                             <Chip
                                 label={task.statusUpdateSource}
                                 size="small"
-                                variant={task.statusUpdateSource === 'TELEMETRY' ? 'outlined' : 'filled'}
-                                sx={{
-                                    fontSize: '0.65rem',
-                                    height: 18,
-                                    borderRadius: '4px',
-                                    textTransform: 'uppercase',
-                                    fontWeight: 700,
-                                    ...(task.statusUpdateSource === 'TELEMETRY' ? {
-                                        borderColor: '#10B981',
-                                        color: '#10B981',
-                                        bgcolor: 'transparent',
-                                    } : task.statusUpdateSource === 'MANUAL' ? {
-                                        bgcolor: 'primary.light',
-                                        color: 'primary.contrastText',
-                                    } : {
-                                        bgcolor: 'grey.200',
-                                        color: 'text.primary',
-                                    }),
-                                }}
+                                variant="outlined"
+                                color={getUpdateSourceChipColor(task.statusUpdateSource)}
+                                sx={{ fontSize: '0.7rem', height: '22px' }}
                             />
                         ) : (
-                            <Typography variant="caption" color="text.secondary">—</Typography>
+                            <Typography variant="caption" color="text.secondary">-</Typography>
                         )}
                     </TableCell>
                 )}
