@@ -433,12 +433,28 @@ export const PersonalProductsTab = forwardRef<PersonalProductsTabRef>((props, re
                                 {/* Telemetry Actions */}
                                 <Box sx={{ display: 'flex', gap: 0.5, mr: 1, borderRight: '1px solid', borderColor: 'divider', pr: 1 }}>
                                     <Tooltip title="Export Telemetry Template">
-                                        <IconButton size="small" onClick={handleTelemetryExport} color="primary">
+                                        <IconButton 
+                                            size="small" 
+                                            onClick={handleTelemetryExport}
+                                            sx={{ 
+                                                border: '1px solid #10B981', 
+                                                color: '#10B981',
+                                                '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)' }
+                                            }}
+                                        >
                                             <TelemetryExportIcon fontSize="small" />
                                         </IconButton>
                                     </Tooltip>
                                     <Tooltip title="Import Telemetry">
-                                        <IconButton size="small" component="label" color="primary">
+                                        <IconButton 
+                                            size="small" 
+                                            component="label"
+                                            sx={{ 
+                                                border: '1px solid #10B981', 
+                                                color: '#10B981',
+                                                '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)' }
+                                            }}
+                                        >
                                             <TelemetryImportIcon fontSize="small" />
                                             <input
                                                 type="file"

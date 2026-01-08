@@ -317,7 +317,11 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
                     <IconButton
                       size="small"
                       onClick={() => onExportTelemetry?.(product.productAdoptionPlanId!)}
-                      sx={{ color: colors.titleColor }}
+                      sx={{ 
+                        border: '1px solid #10B981', 
+                        color: '#10B981',
+                        '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)' }
+                      }}
                     >
                       <Download fontSize="small" />
                     </IconButton>
@@ -326,7 +330,11 @@ export const ProductAdoptionGroup: React.FC<ProductAdoptionGroupProps> = ({
                     <IconButton
                       size="small"
                       component="label"
-                      sx={{ color: colors.titleColor }}
+                      sx={{ 
+                        border: '1px solid #10B981', 
+                        color: '#10B981',
+                        '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)' }
+                      }}
                     >
                       <Upload fontSize="small" />
                       <input

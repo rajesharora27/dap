@@ -248,6 +248,7 @@ export async function updatePersonalTask(
             status: data.status as any,
             statusNotes: data.statusNotes,
             statusUpdatedAt: data.status ? new Date() : undefined,
+            statusUpdateSource: data.status ? 'MANUAL' : undefined,
         },
         include: {
             outcomes: { include: { personalOutcome: true } },

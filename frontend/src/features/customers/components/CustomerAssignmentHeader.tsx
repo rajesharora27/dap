@@ -27,6 +27,7 @@ interface AssignmentHeaderAction {
     color?: "inherit" | "default" | "primary" | "secondary" | "error" | "info" | "success" | "warning";
     disabled?: boolean;
     tooltip?: string;
+    sx?: object;
 }
 
 interface CustomerAssignmentHeaderProps {
@@ -94,8 +95,9 @@ export const CustomerAssignmentHeader: React.FC<CustomerAssignmentHeaderProps> =
                                     <IconButton
                                         size="small"
                                         onClick={action.onClick}
-                                        color={action.color || "primary"}
+                                        color={action.sx ? undefined : (action.color || "primary")}
                                         disabled={action.disabled}
+                                        sx={action.sx}
                                     >
                                         {React.cloneElement(action.icon, { fontSize: 'small' })}
                                     </IconButton>

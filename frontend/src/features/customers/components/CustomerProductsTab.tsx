@@ -259,20 +259,28 @@ export function CustomerProductsTab() {
         )
     }));
 
+    const telemetryButtonStyle = { 
+        border: '1px solid #10B981', 
+        color: '#10B981',
+        '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.08)' }
+    };
+
     const headerActions = [
         {
             id: 'export',
             label: 'Export Telemetry Template',
             icon: <Download />,
             onClick: handleExportTelemetry,
-            tooltip: 'Export Telemetry Template'
+            tooltip: 'Export Telemetry Template',
+            sx: telemetryButtonStyle
         },
         {
             id: 'import',
             label: 'Import Telemetry',
             icon: <Upload />,
             onClick: handleImportTelemetryClick,
-            tooltip: 'Import Telemetry'
+            tooltip: 'Import Telemetry',
+            sx: telemetryButtonStyle
         },
         {
             id: 'sync',
