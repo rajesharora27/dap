@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
     Box, Paper, Typography, Collapse, FormControl, InputLabel, Select, MenuItem,
     OutlinedInput, Checkbox, Chip, Button, TableContainer, Table, TableHead, TableRow, TableCell, TableBody,
-    useTheme, LinearProgress
+    useTheme
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
@@ -18,7 +18,6 @@ export interface TasksTabContentProps {
     loading: boolean;
     tasks: any[];
     filteredTasks: any[];
-    progress?: number;
 
     // Configuration
     entityId: string;
@@ -76,7 +75,6 @@ export function TasksTabContent({
     loading,
     tasks,
     filteredTasks,
-    progress = 0,
     entityId,
     entityType,
     isLocked,
@@ -263,31 +261,6 @@ export function TasksTabContent({
                     )}
                 </Box>
             </Collapse>
-
-            {/* Progress Bar Section */}
-            <Box sx={{ mb: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                        Implementation Progress
-                    </Typography>
-                    <Typography variant="body2" color="primary" fontWeight={700}>
-                        {Math.round(progress)}% Complete
-                    </Typography>
-                </Box>
-                <LinearProgress
-                    variant="determinate"
-                    value={progress}
-                    sx={{
-                        height: 8,
-                        borderRadius: 4,
-                        bgcolor: alpha(theme.palette.primary.main, 0.1),
-                        '& .MuiLinearProgress-bar': {
-                            borderRadius: 4,
-                            bgcolor: progress === 100 ? theme.palette.success.main : theme.palette.primary.main
-                        }
-                    }}
-                />
-            </Box>
 
             {/* Tasks Table */}
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

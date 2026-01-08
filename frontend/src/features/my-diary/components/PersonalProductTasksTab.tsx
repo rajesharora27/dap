@@ -1,6 +1,5 @@
 import React, { useState, useMemo, forwardRef, useImperativeHandle } from 'react';
-import { useMutation, useApolloClient } from '@apollo/client';
-import { arrayMove } from '@dnd-kit/sortable';
+import { useMutation } from '@apollo/client';
 import { TasksTabContent } from '@features/tasks/components/TasksTabContent';
 import {
     UPDATE_PERSONAL_TASK,
@@ -44,8 +43,6 @@ export const PersonalProductTasksTab = forwardRef<any, PersonalProductTasksTabPr
     filters,
     onFilterChange
 }, ref) => {
-    const client = useApolloClient();
-
     // Dialog State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingTask, setEditingTask] = useState<any>(null);
@@ -82,12 +79,6 @@ export const PersonalProductTasksTab = forwardRef<any, PersonalProductTasksTabPr
             return true;
         }).sort((a, b) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
     }, [tasks, filters]);
-
-    const progress = useMemo(() => {
-        if (!tasks || tasks.length === 0) return 0;
-        const completed = tasks.filter((t: any) => t.status === 'DONE' || t.status === 'COMPLETED').length;
-        return (completed / tasks.length) * 100;
-    }, [tasks]);
 
     // Mutations
     const [updateTask] = useMutation(UPDATE_PERSONAL_TASK);
@@ -198,7 +189,6 @@ export const PersonalProductTasksTab = forwardRef<any, PersonalProductTasksTabPr
             entityId={product?.id}
             entityType="PRODUCT"
             isLocked={isLocked}
-            progress={progress}
             tableId="personal-tasks-table"
             availableTags={product?.tags || []}
             availableOutcomes={product?.outcomes || []}

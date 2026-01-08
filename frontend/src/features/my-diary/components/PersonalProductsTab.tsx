@@ -52,6 +52,7 @@ import { PersonalProductMetadataSection } from './PersonalProductMetadataSection
 import { TasksTabToolbar } from '@shared/components/TasksTabToolbar';
 import { DEFAULT_VISIBLE_COLUMNS } from '@shared/components/ColumnVisibilityToggle';
 import { TelemetryImportResultDialog } from '@features/adoption-plans/components/TelemetryImportResultDialog';
+import { AdoptionPlanProgressCard } from '@features/adoption-plans/components/AdoptionPlanProgressCard';
 import { ImportResultDialogState } from '@/features/telemetry/utils/telemetryOperations';
 
 
@@ -249,6 +250,44 @@ export const PersonalProductsTab = forwardRef<PersonalProductsTabRef>((props, re
         });
     }, [selectedProduct, taskTagFilter, taskOutcomeFilter, taskReleaseFilter, taskLicenseFilter]);
 
+    // Calculate adoption progress (weighted, excluding NOT_APPLICABLE)
+    const adoptionProgress = React.useMemo(() => {
+        if (!selectedProduct?.tasks || selectedProduct.tasks.length === 0) {
+            return { completedTasks: 0, totalTasks: 0, percentage: 0 };
+        }
+        
+        const tasks = selectedProduct.tasks;
+        // Filter out NOT_APPLICABLE tasks
+        const applicableTasks = tasks.filter((t: any) => t.status !== 'NOT_APPLICABLE');
+        if (applicableTasks.length === 0) {
+            return { completedTasks: 0, totalTasks: 0, percentage: 0 };
+        }
+        
+        // Count completed tasks
+        const completedTasks = applicableTasks.filter((t: any) => 
+            t.status === 'DONE' || t.status === 'COMPLETED'
+        ).length;
+        
+        // Calculate total weight of applicable tasks
+        const totalWeight = applicableTasks.reduce((sum: number, t: any) => sum + (Number(t.weight) || 0), 0);
+        
+        // Calculate completed weight
+        const completedWeight = applicableTasks
+            .filter((t: any) => t.status === 'DONE' || t.status === 'COMPLETED')
+            .reduce((sum: number, t: any) => sum + (Number(t.weight) || 0), 0);
+        
+        // Use weight-based calculation if weights exist, otherwise fall back to task count
+        const percentage = totalWeight > 0 
+            ? (completedWeight / totalWeight) * 100 
+            : (completedTasks / applicableTasks.length) * 100;
+        
+        return {
+            completedTasks,
+            totalTasks: applicableTasks.length,
+            percentage
+        };
+    }, [selectedProduct?.tasks]);
+
     if (loading && !products.length) return <CircularProgress />;
     if (error) return <Alert severity="error">{error.message}</Alert>;
 
@@ -353,6 +392,17 @@ export const PersonalProductsTab = forwardRef<PersonalProductsTabRef>((props, re
                         </Typography>
                     )}
                 </Paper>
+
+                {/* Adoption Progress Card - Same style as adoption plans */}
+                {selectedProduct && (
+                    <AdoptionPlanProgressCard
+                        licenseLevel="Personal"
+                        completedTasks={adoptionProgress.completedTasks}
+                        totalTasks={adoptionProgress.totalTasks}
+                        percentage={adoptionProgress.percentage}
+                        color="#10B981"
+                    />
+                )}
             </Box>
 
             {/* Content */}
