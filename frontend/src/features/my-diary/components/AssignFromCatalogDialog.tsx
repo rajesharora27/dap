@@ -36,7 +36,12 @@ export const AssignFromCatalogDialog: React.FC<AssignFromCatalogDialogProps> = (
             handleClose();
         },
         onError: (err) => {
-            alert(`Error copying product: ${err.message}`);
+            // Check for unique constraint violation
+            if (err.message.includes('Unique constraint') && err.message.includes('name')) {
+                alert('You already have a product with this name in your sandbox. Please choose a different product or delete the existing one first.');
+            } else {
+                alert(`Error copying product: ${err.message}`);
+            }
         }
     });
 
