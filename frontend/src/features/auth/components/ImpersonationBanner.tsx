@@ -14,6 +14,9 @@ export function ImpersonationBanner() {
     const { isImpersonating, user, originalAdminUser, endImpersonation } = useAuth();
     const [endImpersonationMutation, { loading }] = useMutation(END_IMPERSONATION);
 
+    // Debug logging
+    console.log('🔍 ImpersonationBanner render:', { isImpersonating, user: user?.email, originalAdminUser: originalAdminUser?.email });
+
     if (!isImpersonating) {
         return null;
     }

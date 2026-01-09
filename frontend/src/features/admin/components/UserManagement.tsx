@@ -313,8 +313,13 @@ export const UserManagement: React.FC = () => {
       const result = data.startImpersonation;
       // Use AuthContext to switch to impersonated user
       startImpersonation(result.token, result.user);
-      setSuccessMsg(`Now impersonating ${result.user.email}`);
-      setTimeout(() => setSuccessMsg(''), 3000);
+      setSuccessMsg(`Now impersonating ${result.user.email}. Reloading...`);
+
+      // Reload the page to ensure Apollo client uses the new token
+      // and all components re-render with impersonated user permissions
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
     },
     onError: (err) => {
       setErrorMsg(`Failed to impersonate: ${err.message}`);
