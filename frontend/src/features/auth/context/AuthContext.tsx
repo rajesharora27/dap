@@ -92,12 +92,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Restore impersonation state
+        console.log('🔍 validateSession: checking impersonation state', { savedIsImpersonating });
         if (savedIsImpersonating) {
+          console.log('✅ Restoring impersonation state from localStorage');
           setIsImpersonating(true);
           const savedOriginalAdminUser = localStorage.getItem(ORIGINAL_ADMIN_USER_KEY);
           if (savedOriginalAdminUser) {
             try {
-              setOriginalAdminUser(JSON.parse(savedOriginalAdminUser));
+              const parsedAdminUser = JSON.parse(savedOriginalAdminUser);
+              console.log('✅ Restored originalAdminUser:', parsedAdminUser.email);
+              setOriginalAdminUser(parsedAdminUser);
             } catch (e) {
               console.error('Failed to parse original admin user:', e);
             }
@@ -192,11 +196,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(IS_IMPERSONATING_KEY, 'true');
     setIsImpersonating(true);
 
-    // Switch to impersonated user
-    setToken(impersonatedToken);
-    setUser(impersonatedUser);
+    // Switch to impersonated user - IMPORTANT: Extract user from token to include permissions
+    // The mutation response only has basic fields, but the token contains permissions/access
+    const userFromToken = getUserFromToken(impersonatedToken);
+    const fullUser = userFromToken ? { ...impersonatedUser, ...userFromToken } : impersonatedUser;
 
-    console.log(`🔄 Started impersonating: ${impersonatedUser?.email || impersonatedUser?.username}`);
+    setToken(impersonatedToken);
+    setUser(fullUser);
+
+    console.log(`🔄 Started impersonating: ${fullUser?.email || fullUser?.username}`, { permissions: fullUser?.permissions, access: fullUser?.access });
   }, [token, user]);
 
   /**
