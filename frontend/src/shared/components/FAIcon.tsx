@@ -220,7 +220,31 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 // Brand icons
-import { faGithub } from '@fortawesome/free-brands-svg-icons';
+import {
+    faGithub,
+    faSalesforce,
+    faSlack,
+    faAws,
+    faMicrosoft,
+    faGoogle,
+    faAtlassian,
+    faDropbox,
+    faTrello,
+    faHubspot,
+    faAmazon,
+    faApple,
+    faWindows,
+    faLinkedin,
+    faTwitter,
+    faYoutube,
+    faDiscord,
+    faFigma as faFigmaBrand,
+    faDocker,
+    faPython,
+    faJs,
+    faReact as faReactBrand,
+    faNode,
+} from '@fortawesome/free-brands-svg-icons';
 
 // Type for icon size
 export type IconSize = 'inherit' | 'small' | 'medium' | 'large';
@@ -651,6 +675,32 @@ export const AISparkle = React.forwardRef<SVGSVGElement, AISparkleIconProps>(
 );
 AISparkle.displayName = 'AISparkle';
 
+// ==========================================
+// SaaS & Brand Icons
+// ==========================================
+export const SaaS_Salesforce = createIcon(faSalesforce, 'SaaS_Salesforce');
+export const SaaS_Slack = createIcon(faSlack, 'SaaS_Slack');
+export const SaaS_AWS = createIcon(faAws, 'SaaS_AWS');
+export const SaaS_Microsoft = createIcon(faMicrosoft, 'SaaS_Microsoft');
+export const SaaS_Google = createIcon(faGoogle, 'SaaS_Google');
+export const SaaS_Atlassian = createIcon(faAtlassian, 'SaaS_Atlassian');
+export const SaaS_Dropbox = createIcon(faDropbox, 'SaaS_Dropbox');
+export const SaaS_Trello = createIcon(faTrello, 'SaaS_Trello');
+export const SaaS_Hubspot = createIcon(faHubspot, 'SaaS_Hubspot');
+export const SaaS_Amazon = createIcon(faAmazon, 'SaaS_Amazon');
+export const SaaS_Apple = createIcon(faApple, 'SaaS_Apple');
+export const SaaS_Windows = createIcon(faWindows, 'SaaS_Windows');
+export const SaaS_LinkedIn = createIcon(faLinkedin, 'SaaS_LinkedIn');
+export const SaaS_Twitter = createIcon(faTwitter, 'SaaS_Twitter');
+export const SaaS_YouTube = createIcon(faYoutube, 'SaaS_YouTube');
+export const SaaS_Discord = createIcon(faDiscord, 'SaaS_Discord');
+export const SaaS_Figma = createIcon(faFigmaBrand, 'SaaS_Figma');
+export const SaaS_Docker = createIcon(faDocker, 'SaaS_Docker');
+export const SaaS_Python = createIcon(faPython, 'SaaS_Python');
+export const SaaS_JS = createIcon(faJs, 'SaaS_JS');
+export const SaaS_React = createIcon(faReactBrand, 'SaaS_React');
+export const SaaS_Node = createIcon(faNode, 'SaaS_Node');
+
 // Export all as namespace for easy access
 export const Icons = {
     Add,
@@ -711,6 +761,28 @@ export const Icons = {
     AISparkle,
     Book,
     PlaylistAddCheck,
+    SaaS_Salesforce,
+    SaaS_Slack,
+    SaaS_AWS,
+    SaaS_Microsoft,
+    SaaS_Google,
+    SaaS_Atlassian,
+    SaaS_Dropbox,
+    SaaS_Trello,
+    SaaS_Hubspot,
+    SaaS_Amazon,
+    SaaS_Apple,
+    SaaS_Windows,
+    SaaS_LinkedIn,
+    SaaS_Twitter,
+    SaaS_YouTube,
+    SaaS_Discord,
+    SaaS_Figma,
+    SaaS_Docker,
+    SaaS_Python,
+    SaaS_JS,
+    SaaS_React,
+    SaaS_Node,
 };
 
 export default Icons;

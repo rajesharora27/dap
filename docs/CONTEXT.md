@@ -1,5 +1,40 @@
 # DAP Application Context
 
+## Recent Changes (January 9, 2026)
+
+### Session Summary: Icon Reference Library & Theme Refinements (v3.11.0)
+This session focused on relocating the Icon Reference library to Admin Themes, expanding available themes and brand icons, and implementing a professional two-column layout for theme management.
+
+### Key Changes
+
+#### 1. Icon Reference Library Relocation & Enhancement
+**Goal:** Provide a central searchable library of icons with "copy as image" capability.
+
+**Changes:**
+- Moved `IconExplorer` from Admin Settings to a dedicated tab in Admin Themes.
+- **"Copy as Image" (PNG)**: Implemented high-resolution PNG export for all icons. Users can click a copy icon to generate 512x512 transparent PNGs via Canvas API.
+- **Searchable Brand Assets**: Added 20+ SaaS brand icons (Salesforce, Slack, AWS, Azure, etc.) prefixed with `SaaS_`.
+
+**Files Modified:**
+- `frontend/src/shared/components/IconExplorer.tsx`
+- `frontend/src/shared/components/FAIcon.tsx`
+
+#### 2. Theme Selection UI Overhaul
+**Goal:** Modernize the theme selection experience and increase available variety.
+
+**Changes:**
+- **Two-Column Layout**: Refactored the `ThemeSelector` into a professional split layout:
+  - **Left (8-grid)**: Predefined theme list and active theme preview.
+  - **Right (4-grid)**: Custom Theme Builder (permanently docked or easily toggled).
+- **Expanded Library (20 Themes)**: Added 5 new premium light themes (Airbnb, Uber, Stripe, Intercom, Framer).
+- **UI Cleanup**: Removed redundant "Light" chips from the dropdown for a cleaner, unified presentation.
+
+**Files Modified:**
+- `frontend/src/shared/components/ThemeSelector.tsx`
+- `frontend/src/theme/themes.ts`
+
+---
+
 ## Recent Changes (January 8, 2026)
 
 ### Session Summary: My Products Adoption Progress & UI Consistency (v3.10.0)

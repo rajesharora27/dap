@@ -181,6 +181,66 @@ export const themes = {
       text: { primary: '#023047', secondary: '#4A6B7C' },
     },
   },
+
+  // 16. Airbnb
+  airbnb: {
+    name: 'Airbnb',
+    palette: {
+      mode: 'light',
+      primary: { main: '#FF5A5F', light: '#FF7E82', dark: '#D9393E' },
+      secondary: { main: '#00A699', light: '#33B8AD', dark: '#007A70' },
+      background: { default: '#FFFFFF', paper: '#FFFFFF' },
+      text: { primary: '#484848', secondary: '#767676' },
+    },
+  },
+
+  // 17. Uber
+  uber: {
+    name: 'Uber',
+    palette: {
+      mode: 'light',
+      primary: { main: '#000000', light: '#333333', dark: '#000000' },
+      secondary: { main: '#276EF1', light: '#528BFF', dark: '#0045B7' },
+      background: { default: '#FFFFFF', paper: '#F6F6F6' },
+      text: { primary: '#000000', secondary: '#545454' },
+    },
+  },
+
+  // 18. Stripe
+  stripe: {
+    name: 'Stripe',
+    palette: {
+      mode: 'light',
+      primary: { main: '#635BFF', light: '#7D76FF', dark: '#4B43E0' },
+      secondary: { main: '#00D4FF', light: '#33DDFF', dark: '#00AACC' },
+      background: { default: '#F6F9FC', paper: '#FFFFFF' },
+      text: { primary: '#1A1F36', secondary: '#4F566B' },
+    },
+  },
+
+  // 19. Intercom
+  intercom: {
+    name: 'Intercom',
+    palette: {
+      mode: 'light',
+      primary: { main: '#0057FF', light: '#3379FF', dark: '#0041BF' },
+      secondary: { main: '#282F39', light: '#535860', dark: '#1E232B' },
+      background: { default: '#FFFFFF', paper: '#F2F5F9' },
+      text: { primary: '#111111', secondary: '#666666' },
+    },
+  },
+
+  // 20. Framer
+  framer: {
+    name: 'Framer',
+    palette: {
+      mode: 'light',
+      primary: { main: '#0055FF', light: '#3377FF', dark: '#0044CC' },
+      secondary: { main: '#FF3366', light: '#FF5C85', dark: '#CC2952' },
+      background: { default: '#FFFFFF', paper: '#F5F5F5' },
+      text: { primary: '#000000', secondary: '#999999' },
+    },
+  },
 } as const;
 
 export type ThemeKey = keyof typeof themes | 'custom';
