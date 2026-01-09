@@ -48,10 +48,10 @@ Perfect for new users and team members getting familiar with DAP.
 | Document | Description | Location |
 |----------|-------------|----------|
 | **README** | Project overview, quick start, and basic commands | [/README.md](/README.md) |
-| **Quick Start Guide** | Get DAP running in minutes | [/QUICK_START.md](/QUICK_START.md) |
-| **Local Dev Context** | Mac demo vs centos1 development guidance | [DEV_CONTEXT_LOCAL.md](./DEV_CONTEXT_LOCAL.md) |
-| **Features Overview** | Complete list of DAP capabilities | [FEATURES.md](./FEATURES.md) |
-| **Context Document** | Comprehensive application overview for AI assistants and developers | [/CONTEXT.md](/CONTEXT.md) |
+| **Quick Start Guide** | Get DAP running in minutes | [guides/QUICK_START.md](./guides/QUICK_START.md) |
+| **Local Dev Context** | Mac demo vs centos1 development guidance | [development/DEV_CONTEXT_LOCAL.md](./development/DEV_CONTEXT_LOCAL.md) |
+| **Features Overview** | Complete list of DAP capabilities | [features/FEATURES.md](./features/FEATURES.md) |
+| **Context Document** | Comprehensive application overview for AI assistants and developers | [CONTEXT.md](./CONTEXT.md) |
 
 ---
 
@@ -75,7 +75,7 @@ Learn how to use specific DAP features effectively.
 | **Access Guide** | System access guide | [guides/ACCESS_GUIDE.md](./guides/ACCESS_GUIDE.md) |
 | **Backup & Restore Guide** | Complete backup/restore procedures | [guides/BACKUP_AND_RESTORE_GUIDE.md](./guides/BACKUP_AND_RESTORE_GUIDE.md) |
 | **Sample Product Guide** | How to use sample products | [guides/SAMPLE_PRODUCT_GUIDE.md](./guides/SAMPLE_PRODUCT_GUIDE.md) |
-| **Quick Reference** | Quick reference for critical operations | [/QUICK_REFERENCE.md](/QUICK_REFERENCE.md) |
+| **Quick Reference** | Quick reference for critical operations | [guides/QUICK_REFERENCE.md](./guides/QUICK_REFERENCE.md) |
 
 ---
 
@@ -87,21 +87,21 @@ In-depth technical information for developers and architects.
 
 | Document | Description | Location |
 |----------|-------------|----------|
-| **Architecture Overview** | System design and component architecture | [ARCHITECTURE.md](./ARCHITECTURE.md) |
-| **Technical Documentation** | Complete API documentation and technical details | [TECHNICAL-DOCUMENTATION.md](./TECHNICAL-DOCUMENTATION.md) |
-| **Context Document** | Comprehensive domain model and design decisions | [/CONTEXT.md](/CONTEXT.md) |
+| **Architecture Overview** | System design and component architecture | [core/ARCHITECTURE.md](./core/ARCHITECTURE.md) |
+| **Technical Documentation** | Complete API documentation and technical details | [reference/TECHNICAL-DOCUMENTATION.md](./reference/TECHNICAL-DOCUMENTATION.md) |
+| **Context Document** | Comprehensive domain model and design decisions | [CONTEXT.md](./CONTEXT.md) |
 
 ### Security & Authentication
 
 | Document | Description | Location |
 |----------|-------------|----------|
-| **Auth Design** | Authentication system design and architecture | [AUTH_DESIGN.md](./AUTH_DESIGN.md) |
-| **Auth Implementation Guide** | Detailed authentication implementation | [AUTH_IMPLEMENTATION_GUIDE.md](./AUTH_IMPLEMENTATION_GUIDE.md) |
-| **Auth Implementation Summary** | Quick overview of auth system | [AUTH_IMPLEMENTATION_SUMMARY.md](./AUTH_IMPLEMENTATION_SUMMARY.md) |
-| **Session Management** | Session handling and security | [SESSION_MANAGEMENT.md](./SESSION_MANAGEMENT.md) |
-| **Session Security Implementation** | Session security implementation details | [SESSION_SECURITY_IMPLEMENTATION.md](./SESSION_SECURITY_IMPLEMENTATION.md) |
-| **Security Quick Reference** | Quick security best practices | [SECURITY_QUICK_REFERENCE.md](./SECURITY_QUICK_REFERENCE.md) |
-| **Backup & Restore Security** | Security considerations for backups | [BACKUP_RESTORE_SECURITY.md](./BACKUP_RESTORE_SECURITY.md) |
+| **Auth Design** | Authentication system design and architecture | [rbac/AUTH_DESIGN.md](./rbac/AUTH_DESIGN.md) |
+| **Auth Implementation Guide** | Detailed authentication implementation | [rbac/AUTH_IMPLEMENTATION_GUIDE.md](./rbac/AUTH_IMPLEMENTATION_GUIDE.md) |
+| **Auth Implementation Summary** | Quick overview of auth system | [rbac/AUTH_IMPLEMENTATION_SUMMARY.md](./rbac/AUTH_IMPLEMENTATION_SUMMARY.md) |
+| **Session Management** | Session handling and security | [rbac/SESSION_MANAGEMENT.md](./rbac/SESSION_MANAGEMENT.md) |
+| **Session Security Implementation** | Session security implementation details | [rbac/SESSION_SECURITY_IMPLEMENTATION.md](./rbac/SESSION_SECURITY_IMPLEMENTATION.md) |
+| **Security Quick Reference** | Quick security best practices | [rbac/SECURITY_QUICK_REFERENCE.md](./rbac/SECURITY_QUICK_REFERENCE.md) |
+| **Backup & Restore Security** | Security considerations for backups | [rbac/BACKUP_RESTORE_SECURITY.md](./rbac/BACKUP_RESTORE_SECURITY.md) |
 
 ### RBAC (Role-Based Access Control)
 
@@ -114,9 +114,9 @@ In-depth technical information for developers and architects.
 
 | Document | Description | Location |
 |----------|-------------|----------|
-| **AI Agent Feature** | AI agent feature documentation | [AI_AGENT_FEATURE.md](./AI_AGENT_FEATURE.md) |
-| **AI Agent Quick Start** | Quick start for AI agents | [AI_AGENT_QUICK_START.md](./AI_AGENT_QUICK_START.md) |
-| **AI Agent Implementation Tracker** | AI agent implementation tracking | [AI_AGENT_IMPLEMENTATION_TRACKER.md](./AI_AGENT_IMPLEMENTATION_TRACKER.md) |
+| **AI Agent Feature** | AI agent feature documentation | [features/ai-agent/AI_AGENT_FEATURE.md](./features/ai-agent/AI_AGENT_FEATURE.md) |
+| **AI Agent Quick Start** | Quick start for AI agents | [features/ai-agent/AI_AGENT_QUICK_START.md](./features/ai-agent/AI_AGENT_QUICK_START.md) |
+| **AI Agent Implementation Tracker** | AI agent implementation tracking | [features/ai-agent/AI_AGENT_IMPLEMENTATION_TRACKER.md](./features/ai-agent/AI_AGENT_IMPLEMENTATION_TRACKER.md) |
 
 ---
 
@@ -128,10 +128,10 @@ Everything you need to deploy and configure DAP.
 
 | Document | Description | Location |
 |----------|-------------|----------|
-| **Production Deployment** | Complete production deployment guide | [/deploy/README.md](/deploy/README.md) |
-| **Apache Subpath Deployment** | Deploying behind Apache with subpath | [APACHE_SUBPATH_DEPLOYMENT.md](./APACHE_SUBPATH_DEPLOYMENT.md) |
-| **DAP Management Script** | Using the `./dap` management script | [DAP-MANAGEMENT.md](./DAP-MANAGEMENT.md) |
-| **Environment Management** | Managing development/production environments | [ENVIRONMENT_MANAGEMENT.md](./ENVIRONMENT_MANAGEMENT.md) |
+| **Production Deployment** | Complete production deployment guide | [deployment/README.md](./deployment/README.md) |
+| **Apache Subpath Deployment** | Deploying behind Apache with subpath | [deployment/APACHE_SUBPATH_DEPLOYMENT.md](./deployment/APACHE_SUBPATH_DEPLOYMENT.md) |
+| **DAP Management Script** | Using the `./dap` management script | [development/DAP-MANAGEMENT.md](./development/DAP-MANAGEMENT.md) |
+| **Environment Management** | Managing development/production environments | [deployment/ENVIRONMENT_MANAGEMENT.md](./deployment/ENVIRONMENT_MANAGEMENT.md) |
 
 ### Deployment Guides
 
@@ -143,6 +143,8 @@ Everything you need to deploy and configure DAP.
 | **Deployment Consistency Guide** | Ensuring deployment consistency | [deployment/DEPLOYMENT_CONSISTENCY_GUIDE.md](./deployment/DEPLOYMENT_CONSISTENCY_GUIDE.md) |
 | **Production Deployment Package** | Production deployment package | [deployment/PRODUCTION_DEPLOYMENT_PACKAGE.md](./deployment/PRODUCTION_DEPLOYMENT_PACKAGE.md) |
 | **Production Deployment Summary** | Production deployment summary | [deployment/PRODUCTION_DEPLOYMENT_SUMMARY.md](./deployment/PRODUCTION_DEPLOYMENT_SUMMARY.md) |
+| **Apache Subpath Deployment** | Deploying behind Apache with subpath | [deployment/APACHE_SUBPATH_DEPLOYMENT.md](./deployment/APACHE_SUBPATH_DEPLOYMENT.md) |
+| **Environment Management** | Managing development/production environments | [deployment/ENVIRONMENT_MANAGEMENT.md](./deployment/ENVIRONMENT_MANAGEMENT.md) |
 
 ### Deployment History
 
@@ -195,12 +197,10 @@ Test coverage and testing documentation.
 
 | Document | Description | Location |
 |----------|-------------|----------|
-| **Test Coverage Complete** | 70% test coverage achievement | [testing/TEST_COVERAGE_COMPLETE.md](./testing/TEST_COVERAGE_COMPLETE.md) |
-| **Final Test Coverage** | Final test coverage summary | [testing/FINAL_TEST_COVERAGE.md](./testing/FINAL_TEST_COVERAGE.md) |
-| **Comprehensive Test Summary** | Complete test suite documentation | [testing/COMPREHENSIVE_TEST_SUMMARY.md](./testing/COMPREHENSIVE_TEST_SUMMARY.md) |
-| **Test Coverage Plan** | Test coverage implementation plan | [testing/TEST_COVERAGE_PLAN.md](./testing/TEST_COVERAGE_PLAN.md) |
-| **Test Results v2.1.2** | Version 2.1.2 test results | [testing/TEST_RESULTS_v2.1.2.md](./testing/TEST_RESULTS_v2.1.2.md) |
+| **Test Coverage** | Test coverage overview | [testing/COMPREHENSIVE_TEST_SUMMARY.md](./testing/COMPREHENSIVE_TEST_SUMMARY.md) |
+| **Testing Guide** | Complete test suite documentation | [testing/DAP_TEST_GUIDE.md](./testing/DAP_TEST_GUIDE.md) |
 | **Testing Backup Restore** | Backup/restore testing guide | [guides/TESTING_BACKUP_RESTORE.md](./guides/TESTING_BACKUP_RESTORE.md) |
+| **Test Panel Guide** | Using the internal test panel | [testing/TEST_PANEL_GUIDE.md](./testing/TEST_PANEL_GUIDE.md) |
 
 ---
 
@@ -249,6 +249,7 @@ Project analysis, recommendations, and verification reports.
 | **Documentation Structure** | Documentation structure overview | [status-reports/DOCUMENTATION_STRUCTURE.md](./status-reports/DOCUMENTATION_STRUCTURE.md) |
 | **Session Security Verification** | Session security verification | [status-reports/SESSION_SECURITY_VERIFICATION.md](./status-reports/SESSION_SECURITY_VERIFICATION.md) |
 | **Build Issue and Solution** | Build issue documentation | [status-reports/BUILD_ISSUE_AND_SOLUTION.md](./status-reports/BUILD_ISSUE_AND_SOLUTION.md) |
+| **Personal Product UI Debugging** | Personal product UI debugging session findings | [status-reports/PERSONAL_PRODUCT_UI_DEBUGGING.md](./status-reports/PERSONAL_PRODUCT_UI_DEBUGGING.md) |
 
 ---
 
@@ -275,12 +276,12 @@ Release notes, delivery packages, and version documentation.
 | Document | Description | Location |
 |----------|-------------|----------|
 | **Changelog** | Complete version history and changes | [/CHANGELOG.md](/CHANGELOG.md) |
-| **Release Notes v2.1.2** | Version 2.1.2 release notes | [releases-docs/RELEASE_NOTES_v2.1.2.md](./releases-docs/RELEASE_NOTES_v2.1.2.md) |
-| **Delivery Package v2.1.2** | Version 2.1.2 delivery package | [releases-docs/DELIVERY_PACKAGE_v2.1.2.md](./releases-docs/DELIVERY_PACKAGE_v2.1.2.md) |
-| **Deployment Checklist v2.1.2** | Version 2.1.2 deployment checklist | [releases-docs/DEPLOYMENT_CHECKLIST_v2.1.2.md](./releases-docs/DEPLOYMENT_CHECKLIST_v2.1.2.md) |
-| **Issue Fixes v2.1.2** | Version 2.1.2 issue fixes | [releases-docs/ISSUE_FIXES_v2.1.2.md](./releases-docs/ISSUE_FIXES_v2.1.2.md) |
-| **Release System Test Results** | Release system test results | [releases-docs/RELEASE_SYSTEM_TEST_RESULTS.md](./releases-docs/RELEASE_SYSTEM_TEST_RESULTS.md) |
-| **Robust Release Complete** | Robust release system completion | [releases-docs/ROBUST_RELEASE_COMPLETE.md](./releases-docs/ROBUST_RELEASE_COMPLETE.md) |
+| **Release Notes v2.1.2** | Version 2.1.2 release notes | [releases/RELEASE_NOTES_v2.1.2.md](./releases/RELEASE_NOTES_v2.1.2.md) |
+| **Delivery Package v2.1.2** | Version 2.1.2 delivery package | [releases/DELIVERY_PACKAGE_v2.1.2.md](./releases/DELIVERY_PACKAGE_v2.1.2.md) |
+| **Deployment Checklist v2.1.2** | Version 2.1.2 deployment checklist | [releases/DEPLOYMENT_CHECKLIST_v2.1.2.md](./releases/DEPLOYMENT_CHECKLIST_v2.1.2.md) |
+| **Issue Fixes v2.1.2** | Version 2.1.2 issue fixes | [releases/ISSUE_FIXES_v2.1.2.md](./releases/ISSUE_FIXES_v2.1.2.md) |
+| **Release System Test Results** | Release system test results | [releases/RELEASE_SYSTEM_TEST_RESULTS.md](./releases/RELEASE_SYSTEM_TEST_RESULTS.md) |
+| **Robust Release Complete** | Robust release system completion | [releases/ROBUST_RELEASE_COMPLETE.md](./releases/ROBUST_RELEASE_COMPLETE.md) |
 
 ---
 

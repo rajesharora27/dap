@@ -114,7 +114,7 @@ cd /data/dap
 
 ### 📚 Complete Documentation Index
 
-**[📖 DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)** - Your central hub for all DAP documentation
+**[📖 DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)** - Your central hub for all DAP documentation
 
 The Documentation Index provides a comprehensive, categorized list of all documentation with quick navigation to:
 - Getting Started guides
@@ -126,21 +126,21 @@ The Documentation Index provides a comprehensive, categorized list of all docume
 
 ### 🎯 Quick Links
 
-- **[Quick Start](QUICK_START.md)** - Get started in minutes
-- **[Developer Manual](docs/DEVELOPER.md)** - Complete guide for developers ⭐
-- **[Context Document](CONTEXT.md)** - Comprehensive app overview (AI assistants & developers)
-- **[Quality Standards](docs/QUALITY_STANDARDS.md)** - Maintain 100/100 architecture score
-- **[API Reference](docs/API_REFERENCE.md)** - GraphQL API documentation
-- **[Features](docs/FEATURES.md)** - Complete feature list
-- **[Architecture](docs/ARCHITECTURE.md)** - System design
-- **[Deployment Guide](deploy/README.md)** - Production deployment
+- **[Quick Start](docs/guides/QUICK_START.md)** - Get started in minutes
+- **[Developer Manual](docs/development/DEVELOPER.md)** - Complete guide for developers ⭐
+- **[Context Document](docs/CONTEXT.md)** - Comprehensive app overview (AI assistants & developers)
+- **[Quality Standards](docs/development/QUALITY_STANDARDS.md)** - Maintain 100/100 architecture score
+- **[API Reference](docs/reference/API_REFERENCE.md)** - GraphQL API documentation
+- **[Features](docs/features/FEATURES.md)** - Complete feature list
+- **[Architecture](docs/core/ARCHITECTURE.md)** - System design
+- **[Deployment Guide](docs/deployment/README.md)** - Production deployment
 - **[Security Policy](SECURITY.md)** - Security guidelines & vulnerability reporting
-- **[Contributing](docs/CONTRIBUTING.md)** - Contribution guidelines
+- **[Contributing](docs/development/CONTRIBUTING.md)** - Contribution guidelines
 - **[Application Blueprint](docs/APPLICATION_BLUEPRINT.md)** - Template for new 100/100 apps 🆕
 
 ### 📖 Full Documentation
 
-For a complete, categorized list of all documentation, see **[DOCUMENTATION_INDEX.md](DOCUMENTATION_INDEX.md)**.
+For a complete, categorized list of all documentation, see **[DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)**.
 
 ## Development
 
@@ -232,8 +232,8 @@ lsof -i :5432
 ## Support
 
 For issues or questions:
-1. Check [QUICK_START.md](QUICK_START.md) for common solutions
-2. Review [docs/TECHNICAL-DOCUMENTATION.md](docs/TECHNICAL-DOCUMENTATION.md) for API details
+1. Check [QUICK_START.md](docs/guides/QUICK_START.md) for common solutions
+2. Review [docs/reference/TECHNICAL-DOCUMENTATION.md](docs/reference/TECHNICAL-DOCUMENTATION.md) for API details
 3. Check logs: `frontend.log` and `backend.log`
 
 ## License
