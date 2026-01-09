@@ -370,380 +370,386 @@ function AuthenticatedApp() {
   };
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <CssBaseline />
+    <>
+      {/* Impersonation banner at absolute top of page */}
       <ImpersonationBanner />
-      <AuthBar
-        onMenuClick={() => setDrawerOpen(!drawerOpen)}
-        drawerOpen={drawerOpen}
-        onProfileClick={() => setProfileDialogOpen(true)}
-        onNavigate={handleNavigate}
-      />
 
-      {/* User Profile Dialog */}
-      <UserProfileDialog
-        open={profileDialogOpen}
-        onClose={() => setProfileDialogOpen(false)}
-      />
+      {/* Main app layout with sidebar */}
+      <Box sx={{ display: 'flex' }}>
+        <CssBaseline />
+        <AuthBar
+          onMenuClick={() => setDrawerOpen(!drawerOpen)}
+          drawerOpen={drawerOpen}
+          onProfileClick={() => setProfileDialogOpen(true)}
+          onNavigate={handleNavigate}
+        />
 
-      <Drawer
-        variant="permanent"
-        open={drawerOpen}
-        sx={{
-          width: drawerOpen ? drawerWidth : 0,
-          flexShrink: 0,
-          whiteSpace: 'nowrap',
-          boxSizing: 'border-box',
-          transition: theme.transitions.create('width', {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
-          overflowX: 'hidden',
-          '& .MuiDrawer-paper': {
+        {/* User Profile Dialog */}
+        <UserProfileDialog
+          open={profileDialogOpen}
+          onClose={() => setProfileDialogOpen(false)}
+        />
+
+        <Drawer
+          variant="permanent"
+          open={drawerOpen}
+          sx={{
             width: drawerOpen ? drawerWidth : 0,
+            flexShrink: 0,
+            whiteSpace: 'nowrap',
             boxSizing: 'border-box',
             transition: theme.transitions.create('width', {
               easing: theme.transitions.easing.sharp,
               duration: theme.transitions.duration.enteringScreen,
             }),
             overflowX: 'hidden',
-            borderRight: drawerOpen ? '1px solid rgba(0, 0, 0, 0.12)' : 'none',
-          },
-        }}
-      >
-        <Toolbar />
-        <Box sx={{ overflow: 'auto' }}>
-          <List>
-            {/* Dashboard */}
-            <ListItemButton
-              selected={selectedSection === 'dashboard'}
-              onClick={() => navigate('/dashboard')}
-              sx={getSelectedStyle('#049FD9')}
-            >
-              <ListItemIcon><MainIcon /></ListItemIcon>
-              <ListItemText primary="Getting Started" />
-            </ListItemButton>
+            '& .MuiDrawer-paper': {
+              width: drawerOpen ? drawerWidth : 0,
+              boxSizing: 'border-box',
+              transition: theme.transitions.create('width', {
+                easing: theme.transitions.easing.sharp,
+                duration: theme.transitions.duration.enteringScreen,
+              }),
+              overflowX: 'hidden',
+              borderRight: drawerOpen ? '1px solid rgba(0, 0, 0, 0.12)' : 'none',
+            },
+          }}
+        >
+          <Toolbar />
+          <Box sx={{ overflow: 'auto' }}>
+            <List>
+              {/* Dashboard */}
+              <ListItemButton
+                selected={selectedSection === 'dashboard'}
+                onClick={() => navigate('/dashboard')}
+                sx={getSelectedStyle('#049FD9')}
+              >
+                <ListItemIcon><MainIcon /></ListItemIcon>
+                <ListItemText primary="Getting Started" />
+              </ListItemButton>
 
-            {/* Products - Visible if user can READ products (RBAC-derived) */}
-            {(isAdmin || user?.access?.products?.read || (user?.permissions?.products?.length > 0)) && (
-              <ListItem disablePadding>
-                <ListItemButton
-                  selected={selectedSection === 'products'}
-                  onClick={() => navigate('/products')}
-                  sx={getSelectedStyle('#10B981')}
-                >
-                  <ListItemIcon>
-                    <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', alignItems: 'center' }}>
-                      <ProductIcon sx={{ color: '#10B981', fontSize: '1.1rem' }} />
-                    </Box>
-                  </ListItemIcon>
-                  <ListItemText primary="Products" />
-                </ListItemButton>
-                {(isAdmin || user?.access?.products?.write) && (
-                  <Tooltip title="Add Product">
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate('/products?add=true');
-                      }}
-                      sx={{ color: '#10B981', mr: 1 }}
-                    >
-                      <Add fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </ListItem>
-            )}
-
-            {/* Solutions - Visible if user can READ solutions (RBAC-derived) */}
-            {(isAdmin || user?.access?.solutions?.read || (user?.permissions?.solutions?.length > 0)) && (
-              <ListItem disablePadding>
-                <ListItemButton
-                  selected={selectedSection === 'solutions'}
-                  onClick={() => navigate('/solutions')}
-                  sx={getSelectedStyle('#3B82F6')}
-                >
-                  <ListItemIcon>
-                    <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
-                      <SolutionIcon sx={{ color: '#3B82F6', fontSize: '1.1rem' }} />
-                    </Box>
-                  </ListItemIcon>
-                  <ListItemText primary="Solutions" />
-                </ListItemButton>
-                {(isAdmin || user?.access?.solutions?.write) && (
-                  <Tooltip title="Add Solution">
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate('/solutions?add=true');
-                      }}
-                      sx={{ color: '#3B82F6', mr: 1 }}
-                    >
-                      <Add fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </ListItem>
-            )}
-
-            {/* Customers - Visible if user can READ customers (RBAC-derived) */}
-            {(isAdmin || user?.access?.customers?.read || (user?.permissions?.customers?.length > 0)) && (
-              <ListItem disablePadding>
-                <ListItemButton
-                  selected={selectedSection === 'customers'}
-                  onClick={() => navigate('/customers')}
-                  sx={getSelectedStyle('#8B5CF6')}
-                >
-                  <ListItemIcon>
-                    <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
-                      <CustomerIcon sx={{ color: '#8B5CF6', fontSize: '1.1rem' }} />
-                    </Box>
-                  </ListItemIcon>
-                  <ListItemText primary="Customers" />
-                </ListItemButton>
-                {(isAdmin || user?.access?.customers?.write) && (
-                  <Tooltip title="Add Customer">
-                    <IconButton
-                      edge="end"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate('/customers?add=true');
-                      }}
-                      sx={{ color: '#8B5CF6', mr: 1 }}
-                    >
-                      <Add fontSize="small" />
-                    </IconButton>
-                  </Tooltip>
-                )}
-              </ListItem>
-            )}
-
-            {/* My Diary */}
-            <ListItemButton
-              selected={selectedSection === 'myDiary'}
-              onClick={() => navigate('/diary')}
-              sx={getSelectedStyle('#EC4899')}
-            >
-              <ListItemIcon>
-                <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(236, 72, 153, 0.08)', border: '1px solid rgba(236, 72, 153, 0.25)', display: 'flex', alignItems: 'center' }}>
-                  <JournalIcon sx={{ color: '#EC4899', fontSize: '1.1rem' }} />
-                </Box>
-              </ListItemIcon>
-              <ListItemText primary="My Diary" />
-            </ListItemButton>
-
-            <Divider sx={{ my: 1 }} />
-
-            {/* Admin Section */}
-            {isAdmin && (
-              <>
-                <ListItemButton
-                  selected={selectedSection === 'admin'}
-                  onClick={() => {
-                    if (selectedSection !== 'admin') {
-                      navigate('/admin/users');
-                      setAdminExpanded(true);
-                    } else {
-                      setAdminExpanded(!adminExpanded);
-                    }
-                  }}
-                  sx={getSelectedStyle('#64748B')}
-                >
-                  <ListItemIcon>
-                    <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(100, 116, 139, 0.08)', border: '1px solid rgba(100, 116, 139, 0.25)', display: 'flex', alignItems: 'center' }}>
-                      <AdminIcon sx={{ color: '#64748B', fontSize: '1.1rem' }} />
-                    </Box>
-                  </ListItemIcon>
-                  <ListItemText primary="Admin" />
-                  {adminExpanded ? <ExpandLess /> : <ExpandMore />}
-                </ListItemButton>
-                <Collapse in={adminExpanded} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
-                    <ListItemButton
-                      sx={{ pl: 4, ...getSelectedStyle('#14B8A6') }}
-                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'users'}
-                      onClick={() => navigate('/admin/users')}
-                    >
-                      <ListItemIcon>
-                        <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(20, 184, 166, 0.08)', border: '1px solid rgba(20, 184, 166, 0.25)', display: 'flex', alignItems: 'center' }}>
-                          <UsersIcon sx={{ color: '#14B8A6', fontSize: '0.95rem' }} />
-                        </Box>
-                      </ListItemIcon>
-                      <ListItemText primary="Users" />
-                    </ListItemButton>
-                    <ListItemButton
-                      sx={{ pl: 4, ...getSelectedStyle('#F59E0B') }}
-                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'roles'}
-                      onClick={() => navigate('/admin/roles')}
-                    >
-                      <ListItemIcon>
-                        <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', display: 'flex', alignItems: 'center' }}>
-                          <RolesIcon sx={{ color: '#F59E0B', fontSize: '0.95rem' }} />
-                        </Box>
-                      </ListItemIcon>
-                      <ListItemText primary="Roles" />
-                    </ListItemButton>
-                    <ListItemButton
-                      sx={{ pl: 4, ...getSelectedStyle('#22C55E') }}
-                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'backup'}
-                      onClick={() => navigate('/admin/backup')}
-                    >
-                      <ListItemIcon>
-                        <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.25)', display: 'flex', alignItems: 'center' }}>
-                          <BackupIcon sx={{ color: '#22C55E', fontSize: '0.95rem' }} />
-                        </Box>
-                      </ListItemIcon>
-                      <ListItemText primary="Backup & Restore" />
-                    </ListItemButton>
-                    <ListItemButton
-                      sx={{ pl: 4, ...getSelectedStyle('#3B82F6') }}
-                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'activity'}
-                      onClick={() => navigate('/admin/activity')}
-                    >
-                      <ListItemIcon>
-                        <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
-                          <ActivityIcon sx={{ color: '#3B82F6', fontSize: '0.95rem' }} />
-                        </Box>
-                      </ListItemIcon>
-                      <ListItemText primary="Activity" />
-                    </ListItemButton>
-                    <ListItemButton
-                      sx={{ pl: 4, ...getSelectedStyle('#6B7280') }}
-                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'settings'}
-                      onClick={() => navigate('/admin/settings')}
-                    >
-                      <ListItemIcon>
-                        <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(107, 114, 128, 0.08)', border: '1px solid rgba(107, 114, 128, 0.25)', display: 'flex', alignItems: 'center' }}>
-                          <SettingsIcon sx={{ color: '#6B7280', fontSize: '0.95rem' }} />
-                        </Box>
-                      </ListItemIcon>
-                      <ListItemText primary="Settings" />
-                    </ListItemButton>
-                    <ListItemButton
-                      sx={{ pl: 4, ...getSelectedStyle('#A855F7') }}
-                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'theme'}
-                      onClick={() => navigate('/admin/theme')}
-                    >
-                      <ListItemIcon>
-                        <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.25)', display: 'flex', alignItems: 'center' }}>
-                          <ThemeIcon sx={{ color: '#A855F7', fontSize: '0.95rem' }} />
-                        </Box>
-                      </ListItemIcon>
-                      <ListItemText primary="Theme" />
-                    </ListItemButton>
-                    <ListItemButton
-                      sx={{ pl: 4, ...getSelectedStyle('#06B6D4') }}
-                      selected={selectedSection === 'admin' && selectedAdminSubSection === 'about'}
-                      onClick={() => navigate('/admin/about')}
-                    >
-                      <ListItemIcon>
-                        <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.25)', display: 'flex', alignItems: 'center' }}>
-                          <AboutIcon sx={{ color: '#06B6D4', fontSize: '0.95rem' }} />
-                        </Box>
-                      </ListItemIcon>
-                      <ListItemText primary="About" />
-                    </ListItemButton>
-                  </List>
-                </Collapse>
-              </>
-            )}
-
-            {/* Development Tools - Only if enabled */}
-            {devToolsEnabled && (
-              <>
-                <Divider sx={{ my: 1 }} />
-                <ListItemButton
-                  selected={selectedSection === 'development'}
-                  onClick={() => setDevExpanded(!devExpanded)}
-                  sx={getSelectedStyle('#e91e63')}
-                >
-                  <ListItemIcon><BugReportIcon /></ListItemIcon>
-                  <ListItemText primary="Development" />
-                  {devExpanded ? <ExpandLess /> : <ExpandMore />}
-                </ListItemButton>
-                <Collapse in={devExpanded} timeout="auto" unmountOnExit>
-                  <DndContext
-                    sensors={devMenuSensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDevMenuDragEnd}
+              {/* Products - Visible if user can READ products (RBAC-derived) */}
+              {(isAdmin || user?.access?.products?.read || (user?.permissions?.products?.length > 0)) && (
+                <ListItem disablePadding>
+                  <ListItemButton
+                    selected={selectedSection === 'products'}
+                    onClick={() => navigate('/products')}
+                    sx={getSelectedStyle('#10B981')}
                   >
-                    <SortableContext
-                      items={devMenuItems.map(i => i.id)}
-                      strategy={verticalListSortingStrategy}
-                    >
-                      <List component="div" disablePadding>
-                        {devMenuItems.map((item) => (
-                          <Tooltip key={item.id} title={item.tooltip} placement="right" arrow>
-                            <div>
-                              <SortableDevMenuItem
-                                item={item}
-                                selected={selectedSection === 'development' && selectedDevSubSection === item.id}
-                                onClick={() => navigate(`/dev/${item.id}`)}
-                                onContextMenu={(e: React.MouseEvent) => handleDevContextMenu(e, item.id)}
-                                icon={getDevIcon(item.id)}
-                              />
-                            </div>
-                          </Tooltip>
-                        ))}
-                      </List>
-                    </SortableContext>
-                  </DndContext>
-                </Collapse>
-              </>
-            )}
-          </List>
-        </Box>
+                    <ListItemIcon>
+                      <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', alignItems: 'center' }}>
+                        <ProductIcon sx={{ color: '#10B981', fontSize: '1.1rem' }} />
+                      </Box>
+                    </ListItemIcon>
+                    <ListItemText primary="Products" />
+                  </ListItemButton>
+                  {(isAdmin || user?.access?.products?.write) && (
+                    <Tooltip title="Add Product">
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/products?add=true');
+                        }}
+                        sx={{ color: '#10B981', mr: 1 }}
+                      >
+                        <Add fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </ListItem>
+              )}
 
-        {/* Dev Menu Context Menu */}
-        <Menu
-          open={contextMenu !== null}
-          onClose={() => setContextMenu(null)}
-          anchorReference="anchorPosition"
-          anchorPosition={
-            contextMenu !== null
-              ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
-              : undefined
+              {/* Solutions - Visible if user can READ solutions (RBAC-derived) */}
+              {(isAdmin || user?.access?.solutions?.read || (user?.permissions?.solutions?.length > 0)) && (
+                <ListItem disablePadding>
+                  <ListItemButton
+                    selected={selectedSection === 'solutions'}
+                    onClick={() => navigate('/solutions')}
+                    sx={getSelectedStyle('#3B82F6')}
+                  >
+                    <ListItemIcon>
+                      <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
+                        <SolutionIcon sx={{ color: '#3B82F6', fontSize: '1.1rem' }} />
+                      </Box>
+                    </ListItemIcon>
+                    <ListItemText primary="Solutions" />
+                  </ListItemButton>
+                  {(isAdmin || user?.access?.solutions?.write) && (
+                    <Tooltip title="Add Solution">
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/solutions?add=true');
+                        }}
+                        sx={{ color: '#3B82F6', mr: 1 }}
+                      >
+                        <Add fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </ListItem>
+              )}
+
+              {/* Customers - Visible if user can READ customers (RBAC-derived) */}
+              {(isAdmin || user?.access?.customers?.read || (user?.permissions?.customers?.length > 0)) && (
+                <ListItem disablePadding>
+                  <ListItemButton
+                    selected={selectedSection === 'customers'}
+                    onClick={() => navigate('/customers')}
+                    sx={getSelectedStyle('#8B5CF6')}
+                  >
+                    <ListItemIcon>
+                      <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(139, 92, 246, 0.08)', border: '1px solid rgba(139, 92, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
+                        <CustomerIcon sx={{ color: '#8B5CF6', fontSize: '1.1rem' }} />
+                      </Box>
+                    </ListItemIcon>
+                    <ListItemText primary="Customers" />
+                  </ListItemButton>
+                  {(isAdmin || user?.access?.customers?.write) && (
+                    <Tooltip title="Add Customer">
+                      <IconButton
+                        edge="end"
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/customers?add=true');
+                        }}
+                        sx={{ color: '#8B5CF6', mr: 1 }}
+                      >
+                        <Add fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </ListItem>
+              )}
+
+              {/* My Diary */}
+              <ListItemButton
+                selected={selectedSection === 'myDiary'}
+                onClick={() => navigate('/diary')}
+                sx={getSelectedStyle('#EC4899')}
+              >
+                <ListItemIcon>
+                  <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(236, 72, 153, 0.08)', border: '1px solid rgba(236, 72, 153, 0.25)', display: 'flex', alignItems: 'center' }}>
+                    <JournalIcon sx={{ color: '#EC4899', fontSize: '1.1rem' }} />
+                  </Box>
+                </ListItemIcon>
+                <ListItemText primary="My Diary" />
+              </ListItemButton>
+
+              <Divider sx={{ my: 1 }} />
+
+              {/* Admin Section */}
+              {isAdmin && (
+                <>
+                  <ListItemButton
+                    selected={selectedSection === 'admin'}
+                    onClick={() => {
+                      if (selectedSection !== 'admin') {
+                        navigate('/admin/users');
+                        setAdminExpanded(true);
+                      } else {
+                        setAdminExpanded(!adminExpanded);
+                      }
+                    }}
+                    sx={getSelectedStyle('#64748B')}
+                  >
+                    <ListItemIcon>
+                      <Box sx={{ p: 0.5, borderRadius: 1, bgcolor: 'rgba(100, 116, 139, 0.08)', border: '1px solid rgba(100, 116, 139, 0.25)', display: 'flex', alignItems: 'center' }}>
+                        <AdminIcon sx={{ color: '#64748B', fontSize: '1.1rem' }} />
+                      </Box>
+                    </ListItemIcon>
+                    <ListItemText primary="Admin" />
+                    {adminExpanded ? <ExpandLess /> : <ExpandMore />}
+                  </ListItemButton>
+                  <Collapse in={adminExpanded} timeout="auto" unmountOnExit>
+                    <List component="div" disablePadding>
+                      <ListItemButton
+                        sx={{ pl: 4, ...getSelectedStyle('#14B8A6') }}
+                        selected={selectedSection === 'admin' && selectedAdminSubSection === 'users'}
+                        onClick={() => navigate('/admin/users')}
+                      >
+                        <ListItemIcon>
+                          <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(20, 184, 166, 0.08)', border: '1px solid rgba(20, 184, 166, 0.25)', display: 'flex', alignItems: 'center' }}>
+                            <UsersIcon sx={{ color: '#14B8A6', fontSize: '0.95rem' }} />
+                          </Box>
+                        </ListItemIcon>
+                        <ListItemText primary="Users" />
+                      </ListItemButton>
+                      <ListItemButton
+                        sx={{ pl: 4, ...getSelectedStyle('#F59E0B') }}
+                        selected={selectedSection === 'admin' && selectedAdminSubSection === 'roles'}
+                        onClick={() => navigate('/admin/roles')}
+                      >
+                        <ListItemIcon>
+                          <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', display: 'flex', alignItems: 'center' }}>
+                            <RolesIcon sx={{ color: '#F59E0B', fontSize: '0.95rem' }} />
+                          </Box>
+                        </ListItemIcon>
+                        <ListItemText primary="Roles" />
+                      </ListItemButton>
+                      <ListItemButton
+                        sx={{ pl: 4, ...getSelectedStyle('#22C55E') }}
+                        selected={selectedSection === 'admin' && selectedAdminSubSection === 'backup'}
+                        onClick={() => navigate('/admin/backup')}
+                      >
+                        <ListItemIcon>
+                          <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(34, 197, 94, 0.08)', border: '1px solid rgba(34, 197, 94, 0.25)', display: 'flex', alignItems: 'center' }}>
+                            <BackupIcon sx={{ color: '#22C55E', fontSize: '0.95rem' }} />
+                          </Box>
+                        </ListItemIcon>
+                        <ListItemText primary="Backup & Restore" />
+                      </ListItemButton>
+                      <ListItemButton
+                        sx={{ pl: 4, ...getSelectedStyle('#3B82F6') }}
+                        selected={selectedSection === 'admin' && selectedAdminSubSection === 'activity'}
+                        onClick={() => navigate('/admin/activity')}
+                      >
+                        <ListItemIcon>
+                          <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', display: 'flex', alignItems: 'center' }}>
+                            <ActivityIcon sx={{ color: '#3B82F6', fontSize: '0.95rem' }} />
+                          </Box>
+                        </ListItemIcon>
+                        <ListItemText primary="Activity" />
+                      </ListItemButton>
+                      <ListItemButton
+                        sx={{ pl: 4, ...getSelectedStyle('#6B7280') }}
+                        selected={selectedSection === 'admin' && selectedAdminSubSection === 'settings'}
+                        onClick={() => navigate('/admin/settings')}
+                      >
+                        <ListItemIcon>
+                          <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(107, 114, 128, 0.08)', border: '1px solid rgba(107, 114, 128, 0.25)', display: 'flex', alignItems: 'center' }}>
+                            <SettingsIcon sx={{ color: '#6B7280', fontSize: '0.95rem' }} />
+                          </Box>
+                        </ListItemIcon>
+                        <ListItemText primary="Settings" />
+                      </ListItemButton>
+                      <ListItemButton
+                        sx={{ pl: 4, ...getSelectedStyle('#A855F7') }}
+                        selected={selectedSection === 'admin' && selectedAdminSubSection === 'theme'}
+                        onClick={() => navigate('/admin/theme')}
+                      >
+                        <ListItemIcon>
+                          <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(168, 85, 247, 0.08)', border: '1px solid rgba(168, 85, 247, 0.25)', display: 'flex', alignItems: 'center' }}>
+                            <ThemeIcon sx={{ color: '#A855F7', fontSize: '0.95rem' }} />
+                          </Box>
+                        </ListItemIcon>
+                        <ListItemText primary="Theme" />
+                      </ListItemButton>
+                      <ListItemButton
+                        sx={{ pl: 4, ...getSelectedStyle('#06B6D4') }}
+                        selected={selectedSection === 'admin' && selectedAdminSubSection === 'about'}
+                        onClick={() => navigate('/admin/about')}
+                      >
+                        <ListItemIcon>
+                          <Box sx={{ p: 0.4, borderRadius: 1, bgcolor: 'rgba(6, 182, 212, 0.08)', border: '1px solid rgba(6, 182, 212, 0.25)', display: 'flex', alignItems: 'center' }}>
+                            <AboutIcon sx={{ color: '#06B6D4', fontSize: '0.95rem' }} />
+                          </Box>
+                        </ListItemIcon>
+                        <ListItemText primary="About" />
+                      </ListItemButton>
+                    </List>
+                  </Collapse>
+                </>
+              )}
+
+              {/* Development Tools - Only if enabled */}
+              {devToolsEnabled && (
+                <>
+                  <Divider sx={{ my: 1 }} />
+                  <ListItemButton
+                    selected={selectedSection === 'development'}
+                    onClick={() => setDevExpanded(!devExpanded)}
+                    sx={getSelectedStyle('#e91e63')}
+                  >
+                    <ListItemIcon><BugReportIcon /></ListItemIcon>
+                    <ListItemText primary="Development" />
+                    {devExpanded ? <ExpandLess /> : <ExpandMore />}
+                  </ListItemButton>
+                  <Collapse in={devExpanded} timeout="auto" unmountOnExit>
+                    <DndContext
+                      sensors={devMenuSensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDevMenuDragEnd}
+                    >
+                      <SortableContext
+                        items={devMenuItems.map(i => i.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <List component="div" disablePadding>
+                          {devMenuItems.map((item) => (
+                            <Tooltip key={item.id} title={item.tooltip} placement="right" arrow>
+                              <div>
+                                <SortableDevMenuItem
+                                  item={item}
+                                  selected={selectedSection === 'development' && selectedDevSubSection === item.id}
+                                  onClick={() => navigate(`/dev/${item.id}`)}
+                                  onContextMenu={(e: React.MouseEvent) => handleDevContextMenu(e, item.id)}
+                                  icon={getDevIcon(item.id)}
+                                />
+                              </div>
+                            </Tooltip>
+                          ))}
+                        </List>
+                      </SortableContext>
+                    </DndContext>
+                  </Collapse>
+                </>
+              )}
+            </List>
+          </Box>
+
+          {/* Dev Menu Context Menu */}
+          <Menu
+            open={contextMenu !== null}
+            onClose={() => setContextMenu(null)}
+            anchorReference="anchorPosition"
+            anchorPosition={
+              contextMenu !== null
+                ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                : undefined
+            }
+          >
+            <MenuItem onClick={() => handleContextAction('up')}>
+              <ArrowUpIcon fontSize="small" sx={{ mr: 1 }} /> Move Up
+            </MenuItem>
+            <MenuItem onClick={() => handleContextAction('down')}>
+              <ArrowDownIcon fontSize="small" sx={{ mr: 1 }} /> Move Down
+            </MenuItem>
+            <Divider />
+            <MenuItem onClick={() => handleContextAction('top')}>
+              <VerticalAlignTopIcon fontSize="small" sx={{ mr: 1 }} /> Move to Top
+            </MenuItem>
+            <MenuItem onClick={() => handleContextAction('bottom')}>
+              <VerticalAlignBottomIcon fontSize="small" sx={{ mr: 1 }} /> Move to Bottom
+            </MenuItem>
+          </Menu>
+        </Drawer >
+
+        {/* Main Content */}
+        < Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: 3,
+            width: { sm: `calc(100% - ${drawerWidth}px)` },
+            overflowX: 'hidden'
+          }
           }
         >
-          <MenuItem onClick={() => handleContextAction('up')}>
-            <ArrowUpIcon fontSize="small" sx={{ mr: 1 }} /> Move Up
-          </MenuItem>
-          <MenuItem onClick={() => handleContextAction('down')}>
-            <ArrowDownIcon fontSize="small" sx={{ mr: 1 }} /> Move Down
-          </MenuItem>
-          <Divider />
-          <MenuItem onClick={() => handleContextAction('top')}>
-            <VerticalAlignTopIcon fontSize="small" sx={{ mr: 1 }} /> Move to Top
-          </MenuItem>
-          <MenuItem onClick={() => handleContextAction('bottom')}>
-            <VerticalAlignBottomIcon fontSize="small" sx={{ mr: 1 }} /> Move to Bottom
-          </MenuItem>
-        </Menu>
-      </Drawer >
-
-      {/* Main Content */}
-      < Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          overflowX: 'hidden'
-        }
-        }
-      >
-        <Toolbar />
-        <Breadcrumbs />
-        <AppRoutes />
-      </Box >
-    </Box >
+          <Toolbar />
+          <Breadcrumbs />
+          <AppRoutes />
+        </Box>
+      </Box>
+    </>
   );
 }
+
 
 export function App() {
   const { isAuthenticated, isLoading } = useAuth();
