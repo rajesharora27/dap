@@ -92,15 +92,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Restore impersonation state
-        console.log('🔍 validateSession: checking impersonation state', { savedIsImpersonating });
         if (savedIsImpersonating) {
-          console.log('✅ Restoring impersonation state from localStorage');
           setIsImpersonating(true);
           const savedOriginalAdminUser = localStorage.getItem(ORIGINAL_ADMIN_USER_KEY);
           if (savedOriginalAdminUser) {
             try {
               const parsedAdminUser = JSON.parse(savedOriginalAdminUser);
-              console.log('✅ Restored originalAdminUser:', parsedAdminUser.email);
               setOriginalAdminUser(parsedAdminUser);
             } catch (e) {
               console.error('Failed to parse original admin user:', e);
@@ -203,8 +200,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     setToken(impersonatedToken);
     setUser(fullUser);
-
-    console.log(`🔄 Started impersonating: ${fullUser?.email || fullUser?.username}`, { permissions: fullUser?.permissions, access: fullUser?.access });
   }, [token, user]);
 
   /**

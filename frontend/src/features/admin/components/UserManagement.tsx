@@ -390,7 +390,7 @@ export const UserManagement: React.FC = () => {
    */
   const handleImpersonate = (user: User) => {
     // DEBUG: Confirm button click works
-    console.log('🔄 Impersonate clicked for:', user.email);
+
 
     if (user.isAdmin || user.role === 'ADMIN') {
       setErrorMsg('Cannot impersonate admin users');

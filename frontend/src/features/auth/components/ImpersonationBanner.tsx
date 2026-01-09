@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { Box, Typography, Button, Chip, useTheme, alpha } from '@mui/material';
-import { SwapHoriz as SwapIcon, ExitToApp as ExitIcon } from '@mui/icons-material';
+import { Box, Typography, Button, useTheme, alpha } from '@mui/material';
+import { SwapHoriz as SwapIcon } from '@mui/icons-material';
 import { useMutation } from '@apollo/client';
 import { useAuth } from '../context/AuthContext';
 import { END_IMPERSONATION } from '../graphql/impersonation';
@@ -33,83 +33,73 @@ export function ImpersonationBanner() {
     const impersonatedUser = user?.fullName || user?.email || user?.username || 'User';
     const adminUser = originalAdminUser?.fullName || originalAdminUser?.email || originalAdminUser?.username || 'Admin';
 
-    // Use a consistent accent color that works with both light and dark themes
-    const bannerBg = theme.palette.mode === 'dark'
-        ? `linear-gradient(90deg, ${alpha(theme.palette.info.dark, 0.95)} 0%, ${alpha(theme.palette.primary.dark, 0.9)} 100%)`
-        : `linear-gradient(90deg, ${alpha(theme.palette.info.main, 0.95)} 0%, ${alpha(theme.palette.primary.main, 0.9)} 100%)`;
-
+    // Transparent background to blend with header color
+    // Centered at the top
     return (
         <Box
             sx={{
                 position: 'fixed',
                 top: 0,
-                left: 0,
-                right: 0,
-                width: '100%',
-                zIndex: 9999,
-                background: bannerBg,
-                backdropFilter: 'blur(8px)',
-                color: theme.palette.common.white,
-                py: 1,
-                px: 3,
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 9999, // Above AppBar
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 2,
-                boxShadow: `0 2px 12px ${alpha(theme.palette.common.black, 0.15)}`,
-                minHeight: '44px',
+                py: 1,
+                px: 3,
+                mt: 0.5, // Slight top margin to center vertically in standard toolbar
+                pointerEvents: 'auto', // Ensure button is clickable
+                borderRadius: '20px',
+                // Optional: very subtle background for legibility if needed, or completely transparent
+                backgroundColor: alpha(theme.palette.common.black, 0.1),
+                backdropFilter: 'blur(4px)',
+                border: `1px solid ${alpha(theme.palette.common.white, 0.1)}`,
             }}
         >
-            <SwapIcon sx={{ fontSize: '1.1rem', opacity: 0.9 }} />
-
             <Typography
                 variant="body2"
                 sx={{
+                    color: theme.palette.common.white,
+                    fontStyle: 'italic', // As requested
                     fontWeight: 500,
                     letterSpacing: '0.02em',
                     display: 'flex',
                     alignItems: 'center',
                     gap: 1,
+                    textShadow: '0 1px 2px rgba(0,0,0,0.3)',
                 }}
             >
-                Viewing as
-                <Chip
-                    label={impersonatedUser}
-                    size="small"
-                    sx={{
-                        backgroundColor: alpha(theme.palette.common.white, 0.2),
-                        color: 'inherit',
-                        fontWeight: 600,
-                        fontSize: '0.8rem',
-                        height: '24px',
-                        '& .MuiChip-label': { px: 1.5 },
-                    }}
-                />
+                <SwapIcon sx={{ fontSize: '1.1rem', opacity: 0.8 }} />
+                Viewing as {impersonatedUser}
             </Typography>
 
             <Button
-                variant="text"
+                variant="outlined"
                 size="small"
                 onClick={handleEndImpersonation}
                 disabled={loading}
-                endIcon={<ExitIcon sx={{ fontSize: '1rem !important' }} />}
                 sx={{
-                    ml: 1,
-                    color: 'inherit',
+                    color: theme.palette.common.white,
+                    borderColor: alpha(theme.palette.common.white, 0.3),
+                    borderWidth: '1px',
                     fontWeight: 500,
-                    fontSize: '0.8rem',
+                    fontSize: '0.75rem',
                     textTransform: 'none',
-                    backgroundColor: alpha(theme.palette.common.white, 0.1),
-                    borderRadius: '20px',
-                    px: 2,
+                    py: 0.25,
+                    px: 1.5,
+                    minWidth: 'auto',
+                    height: '24px',
+                    fontStyle: 'normal', // Button text normal
                     '&:hover': {
-                        backgroundColor: alpha(theme.palette.common.white, 0.2),
+                        backgroundColor: alpha(theme.palette.common.white, 0.1),
+                        borderColor: alpha(theme.palette.common.white, 0.5),
                     },
                 }}
             >
-                {loading ? 'Returning...' : 'Return to Admin'}
+                {loading ? '...' : 'Return'}
             </Button>
         </Box>
     );
 }
-

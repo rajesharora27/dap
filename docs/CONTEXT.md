@@ -1,5 +1,40 @@
 # DAP Application Context
 
+## Recent Changes (January 9, 2026)
+
+### Session Summary: Admin Impersonation Feature
+This session focused on implementing a secure Admin Impersonation feature, allowing administrators to temporarily log in as other users to troubleshoot issues and verify permissions. This feature includes a persistent, theme-aware banner and strictly enforces security boundaries.
+
+### Key Changes
+
+#### 1. Admin Impersonation Implementation
+**Goal:** Enable admins to "view as" another user without knowing their password.
+
+**Backend Changes:**
+- **Schema:** Added `isImpersonation` and `impersonatedById` to `Session` model.
+- **AuthService:** Implemented `startImpersonation` (creates secure session) and `endImpersonation`.
+- **Security:**
+  - Blocked impersonation of other Admins.
+  - Blocked impersonation of inactive users.
+  - Audit logging ensures actions are traced back to the original admin.
+- **GraphQL:** Exposed `startImpersonation` / `endImpersonation` mutations.
+
+**Frontend Changes:**
+- **AuthContext:** Updated to handle impersonation state, preserving original admin token.
+- **Permissions:** `startImpersonation` extracts permissions/access directly from the impersonated user's JWT to ensure accurate menu visibility.
+- **UserManagement:** Added "Impersonate" button (swap icon) for valid target users.
+- **ImpersonationBanner:** Added a persistent, aesthetic banner (transparent, centered, italicized) to indicate active impersonation and provide a "Return to Admin" button.
+
+**Files Modified:**
+- `backend/prisma/schema.prisma`
+- `backend/src/modules/auth/auth.service.ts`
+- `backend/src/modules/auth/auth.resolver.ts`
+- `frontend/src/features/auth/context/AuthContext.tsx`
+- `frontend/src/features/auth/components/ImpersonationBanner.tsx`
+- `frontend/src/features/admin/components/UserManagement.tsx`
+
+---
+
 ## Recent Changes (January 8, 2026)
 
 ### Session Summary: My Products Adoption Progress & UI Consistency (v3.10.0)
