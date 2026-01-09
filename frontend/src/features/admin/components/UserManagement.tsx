@@ -389,6 +389,9 @@ export const UserManagement: React.FC = () => {
    * Only available for non-admin, active users who are not the current user.
    */
   const handleImpersonate = (user: User) => {
+    // DEBUG: Confirm button click works
+    console.log('🔄 Impersonate clicked for:', user.email);
+
     if (user.isAdmin || user.role === 'ADMIN') {
       setErrorMsg('Cannot impersonate admin users');
       setTimeout(() => setErrorMsg(''), 5000);
@@ -399,6 +402,8 @@ export const UserManagement: React.FC = () => {
       setTimeout(() => setErrorMsg(''), 5000);
       return;
     }
+
+    setSuccessMsg(`Starting impersonation of ${user.email}...`);
     startImpersonationMutation({ variables: { targetUserId: user.id } });
   };
 

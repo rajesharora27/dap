@@ -17,7 +17,11 @@ export function ImpersonationBanner() {
     // Debug logging
     console.log('🔍 ImpersonationBanner render:', { isImpersonating, user: user?.email, originalAdminUser: originalAdminUser?.email });
 
-    if (!isImpersonating) {
+    // Always render SOMETHING to verify component mounts (temporary debug)
+    // Check localStorage directly for debugging
+    const lsIsImpersonating = typeof window !== 'undefined' && localStorage.getItem('isImpersonating') === 'true';
+
+    if (!isImpersonating && !lsIsImpersonating) {
         return null;
     }
 
