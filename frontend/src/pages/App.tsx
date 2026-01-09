@@ -79,6 +79,7 @@ import {
 } from '@shared/components/FAIcon';
 
 import { useAuth, LoginPage, UserProfileDialog } from '@features/auth';
+import { ImpersonationBanner } from '@features/auth/components/ImpersonationBanner';
 import { Breadcrumbs } from '../shared/components';
 import { AuthBar } from '@features/auth/components/AuthBar';
 import { AppRoutes } from '../routes/AppRoutes';
@@ -317,17 +318,17 @@ function AuthenticatedApp() {
       backgroundColor: `${accentColor}12`,
       borderLeft: `3px solid ${accentColor}`,
       '& .MuiListItemIcon-root': { color: accentColor },
-      '& .MuiListItemText-primary': { 
-        color: accentColor, 
-        fontWeight: 600 
+      '& .MuiListItemText-primary': {
+        color: accentColor,
+        fontWeight: 600
       }
     },
-    '&.Mui-selected:hover': { 
-      backgroundColor: `${accentColor}18` 
+    '&.Mui-selected:hover': {
+      backgroundColor: `${accentColor}18`
     },
     '&:hover': {
-      backgroundColor: theme.palette.mode === 'dark' 
-        ? 'rgba(255, 255, 255, 0.05)' 
+      backgroundColor: theme.palette.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.05)'
         : 'rgba(0, 0, 0, 0.04)'
     },
     borderLeft: '3px solid transparent', // Reserve space for selected border
@@ -369,8 +370,9 @@ function AuthenticatedApp() {
   };
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <CssBaseline />
+      <ImpersonationBanner />
       <AuthBar
         onMenuClick={() => setDrawerOpen(!drawerOpen)}
         drawerOpen={drawerOpen}

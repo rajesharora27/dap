@@ -37,9 +37,14 @@ import {
   CheckCircle,
   Cancel
 } from '@shared/components/FAIcon';
+import { SwapHoriz as ImpersonateIcon } from '@mui/icons-material';
 import { gql, useQuery, useMutation } from '@apollo/client';
 import { useResizableColumns } from '@shared/hooks/useResizableColumns';
 import { ResizableTableCell } from '@shared/components/ResizableTableCell';
+import { useAuth } from '@features/auth';
+import { START_IMPERSONATION } from '@features/auth/graphql/impersonation';
+
+
 
 // GraphQL Queries
 const GET_USERS = gql`
@@ -301,6 +306,22 @@ export const UserManagement: React.FC = () => {
     }
   });
 
+  // Impersonation mutation
+  const { user: currentUser, startImpersonation } = useAuth();
+  const [startImpersonationMutation, { loading: impersonating }] = useMutation(START_IMPERSONATION, {
+    onCompleted: (data) => {
+      const result = data.startImpersonation;
+      // Use AuthContext to switch to impersonated user
+      startImpersonation(result.token, result.user);
+      setSuccessMsg(`Now impersonating ${result.user.email}`);
+      setTimeout(() => setSuccessMsg(''), 3000);
+    },
+    onError: (err) => {
+      setErrorMsg(`Failed to impersonate: ${err.message}`);
+      setTimeout(() => setErrorMsg(''), 5000);
+    }
+  });
+
   // Load user roles when editing user
   React.useEffect(() => {
     if (editingUser && userRolesData?.userRoles) {
@@ -356,6 +377,24 @@ export const UserManagement: React.FC = () => {
     } else {
       activateUser({ variables: { userId: user.id } });
     }
+  };
+
+  /**
+   * Start impersonating a user.
+   * Only available for non-admin, active users who are not the current user.
+   */
+  const handleImpersonate = (user: User) => {
+    if (user.isAdmin || user.role === 'ADMIN') {
+      setErrorMsg('Cannot impersonate admin users');
+      setTimeout(() => setErrorMsg(''), 5000);
+      return;
+    }
+    if (user.id === currentUser?.userId) {
+      setErrorMsg('Cannot impersonate yourself');
+      setTimeout(() => setErrorMsg(''), 5000);
+      return;
+    }
+    startImpersonationMutation({ variables: { targetUserId: user.id } });
   };
 
   const handleSubmit = async () => {
@@ -607,6 +646,19 @@ export const UserManagement: React.FC = () => {
                       <EditIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
+                  {/* Impersonate button - only for non-admin, active users who are not current user */}
+                  {user.isActive && !user.isAdmin && user.role !== 'ADMIN' && user.id !== currentUser?.userId && (
+                    <Tooltip title="Impersonate User">
+                      <IconButton
+                        size="small"
+                        onClick={() => handleImpersonate(user)}
+                        disabled={impersonating}
+                        color="warning"
+                      >
+                        <ImpersonateIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  )}
                   <Tooltip title="Reset Password to Default">
                     <IconButton size="small" onClick={() => handleResetPassword(user)}>
                       <ResetPasswordIcon fontSize="small" />

@@ -1007,8 +1007,50 @@ export const AuthMutationResolvers = {
     });
 
     return true;
+  },
+
+  /**
+   * Start impersonating a user (admin only).
+   * Creates a new session for the target user and returns tokens.
+   */
+  startImpersonation: async (_: any, { targetUserId }: any, context: any) => {
+    if (!context.user) {
+      throw new Error('Not authenticated');
+    }
+
+    const authService = createAuthService(context.prisma);
+    const result = await authService.startImpersonation(context.user.userId, targetUserId);
+    const extendedUser = await getExtendedUser(context, result.user.id);
+
+    return {
+      user: extendedUser!,
+      token: result.tokens.token,
+      refreshToken: result.tokens.refreshToken
+    };
+  },
+
+  /**
+   * End the current impersonation session.
+   * Invalidates the impersonated session so the token can no longer be used.
+   */
+  endImpersonation: async (_: any, __: any, context: any) => {
+    if (!context.user) {
+      throw new Error('Not authenticated');
+    }
+
+    // The sessionId is in the JWT token - we need to get it from the context
+    // The session ID is stored when the context is created from the token
+    if (!context.user.sessionId) {
+      throw new Error('Session ID not found');
+    }
+
+    const authService = createAuthService(context.prisma);
+    await authService.endImpersonation(context.user.sessionId, context.user.userId);
+
+    return true;
   }
 };
+
 
 
 

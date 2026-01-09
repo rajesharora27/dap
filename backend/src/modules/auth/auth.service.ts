@@ -1017,6 +1017,177 @@ export class AuthService {
 
     await this.logAudit(adminId, 'activate_user', 'user', userId, 'User activated');
   }
+
+  // =============================================================================
+  // IMPERSONATION
+  // =============================================================================
+
+  /**
+   * Start impersonating a user. Admin-only.
+   * Creates a new session for the target user and returns tokens.
+   * The original admin session remains valid.
+   * 
+   * @param adminUserId - The ID of the admin starting impersonation
+   * @param targetUserId - The ID of the user to impersonate
+   * @returns User data and tokens for the impersonated session
+   * @throws {Error} If caller is not an admin, target doesn't exist, or target is inactive
+   */
+  async startImpersonation(
+    adminUserId: string,
+    targetUserId: string
+  ): Promise<{ user: User; tokens: AuthTokens }> {
+    // 1. Verify caller is an admin
+    const admin = await this.prisma.user.findUnique({
+      where: { id: adminUserId }
+    });
+    if (!admin?.isAdmin) {
+      throw new Error('Only admins can impersonate users');
+    }
+
+    // 2. Prevent self-impersonation
+    if (adminUserId === targetUserId) {
+      throw new Error('Cannot impersonate yourself');
+    }
+
+    // 3. Find and validate target user
+    const targetUser = await this.prisma.user.findUnique({
+      where: { id: targetUserId }
+    });
+    if (!targetUser) {
+      throw new Error('Target user not found');
+    }
+    if (!targetUser.isActive) {
+      throw new Error('Cannot impersonate an inactive user');
+    }
+
+    // 4. SECURITY: Prevent impersonating other admin users
+    if (targetUser.isAdmin || targetUser.role === 'ADMIN') {
+      throw new Error('Cannot impersonate admin users');
+    }
+
+
+    // 4. Get target user's permissions and roles
+    const permissions = await this.getUserPermissions(targetUserId);
+    const userRoles = await this.prisma.userRole.findMany({
+      where: { userId: targetUserId },
+      include: { role: { select: { name: true } } }
+    });
+    const roles = userRoles
+      .map((ur: any) => ur.role?.name || ur.roleName)
+      .filter((name: string | null) => name);
+
+    // Include target user's base role if not already present
+    if (targetUser.role && !roles.includes(targetUser.role.toString())) {
+      roles.unshift(targetUser.role.toString());
+    }
+    if (targetUser.isAdmin && !roles.includes('ADMIN')) {
+      roles.unshift('ADMIN');
+    }
+
+    // 5. Create impersonation session (marked as impersonation, linked to admin)
+    const session = await this.prisma.session.create({
+      data: {
+        userId: targetUserId,
+        expiresAt: new Date(Date.now() + envConfig.auth.sessionTimeoutMs),
+        isImpersonation: true,
+        impersonatedById: adminUserId
+      }
+    });
+
+    // 6. Build user data and generate tokens
+    const userData: User = {
+      id: targetUser.id,
+      username: targetUser.username,
+      email: targetUser.email,
+      fullName: targetUser.fullName,
+      isAdmin: targetUser.isAdmin,
+      isActive: targetUser.isActive,
+      mustChangePassword: targetUser.mustChangePassword
+    };
+
+    const access = await this.getAccessSummary(targetUserId);
+    const token = this.generateToken(userData, permissions, session.id, roles, access);
+    const refreshToken = this.generateRefreshToken(targetUserId, session.id);
+
+    // 7. Audit log
+    await this.logAudit(
+      adminUserId,
+      'start_impersonation',
+      'user',
+      targetUserId,
+      `Admin ${admin.username} started impersonating user ${targetUser.username}`
+    );
+
+    return {
+      user: userData,
+      tokens: { token, refreshToken }
+    };
+  }
+
+  /**
+   * End an impersonation session. 
+   * Invalidates the impersonated session so the token can no longer be used.
+   * 
+   * @param sessionId - The ID of the impersonation session to end
+   * @param adminUserId - The ID of the admin who was impersonating
+   * @throws {Error} If session not found or not an impersonation session
+   */
+  async endImpersonation(sessionId: string, adminUserId: string): Promise<void> {
+    // 1. Find the session
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      include: { user: true }
+    });
+
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    if (!session.isImpersonation) {
+      throw new Error('This is not an impersonation session');
+    }
+
+    // Verify the admin ending is the one who started (or any admin for safety)
+    const admin = await this.prisma.user.findUnique({
+      where: { id: adminUserId }
+    });
+    if (!admin?.isAdmin) {
+      throw new Error('Only admins can end impersonation');
+    }
+
+    // 2. Delete the impersonation session
+    await this.prisma.session.delete({
+      where: { id: sessionId }
+    });
+
+    // 3. Audit log
+    await this.logAudit(
+      adminUserId,
+      'end_impersonation',
+      'user',
+      session.userId,
+      `Admin ended impersonation of user ${session.user.username}`
+    );
+  }
+
+  /**
+   * Get all active impersonation sessions started by an admin.
+   * Useful for cleanup or viewing active impersonations.
+   * 
+   * @param adminUserId - The admin user ID
+   * @returns Array of active impersonation sessions
+   */
+  async getActiveImpersonations(adminUserId: string): Promise<any[]> {
+    return this.prisma.session.findMany({
+      where: {
+        impersonatedById: adminUserId,
+        isImpersonation: true,
+        expiresAt: { gt: new Date() }
+      },
+      include: { user: true }
+    });
+  }
 }
+
 
 export const createAuthService = (prisma: PrismaClient) => new AuthService(prisma);

@@ -25,41 +25,50 @@ datasource db {
 
 /// User account with authentication and authorization
 model User {
-  id                 String       @id @default(cuid())
-  email              String       @unique
-  username           String       @unique
-  name               String?
-  fullName           String?      @default("")
-  role               SystemRole   @default(USER)
-  password           String
-  isAdmin            Boolean      @default(false)
-  isActive           Boolean      @default(true)
-  mustChangePassword Boolean      @default(true)
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @default(now()) @updatedAt
-  auditLogs          AuditLog[]
-  changeSets         ChangeSet[]
-  sessions           Session[]
-  permissions        Permission[]
-  userRoles          UserRole[]
-  grantedPermissions Permission[] @relation("GrantedBy")
-  diaryTodos         DiaryTodo[]
-  diaryBookmarks     DiaryBookmark[]
-  personalProducts   PersonalProduct[]
-  personalAssignments PersonalAssignment[]
+  id                   String       @id @default(cuid())
+  email                String       @unique
+  username             String       @unique
+  name                 String?
+  fullName             String?      @default("")
+  role                 SystemRole   @default(USER)
+  password             String
+  isAdmin              Boolean      @default(false)
+  isActive             Boolean      @default(true)
+  mustChangePassword   Boolean      @default(true)
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @default(now()) @updatedAt
+  auditLogs            AuditLog[]
+  changeSets           ChangeSet[]
+  sessions             Session[]
+  impersonatedSessions Session[]    @relation("ImpersonatedSessions")  // Sessions where this admin is impersonating another user
+  permissions          Permission[]
+  userRoles            UserRole[]
+  grantedPermissions   Permission[] @relation("GrantedBy")
+  diaryTodos           DiaryTodo[]
+  diaryBookmarks       DiaryBookmark[]
+  personalProducts     PersonalProduct[]
+  personalAssignments  PersonalAssignment[]
 }
+
 
 /// Active user session with expiration tracking
 model Session {
-  id             String         @id @default(cuid())
-  userId         String
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  expiresAt      DateTime
-  lockedEntities LockedEntity[]
-  user           User           @relation(fields: [userId], references: [id])
+  id               String         @id @default(cuid())
+  userId           String
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  expiresAt        DateTime
+  
+  // Impersonation tracking
+  isImpersonation  Boolean        @default(false)  // True if this session is an admin impersonating another user
+  impersonatedById String?        // Admin user ID who started the impersonation (null for normal sessions)
+  impersonatedBy   User?          @relation("ImpersonatedSessions", fields: [impersonatedById], references: [id])
+  
+  lockedEntities   LockedEntity[]
+  user             User           @relation(fields: [userId], references: [id])
   
   @@index([expiresAt])  // Fast expired session cleanup
+  @@index([impersonatedById])  // Fast lookup of impersonated sessions by admin
 }
 
 /// Entity lock for concurrent editing prevention
